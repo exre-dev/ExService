@@ -24,7 +24,10 @@ const json = (response: ServerResponse, status: number, body: unknown) => {
   response.writeHead(status, { 'content-type': 'application/json' })
   response.end(JSON.stringify(body))
 }
-const expired = (response: ServerResponse) => json(response, 401, { error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'scope-fixture' } })
+const expired = (response: ServerResponse) =>
+  json(response, 401, {
+    error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'scope-fixture' },
+  })
 
 async function install(base = '/custom-api') {
   vi.stubEnv('VITE_API_BASE_URL', base)
@@ -50,26 +53,65 @@ beforeEach(async () => {
   storageUnavailable = false
   window.localStorage.clear()
   window.sessionStorage.clear()
-  respond = (_request, response) => json(response, 200, { nickname: 'Scoped account', avatarUrl: null })
+  respond = (_request, response) =>
+    json(response, 200, { nickname: 'Scoped account', avatarUrl: null })
   server = createServer((request, response) => {
     requests.push({ url: request.url!, authorization: request.headers.authorization })
     respond(request, response)
   })
-  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const address = server.address()
   if (!address || typeof address === 'string') throw new Error('Expected TCP fixture')
   root = `http://127.0.0.1:${address.port}`
-  const location = { origin: root, href: `${root}/account/profile`, pathname: '/account/profile', search: '', replace }
+  const location = {
+    origin: root,
+    href: `${root}/account/profile`,
+    pathname: '/account/profile',
+    search: '',
+    replace,
+  }
   vi.stubGlobal('location', location)
-  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
-  Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: () => document.body })
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  )
+  // Dialog observes viewport changes; jsdom does not implement matchMedia.
+  vi.stubGlobal('matchMedia', (media: string) => ({
+    media,
+    matches: false,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }))
+  Object.defineProperty(document, 'elementFromPoint', {
+    configurable: true,
+    value: () => document.body,
+  })
   const original = window
-  vi.stubGlobal('window', new Proxy(original, { get(target, key) {
-    if (key === 'location') return location
-    if (key === 'localStorage' && storageUnavailable) throw new DOMException('denied', 'SecurityError')
-    const value: unknown = Reflect.get(target, key)
-    return (key === 'addEventListener' || key === 'removeEventListener' || key === 'dispatchEvent') && typeof value === 'function' ? value.bind(target) : value
-  } }))
+  vi.stubGlobal(
+    'window',
+    new Proxy(original, {
+      get(target, key) {
+        if (key === 'location') return location
+        if (key === 'localStorage' && storageUnavailable)
+          throw new DOMException('denied', 'SecurityError')
+        const value: unknown = Reflect.get(target, key)
+        return (key === 'addEventListener' ||
+          key === 'removeEventListener' ||
+          key === 'dispatchEvent') &&
+          typeof value === 'function'
+          ? value.bind(target)
+          : value
+      },
+    }),
+  )
 })
 afterEach(async () => {
   storageUnavailable = false
@@ -82,7 +124,7 @@ afterEach(async () => {
   vi.unstubAllGlobals()
   vi.unstubAllEnvs()
   server.closeAllConnections()
-  await new Promise<void>(resolve => server.close(() => resolve()))
+  await new Promise<void>((resolve) => server.close(() => resolve()))
 })
 
 it('restores a persisted custom login into the real Browser SDK before AuthProvider renders after reload', async () => {
@@ -91,8 +133,14 @@ it('restores a persisted custom login into the real Browser SDK before AuthProvi
   storage.writeToken(window.localStorage, 'custom-account')
   await reload(`${root}/custom-api///`)
   const { AuthProvider, useAuth } = await import('../auth/AuthContext')
-  function State() { return <p data-testid="state">{useAuth().state.status}</p> }
-  render(<AuthProvider><State /></AuthProvider>)
+  function State() {
+    return <p data-testid="state">{useAuth().state.status}</p>
+  }
+  render(
+    <AuthProvider>
+      <State />
+    </AuthProvider>,
+  )
   await waitFor(() => expect(screen.getByTestId('state').textContent).toBe('authenticated'))
   expect(requests).toEqual([{ url: '/custom-api/auth/me', authorization: 'Bearer custom-account' }])
   expect(window.localStorage.getItem(storage.AUTH_TOKEN_KEY)).toBe('default-account')
@@ -143,7 +191,9 @@ it('isolates origins and paths, normalizes equivalent roots, and returns to auto
 it('validates a new root before changing scope or credentials', async () => {
   const storage = await install()
   storage.writeToken(window.localStorage, 'custom-A')
-  await expect(install('https://user:password@example.test/api')).rejects.toMatchObject({ code: 'CONFIG_ERROR' })
+  await expect(install('https://user:password@example.test/api')).rejects.toMatchObject({
+    code: 'CONFIG_ERROR',
+  })
   expect(storage.readToken(window.localStorage)).toBe('custom-A')
   await request()
   expect(requests.at(-1)).toEqual({ url: '/custom-api/auth/me', authorization: 'Bearer custom-A' })
@@ -195,53 +245,66 @@ it('expires restored custom credentials without deleting default or another root
   expect(replace).toHaveBeenCalledWith('/login')
 })
 
-it.each(['logout', 'expiry'] as const)('keeps failed %s deletion suppressed across A/B/A switches and allows same-token relogin', async action => {
-  let storage = await install()
-  storage.writeToken(window.localStorage, 'same-token')
-  const key = keyFor('same-token')
-  storage = await reload()
-  const remove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => { throw new Error('denied') })
-  if (action === 'logout') storage.clearBrowserSession()
-  else {
-    respond = (_request, response) => expired(response)
-    await expect(request()).rejects.toMatchObject({ code: 'SESSION_INVALID' })
-  }
-  expect(storage.readRawToken(window.localStorage)).toBe('same-token')
-  expect(storage.readToken(window.localStorage)).toBeNull()
-  await install('/custom-B')
-  storage.writeToken(window.localStorage, 'B-token')
-  await install()
-  expect(storage.readToken(window.localStorage)).toBeNull()
-  respond = (_request, response) => json(response, 200, { status: 'ok' })
-  await request()
-  expect(requests.at(-1)?.authorization).toBeUndefined()
-  expect(window.localStorage.getItem(key)).toBe('same-token')
-  remove.mockRestore()
-  storage.writeToken(window.localStorage, 'same-token')
-  await request()
-  expect(requests.at(-1)?.authorization).toBe('Bearer same-token')
-})
+it.each(['logout', 'expiry'] as const)(
+  'keeps failed %s deletion suppressed across A/B/A switches and allows same-token relogin',
+  async (action) => {
+    let storage = await install()
+    storage.writeToken(window.localStorage, 'same-token')
+    const key = keyFor('same-token')
+    storage = await reload()
+    const remove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new Error('denied')
+    })
+    if (action === 'logout') storage.clearBrowserSession()
+    else {
+      respond = (_request, response) => expired(response)
+      await expect(request()).rejects.toMatchObject({ code: 'SESSION_INVALID' })
+    }
+    expect(storage.readRawToken(window.localStorage)).toBe('same-token')
+    expect(storage.readToken(window.localStorage)).toBeNull()
+    await install('/custom-B')
+    storage.writeToken(window.localStorage, 'B-token')
+    await install()
+    expect(storage.readToken(window.localStorage)).toBeNull()
+    respond = (_request, response) => json(response, 200, { status: 'ok' })
+    await request()
+    expect(requests.at(-1)?.authorization).toBeUndefined()
+    expect(window.localStorage.getItem(key)).toBe('same-token')
+    remove.mockRestore()
+    storage.writeToken(window.localStorage, 'same-token')
+    await request()
+    expect(requests.at(-1)?.authorization).toBe('Bearer same-token')
+  },
+)
 
-it.each(['getItem', 'accessor'] as const)('does not borrow default credentials when scoped storage %s fails on startup', async failure => {
-  const persistent = window.localStorage
-  persistent.setItem('exwebsite.auth.token', 'default-token')
-  let read: ReturnType<typeof vi.spyOn> | undefined
-  if (failure === 'accessor') storageUnavailable = true
-  else read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied') })
-  const storage = await install()
-  expect(storage.syncSessionToken()).toBeUndefined()
-  await request()
-  expect(requests.at(-1)?.authorization).toBeUndefined()
-  read?.mockRestore()
-  storageUnavailable = false
-  expect(storage.readToken(persistent)).toBeNull()
-  expect(persistent.getItem('exwebsite.auth.token')).toBe('default-token')
-})
+it.each(['getItem', 'accessor'] as const)(
+  'does not borrow default credentials when scoped storage %s fails on startup',
+  async (failure) => {
+    const persistent = window.localStorage
+    persistent.setItem('exwebsite.auth.token', 'default-token')
+    let read: ReturnType<typeof vi.spyOn> | undefined
+    if (failure === 'accessor') storageUnavailable = true
+    else
+      read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('denied')
+      })
+    const storage = await install()
+    expect(storage.syncSessionToken()).toBeUndefined()
+    await request()
+    expect(requests.at(-1)?.authorization).toBeUndefined()
+    read?.mockRestore()
+    storageUnavailable = false
+    expect(storage.readToken(persistent)).toBeNull()
+    expect(persistent.getItem('exwebsite.auth.token')).toBe('default-token')
+  },
+)
 
 it('leaves the installed credential unchanged when scoped persistence rejects a login write', async () => {
   const storage = await install()
   storage.writeToken(window.localStorage, 'current-custom')
-  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('denied') })
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw new Error('denied')
+  })
   expect(() => storage.writeToken(window.localStorage, 'failed-login')).toThrow('denied')
   await request()
   expect(requests.at(-1)?.authorization).toBe('Bearer current-custom')
@@ -254,9 +317,16 @@ it('preserves a replacement raw token when restored custom expiry arrives before
   const key = keyFor('old-custom')
   storage = await reload()
   let release!: () => void, arrived!: () => void
-  const gate = new Promise<void>(resolve => { release = resolve })
-  const reached = new Promise<void>(resolve => { arrived = resolve })
-  respond = (_request, response) => { arrived(); void gate.then(() => expired(response)) }
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const reached = new Promise<void>((resolve) => {
+    arrived = resolve
+  })
+  respond = (_request, response) => {
+    arrived()
+    void gate.then(() => expired(response))
+  }
   const pending = request()
   await reached
   window.localStorage.setItem(key, 'replacement-custom')
@@ -274,9 +344,16 @@ it('does not let an old root response expire an equal-token new root or a stale 
   storage.writeToken(window.localStorage, 'shared-string')
   const disposeA = dispose!
   let release!: () => void, arrived!: () => void
-  const gate = new Promise<void>(resolve => { release = resolve })
-  const reached = new Promise<void>(resolve => { arrived = resolve })
-  respond = (_request, response) => { arrived(); void gate.then(() => expired(response)) }
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const reached = new Promise<void>((resolve) => {
+    arrived = resolve
+  })
+  respond = (_request, response) => {
+    arrived()
+    void gate.then(() => expired(response))
+  }
   const pending = request()
   await reached
   await install('/custom-B')
@@ -292,81 +369,126 @@ it('does not let an old root response expire an equal-token new root or a stale 
   expect(replace).toHaveBeenCalledWith('/login')
 })
 
-it.each(['login', 'logout'] as const)('discards late AuthFlow %s results after switching roots with equal raw state', async phase => {
-  const storage = await install()
-  if (phase === 'logout') storage.writeToken(window.localStorage, 'old-account')
-  let release!: () => void, arrived!: () => void
-  const gate = new Promise<void>(resolve => { release = resolve })
-  const reached = new Promise<void>(resolve => { arrived = resolve })
-  respond = (request, response) => {
-    if (request.url?.endsWith(`/auth/${phase}`)) {
-      arrived()
-      void gate.then(() => json(response, 200, phase === 'login' ? { token: 'new-account', expiresAt: Date.now() + 10000 } : {}))
-    } else json(response, 200, { token: 'new-account', expiresAt: Date.now() + 10000 })
-  }
-  const { AuthFlow } = await import('../auth/AuthFlow')
-  render(<MemoryRouter><AuthFlow presentation="page" /></MemoryRouter>)
-  const user = userEvent.setup()
-  await user.type(screen.getByLabelText('邮箱'), 'fixture@example.test')
-  await user.type(screen.getByLabelText('密码', { exact: true }), 'fixture-password')
-  await user.click(screen.getByRole('button', { name: '继续' }))
-  await user.click(screen.getByRole('button', { name: '登录' }))
-  await reached
-  await install('/custom-B')
-  if (phase === 'logout') storage.writeToken(window.localStorage, 'old-account')
-  release()
-  await waitFor(() => expect(screen.getByRole('button', { name: '登录' }).hasAttribute('disabled')).toBe(false))
-  expect(storage.readRawToken(window.localStorage)).toBe(phase === 'logout' ? 'old-account' : null)
-  expect(replace).not.toHaveBeenCalled()
-  expect(requests.filter(request => request.url.startsWith('/custom-B/'))).toEqual([])
-})
+it.each(['login', 'logout'] as const)(
+  'discards late AuthFlow %s results after switching roots with equal raw state',
+  async (phase) => {
+    const storage = await install()
+    if (phase === 'logout') storage.writeToken(window.localStorage, 'old-account')
+    let release!: () => void, arrived!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const reached = new Promise<void>((resolve) => {
+      arrived = resolve
+    })
+    respond = (request, response) => {
+      if (request.url?.endsWith(`/auth/${phase}`)) {
+        arrived()
+        void gate.then(() =>
+          json(
+            response,
+            200,
+            phase === 'login' ? { token: 'new-account', expiresAt: Date.now() + 10000 } : {},
+          ),
+        )
+      } else json(response, 200, { token: 'new-account', expiresAt: Date.now() + 10000 })
+    }
+    const { AuthFlow } = await import('../auth/AuthFlow')
+    render(
+      <MemoryRouter>
+        <AuthFlow presentation="page" />
+      </MemoryRouter>,
+    )
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText('邮箱'), 'fixture@example.test')
+    await user.type(screen.getByLabelText('密码', { exact: true }), 'fixture-password')
+    await user.click(screen.getByRole('button', { name: '继续' }))
+    await user.click(screen.getByRole('button', { name: '登录' }))
+    await reached
+    await install('/custom-B')
+    if (phase === 'logout') storage.writeToken(window.localStorage, 'old-account')
+    release()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '登录' }).hasAttribute('disabled')).toBe(false),
+    )
+    expect(storage.readRawToken(window.localStorage)).toBe(
+      phase === 'logout' ? 'old-account' : null,
+    )
+    expect(replace).not.toHaveBeenCalled()
+    expect(requests.filter((request) => request.url.startsWith('/custom-B/'))).toEqual([])
+  },
+)
 
-it.each(['inspect', 'accept'] as const)('discards late OIDC %s results after a same-token root switch', async phase => {
-  const storage = await install()
-  storage.writeToken(window.localStorage, 'same-account')
-  let release!: () => void, arrived!: () => void
-  const gate = new Promise<void>(resolve => { release = resolve })
-  const reached = new Promise<void>(resolve => { arrived = resolve })
-  respond = (request, response) => {
-    const body = request.url?.endsWith('/inspect') ? { clientName: 'Fixture', scopes: ['openid'] } : { redirectUrl: `${root}/hydra-complete` }
-    if ((phase === 'inspect') === request.url?.endsWith('/inspect')) { arrived(); void gate.then(() => json(response, 200, body)) }
-    else json(response, 200, body)
-  }
-  const { OidcPage } = await import('../pages/IdentityPage/OidcPage')
-  render(<MemoryRouter initialEntries={['/identity/login?login_challenge=fixture']}><OidcPage phase="login" /></MemoryRouter>)
-  await reached
-  await install('/custom-B')
-  storage.writeToken(window.localStorage, 'same-account')
-  await act(async () => { release(); await new Promise(resolve => setTimeout(resolve, 30)) })
-  expect(replace).not.toHaveBeenCalled()
-  expect(storage.readRawToken(window.localStorage)).toBe('same-account')
-  expect(requests.filter(request => request.url.startsWith('/custom-B/'))).toEqual([])
-})
+it.each(['inspect', 'accept'] as const)(
+  'discards late OIDC %s results after a same-token root switch',
+  async (phase) => {
+    const storage = await install()
+    storage.writeToken(window.localStorage, 'same-account')
+    let release!: () => void, arrived!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const reached = new Promise<void>((resolve) => {
+      arrived = resolve
+    })
+    respond = (request, response) => {
+      const body = request.url?.endsWith('/inspect')
+        ? { clientName: 'Fixture', scopes: ['openid'] }
+        : { redirectUrl: `${root}/hydra-complete` }
+      if ((phase === 'inspect') === request.url?.endsWith('/inspect')) {
+        arrived()
+        void gate.then(() => json(response, 200, body))
+      } else json(response, 200, body)
+    }
+    const { OidcPage } = await import('../pages/IdentityPage/OidcPage')
+    render(
+      <MemoryRouter initialEntries={['/identity/login?login_challenge=fixture']}>
+        <OidcPage phase="login" />
+      </MemoryRouter>,
+    )
+    await reached
+    await install('/custom-B')
+    storage.writeToken(window.localStorage, 'same-account')
+    await act(async () => {
+      release()
+      await new Promise((resolve) => setTimeout(resolve, 30))
+    })
+    expect(replace).not.toHaveBeenCalled()
+    expect(storage.readRawToken(window.localStorage)).toBe('same-account')
+    expect(requests.filter((request) => request.url.startsWith('/custom-B/'))).toEqual([])
+  },
+)
 
-it.each(['getItem', 'accessor'] as const)('keeps restored expiry ownership when the storage %s becomes unavailable', async failure => {
-  let storage = await install()
-  storage.writeToken(window.localStorage, 'restored-token')
-  const key = keyFor('restored-token')
-  storage = await reload()
-  const persistent = window.localStorage
-  respond = (_request, response) => expired(response)
-  let read: ReturnType<typeof vi.spyOn> | undefined
-  if (failure === 'accessor') storageUnavailable = true
-  else read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied') })
-  await expect(request()).rejects.toMatchObject({ code: 'SESSION_INVALID' })
-  expect(requests.at(-1)?.authorization).toBe('Bearer restored-token')
-  expect(replace).not.toHaveBeenCalled()
-  read?.mockRestore()
-  storageUnavailable = false
-  expect(storage.readRawToken(persistent)).toBe('restored-token')
-  expect(storage.readToken(persistent)).toBeNull()
-  expect(storage.syncSessionToken()).toBeNull()
-  persistent.setItem(key, 'new-account')
-  storageEvent(key)
-  respond = (_request, response) => json(response, 200, { status: 'ok' })
-  await request()
-  expect(requests.at(-1)?.authorization).toBe('Bearer new-account')
-})
+it.each(['getItem', 'accessor'] as const)(
+  'keeps restored expiry ownership when the storage %s becomes unavailable',
+  async (failure) => {
+    let storage = await install()
+    storage.writeToken(window.localStorage, 'restored-token')
+    const key = keyFor('restored-token')
+    storage = await reload()
+    const persistent = window.localStorage
+    respond = (_request, response) => expired(response)
+    let read: ReturnType<typeof vi.spyOn> | undefined
+    if (failure === 'accessor') storageUnavailable = true
+    else
+      read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('denied')
+      })
+    await expect(request()).rejects.toMatchObject({ code: 'SESSION_INVALID' })
+    expect(requests.at(-1)?.authorization).toBe('Bearer restored-token')
+    expect(replace).not.toHaveBeenCalled()
+    read?.mockRestore()
+    storageUnavailable = false
+    expect(storage.readRawToken(persistent)).toBe('restored-token')
+    expect(storage.readToken(persistent)).toBeNull()
+    expect(storage.syncSessionToken()).toBeNull()
+    persistent.setItem(key, 'new-account')
+    storageEvent(key)
+    respond = (_request, response) => json(response, 200, { status: 'ok' })
+    await request()
+    expect(requests.at(-1)?.authorization).toBe('Bearer new-account')
+  },
+)
 
 it('releases exactly its own storage subscription leases during disposal and reinstallation', async () => {
   const storage = await install()
@@ -397,9 +519,19 @@ it('does not let a captured AuthProvider invalidation clear an equal-token repla
   storage.writeToken(window.localStorage, 'same-account')
   const { AuthProvider, useAuth } = await import('../auth/AuthContext')
   let invalidate: ((token: string) => void) | undefined
-  function State() { invalidate ??= useAuth().invalidateSession; return null }
-  render(<AuthProvider><State /></AuthProvider>)
-  await act(async () => { await install('/custom-B'); storage.writeToken(window.localStorage, 'same-account') })
+  function State() {
+    invalidate ??= useAuth().invalidateSession
+    return null
+  }
+  render(
+    <AuthProvider>
+      <State />
+    </AuthProvider>,
+  )
+  await act(async () => {
+    await install('/custom-B')
+    storage.writeToken(window.localStorage, 'same-account')
+  })
   act(() => invalidate!('same-account'))
   expect(storage.readRawToken(window.localStorage)).toBe('same-account')
 })
@@ -407,7 +539,11 @@ it('does not let a captured AuthProvider invalidation clear an equal-token repla
 it('does not send a retained login draft to a root selected after the captcha step began', async () => {
   await install()
   const { AuthFlow } = await import('../auth/AuthFlow')
-  render(<MemoryRouter><AuthFlow presentation="page" /></MemoryRouter>)
+  render(
+    <MemoryRouter>
+      <AuthFlow presentation="page" />
+    </MemoryRouter>,
+  )
   const user = userEvent.setup()
   await user.type(screen.getByLabelText('邮箱'), 'fixture@example.test')
   await user.type(screen.getByLabelText('密码', { exact: true }), 'fixture-password')
@@ -422,15 +558,33 @@ it('drops an invitation automatic chain before sending its code to a replacement
   window.location.search = '?email=fixture@example.test&code=001234'
   window.location.href = `${root}/register${window.location.search}`
   let release!: () => void, arrived!: () => void
-  const reached = new Promise<void>(resolve => { arrived = resolve })
+  const reached = new Promise<void>((resolve) => {
+    arrived = resolve
+  })
   respond = (request, response) => {
     if (request.url === '/custom-api/auth/invitations/check') {
-      release = () => json(response, 200, { status: 'eligible', email: 'fixture@example.test', serverTime: 1, resendAvailableAt: 1 })
+      release = () =>
+        json(response, 200, {
+          status: 'eligible',
+          email: 'fixture@example.test',
+          serverTime: 1,
+          resendAvailableAt: 1,
+        })
       arrived()
-    } else json(response, 200, { status: 'verified', email: 'fixture@example.test', nickname: 'Fixture', completionToken: 't'.repeat(43) })
+    } else
+      json(response, 200, {
+        status: 'verified',
+        email: 'fixture@example.test',
+        nickname: 'Fixture',
+        completionToken: 't'.repeat(43),
+      })
   }
   const { InvitationRegistrationFlow } = await import('../invitations/InvitationRegistrationFlow')
-  render(<MemoryRouter><InvitationRegistrationFlow presentation="page" /></MemoryRouter>)
+  render(
+    <MemoryRouter>
+      <InvitationRegistrationFlow presentation="page" />
+    </MemoryRouter>,
+  )
   await reached
   // The fixture location is separate from jsdom history; reflect the code cleanup.
   window.location.search = '?email=fixture@example.test'
@@ -438,34 +592,53 @@ it('drops an invitation automatic chain before sending its code to a replacement
   await act(async () => {
     await install('/custom-B')
     release()
-    await new Promise(resolve => setTimeout(resolve, 30))
+    await new Promise((resolve) => setTimeout(resolve, 30))
   })
-  expect(requests.map(request => request.url)).toEqual(['/custom-api/auth/invitations/check'])
+  expect(requests.map((request) => request.url)).toEqual(['/custom-api/auth/invitations/check'])
   expect(screen.queryByLabelText('密码')).toBeNull()
   expect(screen.getByLabelText('邮箱')).toBeTruthy()
 })
 
 it('clears invitation credentials and the password form on a root switch but preserves equivalent roots', async () => {
   await install()
-  respond = (request, response) => json(response, 200, request.url?.endsWith('/check')
-    ? { status: 'eligible', email: 'fixture@example.test', serverTime: 1, resendAvailableAt: 1 }
-    : { status: 'verified', email: 'fixture@example.test', nickname: 'Fixture', completionToken: 't'.repeat(43) })
+  respond = (request, response) =>
+    json(
+      response,
+      200,
+      request.url?.endsWith('/check')
+        ? { status: 'eligible', email: 'fixture@example.test', serverTime: 1, resendAvailableAt: 1 }
+        : {
+            status: 'verified',
+            email: 'fixture@example.test',
+            nickname: 'Fixture',
+            completionToken: 't'.repeat(43),
+          },
+    )
   const { InvitationRegistrationFlow } = await import('../invitations/InvitationRegistrationFlow')
-  render(<MemoryRouter><InvitationRegistrationFlow presentation="modal" initialEmail="fixture@example.test" /></MemoryRouter>)
+  render(
+    <MemoryRouter>
+      <InvitationRegistrationFlow presentation="modal" initialEmail="fixture@example.test" />
+    </MemoryRouter>,
+  )
   const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: '继续' }))
   await user.type(await screen.findByLabelText('6 位验证码'), '001234')
-  const password = await screen.findByLabelText('密码') as HTMLInputElement
+  const password = (await screen.findByLabelText('密码')) as HTMLInputElement
   await user.type(password, 'fixture-password')
-  await act(async () => { await install(`${root}/custom-api///`) })
+  await act(async () => {
+    await install(`${root}/custom-api///`)
+  })
   expect(screen.getByLabelText('密码')).toBe(password)
   expect(password.value).toBe('fixture-password')
-  await act(async () => { await install('/custom-B') })
+  await act(async () => {
+    await install('/custom-B')
+  })
   expect(screen.queryByLabelText('密码')).toBeNull()
   expect(screen.queryByLabelText('6 位验证码')).toBeNull()
   expect(screen.getByLabelText('邮箱')).toBeTruthy()
-  expect(requests.map(request => request.url)).toEqual([
-    '/custom-api/auth/invitations/check', '/custom-api/auth/invitations/verify',
+  expect(requests.map((request) => request.url)).toEqual([
+    '/custom-api/auth/invitations/check',
+    '/custom-api/auth/invitations/verify',
   ])
   await user.click(screen.getByRole('button', { name: '继续' }))
   expect(await screen.findByLabelText('6 位验证码')).toBeTruthy()
@@ -479,12 +652,22 @@ it('clears retained profile and notification caches on installation without moun
   const notifications = await import('../notifications/notificationsConfig')
   settings.bindSettingsToken('same-token')
   notifications.bindNotificationsToken('same-token')
-  settings.settingsConfig.profile.snapshot = { id: 'fixture', email: 'fixture@example.test', nickname: 'Old root', qq: null, fivemId: null, avatarUrl: null }
+  settings.settingsConfig.profile.snapshot = {
+    id: 'fixture',
+    email: 'fixture@example.test',
+    nickname: 'Old root',
+    qq: null,
+    fivemId: null,
+    avatarUrl: null,
+  }
   notifications.notificationsConfig.summary.unreadCount = 42
   notifications.notificationsConfig.summary.status = 'ready'
   const pending = settings.beginSettingsRequest('same-token')!
   const generation = notifications.captureNotificationRead()
-  window.localStorage.setItem(`${storage.AUTH_TOKEN_KEY}:${encodeURIComponent(`${root}/custom-B`)}`, 'same-token')
+  window.localStorage.setItem(
+    `${storage.AUTH_TOKEN_KEY}:${encodeURIComponent(`${root}/custom-B`)}`,
+    'same-token',
+  )
   await install('/custom-B')
   expect(settings.settingsConfig.profile.snapshot).toBeNull()
   expect(notifications.notificationsConfig.summary.unreadCount).toBe(0)
@@ -498,12 +681,16 @@ it('clears retained profile and notification caches on installation without moun
 it('keeps default failed-logout suppression when returning from a custom root while persistence is unreadable', async () => {
   const storage = await install('')
   storage.writeToken(window.localStorage, 'retained-default')
-  const remove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => { throw new Error('denied') })
+  const remove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+    throw new Error('denied')
+  })
   storage.clearBrowserSession()
   remove.mockRestore()
   await install('/custom-B')
   // Both access paths must be unavailable: the real Browser SDK uses global localStorage.
-  const read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied') })
+  const read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    throw new Error('denied')
+  })
   await install('')
   read.mockRestore()
   await request()
@@ -515,131 +702,224 @@ it('keeps default failed-logout suppression when returning from a custom root wh
 })
 
 const feedbackOptions: components['schemas']['FeedbackOptions'] = {
-  available: true, reason: null, fields: [], actions: [],
-  kinds: [{ kind: 'suggestion', available: true, reason: null }, { kind: 'complaint', available: true, reason: null }],
-  limits: { titleCodePoints: 200, userContentBytes: 65536, fileBytes: 20971520, files: 5, totalFileBytes: 104857600, largeFileInfoBytes: 16384 },
+  available: true,
+  reason: null,
+  fields: [],
+  actions: [],
+  kinds: [
+    { kind: 'suggestion', available: true, reason: null },
+    { kind: 'complaint', available: true, reason: null },
+  ],
+  limits: {
+    titleCodePoints: 200,
+    userContentBytes: 65536,
+    fileBytes: 20971520,
+    files: 5,
+    totalFileBytes: 104857600,
+    largeFileInfoBytes: 16384,
+  },
 }
 
 async function mountFeedback() {
   const { ThemeProvider, ExMessageContext } = await import('@exre/exui')
-  const { FeedbackProvider, useFeedback } = await import('../pages/Support/feedback/FeedbackProvider')
+  const { FeedbackProvider, useFeedback } =
+    await import('../pages/Support/feedback/FeedbackProvider')
   await import('../pages/Support/feedback/FeedbackModal')
   function Entry() {
     const { openFeedback } = useFeedback()
-    return <button onClick={event => openFeedback('community', event.currentTarget)}>投诉和建议</button>
+    return (
+      <button onClick={(event) => openFeedback('community', event.currentTarget)}>
+        投诉和建议
+      </button>
+    )
   }
-  render(<ThemeProvider defaultTheme="light"><ExMessageContext /><MemoryRouter><FeedbackProvider><Entry /></FeedbackProvider></MemoryRouter></ThemeProvider>)
+  render(
+    <ThemeProvider defaultTheme="light">
+      <ExMessageContext />
+      <MemoryRouter>
+        <FeedbackProvider>
+          <Entry />
+        </FeedbackProvider>
+      </MemoryRouter>
+    </ThemeProvider>,
+  )
   const entry = screen.getByRole('button', { name: '投诉和建议' })
   fireEvent.click(entry)
   fireEvent.click((await screen.findByText('反馈和建议')).closest('button')!)
   fireEvent.change(screen.getByLabelText('标题'), { target: { value: 'A 的私密建议' } })
   fireEvent.paste(screen.getByLabelText('内容'), {
-    clipboardData: { files: [], getData: (type: string) => type === 'text/plain' ? 'A 的私密正文' : '' },
+    clipboardData: {
+      files: [],
+      getData: (type: string) => (type === 'text/plain' ? 'A 的私密正文' : ''),
+    },
   })
   return entry
 }
 
-it.each(['prepare', 'upload'] as const)('stops a same-token feedback submission after %s without sending its next stage to a replacement root', async stage => {
-  const storage = await install()
-  storage.writeToken(window.localStorage, 'same-feedback-token')
-  // Use the complete native binary APIs: jsdom File lacks arrayBuffer(), which
-  // would otherwise stop the flow before the HTTP boundary under test.
-  const nativeForm = await new Response(new URLSearchParams()).formData()
-  vi.stubGlobal('FormData', nativeForm.constructor)
-  vi.stubGlobal('Blob', NativeBlob)
-  vi.stubGlobal('File', NativeFile)
-  let release: (() => void) | undefined
-  let prepared: components['schemas']['FeedbackSnapshot'] | undefined
-  const attachmentBodies: string[] = []
-  respond = (request, response) => {
-    if (request.url?.includes('/options?')) { json(response, 200, feedbackOptions); return }
-    void (async () => {
-      const chunks: Buffer[] = []
-      for await (const chunk of request) chunks.push(Buffer.from(chunk))
-      const body = Buffer.concat(chunks).toString()
-      if (request.url === '/custom-api/support/feedback/submissions') {
-        const input = JSON.parse(body) as components['schemas']['FeedbackPrepare']
-        prepared = {
-          id: '11111111-1111-4111-8111-111111111111', submissionKey: input.submissionKey,
-          revision: 0, form: input.form, createdAt: 1, receiveExpiresAt: 86400001,
-          status: 'receiving', nextAction: 'upload', taskId: null, taskUrl: null, failure: null,
-          attachments: input.attachments.map((attachment, ordinal) => ({ ...attachment, ordinal, status: 'expected', remoteAttachmentId: null })),
-        }
-        if (stage === 'prepare') release = () => json(response, 200, prepared)
-        else json(response, 200, prepared)
-      } else if (request.url?.includes('/attachments/')) {
-        attachmentBodies.push(body)
-        prepared = { ...prepared!, revision: 1, status: 'ready', nextAction: 'continue', attachments: prepared!.attachments.map(attachment => ({ ...attachment, status: 'received' })) }
-        if (stage === 'upload') release = () => json(response, 200, prepared)
-        else json(response, 200, prepared)
-      } else {
-        json(response, 200, { ...prepared!, revision: 2, status: 'completed', nextAction: 'done' })
+it.each(['prepare', 'upload'] as const)(
+  'stops a same-token feedback submission after %s without sending its next stage to a replacement root',
+  async (stage) => {
+    const storage = await install()
+    storage.writeToken(window.localStorage, 'same-feedback-token')
+    // Use the complete native binary APIs: jsdom File lacks arrayBuffer(), which
+    // would otherwise stop the flow before the HTTP boundary under test.
+    const nativeForm = await new Response(new URLSearchParams()).formData()
+    vi.stubGlobal('FormData', nativeForm.constructor)
+    vi.stubGlobal('Blob', NativeBlob)
+    vi.stubGlobal('File', NativeFile)
+    let release: (() => void) | undefined
+    let prepared: components['schemas']['FeedbackSnapshot'] | undefined
+    const attachmentBodies: string[] = []
+    respond = (request, response) => {
+      if (request.url?.includes('/options?')) {
+        json(response, 200, feedbackOptions)
+        return
       }
-    })()
-  }
-  await mountFeedback()
-  fireEvent.change(screen.getByLabelText(/^附件/), {
-    target: { files: [new NativeFile(['A-private-attachment'], 'private.txt', { type: 'text/plain' })] },
-  })
-  fireEvent.click(screen.getByRole('button', { name: '提交' }))
-  await waitFor(() => expect(release).toBeTypeOf('function'))
-  window.localStorage.setItem(`${storage.AUTH_TOKEN_KEY}:${encodeURIComponent(`${root}/custom-B`)}`, 'same-feedback-token')
-  await act(async () => { await install('/custom-B'); release!() })
-  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-  expect(requests.filter(request => request.url.startsWith('/custom-B/'))).toEqual([])
-  if (stage === 'prepare') expect(attachmentBodies).toEqual([])
-  else {
-    expect(attachmentBodies).toHaveLength(1)
-    expect(attachmentBodies[0]).toContain('A-private-attachment')
-    expect(requests.some(request => request.url.startsWith('/custom-api/support/feedback/submissions/') && request.url.includes('/attachments/'))).toBe(true)
-  }
-  expect(screen.queryByText('反馈已提交')).toBeNull()
-})
+      void (async () => {
+        const chunks: Buffer[] = []
+        for await (const chunk of request) chunks.push(Buffer.from(chunk))
+        const body = Buffer.concat(chunks).toString()
+        if (request.url === '/custom-api/support/feedback/submissions') {
+          const input = JSON.parse(body) as components['schemas']['FeedbackPrepare']
+          prepared = {
+            id: '11111111-1111-4111-8111-111111111111',
+            submissionKey: input.submissionKey,
+            revision: 0,
+            form: input.form,
+            createdAt: 1,
+            receiveExpiresAt: 86400001,
+            status: 'receiving',
+            nextAction: 'upload',
+            taskId: null,
+            taskUrl: null,
+            failure: null,
+            attachments: input.attachments.map((attachment, ordinal) => ({
+              ...attachment,
+              ordinal,
+              status: 'expected',
+              remoteAttachmentId: null,
+            })),
+          }
+          if (stage === 'prepare') release = () => json(response, 200, prepared)
+          else json(response, 200, prepared)
+        } else if (request.url?.includes('/attachments/')) {
+          attachmentBodies.push(body)
+          prepared = {
+            ...prepared!,
+            revision: 1,
+            status: 'ready',
+            nextAction: 'continue',
+            attachments: prepared!.attachments.map((attachment) => ({
+              ...attachment,
+              status: 'received',
+            })),
+          }
+          if (stage === 'upload') release = () => json(response, 200, prepared)
+          else json(response, 200, prepared)
+        } else {
+          json(response, 200, {
+            ...prepared!,
+            revision: 2,
+            status: 'completed',
+            nextAction: 'done',
+          })
+        }
+      })()
+    }
+    await mountFeedback()
+    fireEvent.change(screen.getByLabelText(/^附件/), {
+      target: {
+        files: [new NativeFile(['A-private-attachment'], 'private.txt', { type: 'text/plain' })],
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '提交' }))
+    await waitFor(() => expect(release).toBeTypeOf('function'))
+    window.localStorage.setItem(
+      `${storage.AUTH_TOKEN_KEY}:${encodeURIComponent(`${root}/custom-B`)}`,
+      'same-feedback-token',
+    )
+    await act(async () => {
+      await install('/custom-B')
+      release!()
+    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(requests.filter((request) => request.url.startsWith('/custom-B/'))).toEqual([])
+    if (stage === 'prepare') expect(attachmentBodies).toEqual([])
+    else {
+      expect(attachmentBodies).toHaveLength(1)
+      expect(attachmentBodies[0]).toContain('A-private-attachment')
+      expect(
+        requests.some(
+          (request) =>
+            request.url.startsWith('/custom-api/support/feedback/submissions/') &&
+            request.url.includes('/attachments/'),
+        ),
+      ).toBe(true)
+    }
+    expect(screen.queryByText('反馈已提交')).toBeNull()
+  },
+)
 
-it.each([false, true])('preserves equivalent-root feedback drafts and clears same-token root changes (reopen in same update: %s)', async reopenImmediately => {
-  const storage = await install()
-  storage.writeToken(window.localStorage, 'same-feedback-token')
-  respond = (_request, response) => json(response, 200, feedbackOptions)
-  const entry = await mountFeedback()
-  const title = screen.getByLabelText('标题') as HTMLInputElement
-  await act(async () => { await install(`${root}/custom-api///`) })
-  expect(screen.getByLabelText('标题')).toBe(title)
-  expect(title.value).toBe('A 的私密建议')
-  window.localStorage.setItem(`${storage.AUTH_TOKEN_KEY}:${encodeURIComponent(`${root}/custom-B`)}`, 'same-feedback-token')
-  await act(async () => {
+it.each([false, true])(
+  'preserves equivalent-root feedback drafts and clears same-token root changes (reopen in same update: %s)',
+  async (reopenImmediately) => {
+    const storage = await install()
+    storage.writeToken(window.localStorage, 'same-feedback-token')
+    respond = (_request, response) => json(response, 200, feedbackOptions)
+    const entry = await mountFeedback()
+    const title = screen.getByLabelText('标题') as HTMLInputElement
+    await act(async () => {
+      await install(`${root}/custom-api///`)
+    })
+    expect(screen.getByLabelText('标题')).toBe(title)
+    expect(title.value).toBe('A 的私密建议')
+    window.localStorage.setItem(
+      `${storage.AUTH_TOKEN_KEY}:${encodeURIComponent(`${root}/custom-B`)}`,
+      'same-feedback-token',
+    )
+    await act(async () => {
+      await install('/custom-B')
+      if (reopenImmediately) fireEvent.click(entry)
+    })
+    if (!reopenImmediately) {
+      expect(screen.queryByRole('dialog')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: '投诉和建议' }))
+    }
+    fireEvent.click((await screen.findByText('反馈和建议')).closest('button')!)
+    expect((screen.getByLabelText('标题') as HTMLInputElement).value).toBe('')
+    expect(screen.getByLabelText('内容').textContent).not.toContain('A 的私密正文')
+    expect(requests.map((request) => request.url)).toEqual([
+      '/custom-api/support/feedback/options?area=community',
+      '/custom-B/support/feedback/options?area=community',
+    ])
+  },
+)
+
+it.each([false, true])(
+  'restores a replacement default token after unreadable scope return and owns its expiry (read first: %s)',
+  async (readFirst) => {
+    const storage = await install('')
+    storage.writeToken(window.localStorage, 'retained-default')
+    const remove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new Error('denied')
+    })
+    storage.clearBrowserSession()
+    remove.mockRestore()
     await install('/custom-B')
-    if (reopenImmediately) fireEvent.click(entry)
-  })
-  if (!reopenImmediately) {
-    expect(screen.queryByRole('dialog')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: '投诉和建议' }))
-  }
-  fireEvent.click((await screen.findByText('反馈和建议')).closest('button')!)
-  expect((screen.getByLabelText('标题') as HTMLInputElement).value).toBe('')
-  expect(screen.getByLabelText('内容').textContent).not.toContain('A 的私密正文')
-  expect(requests.map(request => request.url)).toEqual([
-    '/custom-api/support/feedback/options?area=community', '/custom-B/support/feedback/options?area=community',
-  ])
-})
-
-it.each([false, true])('restores a replacement default token after unreadable scope return and owns its expiry (read first: %s)', async readFirst => {
-  const storage = await install('')
-  storage.writeToken(window.localStorage, 'retained-default')
-  const remove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => { throw new Error('denied') })
-  storage.clearBrowserSession()
-  remove.mockRestore()
-  await install('/custom-B')
-  const read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied') })
-  await install('')
-  read.mockRestore()
-  window.localStorage.setItem(storage.AUTH_TOKEN_KEY, 'replacement-default')
-  if (readFirst) expect(storage.readToken(window.localStorage)).toBe('replacement-default')
-  storageEvent(storage.AUTH_TOKEN_KEY)
-  expect(storage.readToken(window.localStorage)).toBe('replacement-default')
-  await request()
-  expect(requests.at(-1)?.authorization).toBe('Bearer replacement-default')
-  respond = (_request, response) => expired(response)
-  await expect(request()).rejects.toMatchObject({ code: 'SESSION_INVALID' })
-  expect(storage.readRawToken(window.localStorage)).toBeNull()
-  expect(storage.readToken(window.localStorage)).toBeNull()
-})
+    const read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('denied')
+    })
+    await install('')
+    read.mockRestore()
+    window.localStorage.setItem(storage.AUTH_TOKEN_KEY, 'replacement-default')
+    if (readFirst) expect(storage.readToken(window.localStorage)).toBe('replacement-default')
+    storageEvent(storage.AUTH_TOKEN_KEY)
+    expect(storage.readToken(window.localStorage)).toBe('replacement-default')
+    await request()
+    expect(requests.at(-1)?.authorization).toBe('Bearer replacement-default')
+    respond = (_request, response) => expired(response)
+    await expect(request()).rejects.toMatchObject({ code: 'SESSION_INVALID' })
+    expect(storage.readRawToken(window.localStorage)).toBeNull()
+    expect(storage.readToken(window.localStorage)).toBeNull()
+  },
+)

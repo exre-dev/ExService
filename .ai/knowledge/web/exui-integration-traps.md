@@ -138,6 +138,12 @@ InputOTP 的假光标在 blur 时移除；Radix FocusScope 的 MutationObserver 
 
 `packages/components/src/auth/InvitationForms.tsx` 继续调用 RHF `field.onBlur`，仅在 `relatedTarget` 属于同一表单且活动焦点暂为 body 时同步聚焦原定目标。不接管 Tab、不创建新的焦点顺序，也不将焦点带到表单外。真实 Chromium 回归为 `tests/browser/exui-v1-overlays.mjs` 的邀请验证码场景。
 
+### 17. Dialog 的 jsdom 夹具必须提供 `matchMedia`
+
+ExUI 1.0 的 Dialog 会通过 `useIsMobile` 调用 `window.matchMedia`，即使业务用例不验证响应式布局。jsdom 未实现该 API；缺失时会抛出 `TypeError: window.matchMedia is not a function`，卸载组件树，并让后续表单查询表现为找不到标签或按钮。
+
+使用真实 Dialog 的集成夹具应在 `beforeEach` 中提供 `matchMedia` 及其 `change` 订阅和取消方法，并在组件 `cleanup()` 后通过 `vi.unstubAllGlobals()` 恢复。示例见 `apps/web/src/api/client.scope.test.tsx`、`apps/web/src/api/client.expiry.test.tsx` 和 `apps/web/src/pages/IdentityPage/OidcPage.test.tsx`。保留真实组件与原业务断言；此夹具只提供浏览器 API，不证明真实布局行为。
+
 ## 证据
 
 - 已安装包内：`dist/index.css`（含 `body{background-color:var(--background);color:var(--foreground)}`、`html{font-family:var(--exui-font-family)}`）、`dist/tokens/style.css`（`:root` / `.dark` / `.pitch-black` 三个主题选择器）、`src/components/theme-provider.tsx`、`src/components/ui/{button,navigation-menu,dropdown-menu}.tsx`、`types/components/ui/*.d.ts`。
