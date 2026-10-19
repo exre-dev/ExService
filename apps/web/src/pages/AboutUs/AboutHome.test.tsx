@@ -97,10 +97,11 @@ it('keeps loading and error recovery in the belief module while entries remain u
     within(screen.getByRole('region', { name: '进一步认识 Exre' })).getAllByRole('link'),
   ).toHaveLength(5)
   view.rerender(content(page, { status: 'error' }, retry))
-  const error = within(belief).getByRole('alert')
-  fireEvent.click(within(error).getByRole('button', { name: '重试' }))
+  expect(within(belief).getByRole('alert')).toBeTruthy()
+  fireEvent.click(within(belief).getByRole('button', { name: '重试' }))
   expect(retry).toHaveBeenCalledOnce()
-  expect(within(error).getByRole('button', { name: '重新加载当前页面' })).toBeTruthy()
+  expect(within(belief).queryByRole('button', { name: '重新加载当前页面' })).toBeNull()
+  expect(within(belief).getByRole('link', { name: '查看错误' })).toBeTruthy()
 })
 it.each([
   [false, 'smooth'],

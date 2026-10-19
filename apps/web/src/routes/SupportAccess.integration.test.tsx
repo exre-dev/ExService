@@ -5,7 +5,7 @@ import { MemoryRouter, Outlet, Route, Routes } from 'react-router'
 import { AuthProvider, useAuth } from '../auth/AuthContext'
 import { AUTH_TOKEN_KEY } from '../auth/storage'
 import { SupportAccess } from './SupportAccess'
-import { lazy, Suspense } from 'react'
+import { PageAsyncBoundary } from './PageAsyncBoundary'
 import { SupportRoutes } from '../pages/Support/SupportRoutes'
 import type { ContentImageData } from '../content/support/types'
 import type { ContentModule } from '../content/store'
@@ -90,6 +90,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   api.GET.mockReset()
   api.POST.mockReset()
   content.load.mockReset()
@@ -98,6 +99,30 @@ afterEach(() => {
   if (originalScroll) Element.prototype.scrollIntoView = originalScroll
   else Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
 })
+it('delays the session loading status without mounting protected content', async () => {
+  vi.useFakeTimers()
+  window.localStorage.setItem(AUTH_TOKEN_KEY, 'fixture-token')
+  let finish!: (value: unknown) => void
+  api.GET.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+  )
+  render(tree())
+  expect(screen.getByRole('status').textContent).toBe('')
+  expect(screen.queryByRole('heading', { level: 1, name: '支持中心' })).toBeNull()
+  expect(screen.queryByTitle('支持面板')).toBeNull()
+  act(() => vi.advanceTimersByTime(149))
+  expect(screen.getByRole('status').textContent).toBe('')
+  act(() => vi.advanceTimersByTime(1))
+  expect(screen.getByRole('status', { name: '正在确认登录状态…' })).toBeTruthy()
+  expect(screen.queryByTitle('支持面板')).toBeNull()
+  await act(async () => finish({ nickname: 'Tester', avatarUrl: null }))
+  expect(screen.queryByRole('status')).toBeNull()
+  expect(screen.getByTitle('支持面板')).toBeTruthy()
+})
+
 it('requires the real session restore result, then unloads protected content on cross-tab logout', async () => {
   window.localStorage.setItem(AUTH_TOKEN_KEY, 'fixture-token')
   let finish!: (value: unknown) => void
@@ -159,11 +184,9 @@ it('ignores a session response that arrives after logout', async () => {
   expect(screen.getByText('登录后可访问支持中心')).toBeTruthy()
 })
 
-it('cannot remount a lazy Support page that resolves after real logout', async () => {
-  const loadPage = vi.fn()
+it('cannot remount a Support loader that resolves after real logout', async () => {
   let finish!: (module: { default: typeof SupportRoutes }) => void
-  const Page = lazy(() => {
-    loadPage()
+  const loadPage = vi.fn(() => {
     return new Promise<{ default: typeof SupportRoutes }>((resolve) => {
       finish = resolve
     })
@@ -180,9 +203,9 @@ it('cannot remount a lazy Support page that resolves after real logout', async (
               path="/support/*"
               element={
                 <SupportAccess>
-                  <Suspense fallback={<p>Loading page fixture</p>}>
-                    <Page />
-                  </Suspense>
+                  <PageAsyncBoundary loader={loadPage} loadingTitle="Loading page fixture">
+                    {(module) => <module.default />}
+                  </PageAsyncBoundary>
                 </SupportAccess>
               }
             />

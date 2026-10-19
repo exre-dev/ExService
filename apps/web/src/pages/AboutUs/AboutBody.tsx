@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Button } from '@exre/exui'
-import { ContentImage, ContentProse } from '@workspace/components'
+import { AsyncBoundary, ContentImage, ContentProse } from '@workspace/components'
 import type { MDXComponents } from 'mdx/types'
 import { createMdxComponents } from '../../content/mdx'
 import { aboutImage, aboutTarget, aboutRegistry } from '../../content/about/registry'
@@ -65,18 +65,15 @@ export function AboutBody({
   state,
   components,
   retry,
+  embedded = false,
 }: {
   state: ContentState
   components: MDXComponents
   retry: () => void
+  embedded?: boolean
 }) {
-  if (state.status === 'loading')
-    return (
-      <p role="status" className={styles.loading}>
-        正在加载内容…
-      </p>
-    )
-  if (state.status === 'error')
+  // Member dialogs keep their existing recovery presentation outside the page migration.
+  if (embedded && state.status === 'error')
     return (
       <div role="alert" className={styles.loading}>
         <p>内容暂时无法加载</p>
@@ -89,12 +86,29 @@ export function AboutBody({
         <Link to="/aboutus">返回概览</Link>
       </div>
     )
+  const body =
+    state.status === 'ready' ? (
+      <div className={styles.body}>
+        <ContentProse>
+          <state.module.default components={components} />
+        </ContentProse>
+      </div>
+    ) : null
+  if (embedded)
+    return state.status === 'loading' ? (
+      <AsyncBoundary loading loadingTitle="正在加载内容…" />
+    ) : (
+      body
+    )
   return (
-    <div className={styles.body}>
-      <ContentProse>
-        <state.module.default components={components} />
-      </ContentProse>
-    </div>
+    <AsyncBoundary
+      loading={state.status === 'loading'}
+      loadingTitle="正在加载内容…"
+      error={state.status === 'error' ? (state.error ?? '内容加载失败。') : undefined}
+      onRetry={retry}
+    >
+      {body}
+    </AsyncBoundary>
   )
 }
 export function RelatedContent({

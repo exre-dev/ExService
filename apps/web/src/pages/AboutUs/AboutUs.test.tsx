@@ -547,12 +547,38 @@ it.each([
   show(path)
   expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/404|找不到|不存在/)
 })
-it('offers a document reload when the browser retains a failed module import', () => {
+it('shows the shared inline error disclosure without a second reload action', () => {
   render(
     <MemoryRouter>
-      <AboutBody state={{ status: 'error' }} components={{}} retry={vi.fn()} />
+      <AboutBody
+        state={{ status: 'error', error: new Error('MDX failed') }}
+        components={{}}
+        retry={vi.fn()}
+      />
     </MemoryRouter>,
   )
   expect(screen.getByRole('button', { name: '重试' })).toBeTruthy()
-  expect(screen.getByRole('button', { name: '重新加载当前页面' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: '重新加载当前页面' })).toBeNull()
+  fireEvent.click(screen.getByRole('link', { name: '查看错误' }))
+  expect(screen.getByRole('region', { name: '可滚动的错误详情' }).textContent).toContain(
+    'MDX failed',
+  )
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
+
+it('does not add a local render-error boundary to embedded member content', () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  function BrokenMember(): never {
+    throw new Error('Member render failure')
+  }
+  expect(() =>
+    render(
+      <AboutBody
+        embedded
+        state={{ status: 'ready', module: { default: BrokenMember } }}
+        components={{}}
+        retry={vi.fn()}
+      />,
+    ),
+  ).toThrow('Member render failure')
 })

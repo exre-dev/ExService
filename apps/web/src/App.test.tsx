@@ -2,7 +2,8 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('@workspace/components', () => ({
+vi.mock('@workspace/components', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@workspace/components')>()),
   SiteHeader: ({ glassAtTop }: { glassAtTop?: boolean }) => (
     <header data-glass-at-top={String(Boolean(glassAtTop))}>Site header</header>
   ),
@@ -70,7 +71,7 @@ describe('App', () => {
           <App />
         </MemoryRouter>,
       )
-      expect(markup).toContain('正在确认登录状态')
+      expect(markup).toContain('role="status"')
       expect(markup).toContain('Site header')
       expect(markup).not.toContain('Page not found')
       expect(markup).not.toContain('<iframe')

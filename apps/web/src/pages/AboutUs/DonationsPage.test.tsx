@@ -6,6 +6,9 @@ import { ThemeProvider } from '@exre/exui'
 import { createContentStore, type ContentModule } from '../../content/store'
 import { aboutStore } from '../../content/about/registry'
 import { AboutUs } from './AboutUs'
+import { reloadPage } from '../../content/reloadPage'
+
+vi.mock('../../content/reloadPage', () => ({ reloadPage: vi.fn() }))
 
 vi.mock('../../content/about/registry', () => ({
   aboutRegistry: {
@@ -78,15 +81,14 @@ it('does not reset an early donation-section jump when the introduction finishes
 })
 
 it('keeps the catalog and its retry action available after the introduction fails', async () => {
-  vi.spyOn(aboutStore, 'load')
-    .mockRejectedValueOnce(new Error('chunk unavailable'))
-    .mockResolvedValueOnce({ default: () => <p>恢复后的说明</p> })
+  vi.spyOn(aboutStore, 'load').mockRejectedValueOnce(new Error('chunk unavailable'))
   show()
   await screen.findByRole('alert')
   expect(screen.getByRole('region', { name: '支持 Exre' })).toBeTruthy()
   expect(screen.getByRole('region', { name: '感谢每一份支持' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: '重试' }))
-  expect(await screen.findByText('恢复后的说明')).toBeTruthy()
+  expect(reloadPage).toHaveBeenCalledOnce()
+  expect(aboutStore.load).toHaveBeenCalledOnce()
   expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
 })
 

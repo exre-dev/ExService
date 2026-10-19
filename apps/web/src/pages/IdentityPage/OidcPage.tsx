@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { Alert, AlertDescription, Button, Card } from '@exre/exui'
 import { instance, ExAxiosError } from '@workspace/sdk'
+import { PageAsyncBoundary } from '@web/src/routes/PageAsyncBoundary'
 import { AuthFlow } from '@web/src/auth/AuthFlow'
 import { readToken, removeMatchingToken, sessionScopeRevision } from '@web/src/auth/storage'
 import { AuthBackdrop } from '@web/src/pages/AuthPage/AuthBackdrop'
@@ -204,6 +205,15 @@ function OidcChallenge({ phase, search }: { phase: Phase; search: string }) {
   const loginRequired = challenge !== null && stage === 'login-required' && phase === 'login'
   const serviceName = info?.clientName ?? '应用'
 
+  if (challenge !== null && stage === 'checking') {
+    return (
+      <div className={identityStyles.pending} data-page="identity">
+        <AuthBackdrop />
+        <PageAsyncBoundary loading pageLayout="standalone" loadingTitle="正在处理身份请求…" />
+      </div>
+    )
+  }
+
   return (
     <main className={styles.page} data-page="identity">
       <AuthBackdrop />
@@ -239,9 +249,7 @@ function OidcChallenge({ phase, search }: { phase: Phase; search: string }) {
               重试
             </Button>
           </div>
-        ) : (
-          <p role="status">正在处理身份请求…</p>
-        )}
+        ) : null}
         {info !== null && stage !== 'invalid' && phase !== 'logout' && (
           <OidcSharingDialog serviceName={serviceName} scopes={info.scopes} />
         )}

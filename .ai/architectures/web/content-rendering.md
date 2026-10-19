@@ -32,9 +32,11 @@ flowchart LR
 
 ## 浏览器与 UI
 
-`apps/web/src/content/store.ts` 管理固定正文加载器，共享进行中的 Promise、缓存成功结果、移除失败以支持重试。`useContent` 在切换 id 或重试时立即呈现 loading，并隔离旧请求和卸载后的结果。
+`apps/web/src/content/store.ts` 管理固定正文加载器，共享进行中的 Promise、缓存成功结果、移除失败以支持重试。`useContent` 在切换 id 或重试时立即呈现 loading，保留失败的原始错误，并隔离旧请求和卸载后的结果。
 
-浏览器自身可能缓存失败的原生 import；移除应用 Promise 不能清除这个缓存。正文错误态除普通重试外提供重新加载当前页面，恢复整份 document 的模块状态，保留当前地址。不能只用可再次成功的测试 loader 推定网络失败恢复；需要在真实浏览器阻断 chunk 请求后验证恢复入口。
+浏览器自身可能缓存失败的原生 import；移除应用 Promise 不能清除这个缓存。About/Support 页面模块和页面正文的「重试」由 `apps/web/src/content/reloadPage.ts` 刷新当前 document，保留当前地址，不再提供重复的刷新操作。普通 AsyncBoundary loader 的重试仍重新执行区域请求。不能只用可再次成功的测试 loader 推定模块网络失败恢复；真实浏览器检查位于 `tests/browser/async-boundary.mjs`。
+
+页面模块通过 `apps/web/src/routes/PageAsyncBoundary.tsx` 导入；正文通过受控 AsyncBoundary 复用已有 useContent 状态。共享反馈、详情展开与复制规则见 `.ai/knowledge/components/async-boundary.md`。成员简介弹窗只替换等待展示，继续保留原有局部重试、刷新和返回概览流程。
 
 `apps/web/src/content/mdx.tsx` 提供可扩展组件映射。`packages/components/src/content/` 提供无路由/API 依赖的 CodeBlock、ContentImage、Callout、ContentProse。路由链接、业务按钮和资源 URL 由 Web 集合适配器注入。全局主题、ExUI CSS 和 ExMessage 宿主继续由既有应用入口持有。
 
@@ -110,7 +112,7 @@ Hero 在正常文档流中占满顶栏下方的首屏，圆角图片背景与页
 
 `apps/web/src/content/support/` 适配虚拟注册表、资源及正文 store。`apps/web/src/pages/Support/` 消费同一投影生成首页精选、列表与详情，正文目录只从实际渲染的 h2/h3 派生。路由导航聚焦并滚动至标题；有 hash 时优先定位当前页面的目标，正文迟到加载不会在无 hash 时再次抢焦点。
 
-`apps/web/src/routes/SupportAccess.tsx` 位于页面 lazy/Suspense 与内容错误边界之外，读取既有 AuthProvider 的会话结果。只有 authenticated 才挂载 Support 子树；其他状态不启动页面 lazy loader。App、RootLayout 与 SiteHeader 不静态导入 Support 注册表。登录按钮经 RootLayout Outlet context 打开既有弹窗，关闭时优先归还页面触发器焦点，失效后回退顶栏。
+`apps/web/src/routes/SupportAccess.tsx` 位于 PageAsyncBoundary 之外，读取既有 AuthProvider 的会话结果。只有 authenticated 才挂载 Support 子树；其他状态不启动页面 loader。App、RootLayout 与 SiteHeader 不静态导入 Support 注册表。登录按钮经 RootLayout Outlet context 打开既有弹窗，关闭时优先归还页面触发器焦点，失效后回退顶栏。
 
 共享 Web Client 收到当前会话的 SESSION_INVALID 时仍清理 token 并通知认证订阅者；在 `/support` 及其后代停留原地址，交给上述边界显示登录提示并保留 query/hash。仅名称前缀相似的其他路由不使用此例外。
 

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { Button, Spinner } from '@exre/exui'
+import { Button } from '@exre/exui'
+import { PageAsyncBoundary } from '@web/src/routes/PageAsyncBoundary'
 import { useSnapshot } from 'valtio'
 import { useAuth } from '@web/src/auth/AuthContext'
 import { SettingsExperience } from '@web/src/settings/SettingsExperience'
@@ -24,13 +25,7 @@ export function ProfilePage() {
     )
   }
   if (auth.state.status === 'loading') {
-    return (
-      <main className={styles.page}>
-        <div className={styles.message}>
-          <Spinner aria-label="正在读取登录状态" />
-        </div>
-      </main>
-    )
+    return <PageAsyncBoundary loading loadingTitle="正在读取登录状态…" />
   }
   if (auth.state.status === 'unavailable' && settings.profile.snapshot === null) {
     return (

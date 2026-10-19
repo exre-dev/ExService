@@ -40,12 +40,15 @@ describe('signed-out landing', () => {
         <SignedOutPage />
       </MemoryRouter>,
     )
-    const checking = screen.getByRole('status')
-    expect(within(checking).getByRole('heading', { name: '正在确认登录状态' })).toBeTruthy()
+    const completion = screen.getByRole('status', { name: '退出登录结果' })
+    expect(completion.textContent).toBe('')
+    expect(screen.queryByRole('heading', { name: '退出登录确认' })).toBeNull()
+    const checking = await screen.findByRole('status', { name: '正在确认登录状态' })
     expect(checking.querySelector('svg')).toBeTruthy()
-    expect(checking.getAttribute('aria-busy')).toBe('true')
+    expect(checking.getAttribute('aria-busy')).not.toBe('true')
     reject(new Error('private upstream detail'))
     const unavailable = await screen.findByRole('alert')
+    expect(unavailable).toBe(completion)
     expect(within(unavailable).getByRole('heading', { name: '暂时无法确认登录状态' })).toBeTruthy()
     expect(unavailable.querySelector('svg')).toBeTruthy()
     expect(unavailable.textContent).not.toContain('private upstream detail')

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
-import { Button, Spinner } from '@exre/exui'
+import { Button } from '@exre/exui'
+import { PageAsyncBoundary } from '@web/src/routes/PageAsyncBoundary'
 import { CircleAlert, CircleCheck, Info } from 'lucide-react'
 import { instance, ExAxiosError } from '@workspace/sdk'
 import { readToken, removeMatchingToken, subscribeSessionChanges } from '@web/src/auth/storage'
@@ -80,46 +81,53 @@ export function SignedOutPage() {
 
   return (
     <main>
-      <h1>退出登录确认</h1>
+      {result !== 'checking' && <h1>退出登录确认</h1>}
+      {result === 'checking' && (
+        <PageAsyncBoundary
+          loading
+          as="div"
+          pageLayout="standalone"
+          loadingTitle="正在确认登录状态"
+          loadingDescription="正在核验当前浏览器会话，请稍候。"
+        />
+      )}
       <section
-        className={styles.status}
+        className={result === 'checking' ? undefined : styles.status}
         role={result === 'unavailable' ? 'alert' : 'status'}
-        aria-busy={result === 'checking' ? true : undefined}
+        aria-label="退出登录结果"
       >
-        {result === 'checking' ? (
-          <Spinner aria-hidden="true" className={styles.spinner} />
-        ) : result === 'unavailable' ? (
-          <CircleAlert aria-hidden="true" />
-        ) : result === 'signed-out' ? (
-          <CircleCheck aria-hidden="true" />
-        ) : (
-          <Info aria-hidden="true" />
-        )}
-        <h2>
-          {result === 'checking'
-            ? '正在确认登录状态'
-            : result === 'signed-out'
-              ? '已退出登录'
-              : result === 'active'
-                ? '网站会话仍有效'
-                : '暂时无法确认登录状态'}
-        </h2>
-        <p>
-          {result === 'checking'
-            ? '正在核验当前浏览器会话，请稍候。'
-            : result === 'signed-out'
-              ? '当前浏览器已退出登录。'
-              : result === 'active'
-                ? '当前浏览器有有效的网站登录会话。'
-                : '暂时无法确认登录状态，请稍后重试。'}
-        </p>
-        {result === 'unavailable' && (
-          <Button type="button" onClick={() => void check()}>
-            重试
-          </Button>
+        {result !== 'checking' && (
+          <>
+            {result === 'unavailable' ? (
+              <CircleAlert aria-hidden="true" />
+            ) : result === 'signed-out' ? (
+              <CircleCheck aria-hidden="true" />
+            ) : (
+              <Info aria-hidden="true" />
+            )}
+            <h2>
+              {result === 'signed-out'
+                ? '已退出登录'
+                : result === 'active'
+                  ? '网站会话仍有效'
+                  : '暂时无法确认登录状态'}
+            </h2>
+            <p>
+              {result === 'signed-out'
+                ? '当前浏览器已退出登录。'
+                : result === 'active'
+                  ? '当前浏览器有有效的网站登录会话。'
+                  : '暂时无法确认登录状态，请稍后重试。'}
+            </p>
+            {result === 'unavailable' && (
+              <Button type="button" onClick={() => void check()}>
+                重试
+              </Button>
+            )}
+          </>
         )}
       </section>
-      <Link to="/">返回网站首页</Link>
+      {result !== 'checking' && <Link to="/">返回网站首页</Link>}
     </main>
   )
 }

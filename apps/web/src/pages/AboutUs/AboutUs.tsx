@@ -5,6 +5,7 @@ import { NotFound } from '../NotFound'
 import { aboutImage, aboutRegistry, aboutStore } from '../../content/about/registry'
 import type { AboutPage } from '../../content/about/types'
 import { useContent } from '../../content/useContent'
+import { reloadPage } from '../../content/reloadPage'
 import { AboutNavigation } from './AboutNavigation'
 import { AboutHome } from './AboutHome'
 import { CommunitiesPage } from './CommunitiesPage'
@@ -52,7 +53,7 @@ function AboutPageView({ page }: { page: AboutPage }) {
     setSelected(null)
   }, [location.pathname])
   const components = useMemo(() => aboutMdxComponents(openMember), [openMember])
-  const state = useContent(aboutStore, page.id)
+  const state = { ...useContent(aboutStore, page.id), retry: reloadPage }
   const home = page.kind === 'home'
   const media = page.kind === 'media'
   const donations = page.kind === 'donations'

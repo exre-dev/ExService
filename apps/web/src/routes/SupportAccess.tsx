@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Button } from '@exre/exui'
+import { PageAsyncBoundary } from './PageAsyncBoundary'
 import { useOutletContext } from 'react-router'
 import { useAuth } from '@web/src/auth/AuthContext'
 import type { SiteOutletContext } from './RootLayout'
@@ -10,12 +11,12 @@ export function SupportAccess({ children }: { children: ReactNode }) {
   const auth = useAuth()
   const layout = useOutletContext<SiteOutletContext>()
   if (auth.state.status === 'authenticated') return children
+  if (auth.state.status === 'loading')
+    return <PageAsyncBoundary loading loadingTitle="正在确认登录状态…" />
   return (
     <main className={styles.prompt}>
       <h1>支持中心</h1>
-      {auth.state.status === 'loading' ? (
-        <p role="status">正在确认登录状态…</p>
-      ) : auth.state.status === 'anonymous' ? (
+      {auth.state.status === 'anonymous' ? (
         <>
           <p>登录后可访问支持中心</p>
           <Button onClick={(event) => layout.requestLogin(event.currentTarget)}>登录</Button>

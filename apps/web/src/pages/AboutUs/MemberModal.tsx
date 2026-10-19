@@ -46,7 +46,7 @@ export function MemberModal({
       }}
     >
       <p>{member.summary}</p>
-      <AboutBody state={state} retry={state.retry} components={components} />
+      <AboutBody embedded state={state} retry={state.retry} components={components} />
       {member.links.map((link) => (
         <p key={link.url}>
           <a href={link.url} target="_blank" rel="noopener noreferrer">

@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router'
-import { lazy, Suspense } from 'react'
-import { ContentBoundary } from './content/ContentBoundary'
+import { PageAsyncBoundary } from './routes/PageAsyncBoundary'
+import { reloadPage } from './content/reloadPage'
 import { Home } from '@web/src/pages/Home'
 import { NotFound } from '@web/src/pages/NotFound'
 import { AuthPage } from '@web/src/pages/AuthPage'
@@ -16,12 +16,8 @@ import { SignedOutPage } from '@web/src/pages/IdentityPage/SignedOutPage'
 import { OidcPage } from '@web/src/pages/IdentityPage/OidcPage'
 import { SupportAccess } from './routes/SupportAccess'
 import { FeedbackProvider } from './pages/Support/feedback/FeedbackProvider'
-const AboutUs = lazy(() =>
-  import('./pages/AboutUs/AboutUs').then((module) => ({ default: module.AboutUs })),
-)
-const SupportRoutes = lazy(() =>
-  import('./pages/Support/SupportRoutes').then((module) => ({ default: module.SupportRoutes })),
-)
+const loadAboutUs = () => import('./pages/AboutUs/AboutUs')
+const loadSupportRoutes = () => import('./pages/Support/SupportRoutes')
 
 /**
  * 路由表：认证和 SSO 页面使用独立布局，其余页面共用站点顶栏。
@@ -47,34 +43,28 @@ export function App() {
             <Route
               path="/aboutus/*"
               element={
-                <ContentBoundary returnUrl="/">
-                  <Suspense
-                    fallback={
-                      <p role="status" style={{ padding: '3rem' }}>
-                        正在加载介绍…
-                      </p>
-                    }
-                  >
-                    <AboutUs />
-                  </Suspense>
-                </ContentBoundary>
+                <PageAsyncBoundary
+                  loader={loadAboutUs}
+                  loadingTitle="正在加载介绍…"
+                  homeUrl="/"
+                  onRetry={reloadPage}
+                >
+                  {(module) => <module.AboutUs />}
+                </PageAsyncBoundary>
               }
             />
             <Route
               path="/support/*"
               element={
                 <SupportAccess>
-                  <ContentBoundary returnUrl="/">
-                    <Suspense
-                      fallback={
-                        <p role="status" style={{ padding: '3rem' }}>
-                          正在加载支持中心…
-                        </p>
-                      }
-                    >
-                      <SupportRoutes />
-                    </Suspense>
-                  </ContentBoundary>
+                  <PageAsyncBoundary
+                    loader={loadSupportRoutes}
+                    loadingTitle="正在加载支持中心…"
+                    homeUrl="/"
+                    onRetry={reloadPage}
+                  >
+                    {(module) => <module.SupportRoutes />}
+                  </PageAsyncBoundary>
                 </SupportAccess>
               }
             />

@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import type { ContentModule, ContentStore } from './store'
 
 export type ContentState =
-  { status: 'loading' } | { status: 'ready'; module: ContentModule } | { status: 'error' }
+  | { status: 'loading' }
+  | { status: 'ready'; module: ContentModule }
+  | { status: 'error'; error?: unknown }
 export function useContent(store: ContentStore, id: string) {
   const [attempt, setAttempt] = useState(0)
   const [state, setState] = useState<{ id: string; attempt: number; value: ContentState }>({
@@ -16,8 +18,8 @@ export function useContent(store: ContentStore, id: string) {
       (module) => {
         if (active) setState({ id, attempt, value: { status: 'ready', module } })
       },
-      () => {
-        if (active) setState({ id, attempt, value: { status: 'error' } })
+      (error: unknown) => {
+        if (active) setState({ id, attempt, value: { status: 'error', error } })
       },
     )
     return () => {

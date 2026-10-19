@@ -56,6 +56,18 @@ afterEach(() => {
 })
 
 describe('Website OIDC browser flow', () => {
+  it.each(['login', 'consent', 'logout'] as const)(
+    'does not flash a page title while the %s request is pending',
+    async (phase) => {
+      window.localStorage.setItem(AUTH_TOKEN_KEY, 'fixture-token')
+      post.mockImplementation(() => new Promise(() => {}))
+      show(phase, `?${phase}_challenge=fixture-challenge`)
+      expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
+      expect(await screen.findByRole('status', { name: '正在处理身份请求…' })).toBeTruthy()
+      expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
+    },
+  )
+
   it.each([1428, 8192])(
     'accepts one non-empty login challenge of length %i without truncation',
     async (length) => {

@@ -1,0 +1,1427 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>AsyncBoundary · 加载与错误方向演示</title>
+    <style>
+      /* Standalone prototype. Token values are embedded so this file works offline. */
+      :root {
+        color-scheme: light;
+        --exui-surface-background: #fff;
+        --exui-surface-secondary: #f5f5f5;
+        --exui-surface-tertiary: #fafafa;
+        --exui-text-primary: #171717;
+        --exui-text-secondary: #737373;
+        --exui-border-default: #e5e5e5;
+        --exui-control-primary: #0a0a0a;
+        --exui-control-primary-foreground: #fff;
+        --exui-border-focused: #525252;
+        --demo-shadow: 0 6px 28px rgb(0 0 0 / 7%), 0 1px 3px rgb(0 0 0 / 4%);
+      }
+      :root.dark {
+        color-scheme: dark;
+        --exui-surface-background: #101010;
+        --exui-surface-secondary: #242424;
+        --exui-surface-tertiary: #181818;
+        --exui-text-primary: #f5f5f5;
+        --exui-text-secondary: #a3a3a3;
+        --exui-border-default: #303030;
+        --exui-control-primary: #fafafa;
+        --exui-control-primary-foreground: #0a0a0a;
+        --exui-border-focused: #a3a3a3;
+        --demo-shadow: 0 6px 32px rgb(0 0 0 / 28%);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--exui-surface-background);
+        color: var(--exui-text-primary);
+        font-family: 'Outfit Variable', 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        font-size: 14px;
+        -webkit-font-smoothing: antialiased;
+      }
+      button,
+      a {
+        -webkit-tap-highlight-color: transparent;
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      button,
+      a {
+        color: inherit;
+      }
+      button:focus-visible,
+      a:focus-visible,
+      summary:focus-visible {
+        outline: 2px solid var(--exui-border-focused);
+        outline-offset: 4px;
+      }
+      svg {
+        width: 18px;
+        height: 18px;
+        flex: none;
+        vertical-align: middle;
+      }
+      .site-header {
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 28px;
+        padding: 0 clamp(24px, 6vw, 108px);
+        border-bottom: 1px solid var(--exui-border-default);
+      }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+        white-space: nowrap;
+        font-size: 23px;
+        font-weight: 650;
+        letter-spacing: -0.8px;
+      }
+      .brand-mark {
+        display: grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        border: 1px solid var(--exui-border-default);
+        border-radius: 11px;
+        box-shadow: 0 2px 5px rgb(0 0 0 / 6%);
+      }
+      .brand-mark svg {
+        width: 25px;
+        height: 25px;
+      }
+      .site-nav {
+        display: flex;
+        align-items: center;
+        gap: 32px;
+        font-weight: 550;
+        font-size: 14px;
+      }
+      .site-nav span {
+        color: var(--exui-text-secondary);
+      }
+      .site-nav .active {
+        color: var(--exui-text-primary);
+      }
+      .header-end {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+      }
+      .avatar {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        background: var(--exui-surface-secondary);
+        border-radius: 50%;
+        font-size: 12px;
+        font-weight: 650;
+      }
+      .preview-label {
+        position: absolute;
+        top: 105px;
+        left: 28px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--exui-text-secondary);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        pointer-events: none;
+      }
+      .preview-label::before {
+        content: '';
+        width: 5px;
+        height: 5px;
+        background: currentColor;
+        border-radius: 50%;
+        opacity: 0.6;
+      }
+      #preview:focus {
+        outline: none;
+      }
+      .page-stage {
+        min-height: calc(100dvh - 80px);
+        display: grid;
+        place-items: center;
+        padding: 76px 24px 150px;
+      }
+      /* Symmetric padding keeps the feedback centered in the viewport below the header. */
+      .page-stage:not(.ready-stage) {
+        padding-block: 120px;
+      }
+      .feedback {
+        width: 100%;
+        max-width: 600px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 24px 16px;
+      }
+      .feedback[hidden] {
+        visibility: hidden;
+        display: flex;
+      }
+      .icon-tile {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        background: var(--exui-surface-secondary);
+        margin-bottom: 20px;
+      }
+      .icon-tile svg {
+        width: 21px;
+        height: 21px;
+        stroke-width: 1.65;
+      }
+      .feedback h1,
+      .feedback h2 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 620;
+        line-height: 1.45;
+        letter-spacing: -0.45px;
+      }
+      .feedback p {
+        margin: 10px 0 0;
+        color: var(--exui-text-secondary);
+        font-size: 14px;
+        line-height: 1.8;
+        max-width: 330px;
+        overflow-wrap: anywhere;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+      }
+      .action {
+        min-height: 40px;
+        padding: 9px 17px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        background: transparent;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        gap: 7px;
+        font-weight: 550;
+        font-size: 13px;
+        text-decoration: none;
+      }
+      .action svg {
+        width: 15px;
+        height: 15px;
+      }
+      .action.primary {
+        background: var(--exui-control-primary);
+        color: var(--exui-control-primary-foreground);
+      }
+      .action.primary:hover {
+        opacity: 0.84;
+      }
+      .action.ghost:hover {
+        background: var(--exui-surface-secondary);
+      }
+      .action.outline {
+        border-color: var(--exui-border-default);
+        background: var(--exui-surface-background);
+      }
+      .action.outline:hover {
+        background: var(--exui-surface-secondary);
+      }
+      .detail-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        margin-left: 6px;
+        color: var(--exui-text-primary);
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .detail-link:hover {
+        text-decoration: underline;
+        text-underline-offset: 4px;
+      }
+      .detail-link svg {
+        width: 12px;
+        height: 12px;
+      }
+      .error-alert {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-height: 240px;
+        margin-top: 26px;
+        text-align: left;
+        overflow: hidden;
+        border: 1px solid rgb(220 38 38 / 18%);
+        background: rgb(220 38 38 / 3%);
+        border-radius: 14px;
+      }
+      .error-alert[hidden] {
+        display: none;
+      }
+      .error-alert-header {
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px 10px;
+        border-bottom: 1px solid rgb(220 38 38 / 10%);
+      }
+      .error-alert-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+      .error-alert-title > svg {
+        color: #dc2626;
+        width: 17px;
+        height: 17px;
+      }
+      .error-alert h3 {
+        font-size: 13px;
+        line-height: 1.6;
+        font-weight: 600;
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      .copy-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        flex: none;
+        min-width: 72px;
+        min-height: 30px;
+        padding: 4px 7px;
+        border: 0;
+        background: transparent;
+        color: var(--exui-text-secondary);
+        border-radius: 6px;
+        font-size: 11px;
+      }
+      .copy-button:hover {
+        background: rgb(127 127 127 / 9%);
+        color: var(--exui-text-primary);
+      }
+      .copy-button svg {
+        width: 13px;
+        height: 13px;
+      }
+      .error-alert-body {
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+        padding: 12px 15px 15px;
+      }
+      .error-alert-body:focus-visible {
+        outline: 2px solid var(--exui-border-focused);
+        outline-offset: -3px;
+      }
+      .feedback .error-alert p {
+        max-width: none;
+        font-size: 11px;
+        line-height: 1.8;
+        color: var(--exui-text-secondary);
+        margin: 0 0 10px;
+      }
+      .error-alert ul {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--exui-text-secondary);
+        font-size: 12px;
+        line-height: 1.85;
+      }
+      .error-alert li {
+        padding-left: 1px;
+        overflow-wrap: anywhere;
+      }
+      .error-alert li + li {
+        margin-top: 3px;
+      }
+      .error-alert pre {
+        margin: 13px 0 0;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font-family: Consolas, 'SFMono-Regular', monospace;
+        font-size: 11px;
+        line-height: 1.85;
+        color: var(--exui-text-secondary);
+      }
+      .page-stage:has(.error-alert:not([hidden])) {
+        padding-bottom: 190px;
+      }
+      .dark .error-alert {
+        background: rgb(248 113 113 / 6%);
+        border-color: rgb(248 113 113 / 22%);
+      }
+      .dark .error-alert-header {
+        border-bottom-color: rgb(248 113 113 / 12%);
+      }
+      .dark .error-alert-title > svg {
+        color: #f87171;
+      }
+      .spinner {
+        animation: spin 0.9s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .section-page {
+        width: min(1120px, 100%);
+        margin: 0 auto;
+        padding: 72px 40px 220px;
+      }
+      .breadcrumb {
+        margin: 0 0 28px;
+        color: var(--exui-text-secondary);
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .breadcrumb svg {
+        width: 12px;
+        height: 12px;
+      }
+      .page-heading {
+        font-size: 34px;
+        font-weight: 620;
+        letter-spacing: -1.2px;
+        margin: 0;
+        line-height: 1.35;
+      }
+      .page-description {
+        color: var(--exui-text-secondary);
+        font-size: 14px;
+        line-height: 1.8;
+        margin: 14px 0 35px;
+        max-width: 650px;
+      }
+      .section-layout {
+        display: grid;
+        grid-template-columns: 150px minmax(0, 1fr);
+        gap: 40px;
+      }
+      .section-nav {
+        padding-top: 24px;
+        color: var(--exui-text-secondary);
+        font-size: 13px;
+        display: flex;
+        flex-direction: column;
+        gap: 23px;
+      }
+      .section-nav .selected {
+        font-weight: 600;
+        color: var(--exui-text-primary);
+        border-left: 2px solid currentColor;
+        padding-left: 13px;
+        margin-left: -15px;
+      }
+      .section-stage {
+        min-width: 0;
+        min-height: 390px;
+        display: grid;
+        place-items: center;
+        border-block: 1px solid var(--exui-border-default);
+      }
+      .section-stage .feedback h2 {
+        font-size: 20px;
+      }
+      .ready-content {
+        width: min(720px, 100%);
+        padding: 32px;
+      }
+      .ready-content .eyebrow {
+        font-size: 11px;
+        color: var(--exui-text-secondary);
+        letter-spacing: 0.08em;
+        margin: 0 0 14px;
+      }
+      .ready-content h1 {
+        font-size: 40px;
+        letter-spacing: -1.5px;
+        font-weight: 620;
+        margin: 0 0 16px;
+      }
+      .ready-content h2 {
+        font-size: 22px;
+        letter-spacing: -0.5px;
+        font-weight: 600;
+        margin: 0 0 16px;
+      }
+      .ready-content p {
+        color: var(--exui-text-secondary);
+        line-height: 1.9;
+        margin: 10px 0;
+      }
+      .sample-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 32px;
+      }
+      .sample-block {
+        background: var(--exui-surface-tertiary);
+        border: 1px solid var(--exui-border-default);
+        border-radius: 14px;
+        padding: 20px;
+        min-height: 115px;
+      }
+      .sample-block svg {
+        margin-bottom: 16px;
+      }
+      .sample-block span {
+        display: block;
+        font-size: 13px;
+      }
+      .success-note {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--exui-text-secondary);
+        font-size: 12px;
+        margin-top: 22px;
+      }
+      .success-note svg {
+        width: 14px;
+        height: 14px;
+      }
+      .dock {
+        position: fixed;
+        bottom: 22px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(930px, calc(100% - 40px));
+        background: var(--exui-surface-background);
+        border: 1px solid var(--exui-border-default);
+        border-radius: 17px;
+        box-shadow: var(--demo-shadow);
+        z-index: 10;
+        padding: 15px 18px 12px;
+      }
+      .dock-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .dock-title {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .prototype-tag {
+        padding: 3px 6px;
+        border-radius: 4px;
+        background: var(--exui-surface-secondary);
+        color: var(--exui-text-secondary);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        font-weight: 500;
+      }
+      .demo-note {
+        font-size: 11px;
+        color: var(--exui-text-secondary);
+      }
+      .dock-controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .segmented {
+        display: inline-flex;
+        padding: 3px;
+        border-radius: 9px;
+        background: var(--exui-surface-secondary);
+        gap: 2px;
+      }
+      .segmented button {
+        border: 0;
+        background: transparent;
+        color: var(--exui-text-secondary);
+        border-radius: 6px;
+        padding: 7px 12px;
+        font-size: 12px;
+        white-space: nowrap;
+        min-height: 32px;
+      }
+      .segmented button[aria-pressed='true'] {
+        color: var(--exui-text-primary);
+        background: var(--exui-surface-background);
+        box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+        font-weight: 550;
+      }
+      .segmented button:hover {
+        color: var(--exui-text-primary);
+      }
+      .control-spacer {
+        flex: 1;
+      }
+      .small-button {
+        background: transparent;
+        border: 1px solid var(--exui-border-default);
+        border-radius: 8px;
+        min-height: 34px;
+        padding: 7px 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-size: 11px;
+      }
+      .small-button svg {
+        width: 14px;
+        height: 14px;
+      }
+      .small-button:hover,
+      .small-button[aria-expanded='true'] {
+        background: var(--exui-surface-secondary);
+      }
+      .theme-button {
+        width: 34px;
+        padding: 0;
+      }
+      .dock-status {
+        border-top: 1px solid var(--exui-border-default);
+        padding-top: 10px;
+        margin-top: 12px;
+        font-size: 11px;
+        color: var(--exui-text-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+      }
+      #state-summary {
+        font-variant-numeric: tabular-nums;
+      }
+      #last-event {
+        text-align: right;
+      }
+      .extras {
+        position: absolute;
+        bottom: calc(100% + 10px);
+        right: 0;
+        background: var(--exui-surface-background);
+        border: 1px solid var(--exui-border-default);
+        border-radius: 14px;
+        box-shadow: var(--demo-shadow);
+        padding: 20px;
+        width: min(530px, 100%);
+        max-height: 50dvh;
+        overflow: auto;
+      }
+      .extras[hidden] {
+        display: none;
+      }
+      .extras-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-weight: 600;
+        font-size: 13px;
+        margin-bottom: 12px;
+      }
+      .extras p {
+        color: var(--exui-text-secondary);
+        font-size: 12px;
+        line-height: 1.8;
+        margin: 8px 0 14px;
+      }
+      .extras pre {
+        font-family: Consolas, 'SFMono-Regular', monospace;
+        font-size: 11px;
+        line-height: 1.9;
+        padding: 16px;
+        margin: 12px 0 0;
+        background: var(--exui-surface-tertiary);
+        border-radius: 8px;
+        overflow-x: auto;
+      }
+      .flow-tabs {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+      .flow-tabs button {
+        border: 0;
+        padding: 8px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        background: transparent;
+        color: var(--exui-text-secondary);
+      }
+      .flow-tabs button[aria-pressed='true'] {
+        color: var(--exui-text-primary);
+        background: var(--exui-surface-secondary);
+      }
+      .flow-steps {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin: 16px 0;
+      }
+      .flow-steps button {
+        font-size: 11px;
+        min-height: 34px;
+        border: 1px solid var(--exui-border-default);
+        background: transparent;
+        border-radius: 7px;
+        padding: 7px 11px;
+      }
+      .flow-steps button[aria-current='step'] {
+        background: var(--exui-control-primary);
+        color: var(--exui-control-primary-foreground);
+        border-color: transparent;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
+      }
+      @media (max-width: 900px) {
+        .site-nav {
+          gap: 18px;
+        }
+        .site-nav span:nth-child(-n + 2) {
+          display: none;
+        }
+        .dock-controls {
+          gap: 8px;
+        }
+        .segmented button {
+          padding-inline: 10px;
+        }
+        .demo-note {
+          max-width: 245px;
+          text-align: right;
+        }
+      }
+      @media (max-width: 640px) {
+        .site-header {
+          height: 64px;
+          padding-inline: 22px;
+        }
+        .brand {
+          font-size: 20px;
+        }
+        .brand-mark {
+          width: 32px;
+          height: 32px;
+          border-radius: 9px;
+        }
+        .site-nav {
+          display: none;
+        }
+        .header-end > svg {
+          display: none;
+        }
+        .preview-label {
+          top: 86px;
+          left: 22px;
+        }
+        .page-stage {
+          min-height: calc(100dvh - 64px);
+        }
+        .page-stage:not(.ready-stage) {
+          padding: 70px 20px 190px;
+        }
+        .feedback {
+          padding-inline: 0;
+        }
+        .feedback h1,
+        .feedback h2 {
+          font-size: 21px;
+        }
+        .feedback p {
+          font-size: 13px;
+          max-width: 300px;
+        }
+        .dock {
+          bottom: 12px;
+          width: calc(100% - 24px);
+          padding: 12px;
+          border-radius: 14px;
+        }
+        .dock-heading {
+          margin-bottom: 10px;
+        }
+        .demo-note {
+          font-size: 10px;
+          max-width: 160px;
+        }
+        .dock-controls {
+          gap: 8px;
+        }
+        .state-segment {
+          order: 3;
+          width: 100%;
+        }
+        .state-segment button {
+          flex: 1;
+          padding-inline: 4px;
+        }
+        .control-spacer {
+          display: none;
+        }
+        .layout-segment {
+          flex: 1;
+        }
+        .layout-segment button {
+          flex: 1;
+        }
+        .small-button {
+          font-size: 10px;
+          padding-inline: 8px;
+        }
+        .theme-button {
+          width: 32px;
+        }
+        .dock-status {
+          font-size: 10px;
+          margin-top: 9px;
+          padding-top: 9px;
+        }
+        #last-event {
+          display: none;
+        }
+        .section-page {
+          padding: 66px 24px 250px;
+        }
+        .page-heading {
+          font-size: 29px;
+        }
+        .page-description {
+          font-size: 13px;
+          margin-bottom: 26px;
+        }
+        .section-layout {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 20px;
+        }
+        .section-nav {
+          flex-direction: row;
+          padding-top: 0;
+          gap: 24px;
+          font-size: 12px;
+        }
+        .section-nav .selected {
+          border: 0;
+          padding: 0;
+          margin: 0;
+        }
+        .section-stage {
+          min-height: 345px;
+        }
+        .breadcrumb {
+          margin-bottom: 22px;
+        }
+        .ready-content {
+          padding: 24px 0;
+        }
+        .ready-content h1 {
+          font-size: 32px;
+        }
+        .sample-grid {
+          gap: 8px;
+        }
+        .sample-block {
+          padding: 16px;
+        }
+        .extras {
+          max-height: 45dvh;
+          padding: 16px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .spinner {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#home" data-action="home" aria-label="演示返回首页">
+        <span class="brand-mark"
+          ><svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M3 3h6l9 9-9 9H3l9-9z" />
+            <path fill="currentColor" d="M3 9h4l3 3-3 3H3l3-3z" /></svg
+        ></span>
+        Exre Service
+      </a>
+      <nav class="site-nav" aria-label="站点导航示意">
+        <span>Communities⌄</span><span>Document</span><span>Products</span
+        ><span class="active">About Us</span><span>Support</span>
+      </nav>
+      <div class="header-end">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          aria-hidden="true"
+        >
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg
+        ><span class="avatar" aria-label="演示头像">E</span>
+      </div>
+    </header>
+    <div class="preview-label" id="preview-label">整页预览 · 顶栏保持可用</div>
+    <main id="preview" tabindex="-1"></main>
+    <div
+      class="sr-only"
+      id="announcement"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
+
+    <aside class="dock" aria-label="方向演示控制台">
+      <div class="dock-heading">
+        <div class="dock-title">加载与错误 <span class="prototype-tag">DEMO</span></div>
+        <span class="demo-note">HTML 模拟 · 非 React 实现</span>
+      </div>
+      <div class="dock-controls">
+        <div class="segmented layout-segment" role="group" aria-label="预览范围">
+          <button type="button" data-layout="page" aria-pressed="true">整页</button>
+          <button type="button" data-layout="section" aria-pressed="false">大内容区</button>
+        </div>
+        <div class="segmented state-segment" role="group" aria-label="切换状态">
+          <button type="button" data-status="loading" aria-pressed="false">加载中</button>
+          <button type="button" data-status="load-error" aria-pressed="true">加载失败</button>
+          <button type="button" data-status="render-error" aria-pressed="false">渲染错误</button>
+          <button type="button" data-status="ready" aria-pressed="false">成功</button>
+        </div>
+        <span class="control-spacer"></span>
+        <button
+          type="button"
+          class="small-button"
+          id="flow-toggle"
+          aria-expanded="false"
+          aria-controls="flow-panel"
+        >
+          流程演示
+        </button>
+        <button
+          type="button"
+          class="small-button"
+          id="code-toggle"
+          aria-expanded="false"
+          aria-controls="code-panel"
+        >
+          接入示例
+        </button>
+        <button
+          type="button"
+          class="small-button theme-button"
+          id="theme-toggle"
+          aria-label="切换为深色主题"
+          aria-pressed="false"
+        ></button>
+      </div>
+      <div class="dock-status"><span id="state-summary"></span><span id="last-event"></span></div>
+      <section class="extras" id="code-panel" aria-label="候选接入示例" hidden>
+        <div class="extras-title">
+          <span>候选接入方式</span><span class="prototype-tag">尚未实现</span>
+        </div>
+        <p>同一个边界组合等待、加载失败和子组件渲染错误。示例仅表达 API 方向。</p>
+        <pre id="code-example"></pre>
+      </section>
+      <section class="extras" id="flow-panel" aria-label="流程演示" hidden>
+        <div class="extras-title">
+          <span>点步骤查看，或自动播放</span
+          ><button type="button" class="small-button" id="play-flow">播放流程</button>
+        </div>
+        <div class="flow-tabs" role="group" aria-label="选择演示流程">
+          <button type="button" data-flow="success" aria-pressed="false">正常加载</button>
+          <button type="button" data-flow="retry" aria-pressed="true">失败后恢复</button>
+          <button type="button" data-flow="render" aria-pressed="false">渲染时出错</button>
+        </div>
+        <p id="flow-description"></p>
+        <div class="flow-steps" id="flow-steps"></div>
+        <p>
+          加载时保留空间，150ms 后显示提示；错误立即显示。“查看错误”在当前区域下方展开
+          Alert；面板最高 240px，正文可滚动，支持复制完整信息。
+        </p>
+      </section>
+    </aside>
+
+    <script>
+      // Portable state model: this prototype simulates transitions, not React execution.
+      const model = (() => {
+        const initial = {
+          layout: 'page',
+          status: 'load-error',
+          theme: 'light',
+          attempt: 1,
+          visible: true,
+          home: false,
+          detailsOpen: false,
+          flow: 'retry',
+          step: -1,
+          playing: false,
+          lastEvent: '先看错误态，再切换加载与恢复。',
+        }
+        function reduce(state, action) {
+          switch (action.type) {
+            case 'layout':
+              return {
+                ...state,
+                layout: action.value,
+                detailsOpen: false,
+                playing: false,
+                lastEvent: '仅切换布局，保留当前状态。',
+              }
+            case 'status':
+              return {
+                ...state,
+                status: action.value,
+                visible: action.value !== 'loading',
+                home: false,
+                detailsOpen: false,
+                playing: false,
+                step: -1,
+                lastEvent: action.note || '手动切换状态。',
+              }
+            case 'start':
+              return {
+                ...state,
+                status: 'loading',
+                visible: false,
+                home: false,
+                detailsOpen: false,
+                attempt: state.attempt + 1,
+                lastEvent: action.note || '正在重新读取内容。',
+              }
+            case 'reveal':
+              return { ...state, visible: true }
+            case 'complete':
+              return {
+                ...state,
+                status: action.value,
+                visible: true,
+                detailsOpen: false,
+                playing: false,
+                lastEvent: action.note || '内容已就绪。',
+              }
+            case 'details':
+              return {
+                ...state,
+                detailsOpen: !state.detailsOpen,
+                playing: false,
+                lastEvent: state.detailsOpen
+                  ? '已收起错误详情。'
+                  : '已展开本次错误，可滚动或复制完整信息。',
+              }
+            case 'theme':
+              return { ...state, theme: state.theme === 'light' ? 'dark' : 'light' }
+            case 'home':
+              return {
+                ...state,
+                layout: 'page',
+                status: 'ready',
+                visible: true,
+                home: true,
+                detailsOpen: false,
+                playing: false,
+                lastEvent: '演示：已返回首页。',
+              }
+            case 'flow':
+              return {
+                ...initial,
+                layout: state.layout,
+                theme: state.theme,
+                flow: action.value,
+                status: 'ready',
+                step: -1,
+                lastEvent: '流程已重置，可以从第 1 步开始。',
+              }
+            case 'step':
+              return { ...state, step: action.value, playing: action.playing ?? false }
+            default:
+              return state
+          }
+        }
+        return { initial, reduce }
+      })()
+
+      const paths = {
+        spinner: '<path d="M12 3a9 9 0 1 1-9 9"/>',
+        alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4m0 4h.01"/>',
+        render:
+          '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18m-13 5 2 2m0-2-2 2m6-2h3"/>',
+        reload: '<path d="M20 7v5h-5M4.5 16a8 8 0 1 0 1-9L3 10"/>',
+        arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
+        chevron: '<path d="m9 5 7 7-7 7"/>',
+        down: '<path d="m6 9 6 6 6-6"/>',
+        up: '<path d="m6 15 6-6 6 6"/>',
+        copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
+        home: '<path d="m3 10 9-7 9 7v10H3zM9 20v-7h6v7"/>',
+        moon: '<path d="M20 13A8 8 0 0 1 11 4a8.5 8.5 0 1 0 9 9Z"/>',
+        sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1"/>',
+        check: '<path d="m5 12 4 4L19 6"/>',
+        file: '<path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8m-8 4h6"/>',
+      }
+      const icon = (name, css = '') =>
+        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="${css}" aria-hidden="true">${paths[name]}</svg>`
+      const flows = {
+        success: {
+          description: '从等待到内容出现，观察加载提示与成功内容的切换。',
+          steps: [
+            ['开始加载', 'loading'],
+            ['内容就绪', 'ready'],
+          ],
+        },
+        retry: {
+          description: '先发生加载失败，可以查看错误详情，再点击“重试”恢复当前区域。',
+          steps: [
+            ['开始加载', 'loading'],
+            ['加载失败', 'load-error'],
+            ['重新尝试', 'loading'],
+            ['恢复成功', 'ready'],
+          ],
+        },
+        render: {
+          description: '数据已加载，但展示内容时出错。错误替换当前区域，其他页面内容保留。',
+          steps: [
+            ['开始加载', 'loading'],
+            ['渲染出错', 'render-error'],
+            ['重新尝试', 'loading'],
+            ['恢复成功', 'ready'],
+          ],
+        },
+      }
+      const names = {
+        loading: '加载中',
+        'load-error': '加载失败',
+        'render-error': '渲染错误',
+        ready: '成功',
+      }
+      let state = { ...model.initial }
+      let timers = []
+      let generation = 0
+      const preview = document.getElementById('preview')
+      function later(callback, ms) {
+        const run = generation
+        timers.push(
+          setTimeout(() => {
+            if (run === generation) callback()
+          }, ms),
+        )
+      }
+      function cancelTimers() {
+        generation++
+        timers.forEach(clearTimeout)
+        timers = []
+      }
+      function dispatch(action) {
+        state = model.reduce(state, action)
+        render()
+      }
+      function pending(note) {
+        dispatch({ type: 'start', note })
+        later(() => dispatch({ type: 'reveal' }), 150)
+      }
+      function feedback() {
+        const loading = state.status === 'loading'
+        const renderError = state.status === 'render-error'
+        const page = state.layout === 'page'
+        const title = loading
+          ? '正在加载内容…'
+          : renderError
+            ? page
+              ? '页面暂时无法显示'
+              : '这部分内容暂时无法显示'
+            : '内容暂时无法加载'
+        const description = loading
+          ? ''
+          : renderError
+            ? '显示内容时遇到了问题，请重试。'
+            : '内容未能加载，请稍后重试。'
+        const tag = page ? 'h1' : 'h2'
+        const link = loading
+          ? ''
+          : ` <a class="detail-link" href="#error-details" data-action="view-error" aria-expanded="${state.detailsOpen}" aria-controls="error-details">${state.detailsOpen ? '收起错误' : '查看错误'}${icon(state.detailsOpen ? 'up' : 'down')}</a>`
+        const actions = loading
+          ? ''
+          : `<div class="actions"><button type="button" class="action primary" data-action="retry">${icon('reload')}重试</button>${page ? '<a class="action outline" href="#home" data-action="home">返回首页</a>' : ''}</div>`
+        return `<section class="feedback" aria-labelledby="feedback-title"${loading && !state.visible ? ' hidden' : ''}><div class="icon-tile">${icon(loading ? 'spinner' : renderError ? 'render' : 'alert', loading ? 'spinner' : '')}</div><${tag} id="feedback-title">${title}</${tag}>${description ? `<p>${description}${link}</p>` : ''}${actions}${loading ? '' : errorDetailsMarkup()}</section>`
+      }
+      function getErrorDetails() {
+        const renderError = state.status === 'render-error'
+        const page = state.layout === 'page'
+        const title = renderError ? '内容渲染失败' : page ? '页面资源加载失败' : '内容读取失败'
+        const type = renderError || page ? 'TypeError' : 'ContentLoadError'
+        const phase = renderError
+          ? '显示已加载的内容'
+          : page
+            ? '加载 AboutUs 页面模块'
+            : '读取当前区域的正文'
+        const message = renderError
+          ? "Cannot read properties of undefined (reading 'title')."
+          : page
+            ? 'Failed to fetch dynamically imported module.'
+            : 'Unable to load the requested content.'
+        const frames = renderError
+          ? [
+              'renderContent',
+              'AboutContent',
+              'renderWithHooks',
+              'updateFunctionComponent',
+              'beginWork',
+              'performUnitOfWork',
+              'workLoopSync',
+              'renderRootSync',
+            ]
+          : [
+              'loadContent',
+              'resolveModule',
+              'readContent',
+              'startLoading',
+              'runLoader',
+              'resolvePage',
+              'updateContent',
+              'completeRequest',
+            ]
+        const stack = `${type}: ${message}\n${frames.map((frame, index) => `    at ${frame} (demo/${renderError ? 'render' : 'loader'}.tsx:${18 + index * 9}:11)`).join('\n')}`
+        return { title, type, phase, message, stack }
+      }
+      const escapeText = (value) =>
+        String(value).replace(
+          /[&<>"']/g,
+          (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char],
+        )
+      function errorDetailsMarkup() {
+        const error = getErrorDetails()
+        return `<section id="error-details" class="error-alert" aria-labelledby="error-details-title"${state.detailsOpen ? '' : ' hidden'}><header class="error-alert-header"><div class="error-alert-title">${icon('alert')}<h3 id="error-details-title">${escapeText(error.title)}</h3></div><button type="button" class="copy-button" data-action="copy-error" aria-label="复制完整错误信息">${icon('copy')}<span>复制</span></button></header><div class="error-alert-body" role="region" aria-label="可滚动的错误详情" tabindex="0"><p>模拟错误 · 用于预览长内容滚动与复制</p><ul><li>错误类型：${escapeText(error.type)}</li><li>发生阶段：${escapeText(error.phase)}</li><li>错误消息：${escapeText(error.message)}</li></ul><pre>${escapeText(error.stack)}</pre></div></section>`
+      }
+      function ready() {
+        const page = state.layout === 'page'
+        return `<article class="ready-content"><p class="eyebrow">${state.home ? 'HOME' : page ? 'ABOUT EXRE' : 'CONTENT'} · 演示占位</p><${page ? 'h1' : 'h2'}>${state.home ? '已返回首页' : page ? '关于 Exre' : '我们的理念'}</${page ? 'h1' : 'h2'}><p>${state.home ? '这里代表返回首页后的内容。你可以继续切换下方状态。' : '这里是加载成功后的内容示意。加载提示和错误操作会随之退出。'}</p><p>${page ? '标题、正文和页面布局在成功后正常显示。' : '内容区恢复后，页面标题、导航与其他区块保持原位。'}</p>${page ? `<div class="sample-grid"><div class="sample-block">${icon('file')}<span>页面内容示意</span></div><div class="sample-block">${icon('file')}<span>其他内容示意</span></div></div>` : ''}<span class="success-note">${icon('check')}此处为演示内容，不作为站点正式文案</span></article>`
+      }
+      function render() {
+        const focusedInPreview = preview.contains(document.activeElement)
+        const previousErrorScroll = preview.querySelector('.error-alert-body')?.scrollTop || 0
+        document.documentElement.classList.toggle('dark', state.theme === 'dark')
+        const content = state.status === 'ready' ? ready() : feedback()
+        preview.innerHTML =
+          state.layout === 'page'
+            ? `<div class="page-stage${state.status === 'ready' ? ' ready-stage' : ''}">${content}</div>`
+            : `<div class="section-page"><div class="breadcrumb">About Us ${icon('chevron')} <span>概览</span></div><h1 class="page-heading">关于 Exre</h1><p class="page-description">下方展示页面中的一个大内容区。它加载或出错时，页面标题和其他区域继续保留。</p><div class="section-layout"><nav class="section-nav" aria-label="栏目导航示意"><span class="selected">我们的理念</span><span>社区</span><span>团队</span></nav><div class="section-stage">${content}</div></div></div>`
+        if (focusedInPreview) preview.focus({ preventScroll: true })
+        if (state.detailsOpen)
+          preview.querySelector('.error-alert-body').scrollTop = previousErrorScroll
+        document.getElementById('preview-label').textContent =
+          state.layout === 'page' ? '整页预览 · 顶栏保持可用' : '内容区预览 · 仅替换当前区域'
+        document
+          .querySelectorAll('[data-layout]')
+          .forEach((button) =>
+            button.setAttribute('aria-pressed', String(button.dataset.layout === state.layout)),
+          )
+        document
+          .querySelectorAll('[data-status]')
+          .forEach((button) =>
+            button.setAttribute('aria-pressed', String(button.dataset.status === state.status)),
+          )
+        document
+          .querySelectorAll('[data-flow]')
+          .forEach((button) =>
+            button.setAttribute('aria-pressed', String(button.dataset.flow === state.flow)),
+          )
+        const themeButton = document.getElementById('theme-toggle')
+        themeButton.innerHTML = icon(state.theme === 'light' ? 'moon' : 'sun')
+        themeButton.setAttribute(
+          'aria-label',
+          state.theme === 'light' ? '切换为深色主题' : '切换为浅色主题',
+        )
+        themeButton.setAttribute('aria-pressed', String(state.theme === 'dark'))
+        document.getElementById('state-summary').textContent =
+          `${state.layout === 'page' ? '整页' : '大内容区'} / ${names[state.status]} / 第 ${state.attempt} 次加载${state.playing ? ' / 播放中' : ''}`
+        document.getElementById('last-event').textContent = state.lastEvent
+        const flow = flows[state.flow]
+        document.getElementById('flow-description').textContent = flow.description
+        document.getElementById('flow-steps').innerHTML = flow.steps
+          .map(
+            ([label], index) =>
+              `<button type="button" data-step="${index}"${index === state.step ? ' aria-current="step"' : ''}>${index + 1}. ${label}</button>`,
+          )
+          .join('')
+        document.getElementById('play-flow').textContent = state.playing ? '重新播放' : '播放流程'
+        document.getElementById('code-example').textContent =
+          state.layout === 'page'
+            ? '// AboutUs 仍使用 React.lazy 声明\n<AsyncBoundary layout="page">\n  <AboutUs />\n</AsyncBoundary>\n\n// 等待、模块导入失败、后代渲染异常\n// 查看错误展开 Alert，正文可滚动、可复制。'
+            : '<AsyncBoundary\n  layout="section"\n  loader={loadContent}\n  resetKey={contentId}\n>\n  {(data) => <Content data={data} />}\n</AsyncBoundary>\n\n// 不需要返回值时，也可以直接包裹 JSX。'
+        const announcement = document.getElementById('announcement')
+        const spoken =
+          state.status === 'loading' && !state.visible
+            ? ''
+            : `${names[state.status]}。${state.status === 'ready' ? '演示内容已显示。' : state.lastEvent}`
+        if (announcement.textContent !== spoken) announcement.textContent = spoken
+      }
+      function switchPanel(panel) {
+        for (const kind of ['code', 'flow']) {
+          const element = document.getElementById(`${kind}-panel`)
+          const show = kind === panel && element.hidden
+          element.hidden = !show
+          document.getElementById(`${kind}-toggle`).setAttribute('aria-expanded', String(show))
+        }
+      }
+      function runStep(index, playing = false) {
+        const [label, status] = flows[state.flow].steps[index]
+        if (status === 'loading') pending(`演示步骤：${label}。`)
+        else dispatch({ type: 'complete', value: status, note: `演示步骤：${label}。` })
+        dispatch({ type: 'step', value: index, playing })
+      }
+      function toggleErrorDetails() {
+        cancelTimers()
+        dispatch({ type: 'details' })
+        preview.querySelector('[data-action="view-error"]').focus({ preventScroll: true })
+      }
+      async function copyErrorDetails(button) {
+        if (button.dataset.copying === 'true') return
+        const error = getErrorDetails()
+        const report = `错误详情（模拟）\n${error.title}\n错误类型：${error.type}\n发生阶段：${error.phase}\n错误消息：${error.message}\n\n调用堆栈（模拟）\n${error.stack}`
+        button.dataset.copying = 'true'
+        button.setAttribute('aria-busy', 'true')
+        const fallbackCopy = () => {
+          const input = document.createElement('textarea')
+          input.value = report
+          input.style.cssText = 'position:fixed;left:-9999px;top:0;'
+          input.setAttribute('readonly', '')
+          document.body.append(input)
+          input.select()
+          const copied = document.execCommand('copy')
+          input.remove()
+          if (button.isConnected) button.focus({ preventScroll: true })
+          if (!copied) throw new Error('Copy unavailable')
+        }
+        try {
+          if (navigator.clipboard?.writeText) {
+            try {
+              await navigator.clipboard.writeText(report)
+            } catch {
+              fallbackCopy()
+            }
+          } else fallbackCopy()
+          if (button.isConnected) {
+            button.innerHTML = `${icon('check')}<span>已复制</span>`
+            document.getElementById('announcement').textContent = '完整错误信息已复制。'
+          }
+        } catch {
+          if (button.isConnected) {
+            button.innerHTML = `${icon('copy')}<span>复制失败</span>`
+            document.getElementById('announcement').textContent =
+              '复制未成功，请选择错误正文手动复制。'
+          }
+        } finally {
+          if (button.isConnected) {
+            delete button.dataset.copying
+            button.removeAttribute('aria-busy')
+          }
+        }
+      }
+      document.addEventListener('click', (event) => {
+        const button = event.target.closest('button, a')
+        if (!button) return
+        if (button.dataset.action === 'copy-error') {
+          event.preventDefault()
+          void copyErrorDetails(button)
+          return
+        }
+        if (button.dataset.layout) {
+          cancelTimers()
+          dispatch({ type: 'layout', value: button.dataset.layout })
+          if (state.status === 'loading' && !state.visible)
+            later(() => dispatch({ type: 'reveal' }), 150)
+        }
+        if (button.dataset.status) {
+          cancelTimers()
+          dispatch({ type: 'status', value: button.dataset.status })
+          if (state.status === 'loading') later(() => dispatch({ type: 'reveal' }), 150)
+        }
+        if (button.dataset.flow) {
+          cancelTimers()
+          dispatch({ type: 'flow', value: button.dataset.flow })
+        }
+        if (button.dataset.step !== undefined) {
+          cancelTimers()
+          runStep(Number(button.dataset.step))
+        }
+        if (button.dataset.action) {
+          event.preventDefault()
+          cancelTimers()
+          if (button.dataset.action === 'view-error') toggleErrorDetails()
+          else if (button.dataset.action === 'home') dispatch({ type: 'home' })
+          else {
+            pending('正在重试当前区域。')
+            later(
+              () => dispatch({ type: 'complete', value: 'ready', note: '当前区域已恢复。' }),
+              1100,
+            )
+          }
+        }
+        if (button.id === 'theme-toggle') dispatch({ type: 'theme' })
+        if (button.id === 'code-toggle') switchPanel('code')
+        if (button.id === 'flow-toggle') switchPanel('flow')
+        if (button.id === 'play-flow') {
+          cancelTimers()
+          dispatch({ type: 'flow', value: state.flow })
+          const count = flows[state.flow].steps.length
+          for (let index = 0; index < count; index++)
+            later(() => runStep(index, index < count - 1), index * 1500)
+        }
+      })
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape')
+          for (const kind of ['code', 'flow']) {
+            const panel = document.getElementById(`${kind}-panel`)
+            if (!panel.hidden) {
+              panel.hidden = true
+              const trigger = document.getElementById(`${kind}-toggle`)
+              trigger.setAttribute('aria-expanded', 'false')
+              trigger.focus()
+            }
+          }
+      })
+      render()
+    </script>
+  </body>
+</html>

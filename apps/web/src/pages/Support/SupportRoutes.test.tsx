@@ -8,6 +8,9 @@ import type { ContentLoader, ContentModule } from '../../content/store'
 import type { SupportRegistry } from '../../content/support/types'
 import { SupportRoutes } from './SupportRoutes'
 import { FeedbackProvider } from './feedback/FeedbackProvider'
+import { reloadPage } from '../../content/reloadPage'
+
+vi.mock('../../content/reloadPage', () => ({ reloadPage: vi.fn() }))
 
 const fixture = vi.hoisted(() => ({
   registry: {
@@ -287,7 +290,7 @@ it('honors a deep-link hash after delayed content is rendered', async () => {
       resolve = done
     })
   show('/support/errors/first#late')
-  expect(screen.getByRole('status').textContent).toMatch(/加载/)
+  expect(screen.getByRole('status')).toBeTruthy()
   await waitFor(() => expect(resolve).toBeTypeOf('function'))
   await act(async () => resolve({ default: () => <h2 id="late">迟到的标题</h2> }))
   await waitFor(() => expect(document.activeElement).toBe(document.getElementById('late')))
@@ -307,7 +310,7 @@ it('isolates a delayed article result after leaving the detail route', async () 
   expect(screen.queryByText('过时的正文')).toBeNull()
   expect(screen.queryByRole('navigation', { name: '正文目录' })).toBeNull()
 })
-it('offers retry and document reload and renders content after retry succeeds', async () => {
+it('discloses the module failure inline and retries through document reload', async () => {
   addErrors()
   let attempts = 0
   fixture.loaders['errors/first.mdx'] = async () => {
@@ -317,9 +320,14 @@ it('offers retry and document reload and renders content after retry succeeds', 
   show('/support/errors/first')
   await screen.findByRole('alert')
   expect(screen.queryByText('private import error')).toBeNull()
-  expect(screen.getByRole('button', { name: '重新加载当前页面' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: '重新加载当前页面' })).toBeNull()
+  fireEvent.click(screen.getByRole('link', { name: '查看错误' }))
+  expect(screen.getByRole('region', { name: '可滚动的错误详情' }).textContent).toContain(
+    'private import error',
+  )
   fireEvent.click(screen.getByRole('button', { name: '重试' }))
-  await screen.findByRole('heading', { name: '已恢复的正文' })
+  expect(reloadPage).toHaveBeenCalledOnce()
+  expect(attempts).toBe(1)
 })
 it('keeps QQ selectable on copy failure, uses safe mailto and a missing-avatar fallback', async () => {
   fixture.registry.contacts.push(

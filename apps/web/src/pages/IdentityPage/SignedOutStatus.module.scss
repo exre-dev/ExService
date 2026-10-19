@@ -19,9 +19,3 @@
     color: var(--exui-text-secondary);
   }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation: none;
-  }
-}

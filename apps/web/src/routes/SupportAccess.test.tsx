@@ -46,7 +46,7 @@ it('never mounts protected content in loading, anonymous or unavailable states, 
     </MemoryRouter>
   )
   const view = render(tree)
-  expect(screen.getByRole('status').textContent).toContain('正在确认登录状态')
+  expect(screen.getByRole('status').textContent).toBe('')
   auth.status = 'anonymous'
   view.rerender(
     <MemoryRouter initialEntries={['/support/errors/example']}>

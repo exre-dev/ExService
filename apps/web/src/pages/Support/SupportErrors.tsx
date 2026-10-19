@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type ComponentProps } from 'react'
 import { Link, useParams } from 'react-router'
-import { Button } from '@exre/exui'
 import { ArrowLeft, ArrowUpRight } from 'lucide-react'
-import { ContentImage, ContentProse } from '@workspace/components'
+import { AsyncBoundary, ContentImage, ContentProse } from '@workspace/components'
 import { createMdxComponents } from '../../content/mdx'
 import { supportImage, supportRegistry, supportStore } from '../../content/support/registry'
 import type { ContentImageData, ErrorEntry } from '../../content/support/types'
 import { useContent } from '../../content/useContent'
+import { reloadPage } from '../../content/reloadPage'
 import { useSupportFocus } from './useSupportFocus'
 import styles from './Support.module.scss'
 
@@ -119,27 +119,19 @@ function ErrorArticle({ error }: { error: ErrorEntry }) {
       </header>
       <div className={styles.readingGrid}>
         <div ref={body} className={styles.readingBody}>
-          {state.status === 'loading' ? (
-            <p role="status" className={styles.loading}>
-              正在加载内容…
-            </p>
-          ) : state.status === 'error' ? (
-            <div role="alert" className={styles.loading}>
-              <p>内容暂时无法加载</p>
-              <div className={styles.recovery}>
-                <Button variant="outline" onClick={state.retry}>
-                  重试
-                </Button>
-                <Button variant="ghost" onClick={() => window.location.reload()}>
-                  重新加载当前页面
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <ContentProse>
-              <state.module.default components={mdxComponents} />
-            </ContentProse>
-          )}
+          <AsyncBoundary
+            loading={state.status === 'loading'}
+            loadingTitle="正在加载内容…"
+            error={state.status === 'error' ? (state.error ?? '内容加载失败。') : undefined}
+            resetKey={error.id}
+            onRetry={reloadPage}
+          >
+            {state.status === 'ready' && (
+              <ContentProse>
+                <state.module.default components={mdxComponents} />
+              </ContentProse>
+            )}
+          </AsyncBoundary>
         </div>
         {headings.length > 0 && (
           <nav className={styles.toc} aria-label="正文目录">
