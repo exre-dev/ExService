@@ -1,0 +1,1514 @@
+# Docs 领域 operation。全部使用 tag docs；公开 operation 显式 `security: []`，登录 operation 显式 `bearerAuth: []`。
+# 每个 operation 的 `x-fastify-config.docs` 是注册配置，不是用户请求字段；只允许列出的键，且由 Server 在注册时校验。
+
+/docs/spaces:
+  get:
+    operationId: listDocsSpaces
+    summary: List Docs spaces
+    description: 'Public read. Keyset pagination ordered by (createdAt, id) ascending. `limit` defaults to 100 and is clamped to 1..200; `cursor` is opaque and bound to the tree generation. The page never exposes trashed content and never writes state.'
+    security: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: read
+    parameters:
+      - name: limit
+        in: query
+        required: false
+        description: 'Page size. Defaults to 100.'
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+      - name: cursor
+        in: query
+        required: false
+        description: 'Opaque cursor returned by a previous page of the same query.'
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 1024
+    responses:
+      '200':
+        description: One page of spaces.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsSpacePage'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+  post:
+    operationId: createDocsSpace
+    summary: Create a Docs space
+    description: 'Creates one space with its name and description. The caller never supplies id, version, treeVersion or timestamps; those are server-owned fields and are rejected when written.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: command
+        wireBytes: 65536
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsCreateSpaceRequest'
+    responses:
+      '201':
+        description: The created space.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsSpace'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/spaces/{spaceId}:
+  get:
+    operationId: getDocsSpace
+    summary: Read one Docs space
+    description: 'Public read. Returns the current space snapshot including its tree version. Unknown ids and trashed-only content merge into a neutral 404.'
+    security: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: read
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    responses:
+      '200':
+        description: The space snapshot.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsSpace'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+  patch:
+    operationId: updateDocsSpace
+    summary: Update a Docs space name and description
+    description: 'A complete replacement of the name and description, not a partial patch; optional fields would make "clear" ambiguous. `expectedVersion` must match the stored space version, otherwise 409 and the caller re-reads before retrying.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: command
+        wireBytes: 65536
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsUpdateSpaceRequest'
+    responses:
+      '200':
+        description: The space snapshot after the update.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsSpace'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/spaces/{spaceId}/delete:
+  post:
+    operationId: deleteDocsSpace
+    summary: Delete an empty Docs space
+    description: 'Deletion succeeds only when the space currently holds no document row and no template row; it does not require that nothing was ever written. Trashed documents and templates both count as references, so a trashed-only space is still non-empty and cannot be deleted. Uses POST so the version fields are carried in a validated JSON body.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: command
+        wireBytes: 65536
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsDeleteSpaceRequest'
+    responses:
+      '204':
+        description: The space was deleted; no body.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/spaces/{spaceId}/tree:
+  get:
+    operationId: getDocsTree
+    summary: Read one level of a space document tree
+    description: 'Public read. Only active nodes are returned. Omit `parentId` to read the root level; it must never be sent as the string null. An existing but empty level returns 200 with empty items, which never masks an unavailable parent: a parent that does not exist in this space, or that is trashed, is 404, and a parent id owned by another space merges into the same 404. A cursor whose space or parent level does not match the query is 400; a cursor bound to a different tree version is 409 DOCS_TREE_CHANGED and the caller restarts pagination.'
+    security: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: read
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+      - name: parentId
+        in: query
+        required: false
+        description: 'Parent document id. Omitted means the root level.'
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+      - name: limit
+        in: query
+        required: false
+        description: 'Page size. Defaults to 100.'
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+      - name: cursor
+        in: query
+        required: false
+        description: 'Opaque cursor returned by a previous page of the same space and parent.'
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 1024
+    responses:
+      '200':
+        description: One page of active tree nodes and the current tree version.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsTreePage'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/spaces/{spaceId}/documents:
+  post:
+    operationId: createDocsDocument
+    summary: Create a document in a space
+    description: 'Creates one document under `parentId` (null means the space root) at the position implied by `beforeDocumentId` (null appends to the end of the level). The parent and the anchor must belong to the path space and be active. The body is required; an empty document is expressed as an empty doc or a single paragraph. The request is subject to the 9 MiB content wire budget and to the 8 MiB content profile budget, plus the per-space 10,000 physical row quota.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: content
+        wireBytes: 9437184
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsCreateDocumentRequest'
+    responses:
+      '201':
+        description: The created document and the new tree version.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsDocumentResult'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/spaces/{spaceId}/trash:
+  get:
+    operationId: listDocsTrash
+    summary: List the current trash roots of a space
+    description: 'Login required. Returns only roots of the current deletion batches, ordered by (deletedAt, id) descending, with a cursor bound to the tree version. Members of a batch that are not themselves roots are not listed separately.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: read
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+      - name: limit
+        in: query
+        required: false
+        description: 'Page size. Defaults to 100.'
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+      - name: cursor
+        in: query
+        required: false
+        description: 'Opaque cursor returned by a previous page of the same space.'
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 1024
+    responses:
+      '200':
+        description: One page of trash groups and the current tree version.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsTrashPage'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/documents/{documentId}:
+  get:
+    operationId: getDocsDocument
+    summary: Read one active document
+    description: 'Public read. Returns the normalized body together with the document version and the current tree version. A trashed id, an unknown id and an id that resolves to trashed content all merge into a neutral 404 DOCS_NOT_FOUND, so this operation never discloses trashed content.'
+    security: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: read
+    parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    responses:
+      '200':
+        description: The document and the current tree version.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsDocumentResult'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+  put:
+    operationId: updateDocsDocument
+    summary: Replace a document title and body
+    description: 'A complete replacement of title and body under `expectedVersion` and `expectedSpaceId`; the parent, the space and the sibling order cannot be changed here. The returned body is the normalized full snapshot, including filled default attributes and the trailing paragraph, and the caller must use it together with the new version to update local state. Unknown content is never trimmed into a success.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: content
+        wireBytes: 9437184
+    parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsSaveDocumentRequest'
+    responses:
+      '200':
+        description: The saved document and the new tree version.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsDocumentResult'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/documents/{documentId}/move:
+  post:
+    operationId: moveDocsDocument
+    summary: Move or reorder a document
+    description: 'Moves the document and its whole physical subtree into `targetSpaceId` under `parentId`, at the position implied by `beforeDocumentId`. Source and target space may be identical, which makes this the only sibling reordering operation. The parent and anchor must belong to the target space; a self reference, a descendant target, a wrong-level anchor or an anchor equal to the moved document is 409 DOCS_INVALID_MOVE. When the spaces differ, both levels are reordered and both tree versions are checked.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: command
+        wireBytes: 65536
+    parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsMoveDocumentRequest'
+    responses:
+      '200':
+        description: The move result, including both affected space versions.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsMoveResult'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/documents/{documentId}/trash:
+  post:
+    operationId: trashDocsDocument
+    summary: Move a document root and its subtree to trash
+    description: 'Only an active root is accepted. The whole physical subtree is trashed as one deletion batch and stops being readable through the public document read. `trashedCount` counts only the members newly trashed by this call, never members of older batches.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: command
+        wireBytes: 65536
+    parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsTrashDocumentRequest'
+    responses:
+      '200':
+        description: The trash result, including the deletion batch id.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsTrashResult'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/trash/documents/{documentId}:
+  get:
+    operationId: getDocsTrashedDocument
+    summary: Read one trashed document
+    description: 'Login required. The document must currently be trashed; reading an active document through this operation, or an unknown id, returns 404 DOCS_NOT_FOUND. The body and identity fields reuse the document shape while `hasChildren` still counts active direct children only, and the deletion attribution is carried separately in `deletion`.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: read
+    parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    responses:
+      '200':
+        description: The trashed document and its deletion facts.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsTrashedDocumentResult'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/trash/documents/{documentId}/restore:
+  post:
+    operationId: restoreDocsDocument
+    summary: Restore a whole deletion batch
+    description: 'The path must be the root of the current deletion batch; restoring a non-root member is 409 DOCS_RESTORE_ROOT_REQUIRED. The whole batch is restored in one step and there is no targetSpaceId, parentId, children or includePrevious field. `placement` reports whether the root returned to its original parent or fell back to the space root when that parent is no longer available.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: command
+        wireBytes: 65536
+    parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsRestoreDocumentRequest'
+    responses:
+      '200':
+        description: The restore result and the new tree version.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsRestoreResult'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/search:
+  get:
+    operationId: searchDocsDocuments
+    summary: Search active documents
+    description: 'RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid request, performs no query and returns no business data. The 200 DocsSearchPage shape below is the reserved success contract and is registered only so the generated client can carry it; it is not returned in this release. When implemented, only active documents are indexed and searched, and excerpts never contain trashed content.'
+    security: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: read
+    parameters:
+      - name: q
+        in: query
+        required: true
+        description: 'Search text, 1 to 200 characters.'
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 200
+      - name: spaceId
+        in: query
+        required: false
+        description: 'Optional space restriction.'
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+      - name: limit
+        in: query
+        required: false
+        description: 'Page size. Defaults to 20.'
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+      - name: cursor
+        in: query
+        required: false
+        description: 'Opaque cursor returned by a previous page of the same query.'
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 1024
+    responses:
+      '200':
+        description: Reserved success shape; not returned in this release.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsSearchPage'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '501':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/documents/{documentId}/ai-suggestions:
+  post:
+    operationId: suggestDocsDocumentContent
+    summary: Request an AI content suggestion for a document
+    description: 'RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid request, reads no document, calls no model and consumes no credential. The 200 DocsAiSuggestion shape is reserved for a future release and is not returned now. When implemented, the server reads the current document, checks `baseVersion`, and returns a proposal that is never auto-saved; applying it through updateDocsDocument re-checks the same base version, content profile and space.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: command
+        wireBytes: 65536
+    parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsAiSuggestionRequest'
+    responses:
+      '200':
+        description: Reserved success shape; not returned in this release.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsAiSuggestion'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '501':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/spaces/{spaceId}/templates:
+  get:
+    operationId: listDocsTemplates
+    summary: List the templates of a space
+    description: 'RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 200 DocsTemplatePage shape is reserved for a future release and is not returned now. Templates belong to exactly one space and the list items never carry the template body.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: read
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+      - name: limit
+        in: query
+        required: false
+        description: 'Page size. Defaults to 100.'
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+      - name: cursor
+        in: query
+        required: false
+        description: 'Opaque cursor returned by a previous page of the same space.'
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 1024
+    responses:
+      '200':
+        description: Reserved success shape; not returned in this release.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsTemplatePage'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '501':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+  post:
+    operationId: createDocsTemplate
+    summary: Create a template in a space
+    description: 'RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 201 DocsTemplate shape is reserved for a future release and is not returned now. Uses the same 9 MiB content wire budget and 8 MiB content profile budget as document bodies.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: content
+        wireBytes: 9437184
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsCreateTemplateRequest'
+    responses:
+      '201':
+        description: Reserved success shape; not returned in this release.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsTemplate'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '501':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/templates/{templateId}:
+  get:
+    operationId: getDocsTemplate
+    summary: Read one template
+    description: 'RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 200 DocsTemplate shape is reserved for a future release and is not returned now.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: read
+    parameters:
+      - name: templateId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    responses:
+      '200':
+        description: Reserved success shape; not returned in this release.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsTemplate'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '501':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+  put:
+    operationId: updateDocsTemplate
+    summary: Replace a template name and body
+    description: 'RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 200 DocsTemplate shape is reserved for a future release and is not returned now.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: content
+        wireBytes: 9437184
+    parameters:
+      - name: templateId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsUpdateTemplateRequest'
+    responses:
+      '200':
+        description: Reserved success shape; not returned in this release.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsTemplate'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '501':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/templates/{templateId}/delete:
+  post:
+    operationId: deleteDocsTemplate
+    summary: Delete a template
+    description: 'RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 204 shape is reserved for a future release and is not returned now. Deleting a template deletes only the template row and never deletes the body already applied to documents.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: command
+        wireBytes: 65536
+    parameters:
+      - name: templateId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsDeleteTemplateRequest'
+    responses:
+      '204':
+        description: Reserved success shape; not returned in this release. No body.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '501':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/documents/{documentId}/apply-template:
+  post:
+    operationId: applyDocsTemplate
+    summary: Apply a template to a document
+    description: 'RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 200 DocsDocumentResult shape is reserved for a future release and is not returned now. Applying copies the template body and keeps the document title; the document and the template must belong to the same space, and no application record is created.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: command
+        wireBytes: 65536
+    parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsApplyTemplateRequest'
+    responses:
+      '200':
+        description: Reserved success shape; not returned in this release.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsDocumentResult'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '501':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/documents/{documentId}/attachments:
+  get:
+    operationId: listDocsAttachments
+    summary: List the attachments of a document
+    description: 'RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid request, performs no query and returns no business data. The 200 DocsAttachmentPage shape is reserved for a future release and is not returned now.'
+    security: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: read
+    parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+      - name: limit
+        in: query
+        required: false
+        description: 'Page size. Defaults to 100.'
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+      - name: cursor
+        in: query
+        required: false
+        description: 'Opaque cursor returned by a previous page of the same document.'
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 1024
+    responses:
+      '200':
+        description: Reserved success shape; not returned in this release.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsAttachmentPage'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '501':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+  post:
+    operationId: uploadDocsAttachment
+    summary: Upload an attachment for a document
+    description: 'RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every authenticated request. The multipart payload is never consumed, parsed or validated in this release, so a malformed upload from an authenticated caller can also receive 501; the connection is closed after the fixed error response is flushed. The 201 DocsAttachment shape is reserved for a future release and is not returned now.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: reserved-upload
+    parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsAttachmentUploadRequest'
+          encoding:
+            data:
+              contentType: '*/*'
+            fileName:
+              contentType: text/plain
+            contentType:
+              contentType: text/plain
+            expectedSpaceId:
+              contentType: text/plain
+            expectedDocumentVersion:
+              contentType: text/plain
+    responses:
+      '201':
+        description: Reserved success shape; not returned in this release.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsAttachment'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '501':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/attachments/{attachmentId}:
+  get:
+    operationId: getDocsAttachment
+    summary: Read one attachment and its download URL
+    description: 'RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid request. The 200 DocsAttachmentAccess shape is reserved for a future release and is not returned now. The download URL is an absolute HTTP(S) address whose validity is decided by the storage medium and is not a proof of ownership or of the originating request.'
+    security: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: read
+    parameters:
+      - name: attachmentId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    responses:
+      '200':
+        description: Reserved success shape; not returned in this release.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsAttachmentAccess'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '501':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/attachments/{attachmentId}/delete:
+  post:
+    operationId: deleteDocsAttachment
+    summary: Detach an attachment from its document
+    description: 'RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 204 shape is reserved for a future release and is not returned now. Deleting an attachment only removes the association; it never deletes the document and never deletes the stored object.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: command
+        wireBytes: 65536
+    parameters:
+      - name: attachmentId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsDeleteAttachmentRequest'
+    responses:
+      '204':
+        description: Reserved success shape; not returned in this release. No body.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '501':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/documents/{documentId}/comments:
+  get:
+    operationId: listDocsComments
+    summary: List the comments of a document
+    description: 'RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid request, performs no query and returns no business data. The 200 DocsCommentPage shape is reserved for a future release and is not returned now.'
+    security: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: read
+    parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+      - name: limit
+        in: query
+        required: false
+        description: 'Page size. Defaults to 100.'
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+      - name: cursor
+        in: query
+        required: false
+        description: 'Opaque cursor returned by a previous page of the same document.'
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 1024
+    responses:
+      '200':
+        description: Reserved success shape; not returned in this release.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsCommentPage'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '501':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+  post:
+    operationId: createDocsComment
+    summary: Create a document comment
+    description: 'RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 201 DocsComment shape is reserved for a future release and is not returned now. There is no inline, selection, range, paragraphId, anchor, from/to or parentCommentId field, and no public author profile protocol in this release.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: command
+        wireBytes: 65536
+    parameters:
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsCreateCommentRequest'
+    responses:
+      '201':
+        description: Reserved success shape; not returned in this release.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsComment'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '501':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/comments/{commentId}:
+  put:
+    operationId: updateDocsComment
+    summary: Replace a comment body
+    description: 'RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 200 DocsComment shape is reserved for a future release and is not returned now. The body is stored as literal text and is never rendered as HTML.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: command
+        wireBytes: 65536
+    parameters:
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsUpdateCommentRequest'
+    responses:
+      '200':
+        description: Reserved success shape; not returned in this release.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/DocsComment'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '501':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+/docs/comments/{commentId}/delete:
+  post:
+    operationId: deleteDocsComment
+    summary: Delete a comment
+    description: 'RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 204 shape is reserved for a future release and is not returned now.'
+    security:
+      - bearerAuth: []
+    tags: [docs]
+    x-fastify-config:
+      docs:
+        kind: command
+        wireBytes: 65536
+    parameters:
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          $ref: '../openapi.yaml#/components/schemas/Uuid'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/DocsDeleteCommentRequest'
+    responses:
+      '204':
+        description: Reserved success shape; not returned in this release. No body.
+        headers:
+          X-Request-Id:
+            $ref: '../openapi.yaml#/components/headers/RequestId'
+          Cache-Control:
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '413':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '415':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '501':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      default:
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'

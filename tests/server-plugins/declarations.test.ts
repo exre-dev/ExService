@@ -52,6 +52,7 @@ it('rejects conflicting service fields in the full declaration graph', () => {
       'modules/storage/fastify.d.ts',
       'modules/notifications/fastify.d.ts',
       'domains/join/fastify.d.ts',
+      'domains/docs/fastify.d.ts',
     ]) {
       expect(compilerPath(files.stdout)).toContain(
         compilerPath(join(root, 'apps/server/src', declaration)),

@@ -2,6 +2,7 @@ import type { FastifyError, FastifyInstance } from 'fastify'
 import { AuthError, type AuthErrorCode } from '@server/src/modules/auth/errors.js'
 import type { StorageErrorCode } from '@server/src/modules/storage/errors.js'
 import type { FeedbackErrorCode } from './domains/support/errors.js'
+import type { DocsErrorCode } from '@server/src/domains/docs/errors.js'
 
 /**
  * Contract 只把 `ErrorEnvelope.error.code` 约束为 string；下列取值是实现侧的约定。
@@ -14,6 +15,7 @@ export type ErrorCode =
   | AuthErrorCode
   | StorageErrorCode
   | FeedbackErrorCode
+  | DocsErrorCode
 
 /**
  * 应用错误对外契约：带 code / statusCode / publicMessage 的错误都按固定文案输出，

@@ -72,6 +72,7 @@ it('shares the production two-active/sixteen-waiting budget between login and in
     notifications: fixture.notifications,
     clickupServices: fixture.clickupServices,
     supportServices: fixture.supportServices,
+    docsServices: fixture.docsServices,
   })
   apps.push(app)
   const login = () =>

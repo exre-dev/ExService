@@ -5,6 +5,10 @@
     "moduleResolution": "NodeNext",
     "noEmit": true,
     "skipLibCheck": false,
+    // `prosemirror-model` 的声明文件引用 DOM 类型。Docs 的 content 模块只在运行期使用其
+    // 纯 model 子入口（已由无 DOM 的进程验证），这里仅为编译声明文件补齐类型环境，
+    // 不代表 Server 运行需要浏览器全局对象。
+    "lib": ["ES2023", "DOM"],
     "types": ["node"],
     "typeRoots": ["../../apps/server/node_modules/@types"]
   },

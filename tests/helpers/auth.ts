@@ -13,6 +13,7 @@ import { JoinService } from '@server/src/domains/join/applications/service'
 import { createStorageModule } from '@server/src/modules/storage/factory'
 import { parseStorageConfig } from '@server/src/modules/storage/config'
 import { createNotificationModule } from '@server/src/modules/notifications/factory'
+import { DocsService } from '@server/src/domains/docs/service'
 import { isolatedPostgres } from './postgres'
 import { unavailableSupport } from './support'
 
@@ -137,6 +138,8 @@ export async function createTestAuth(
   // 通知模块使用同一隔离 schema 与注入的时钟/ID，不启动后台 worker，
   // 测试需要投影时显式调用一次 runRound。
   const notifications = createNotificationModule({ db, tokenKey: Buffer.alloc(32, 3), now })
+  // Docs 使用同一隔离 schema 与注入的时钟/ID，不触碰开发库。
+  const docsServices = new DocsService({ db, now, createId })
   return {
     db,
     connectionString: isolated.connectionString,
@@ -148,6 +151,7 @@ export async function createTestAuth(
     storageServices,
     notifications,
     ...unavailableSupport(db, profileServices),
+    docsServices,
     avatarDirectory,
     deliveries,
     now,

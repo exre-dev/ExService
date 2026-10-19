@@ -4,6 +4,7 @@ import { operations as identity } from '../modules/identity/api/operations.js'
 import { operations as join } from '../domains/join/api/operations.js'
 import { operations as storage } from '../modules/storage/api/operations.js'
 import { operations as notifications } from '../modules/notifications/api/operations.js'
+import { operations as docs } from '../domains/docs/api/operations.js'
 import { operations as system } from './system/operations.js'
 import { operations as support } from '../domains/support/api/operations.js'
 
@@ -42,4 +43,5 @@ export const serviceHandlers = mergeOperations(
   storage,
   notifications,
   support,
+  docs,
 )

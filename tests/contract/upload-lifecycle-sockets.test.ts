@@ -143,6 +143,7 @@ async function storageSetup(
           notifications: f.notifications,
           clickupServices: f.clickupServices,
           supportServices: f.supportServices,
+          docsServices: f.docsServices,
           corsAllowedOrigins: options.origins,
           logger: options.logger,
         })

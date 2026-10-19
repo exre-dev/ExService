@@ -9,6 +9,7 @@ import identityApi, { type IdentityApiPluginOptions } from '../modules/identity/
 import storageApi from '../modules/storage/api/plugin.js'
 import notificationsApi from '../modules/notifications/api/plugin.js'
 import supportApi from '../domains/support/api/plugin.js'
+import docsApi from '../domains/docs/api/plugin.js'
 import systemApi from './system/plugin.js'
 import { registerRequestNormalization } from './shared/request-normalization.js'
 import { serviceHandlers } from './service-handlers.js'
@@ -25,6 +26,7 @@ const plugin: FastifyPluginAsync<WebsiteApiPluginOptions> = async (app, options)
   await app.register(storageApi)
   await app.register(notificationsApi)
   await app.register(supportApi)
+  await app.register(docsApi)
   const document = readContract()
   assertOperationCoverage(document, serviceHandlers)
   await app.register(openapiGlue, {

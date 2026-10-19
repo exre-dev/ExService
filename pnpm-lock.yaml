@@ -80,6 +80,9 @@ importers:
       '@fastify/multipart':
         specifier: 10.1.2
         version: 10.1.2
+      '@tiptap/pm':
+        specifier: 3.32.0
+        version: 3.32.0
       '@workspace/common':
         specifier: workspace:*
         version: link:../../packages/common

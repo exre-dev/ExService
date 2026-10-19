@@ -609,6 +609,494 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/docs/spaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Docs spaces
+         * @description Public read. Keyset pagination ordered by (createdAt, id) ascending. `limit` defaults to 100 and is clamped to 1..200; `cursor` is opaque and bound to the tree generation. The page never exposes trashed content and never writes state.
+         */
+        get: operations["listDocsSpaces"];
+        put?: never;
+        /**
+         * Create a Docs space
+         * @description Creates one space with its name and description. The caller never supplies id, version, treeVersion or timestamps; those are server-owned fields and are rejected when written.
+         */
+        post: operations["createDocsSpace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/spaces/{spaceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one Docs space
+         * @description Public read. Returns the current space snapshot including its tree version. Unknown ids and trashed-only content merge into a neutral 404.
+         */
+        get: operations["getDocsSpace"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a Docs space name and description
+         * @description A complete replacement of the name and description, not a partial patch; optional fields would make "clear" ambiguous. `expectedVersion` must match the stored space version, otherwise 409 and the caller re-reads before retrying.
+         */
+        patch: operations["updateDocsSpace"];
+        trace?: never;
+    };
+    "/docs/spaces/{spaceId}/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Delete an empty Docs space
+         * @description Deletion succeeds only when the space currently holds no document row and no template row; it does not require that nothing was ever written. Trashed documents and templates both count as references, so a trashed-only space is still non-empty and cannot be deleted. Uses POST so the version fields are carried in a validated JSON body.
+         */
+        post: operations["deleteDocsSpace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/spaces/{spaceId}/tree": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one level of a space document tree
+         * @description Public read. Only active nodes are returned. Omit `parentId` to read the root level; it must never be sent as the string null. An existing but empty level returns 200 with empty items, which never masks an unavailable parent: a parent that does not exist in this space, or that is trashed, is 404, and a parent id owned by another space merges into the same 404. A cursor whose space or parent level does not match the query is 400; a cursor bound to a different tree version is 409 DOCS_TREE_CHANGED and the caller restarts pagination.
+         */
+        get: operations["getDocsTree"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/spaces/{spaceId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a document in a space
+         * @description Creates one document under `parentId` (null means the space root) at the position implied by `beforeDocumentId` (null appends to the end of the level). The parent and the anchor must belong to the path space and be active. The body is required; an empty document is expressed as an empty doc or a single paragraph. The request is subject to the 9 MiB content wire budget and to the 8 MiB content profile budget, plus the per-space 10,000 physical row quota.
+         */
+        post: operations["createDocsDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/spaces/{spaceId}/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the current trash roots of a space
+         * @description Login required. Returns only roots of the current deletion batches, ordered by (deletedAt, id) descending, with a cursor bound to the tree version. Members of a batch that are not themselves roots are not listed separately.
+         */
+        get: operations["listDocsTrash"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/spaces/{spaceId}/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the templates of a space
+         * @description RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 200 DocsTemplatePage shape is reserved for a future release and is not returned now. Templates belong to exactly one space and the list items never carry the template body.
+         */
+        get: operations["listDocsTemplates"];
+        put?: never;
+        /**
+         * Create a template in a space
+         * @description RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 201 DocsTemplate shape is reserved for a future release and is not returned now. Uses the same 9 MiB content wire budget and 8 MiB content profile budget as document bodies.
+         */
+        post: operations["createDocsTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/documents/{documentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one active document
+         * @description Public read. Returns the normalized body together with the document version and the current tree version. A trashed id, an unknown id and an id that resolves to trashed content all merge into a neutral 404 DOCS_NOT_FOUND, so this operation never discloses trashed content.
+         */
+        get: operations["getDocsDocument"];
+        /**
+         * Replace a document title and body
+         * @description A complete replacement of title and body under `expectedVersion` and `expectedSpaceId`; the parent, the space and the sibling order cannot be changed here. The returned body is the normalized full snapshot, including filled default attributes and the trailing paragraph, and the caller must use it together with the new version to update local state. Unknown content is never trimmed into a success.
+         */
+        put: operations["updateDocsDocument"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/documents/{documentId}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move or reorder a document
+         * @description Moves the document and its whole physical subtree into `targetSpaceId` under `parentId`, at the position implied by `beforeDocumentId`. Source and target space may be identical, which makes this the only sibling reordering operation. The parent and anchor must belong to the target space; a self reference, a descendant target, a wrong-level anchor or an anchor equal to the moved document is 409 DOCS_INVALID_MOVE. When the spaces differ, both levels are reordered and both tree versions are checked.
+         */
+        post: operations["moveDocsDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/documents/{documentId}/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move a document root and its subtree to trash
+         * @description Only an active root is accepted. The whole physical subtree is trashed as one deletion batch and stops being readable through the public document read. `trashedCount` counts only the members newly trashed by this call, never members of older batches.
+         */
+        post: operations["trashDocsDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/documents/{documentId}/ai-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request an AI content suggestion for a document
+         * @description RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid request, reads no document, calls no model and consumes no credential. The 200 DocsAiSuggestion shape is reserved for a future release and is not returned now. When implemented, the server reads the current document, checks `baseVersion`, and returns a proposal that is never auto-saved; applying it through updateDocsDocument re-checks the same base version, content profile and space.
+         */
+        post: operations["suggestDocsDocumentContent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/documents/{documentId}/apply-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply a template to a document
+         * @description RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 200 DocsDocumentResult shape is reserved for a future release and is not returned now. Applying copies the template body and keeps the document title; the document and the template must belong to the same space, and no application record is created.
+         */
+        post: operations["applyDocsTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/documents/{documentId}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the attachments of a document
+         * @description RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid request, performs no query and returns no business data. The 200 DocsAttachmentPage shape is reserved for a future release and is not returned now.
+         */
+        get: operations["listDocsAttachments"];
+        put?: never;
+        /**
+         * Upload an attachment for a document
+         * @description RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every authenticated request. The multipart payload is never consumed, parsed or validated in this release, so a malformed upload from an authenticated caller can also receive 501; the connection is closed after the fixed error response is flushed. The 201 DocsAttachment shape is reserved for a future release and is not returned now.
+         */
+        post: operations["uploadDocsAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/documents/{documentId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the comments of a document
+         * @description RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid request, performs no query and returns no business data. The 200 DocsCommentPage shape is reserved for a future release and is not returned now.
+         */
+        get: operations["listDocsComments"];
+        put?: never;
+        /**
+         * Create a document comment
+         * @description RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 201 DocsComment shape is reserved for a future release and is not returned now. There is no inline, selection, range, paragraphId, anchor, from/to or parentCommentId field, and no public author profile protocol in this release.
+         */
+        post: operations["createDocsComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/trash/documents/{documentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one trashed document
+         * @description Login required. The document must currently be trashed; reading an active document through this operation, or an unknown id, returns 404 DOCS_NOT_FOUND. The body and identity fields reuse the document shape while `hasChildren` still counts active direct children only, and the deletion attribution is carried separately in `deletion`.
+         */
+        get: operations["getDocsTrashedDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/trash/documents/{documentId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore a whole deletion batch
+         * @description The path must be the root of the current deletion batch; restoring a non-root member is 409 DOCS_RESTORE_ROOT_REQUIRED. The whole batch is restored in one step and there is no targetSpaceId, parentId, children or includePrevious field. `placement` reports whether the root returned to its original parent or fell back to the space root when that parent is no longer available.
+         */
+        post: operations["restoreDocsDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one template
+         * @description RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 200 DocsTemplate shape is reserved for a future release and is not returned now.
+         */
+        get: operations["getDocsTemplate"];
+        /**
+         * Replace a template name and body
+         * @description RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 200 DocsTemplate shape is reserved for a future release and is not returned now.
+         */
+        put: operations["updateDocsTemplate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/templates/{templateId}/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Delete a template
+         * @description RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 204 shape is reserved for a future release and is not returned now. Deleting a template deletes only the template row and never deletes the body already applied to documents.
+         */
+        post: operations["deleteDocsTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/attachments/{attachmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one attachment and its download URL
+         * @description RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid request. The 200 DocsAttachmentAccess shape is reserved for a future release and is not returned now. The download URL is an absolute HTTP(S) address whose validity is decided by the storage medium and is not a proof of ownership or of the originating request.
+         */
+        get: operations["getDocsAttachment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/attachments/{attachmentId}/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Detach an attachment from its document
+         * @description RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 204 shape is reserved for a future release and is not returned now. Deleting an attachment only removes the association; it never deletes the document and never deletes the stored object.
+         */
+        post: operations["deleteDocsAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/comments/{commentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace a comment body
+         * @description RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 200 DocsComment shape is reserved for a future release and is not returned now. The body is stored as literal text and is never rendered as HTML.
+         */
+        put: operations["updateDocsComment"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/comments/{commentId}/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Delete a comment
+         * @description RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 204 shape is reserved for a future release and is not returned now.
+         */
+        post: operations["deleteDocsComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/docs/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search active documents
+         * @description RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid request, performs no query and returns no business data. The 200 DocsSearchPage shape below is the reserved success contract and is registered only so the generated client can carry it; it is not returned in this release. When implemented, only active documents are indexed and searched, and excerpts never contain trashed content.
+         */
+        get: operations["searchDocsDocuments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/support/feedback/options": {
         parameters: {
             query?: never;
@@ -1386,6 +1874,564 @@ export interface components {
                 code: string;
                 message: string;
                 requestId: string;
+            };
+        };
+        /** @description 乐观并发版本号；不接受字符串或小数。 */
+        DocsVersion: number;
+        /** @description 不透明分页游标；null 表示没有下一页。游标绑定树版本代际，不能当作权限证明，也不能跨空间或跨父层复用。 */
+        DocsCursor: string | null;
+        /** @description 文档标题；服务端 trim 后按 Unicode 码点限制为 1 至 200，拒绝全空白。 */
+        DocsTitle: string;
+        /** @description 空间名与模板名；服务端 trim 后按 Unicode 码点限制为 1 至 100。 */
+        DocsSpaceName: string;
+        /** @description 空间描述；保留正文空白，不做 trim。 */
+        DocsDescription: string;
+        /**
+         * @description 持久内容协议版本；不等于文档 version 或 Tiptap npm 版本。未知版本明确拒绝，不猜测转换。
+         * @constant
+         */
+        DocsContentSchemaVersion: 1;
+        DocsSpace: {
+            id: components["schemas"]["Uuid"];
+            name: components["schemas"]["DocsSpaceName"];
+            description: components["schemas"]["DocsDescription"];
+            version: components["schemas"]["DocsVersion"];
+            treeVersion: components["schemas"]["DocsVersion"];
+            createdAt: components["schemas"]["SafeTimestamp"];
+            updatedAt: components["schemas"]["SafeTimestamp"];
+        };
+        DocsSpacePage: {
+            items: components["schemas"]["DocsSpace"][];
+            nextCursor: components["schemas"]["DocsCursor"];
+        };
+        DocsTreeNode: {
+            id: components["schemas"]["Uuid"];
+            spaceId: components["schemas"]["Uuid"];
+            /** @description 父文档 ID；null 表示根层。树 operation 只返回活动节点。 */
+            parentId: components["schemas"]["Uuid"] | null;
+            title: components["schemas"]["DocsTitle"];
+            position: number;
+            version: components["schemas"]["DocsVersion"];
+            hasChildren: boolean;
+        };
+        DocsTreePage: {
+            items: components["schemas"]["DocsTreeNode"][];
+            treeVersion: components["schemas"]["DocsVersion"];
+            nextCursor: components["schemas"]["DocsCursor"];
+        };
+        DocsDocument: {
+            id: components["schemas"]["Uuid"];
+            spaceId: components["schemas"]["Uuid"];
+            /** @description 父文档 ID；null 表示根层。 */
+            parentId: components["schemas"]["Uuid"] | null;
+            title: components["schemas"]["DocsTitle"];
+            position: number;
+            version: components["schemas"]["DocsVersion"];
+            /** @description 只计活动直接子节点；已回收行的该值通常为 false，其存在不授予读取子树的能力。 */
+            hasChildren: boolean;
+            contentSchemaVersion: components["schemas"]["DocsContentSchemaVersion"];
+            content: components["schemas"]["DocsTiptapDocument"];
+            createdAt: components["schemas"]["SafeTimestamp"];
+            updatedAt: components["schemas"]["SafeTimestamp"];
+        };
+        DocsDocumentResult: {
+            document: components["schemas"]["DocsDocument"];
+            treeVersion: components["schemas"]["DocsVersion"];
+        };
+        DocsSpaceVersion: {
+            spaceId: components["schemas"]["Uuid"];
+            treeVersion: components["schemas"]["DocsVersion"];
+        };
+        DocsMoveResult: {
+            documentId: components["schemas"]["Uuid"];
+            version: components["schemas"]["DocsVersion"];
+            source: components["schemas"]["DocsSpaceVersion"];
+            target: components["schemas"]["DocsSpaceVersion"];
+            /** @description 本次文档字段实际更新的去重行数；成功 no-op 至少更新根。跨空间包含两侧同级重排。 */
+            affectedCount: number;
+        };
+        DocsTrashResult: {
+            documentId: components["schemas"]["Uuid"];
+            version: components["schemas"]["DocsVersion"];
+            spaceId: components["schemas"]["Uuid"];
+            treeVersion: components["schemas"]["DocsVersion"];
+            deletionBatchId: components["schemas"]["Uuid"];
+            /** @description 仅本次新回收的成员，不包含旧批次。 */
+            trashedCount: number;
+        };
+        DocsTrashGroup: {
+            documentId: components["schemas"]["Uuid"];
+            spaceId: components["schemas"]["Uuid"];
+            /** @description 回收根当时的父文档 ID；null 表示根层。 */
+            parentId: components["schemas"]["Uuid"] | null;
+            title: components["schemas"]["DocsTitle"];
+            version: components["schemas"]["DocsVersion"];
+            deletionBatchId: components["schemas"]["Uuid"];
+            deletedAt: components["schemas"]["SafeTimestamp"];
+            /** @description 仅同批次成员。 */
+            documentCount: number;
+        };
+        DocsTrashPage: {
+            items: components["schemas"]["DocsTrashGroup"][];
+            treeVersion: components["schemas"]["DocsVersion"];
+            nextCursor: components["schemas"]["DocsCursor"];
+        };
+        DocsDeletionFacts: {
+            batchId: components["schemas"]["Uuid"];
+            rootId: components["schemas"]["Uuid"];
+            deletedAt: components["schemas"]["SafeTimestamp"];
+        };
+        DocsTrashedDocumentResult: {
+            document: components["schemas"]["DocsDocument"];
+            treeVersion: components["schemas"]["DocsVersion"];
+            deletion: components["schemas"]["DocsDeletionFacts"];
+        };
+        DocsRestoreResult: {
+            documentId: components["schemas"]["Uuid"];
+            version: components["schemas"]["DocsVersion"];
+            spaceId: components["schemas"]["Uuid"];
+            treeVersion: components["schemas"]["DocsVersion"];
+            restoredCount: number;
+            /** @description 恢复后仍位于该根物理子树中的其他回收批次成员，不计已经独立恢复并脱离的节点。 */
+            retainedTrashedCount: number;
+            /** @enum {string} */
+            placement: "original-parent" | "space-root";
+        };
+        DocsCreateSpaceRequest: {
+            name: components["schemas"]["DocsSpaceName"];
+            description: components["schemas"]["DocsDescription"];
+        };
+        /** @description 空间更新同时提交名字和描述，避免可省略字段与清空语义混淆。 */
+        DocsUpdateSpaceRequest: {
+            expectedVersion: components["schemas"]["DocsVersion"];
+            name: components["schemas"]["DocsSpaceName"];
+            description: components["schemas"]["DocsDescription"];
+        };
+        DocsDeleteSpaceRequest: {
+            expectedVersion: components["schemas"]["DocsVersion"];
+            expectedTreeVersion: components["schemas"]["DocsVersion"];
+        };
+        DocsCreateDocumentRequest: {
+            expectedTreeVersion: components["schemas"]["DocsVersion"];
+            /** @description 父文档 ID；null 表示创建在根层。父与锚点必须属于 path 空间且活动。 */
+            parentId: components["schemas"]["Uuid"] | null;
+            /** @description 同级重排锚点；null 表示追加到同级末尾。 */
+            beforeDocumentId: components["schemas"]["Uuid"] | null;
+            title: components["schemas"]["DocsTitle"];
+            contentSchemaVersion: components["schemas"]["DocsContentSchemaVersion"];
+            content: components["schemas"]["DocsTiptapDocument"];
+        };
+        /** @description 完整替换标题与正文；不允许改父、改空间或改顺序。 */
+        DocsSaveDocumentRequest: {
+            expectedSpaceId: components["schemas"]["Uuid"];
+            expectedVersion: components["schemas"]["DocsVersion"];
+            title: components["schemas"]["DocsTitle"];
+            contentSchemaVersion: components["schemas"]["DocsContentSchemaVersion"];
+            content: components["schemas"]["DocsTiptapDocument"];
+        };
+        DocsMoveDocumentRequest: {
+            sourceSpaceId: components["schemas"]["Uuid"];
+            targetSpaceId: components["schemas"]["Uuid"];
+            expectedVersion: components["schemas"]["DocsVersion"];
+            expectedSourceTreeVersion: components["schemas"]["DocsVersion"];
+            expectedTargetTreeVersion: components["schemas"]["DocsVersion"];
+            /** @description 目标父文档 ID；null 表示目标空间根层。父与锚点必须属于目标空间。 */
+            parentId: components["schemas"]["Uuid"] | null;
+            /** @description 目标同级重排锚点；null 表示追加到同级末尾。 */
+            beforeDocumentId: components["schemas"]["Uuid"] | null;
+        };
+        /** @description 只接受活动根；整棵物理子树一起进入回收站。 */
+        DocsTrashDocumentRequest: {
+            expectedSpaceId: components["schemas"]["Uuid"];
+            expectedVersion: components["schemas"]["DocsVersion"];
+            expectedTreeVersion: components["schemas"]["DocsVersion"];
+        };
+        /** @description 恢复当前整批；path 必须是该批次的根。没有 targetSpaceId、parentId、children 或 includePrevious 字段。 */
+        DocsRestoreDocumentRequest: {
+            expectedSpaceId: components["schemas"]["Uuid"];
+            expectedVersion: components["schemas"]["DocsVersion"];
+            expectedTreeVersion: components["schemas"]["DocsVersion"];
+            deletionBatchId: components["schemas"]["Uuid"];
+        };
+        DocsSearchHit: {
+            documentId: components["schemas"]["Uuid"];
+            spaceId: components["schemas"]["Uuid"];
+            title: components["schemas"]["DocsTitle"];
+            excerpt: string;
+        };
+        DocsSearchPage: {
+            items: components["schemas"]["DocsSearchHit"][];
+            nextCursor: components["schemas"]["DocsCursor"];
+        };
+        /** @description AI 不接受调用方提交整篇待保存正文；只提交指令并核对 baseVersion。 */
+        DocsAiSuggestionRequest: {
+            expectedSpaceId: components["schemas"]["Uuid"];
+            baseVersion: components["schemas"]["DocsVersion"];
+            instruction: string;
+        };
+        DocsAiSuggestion: {
+            documentId: components["schemas"]["Uuid"];
+            baseVersion: components["schemas"]["DocsVersion"];
+            contentSchemaVersion: components["schemas"]["DocsContentSchemaVersion"];
+            proposedTitle: components["schemas"]["DocsTitle"];
+            proposedContent: components["schemas"]["DocsTiptapDocument"];
+        };
+        DocsTemplate: {
+            id: components["schemas"]["Uuid"];
+            spaceId: components["schemas"]["Uuid"];
+            name: components["schemas"]["DocsSpaceName"];
+            contentSchemaVersion: components["schemas"]["DocsContentSchemaVersion"];
+            content: components["schemas"]["DocsTiptapDocument"];
+            version: components["schemas"]["DocsVersion"];
+            createdAt: components["schemas"]["SafeTimestamp"];
+            updatedAt: components["schemas"]["SafeTimestamp"];
+        };
+        /** @description 模板列表项；字段与 DocsTemplate 相同，只是不含正文。 */
+        DocsTemplateSummary: {
+            id: components["schemas"]["Uuid"];
+            spaceId: components["schemas"]["Uuid"];
+            name: components["schemas"]["DocsSpaceName"];
+            contentSchemaVersion: components["schemas"]["DocsContentSchemaVersion"];
+            version: components["schemas"]["DocsVersion"];
+            createdAt: components["schemas"]["SafeTimestamp"];
+            updatedAt: components["schemas"]["SafeTimestamp"];
+        };
+        DocsTemplatePage: {
+            items: components["schemas"]["DocsTemplateSummary"][];
+            nextCursor: components["schemas"]["DocsCursor"];
+        };
+        DocsCreateTemplateRequest: {
+            name: components["schemas"]["DocsSpaceName"];
+            contentSchemaVersion: components["schemas"]["DocsContentSchemaVersion"];
+            content: components["schemas"]["DocsTiptapDocument"];
+        };
+        DocsUpdateTemplateRequest: {
+            expectedSpaceId: components["schemas"]["Uuid"];
+            expectedVersion: components["schemas"]["DocsVersion"];
+            name: components["schemas"]["DocsSpaceName"];
+            contentSchemaVersion: components["schemas"]["DocsContentSchemaVersion"];
+            content: components["schemas"]["DocsTiptapDocument"];
+        };
+        DocsDeleteTemplateRequest: {
+            expectedSpaceId: components["schemas"]["Uuid"];
+            expectedVersion: components["schemas"]["DocsVersion"];
+        };
+        /** @description 应用模板只复制正文并保留文档标题；文档与模板必须同空间。模板不建立应用记录。 */
+        DocsApplyTemplateRequest: {
+            expectedSpaceId: components["schemas"]["Uuid"];
+            expectedVersion: components["schemas"]["DocsVersion"];
+            templateId: components["schemas"]["Uuid"];
+            expectedTemplateVersion: components["schemas"]["DocsVersion"];
+        };
+        DocsAttachment: {
+            id: components["schemas"]["Uuid"];
+            documentId: components["schemas"]["Uuid"];
+            fileName: string;
+            contentType: components["schemas"]["StorageContentType"];
+            byteSize: number;
+            /** @description 小写十六进制 SHA-256；不外发 medium 或 storage key。 */
+            sha256: string;
+            createdAt: components["schemas"]["SafeTimestamp"];
+        };
+        DocsAttachmentPage: {
+            items: components["schemas"]["DocsAttachment"][];
+            nextCursor: components["schemas"]["DocsCursor"];
+        };
+        DocsAttachmentAccess: {
+            attachment: components["schemas"]["DocsAttachment"];
+            /**
+             * Format: uri
+             * @description 绝对 HTTP(S) 地址；有效期由介质决定，不承诺永久可用。
+             */
+            downloadUrl: string;
+        };
+        /** @description 仅用于 multipart。恰好一个二进制 data part，以及限定的 fileName、contentType、expectedSpaceId、expectedDocumentVersion 文本字段；不允许 medium、key、url 或 ticket。filename 不决定存储路径，路径由服务端生成。 */
+        DocsAttachmentUploadRequest: {
+            /** Format: binary */
+            data: string;
+            fileName: string;
+            contentType: components["schemas"]["StorageContentType"];
+            expectedSpaceId: components["schemas"]["Uuid"];
+            expectedDocumentVersion: components["schemas"]["DocsVersion"];
+        };
+        /** @description 附件删除是解除关联，不删除文档，也不自动删除存储对象。 */
+        DocsDeleteAttachmentRequest: {
+            expectedSpaceId: components["schemas"]["Uuid"];
+            expectedDocumentVersion: components["schemas"]["DocsVersion"];
+        };
+        DocsComment: {
+            id: components["schemas"]["Uuid"];
+            documentId: components["schemas"]["Uuid"];
+            /** @description 保留字面文本，不作为 HTML；拒绝全空白。没有 inline、selection、range、anchor 或 parentCommentId 字段。 */
+            body: string;
+            version: components["schemas"]["DocsVersion"];
+            createdAt: components["schemas"]["SafeTimestamp"];
+            updatedAt: components["schemas"]["SafeTimestamp"];
+        };
+        DocsCommentPage: {
+            items: components["schemas"]["DocsComment"][];
+            nextCursor: components["schemas"]["DocsCursor"];
+        };
+        DocsCreateCommentRequest: {
+            expectedSpaceId: components["schemas"]["Uuid"];
+            body: string;
+        };
+        DocsUpdateCommentRequest: {
+            expectedSpaceId: components["schemas"]["Uuid"];
+            expectedVersion: components["schemas"]["DocsVersion"];
+            body: string;
+        };
+        DocsDeleteCommentRequest: {
+            expectedSpaceId: components["schemas"]["Uuid"];
+            expectedVersion: components["schemas"]["DocsVersion"];
+        };
+        /** @description 持久正文的完整 Tiptap profile 1 JSON（锁定 Tiptap 3.32.0 完整富文本预设）。本 schema 只约束 JSON 形状与有限值域：Server 另外独立校验节点语法、父子关系、Mark 组合、表格逻辑网格、Unicode 与内容预算（8 MiB 正文、10,000 节点、深度 32、表格网格 10,000）。不接受 Markdown、HTML 字符串、Yjs 数据或浏览器 Editor 对象；null 不是空正文。 */
+        DocsTiptapDocument: {
+            /** @constant */
+            type: "doc";
+            /** @description 输入允许空数组，Server 规范化为至少一个 paragraph；禁止嵌套 doc。 */
+            content: components["schemas"]["DocsTiptapNode"][];
+        };
+        /** @description 非 doc 节点的封闭 union；23 个分支靠各自的 type const 互斥，每次只应匹配一个分支。属性对象同样封闭，未知属性由 Server 明确拒绝。 */
+        DocsTiptapNode: components["schemas"]["DocsTiptapParagraph"] | components["schemas"]["DocsTiptapHeading"] | components["schemas"]["DocsTiptapText"] | components["schemas"]["DocsTiptapHardBreak"] | components["schemas"]["DocsTiptapBlockquote"] | components["schemas"]["DocsTiptapBulletList"] | components["schemas"]["DocsTiptapOrderedList"] | components["schemas"]["DocsTiptapListItem"] | components["schemas"]["DocsTiptapTaskList"] | components["schemas"]["DocsTiptapTaskItem"] | components["schemas"]["DocsTiptapCodeBlock"] | components["schemas"]["DocsTiptapHorizontalRule"] | components["schemas"]["DocsTiptapImage"] | components["schemas"]["DocsTiptapMention"] | components["schemas"]["DocsTiptapDetails"] | components["schemas"]["DocsTiptapDetailsSummary"] | components["schemas"]["DocsTiptapDetailsContent"] | components["schemas"]["DocsTiptapTable"] | components["schemas"]["DocsTiptapTableRow"] | components["schemas"]["DocsTiptapTableCell"] | components["schemas"]["DocsTiptapTableHeader"] | components["schemas"]["DocsTiptapAdmonition"] | components["schemas"]["DocsTiptapAdmonitionTitle"];
+        DocsTiptapParagraph: {
+            /** @constant */
+            type: "paragraph";
+            attrs?: {
+                /** @enum {string|null} */
+                textAlign?: "left" | "center" | "right" | "justify" | null;
+            };
+            content?: components["schemas"]["DocsTiptapNode"][];
+        };
+        DocsTiptapHeading: {
+            /** @constant */
+            type: "heading";
+            attrs?: {
+                /** @enum {integer} */
+                level?: 1 | 2 | 3 | 4;
+                /** @enum {string|null} */
+                textAlign?: "left" | "center" | "right" | "justify" | null;
+            };
+            content?: components["schemas"]["DocsTiptapNode"][];
+        };
+        DocsTiptapText: {
+            /** @constant */
+            type: "text";
+            /** @description 唯一允许声明 text 的节点；不能有 attrs 或 content。 */
+            text: string;
+            marks?: components["schemas"]["DocsTiptapMark"][];
+        };
+        DocsTiptapHardBreak: {
+            /** @constant */
+            type: "hardBreak";
+            marks?: components["schemas"]["DocsTiptapMark"][];
+        };
+        DocsTiptapBlockquote: {
+            /** @constant */
+            type: "blockquote";
+            content?: components["schemas"]["DocsTiptapNode"][];
+        };
+        DocsTiptapBulletList: {
+            /** @constant */
+            type: "bulletList";
+            content?: components["schemas"]["DocsTiptapNode"][];
+        };
+        DocsTiptapOrderedList: {
+            /** @constant */
+            type: "orderedList";
+            attrs?: {
+                start?: number;
+                /**
+                 * @description JSON 中持久为字符串形式。
+                 * @enum {string|null}
+                 */
+                type?: "1" | "a" | "A" | "i" | "I" | null;
+            };
+            content?: components["schemas"]["DocsTiptapNode"][];
+        };
+        DocsTiptapListItem: {
+            /** @constant */
+            type: "listItem";
+            content?: components["schemas"]["DocsTiptapNode"][];
+        };
+        DocsTiptapTaskList: {
+            /** @constant */
+            type: "taskList";
+            content?: components["schemas"]["DocsTiptapNode"][];
+        };
+        DocsTiptapTaskItem: {
+            /** @constant */
+            type: "taskItem";
+            attrs?: {
+                checked?: boolean;
+            };
+            content?: components["schemas"]["DocsTiptapNode"][];
+        };
+        DocsTiptapCodeBlock: {
+            /** @constant */
+            type: "codeBlock";
+            attrs?: {
+                language?: string | null;
+            };
+            /** @description 只含 text 节点，不带 Marks；保留代码空白。 */
+            content?: components["schemas"]["DocsTiptapText"][];
+        };
+        DocsTiptapHorizontalRule: {
+            /** @constant */
+            type: "horizontalRule";
+        };
+        /** @description src 没有默认值，因此 attrs 不可省略。 */
+        DocsTiptapImage: {
+            /** @constant */
+            type: "image";
+            attrs: {
+                /** @description 安全地址；profile 1 关闭全部 Data URL，不接受 javascript、blob、file 或其他协议，Image 不允许 mailto。 */
+                src: string;
+                alt?: string | null;
+                title?: string | null;
+                width?: number | null;
+                height?: number | null;
+            };
+        };
+        /** @description id 没有默认值，因此 attrs 不可省略。 */
+        DocsTiptapMention: {
+            /** @constant */
+            type: "mention";
+            attrs: {
+                /** @description 内容身份，不是授权凭据。 */
+                id: string;
+                label?: string | null;
+                mentionSuggestionChar?: string;
+            };
+        };
+        DocsTiptapDetails: {
+            /** @constant */
+            type: "details";
+            attrs?: {
+                /** @description profile 1 的 Node schema 始终包含 open；persist 是扩展选项而不是文档属性，提交它明确拒绝。 */
+                open?: boolean;
+            };
+            /** @description 由 Server 强制为恰好一个 detailsSummary 加一个 detailsContent。 */
+            content?: components["schemas"]["DocsTiptapNode"][];
+        };
+        DocsTiptapDetailsSummary: {
+            /** @constant */
+            type: "detailsSummary";
+            /** @description 只接受可格式化的 text 节点；不接受 hardBreak、Mention 或块节点。 */
+            content?: components["schemas"]["DocsTiptapText"][];
+        };
+        DocsTiptapDetailsContent: {
+            /** @constant */
+            type: "detailsContent";
+            content?: components["schemas"]["DocsTiptapNode"][];
+        };
+        DocsTiptapTable: {
+            /** @constant */
+            type: "table";
+            /** @description 不保存 DOM colgroup、View 或布局按钮。 */
+            content?: components["schemas"]["DocsTiptapNode"][];
+        };
+        DocsTiptapTableRow: {
+            /** @constant */
+            type: "tableRow";
+            /** @description 零或多个 cell/header；不设 minItems。上方单元格的 rowspan 可以完整覆盖后续行，因此空行合法，最终仍须通过逻辑网格策略。 */
+            content?: components["schemas"]["DocsTiptapNode"][];
+        };
+        DocsTiptapTableCell: {
+            /** @constant */
+            type: "tableCell";
+            attrs?: {
+                colspan?: number;
+                rowspan?: number;
+                /** @description 非空时数组长度必须等于 colspan，每项为 0 至 8192 的整数。 */
+                colwidth?: number[] | null;
+                /** @enum {string|null} */
+                align?: "left" | "center" | "right" | null;
+            };
+            content?: components["schemas"]["DocsTiptapNode"][];
+        };
+        DocsTiptapTableHeader: {
+            /** @constant */
+            type: "tableHeader";
+            attrs?: {
+                colspan?: number;
+                rowspan?: number;
+                /** @description 非空时数组长度必须等于 colspan，每项为 0 至 8192 的整数。 */
+                colwidth?: number[] | null;
+                /** @enum {string|null} */
+                align?: "left" | "center" | "right" | null;
+            };
+            content?: components["schemas"]["DocsTiptapNode"][];
+        };
+        DocsTiptapAdmonition: {
+            /** @constant */
+            type: "admonition";
+            attrs?: {
+                /** @enum {string} */
+                type?: "tip" | "info" | "warning" | "error";
+            };
+            content?: components["schemas"]["DocsTiptapNode"][];
+        };
+        DocsTiptapAdmonitionTitle: {
+            /** @constant */
+            type: "admonitionTitle";
+            content?: components["schemas"]["DocsTiptapNode"][];
+        };
+        /** @description 8 类 Mark 的封闭 union；单个 inline 节点每类最多一个。重复 Mark、互斥组合和错误位置都由 Server 拒绝，不靠合并或丢弃修复。 */
+        DocsTiptapMark: components["schemas"]["DocsTiptapMarkBold"] | components["schemas"]["DocsTiptapMarkItalic"] | components["schemas"]["DocsTiptapMarkStrike"] | components["schemas"]["DocsTiptapMarkUnderline"] | components["schemas"]["DocsTiptapMarkCode"] | components["schemas"]["DocsTiptapMarkLink"] | components["schemas"]["DocsTiptapMarkHighlight"] | components["schemas"]["DocsTiptapMarkTextStyle"];
+        DocsTiptapMarkBold: {
+            /** @constant */
+            type: "bold";
+        };
+        DocsTiptapMarkItalic: {
+            /** @constant */
+            type: "italic";
+        };
+        DocsTiptapMarkStrike: {
+            /** @constant */
+            type: "strike";
+        };
+        DocsTiptapMarkUnderline: {
+            /** @constant */
+            type: "underline";
+        };
+        /** @description 沿用完整预设的排他规则，不与其他 Mark 混用。 */
+        DocsTiptapMarkCode: {
+            /** @constant */
+            type: "code";
+        };
+        /** @description href 没有默认值，因此 attrs 不可省略。 */
+        DocsTiptapMarkLink: {
+            /** @constant */
+            type: "link";
+            attrs: {
+                /** @description 安全地址；Link 另允许有目标的 mailto。_blank 由服务端补入 noopener/noreferrer。 */
+                href: string;
+                /** @enum {string|null} */
+                target?: "_self" | "_blank" | null;
+                /** @description 仅由 noopener、noreferrer、nofollow 组成，去重并固定 token 顺序。 */
+                rel?: string | null;
+                class?: null;
+                title?: string | null;
+            };
+        };
+        DocsTiptapMarkHighlight: {
+            /** @constant */
+            type: "highlight";
+            attrs?: {
+                /** @description 只接受 */
+                color?: string | null;
+            };
+        };
+        /** @description 不允许 fontFamily、lineHeight 或任意 style/class。 */
+        DocsTiptapMarkTextStyle: {
+            /** @constant */
+            type: "textStyle";
+            attrs?: {
+                color?: string | null;
+                backgroundColor?: string | null;
+                /** @description 只接受 px/rem 并换算为 0.75 至 3 rem 的有限数值；不接受 NaN、Infinity、calc 或百分比。 */
+                fontSize?: string | null;
             };
         };
         FeedbackRequestForm: {
@@ -2668,6 +3714,1035 @@ export interface operations {
             400: components["responses"]["ErrorResponse"];
             401: components["responses"]["ErrorResponse"];
             409: components["responses"]["ErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listDocsSpaces: {
+        parameters: {
+            query?: {
+                /** @description Page size. Defaults to 100. */
+                limit?: number;
+                /** @description Opaque cursor returned by a previous page of the same query. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of spaces. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsSpacePage"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createDocsSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsCreateSpaceRequest"];
+            };
+        };
+        responses: {
+            /** @description The created space. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsSpace"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getDocsSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The space snapshot. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsSpace"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateDocsSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsUpdateSpaceRequest"];
+            };
+        };
+        responses: {
+            /** @description The space snapshot after the update. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsSpace"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteDocsSpace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsDeleteSpaceRequest"];
+            };
+        };
+        responses: {
+            /** @description The space was deleted; no body. */
+            204: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getDocsTree: {
+        parameters: {
+            query?: {
+                /** @description Parent document id. Omitted means the root level. */
+                parentId?: components["schemas"]["Uuid"];
+                /** @description Page size. Defaults to 100. */
+                limit?: number;
+                /** @description Opaque cursor returned by a previous page of the same space and parent. */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                spaceId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of active tree nodes and the current tree version. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsTreePage"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createDocsDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsCreateDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description The created document and the new tree version. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsDocumentResult"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listDocsTrash: {
+        parameters: {
+            query?: {
+                /** @description Page size. Defaults to 100. */
+                limit?: number;
+                /** @description Opaque cursor returned by a previous page of the same space. */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                spaceId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of trash groups and the current tree version. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsTrashPage"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listDocsTemplates: {
+        parameters: {
+            query?: {
+                /** @description Page size. Defaults to 100. */
+                limit?: number;
+                /** @description Opaque cursor returned by a previous page of the same space. */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                spaceId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reserved success shape; not returned in this release. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsTemplatePage"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            501: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createDocsTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                spaceId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsCreateTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description Reserved success shape; not returned in this release. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsTemplate"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            501: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getDocsDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The document and the current tree version. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsDocumentResult"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateDocsDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsSaveDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description The saved document and the new tree version. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsDocumentResult"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    moveDocsDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsMoveDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description The move result, including both affected space versions. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsMoveResult"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    trashDocsDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsTrashDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description The trash result, including the deletion batch id. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsTrashResult"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    suggestDocsDocumentContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsAiSuggestionRequest"];
+            };
+        };
+        responses: {
+            /** @description Reserved success shape; not returned in this release. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsAiSuggestion"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            501: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    applyDocsTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsApplyTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description Reserved success shape; not returned in this release. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsDocumentResult"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            501: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listDocsAttachments: {
+        parameters: {
+            query?: {
+                /** @description Page size. Defaults to 100. */
+                limit?: number;
+                /** @description Opaque cursor returned by a previous page of the same document. */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                documentId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reserved success shape; not returned in this release. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsAttachmentPage"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            501: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    uploadDocsAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["DocsAttachmentUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Reserved success shape; not returned in this release. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsAttachment"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            501: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    listDocsComments: {
+        parameters: {
+            query?: {
+                /** @description Page size. Defaults to 100. */
+                limit?: number;
+                /** @description Opaque cursor returned by a previous page of the same document. */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                documentId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reserved success shape; not returned in this release. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsCommentPage"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            501: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    createDocsComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsCreateCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description Reserved success shape; not returned in this release. */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsComment"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            501: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getDocsTrashedDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The trashed document and its deletion facts. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsTrashedDocumentResult"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    restoreDocsDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsRestoreDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description The restore result and the new tree version. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsRestoreResult"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getDocsTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reserved success shape; not returned in this release. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsTemplate"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            501: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateDocsTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsUpdateTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description Reserved success shape; not returned in this release. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsTemplate"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            501: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteDocsTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                templateId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsDeleteTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description Reserved success shape; not returned in this release. No body. */
+            204: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            501: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    getDocsAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachmentId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reserved success shape; not returned in this release. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsAttachmentAccess"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            501: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteDocsAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachmentId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsDeleteAttachmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Reserved success shape; not returned in this release. No body. */
+            204: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            501: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    updateDocsComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                commentId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsUpdateCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description Reserved success shape; not returned in this release. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsComment"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            501: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    deleteDocsComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                commentId: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocsDeleteCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description Reserved success shape; not returned in this release. No body. */
+            204: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["ErrorResponse"];
+            401: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            413: components["responses"]["ErrorResponse"];
+            415: components["responses"]["ErrorResponse"];
+            501: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
+            default: components["responses"]["ErrorResponse"];
+        };
+    };
+    searchDocsDocuments: {
+        parameters: {
+            query: {
+                /** @description Search text, 1 to 200 characters. */
+                q: string;
+                /** @description Optional space restriction. */
+                spaceId?: components["schemas"]["Uuid"];
+                /** @description Page size. Defaults to 20. */
+                limit?: number;
+                /** @description Opaque cursor returned by a previous page of the same query. */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reserved success shape; not returned in this release. */
+            200: {
+                headers: {
+                    "X-Request-Id": components["headers"]["RequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocsSearchPage"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            501: components["responses"]["ErrorResponse"];
+            503: components["responses"]["RetryableErrorResponse"];
             default: components["responses"]["ErrorResponse"];
         };
     };

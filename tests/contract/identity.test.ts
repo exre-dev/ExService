@@ -22,6 +22,7 @@ it('requires mapped internal keys and returns the exact linked-session contract'
     notifications: fixture.notifications,
     clickupServices: fixture.clickupServices,
     supportServices: fixture.supportServices,
+    docsServices: fixture.docsServices,
     identityKeys: {
       clients: { 'another-app': 'app-secret', other: 'other-secret' },
       bootstrapKey: 'bootstrap-secret',
@@ -197,6 +198,7 @@ it('routes the OIDC browser operations through the generated contract shape', as
     notifications: fixture.notifications,
     clickupServices: fixture.clickupServices,
     supportServices: fixture.supportServices,
+    docsServices: fixture.docsServices,
     oidcServices,
   })
   apps.push(app)

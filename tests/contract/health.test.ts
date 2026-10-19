@@ -40,6 +40,7 @@ async function createTestApp(
     notifications: fixture.notifications,
     clickupServices: fixture.clickupServices,
     supportServices: fixture.supportServices,
+    docsServices: fixture.docsServices,
     logger,
     corsAllowedOrigins,
   })
