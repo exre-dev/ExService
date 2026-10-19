@@ -26,6 +26,8 @@ const publicOrigin = process.env.SERVER_PUBLIC_WEB_BASE_URL
   : undefined
 
 export default defineConfig({
+  // Root runtime adapters provide the public environment explicitly.
+  envDir: false,
   plugins: [
     proxyBoundaryPlugin(publicOrigin?.origin),
     teamConfigPlugin(resolve(repositoryRoot, 'apps/web')),

@@ -17,6 +17,7 @@
     "service:status": "node scripts/runtime/entry.mjs service:status",
     "service:logs": "node scripts/runtime/entry.mjs service:logs",
     "dev": "node scripts/runtime/entry.mjs dev",
+    "dev:web": "node scripts/runtime/frontend.mjs",
     "infra": "node scripts/runtime/entry.mjs infra",
     "api:lint": "redocly lint api/openapi.yaml",
     "api:generate": "node scripts/api/generate.mjs generate",

@@ -16,6 +16,14 @@ Website 使用独立 PostgreSQL `exre`；Hydra 提供 OIDC 协议并使用独立
 
 终端提示自动使用颜色；设置 `NO_COLOR=1` 可关闭。重定向输出和保存的日志保持纯文本；`pnpm dev --verbose` 显示完整日志时间。
 
+## 只启动前端预览
+
+安装依赖并执行一次 `pnpm --filter @workspace/sdk build` 生成 SDK 产物后，运行 `pnpm dev:web`，在 `http://127.0.0.1:8090/` 预览并使用热更新。该入口不要求 Docker、数据库或 Hydra 就绪；Ctrl+C 结束预览。端口被占用时会退出，可用 `pnpm dev:web --port 8091` 指定其他端口。
+
+在根 `.env.local` 中设置 `VITE_API_BASE_URL=https://your-service.example/api`，浏览器即可直接请求该服务。进程变量优先；未设置或为空时使用 `/api`，通过 Vite 代理到 `LOCAL_API_PORT` 指定的本地服务，缺省为 `8082`。服务不可用时沿用页面现有错误状态。
+
+远端 Website 服务须通过 `SERVER_CORS_ALLOWED_ORIGINS` 放行预览 origin（默认 `http://127.0.0.1:8090`）。地址包含 API 路径；此配置只放公开地址。Web 在首个请求前通过 SDK 的 `setBaseUrl` 配置 API root，并按该 root 恢复会话；SDK 不自行读取 Vite 环境变量。完整 `pnpm dev` 和 `pnpm build` 继续使用同源 `/api`。
+
 ## 首次准备检查单
 
 仅全新环境执行；已有环境跳过已经完成的项。
@@ -39,6 +47,7 @@ Website 使用独立 PostgreSQL `exre`；Hydra 提供 OIDC 协议并使用独立
 | 启动/停止后台依赖   | `pnpm service:start` / `pnpm service:stop`                                  |
 | 查看状态/日志       | `pnpm service:status` / `pnpm service:logs [postgres\|hydra]`               |
 | 开发监听            | `pnpm dev`                                                                  |
+| 仅前端热更新预览    | `pnpm dev:web`                                                              |
 | Website 显式迁移    | `pnpm db:migrate`                                                           |
 | Hydra 显式迁移      | `pnpm infra migrate`                                                        |
 | 显式登记身份客户端  | `pnpm infra clients`                                                        |
