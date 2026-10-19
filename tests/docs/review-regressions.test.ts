@@ -268,6 +268,63 @@ describe('Docs reviewed tree invariants', () => {
     expect(tooLongTitle.statusCode).toBe(400)
   })
 
+  it('returns invalid move for a missing or wrong-space write parent over HTTP', async () => {
+    const { fixture, service, actor } = await setup()
+    const source = await service.createSpace({ name: 'Source', description: '' }, actor)
+    const target = await service.createSpace({ name: 'Target', description: '' }, actor)
+    const created = await service.createDocument(
+      source.id,
+      {
+        expectedTreeVersion: 1,
+        parentId: null,
+        beforeDocumentId: null,
+        title: 'Root',
+        content: CONTENT,
+      },
+      actor,
+    )
+    const app = createApp({ ...fixture })
+    apps.push(app)
+    await app.ready()
+    const { token } = await fixture.authServices.login({
+      email: 'docs-review@example.com',
+      password: 'valid password',
+    })
+    const authorization = `Bearer ${token}`
+    const missing = '00000000-0000-4000-8000-000000000099'
+    const create = await app.inject({
+      method: 'POST',
+      url: `/api/docs/spaces/${target.id}/documents`,
+      headers: { authorization },
+      payload: {
+        expectedTreeVersion: 1,
+        parentId: missing,
+        beforeDocumentId: null,
+        title: 'Child',
+        contentSchemaVersion: 1,
+        content: CONTENT,
+      },
+    })
+    expect(create.statusCode, create.body).toBe(409)
+    expect(create.json().error.code).toBe('DOCS_INVALID_MOVE')
+    const move = await app.inject({
+      method: 'POST',
+      url: `/api/docs/documents/${created.document.id}/move`,
+      headers: { authorization },
+      payload: {
+        sourceSpaceId: source.id,
+        targetSpaceId: target.id,
+        expectedVersion: 1,
+        expectedSourceTreeVersion: 2,
+        expectedTargetTreeVersion: 1,
+        parentId: created.document.id,
+        beforeDocumentId: null,
+      },
+    })
+    expect(move.statusCode, move.body).toBe(409)
+    expect(move.json().error.code).toBe('DOCS_INVALID_MOVE')
+  })
+
   it('returns a fixed 500 for corrupted stored trash content', async () => {
     const { fixture, service, actor } = await setup()
     const space = await service.createSpace({ name: 'Corruption', description: '' }, actor)
@@ -314,6 +371,246 @@ describe('Docs reviewed tree invariants', () => {
     expect(response.statusCode, response.body).toBe(500)
     expect(response.json().error.code).toBe('INTERNAL_ERROR')
     expect(response.body).not.toContain('secret-invalid-node')
+  })
+
+  it('moves within one parent with one version increment per changed row', async () => {
+    const { service, actor } = await setup()
+    const space = await service.createSpace({ name: 'Order', description: '' }, actor)
+    let treeVersion = space.treeVersion
+    const docs = []
+    for (const title of ['A', 'B', 'C', 'D']) {
+      const created = await service.createDocument(
+        space.id,
+        {
+          expectedTreeVersion: treeVersion,
+          parentId: null,
+          beforeDocumentId: null,
+          title,
+          content: CONTENT,
+        },
+        actor,
+      )
+      treeVersion = created.treeVersion
+      docs.push(created.document)
+    }
+    const moved = await service.moveDocument(
+      docs[0]!.id,
+      {
+        sourceSpaceId: space.id,
+        targetSpaceId: space.id,
+        expectedVersion: docs[0]!.version,
+        expectedSourceTreeVersion: treeVersion,
+        expectedTargetTreeVersion: treeVersion,
+        parentId: null,
+        beforeDocumentId: docs[3]!.id,
+      },
+      actor,
+    )
+    const page = await service.getTree(space.id, {})
+    expect(page.items.map((row) => [row.title, row.position, row.version])).toEqual([
+      ['B', 0, 2],
+      ['C', 1, 2],
+      ['A', 2, 2],
+      ['D', 3, 1],
+    ])
+    expect(moved.version).toBe(2)
+    expect(moved.affectedCount).toBe(3)
+    expect(moved.source.treeVersion).toBe(treeVersion + 1)
+    expect(moved.target.treeVersion).toBe(treeVersion + 1)
+  })
+
+  it('moves backward and preserves unchanged sibling versions on a no-op placement', async () => {
+    const { service, actor } = await setup()
+    const space = await service.createSpace({ name: 'Backward', description: '' }, actor)
+    let treeVersion = 1
+    const docs = []
+    for (const title of ['A', 'B', 'C', 'D']) {
+      const created = await service.createDocument(
+        space.id,
+        {
+          expectedTreeVersion: treeVersion,
+          parentId: null,
+          beforeDocumentId: null,
+          title,
+          content: CONTENT,
+        },
+        actor,
+      )
+      treeVersion = created.treeVersion
+      docs.push(created.document)
+    }
+    const moved = await service.moveDocument(
+      docs[3]!.id,
+      {
+        sourceSpaceId: space.id,
+        targetSpaceId: space.id,
+        expectedVersion: 1,
+        expectedSourceTreeVersion: treeVersion,
+        expectedTargetTreeVersion: treeVersion,
+        parentId: null,
+        beforeDocumentId: docs[1]!.id,
+      },
+      actor,
+    )
+    expect(moved.version).toBe(2)
+    expect(moved.affectedCount).toBe(3)
+    const noop = await service.moveDocument(
+      docs[0]!.id,
+      {
+        sourceSpaceId: space.id,
+        targetSpaceId: space.id,
+        expectedVersion: 1,
+        expectedSourceTreeVersion: moved.source.treeVersion,
+        expectedTargetTreeVersion: moved.target.treeVersion,
+        parentId: null,
+        beforeDocumentId: docs[3]!.id,
+      },
+      actor,
+    )
+    expect(noop.version).toBe(2)
+    expect(noop.affectedCount).toBe(1)
+    expect(noop.source.treeVersion).toBe(moved.source.treeVersion + 1)
+    expect(
+      (await service.getTree(space.id, {})).items.map((row) => [
+        row.title,
+        row.position,
+        row.version,
+      ]),
+    ).toEqual([
+      ['A', 0, 2],
+      ['D', 1, 2],
+      ['B', 2, 2],
+      ['C', 3, 2],
+    ])
+  })
+
+  it('changes a root position across parents and spaces only once per command', async () => {
+    const { service, actor } = await setup()
+    const source = await service.createSpace({ name: 'From', description: '' }, actor)
+    const target = await service.createSpace({ name: 'To', description: '' }, actor)
+    let sourceVersion = 1
+    const sourceDocs = []
+    for (const title of ['Parent', 'Move', 'Sibling']) {
+      const created = await service.createDocument(
+        source.id,
+        {
+          expectedTreeVersion: sourceVersion,
+          parentId: null,
+          beforeDocumentId: null,
+          title,
+          content: CONTENT,
+        },
+        actor,
+      )
+      sourceVersion = created.treeVersion
+      sourceDocs.push(created.document)
+    }
+    const targetDoc = await service.createDocument(
+      target.id,
+      {
+        expectedTreeVersion: 1,
+        parentId: null,
+        beforeDocumentId: null,
+        title: 'Target',
+        content: CONTENT,
+      },
+      actor,
+    )
+    const within = await service.moveDocument(
+      sourceDocs[1]!.id,
+      {
+        sourceSpaceId: source.id,
+        targetSpaceId: source.id,
+        expectedVersion: 1,
+        expectedSourceTreeVersion: sourceVersion,
+        expectedTargetTreeVersion: sourceVersion,
+        parentId: sourceDocs[0]!.id,
+        beforeDocumentId: null,
+      },
+      actor,
+    )
+    expect(within.version).toBe(2)
+    expect(
+      (await service.getTree(source.id, { parentId: sourceDocs[0]!.id })).items[0],
+    ).toMatchObject({ position: 0, version: 2 })
+    const across = await service.moveDocument(
+      sourceDocs[1]!.id,
+      {
+        sourceSpaceId: source.id,
+        targetSpaceId: target.id,
+        expectedVersion: within.version,
+        expectedSourceTreeVersion: within.source.treeVersion,
+        expectedTargetTreeVersion: targetDoc.treeVersion,
+        parentId: null,
+        beforeDocumentId: null,
+      },
+      actor,
+    )
+    expect(across.version).toBe(3)
+    expect(across.source.treeVersion).toBe(within.source.treeVersion + 1)
+    expect(across.target.treeVersion).toBe(targetDoc.treeVersion + 1)
+    expect(
+      (await service.getTree(target.id, {})).items.map((row) => [
+        row.title,
+        row.position,
+        row.version,
+      ]),
+    ).toEqual([
+      ['Target', 0, 1],
+      ['Move', 1, 3],
+    ])
+  })
+
+  it('restores an appended root with the reported version equal to stored version', async () => {
+    const { service, actor } = await setup()
+    const space = await service.createSpace({ name: 'Restore', description: '' }, actor)
+    const first = await service.createDocument(
+      space.id,
+      {
+        expectedTreeVersion: 1,
+        parentId: null,
+        beforeDocumentId: null,
+        title: 'First',
+        content: CONTENT,
+      },
+      actor,
+    )
+    const second = await service.createDocument(
+      space.id,
+      {
+        expectedTreeVersion: 2,
+        parentId: null,
+        beforeDocumentId: null,
+        title: 'Second',
+        content: CONTENT,
+      },
+      actor,
+    )
+    const trashed = await service.trashDocument(
+      first.document.id,
+      {
+        expectedSpaceId: space.id,
+        expectedVersion: 1,
+        expectedTreeVersion: 3,
+      },
+      actor,
+    )
+    const restored = await service.restoreDocument(
+      first.document.id,
+      {
+        expectedSpaceId: space.id,
+        expectedVersion: 2,
+        expectedTreeVersion: trashed.treeVersion,
+        deletionBatchId: trashed.deletionBatchId,
+      },
+      actor,
+    )
+    const page = await service.getTree(space.id, {})
+    expect(page.items.map((row) => [row.title, row.version, row.position])).toEqual([
+      ['Second', second.document.version + 1, 0],
+      ['First', restored.version, 1],
+    ])
+    expect(restored.version).toBe(3)
   })
 })
 

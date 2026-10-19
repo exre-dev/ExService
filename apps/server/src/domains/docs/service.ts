@@ -696,7 +696,8 @@ export class DocsService {
         spaceId: input.targetSpaceId,
         parentId: input.parentId,
       })
-      await this.rewritePositions(tx, oldSiblings, at, actorId, affected)
+      if (crossSpace || root.parentId !== input.parentId)
+        await this.rewritePositions(tx, oldSiblings, at, actorId, affected)
       await this.rewritePositions(tx, newOrdered, at, actorId, affected)
 
       const sourceTreeVersion = await this.bumpTreeVersion(tx, input.sourceSpaceId)
@@ -954,7 +955,7 @@ export class DocsService {
     subtreeIds?: readonly string[],
   ): Promise<DocsDocumentRow> {
     const parent = await findDocument(tx, parentId)
-    if (parent === undefined || parent.spaceId !== spaceId) throw new DocsError('DOCS_NOT_FOUND')
+    if (parent === undefined || parent.spaceId !== spaceId) throw new DocsError('DOCS_INVALID_MOVE')
     if (parent.deletedAt !== null) throw new DocsError('DOCS_INVALID_MOVE')
     if (parent.id === movingRootId || (subtreeIds?.includes(parent.id) ?? false))
       throw new DocsError('DOCS_INVALID_MOVE')
@@ -1025,11 +1026,13 @@ export class DocsService {
     const positions = ordered.map((_row, index) => index)
     const result = await tx.query<{ id: string }>(
       `UPDATE docs_documents AS d
-       SET position = v.ord, version = d.version + 1, updated_at = $3, updated_by_user_id = $4
+       SET position = v.ord,
+           version = d.version + CASE WHEN d.id = ANY($5::uuid[]) THEN 0 ELSE 1 END,
+           updated_at = $3, updated_by_user_id = $4
        FROM unnest($1::uuid[], $2::integer[]) AS v(id, ord)
        WHERE d.id = v.id AND d.position <> v.ord
        RETURNING d.id`,
-      [ids, positions, at, actorId],
+      [ids, positions, at, actorId, [...affected]],
     )
     for (const row of result.rows) affected.add(row.id)
   }
