@@ -32,8 +32,6 @@ Thumbs.db
 # Local agent tooling: the vendored ExUI usage skill is kept on disk for local
 # reading only. Docs under .ai/ and .notes/ cite paths inside it, so it is left
 # in place but intentionally not tracked.
-.agents/*
-!.agents/rules/
 .claude/
 .superpowers/
 
