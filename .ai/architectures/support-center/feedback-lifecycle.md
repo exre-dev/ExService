@@ -46,7 +46,7 @@ GET、HEAD 和 lookup 不认领、清理或写远端。过期在途读取只派�
 
 ## 浏览器恢复与维护
 
-`apps/web/src/pages/Support/feedback/` 使用 RHF/Zod 与 ExUI Modal。`App` 路由树外的 `FeedbackProvider` 按需加载并保留两个入口的反馈表单，统一认领进行中的命令；站内切换页面只隐藏弹窗，不卸载提交任务。各类型草稿在所属 Modal 内分别留存；返回类型选择不混入别的类型字段或附件。关闭有内容且尚未提交的草稿先在同一 Modal 确认继续填写或放弃，确认放弃后清空草稿。prepare 开始后类型和匿名状态锁定；提交期间可通过关闭按钮、Esc 或遮罩直接关闭，原提交和附件继续推进。重新点击任一反馈入口时只用 ExMessage 提示正在上传，不打开 Modal。
+`apps/web/src/pages/Support/feedback/` 使用 RHF/Zod 与 ExUI Dialog。`App` 路由树外的 `FeedbackProvider` 按需加载并保留两个入口的反馈表单，统一认领进行中的命令；站内切换页面只隐藏弹窗，不卸载提交任务。各类型草稿在所属 `FeedbackModal` 内分别留存；返回类型选择不混入别的类型字段或附件。关闭有内容且尚未提交的草稿先在同一 Dialog 确认继续填写或放弃，确认放弃后清空草稿。prepare 开始后类型和匿名状态锁定；提交期间可通过关闭按钮、Esc 或遮罩直接关闭，原提交和附件继续推进。重新点击任一反馈入口时只用 ExMessage 提示正在上传，不打开弹窗。
 
 同目录 `kind-rules.ts` 集中八类 kind 的 area、字段适用性与展示文案，Modal、Zod 和恢复流程共同消费。未知 kind 不按非社区补集推断 development；表单序列化与还原继续按生成 Contract 的判别 union 保留明确形状。该规则属于 Website 反馈流程，不进入 Common。
 

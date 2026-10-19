@@ -19,6 +19,17 @@ class TestResizeObserver {
   disconnect() {}
 }
 vi.stubGlobal('ResizeObserver', TestResizeObserver)
+// Dialog observes viewport changes; jsdom does not implement matchMedia.
+vi.stubGlobal('matchMedia', (media: string) => ({
+  media,
+  matches: false,
+  onchange: null,
+  addListener: vi.fn(),
+  removeListener: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn(),
+}))
 Object.defineProperty(document, 'elementFromPoint', {
   configurable: true,
   value: () => document.body,

@@ -16,6 +16,7 @@ import {
   FieldContent,
   FieldError,
   FieldLabel,
+  ExItem,
   Input,
   SelectContent,
   SelectField,
@@ -102,6 +103,7 @@ const categories: { value: SettingsCategory; label: string }[] = [
 
 export function SettingsPanel(props: SettingsPanelProps) {
   const profile = props.profile
+  const themeControlId = useId()
   return (
     <div className={styles.panel}>
       <div className={styles.sidebar}>
@@ -193,7 +195,11 @@ export function SettingsPanel(props: SettingsPanelProps) {
             </header>
             <section className={styles.group} aria-label="外观">
               <h3>外观</h3>
-              <SettingItem label="网站主题" description="选择网站的显示主题。">
+              <SettingItem
+                label="网站主题"
+                description="选择网站的显示主题。"
+                controlId={themeControlId}
+              >
                 <SelectField
                   value={props.theme}
                   onValueChange={(value) => {
@@ -201,7 +207,12 @@ export function SettingsPanel(props: SettingsPanelProps) {
                       props.onThemeChange(value)
                   }}
                 >
-                  <SelectTrigger className={styles.themeSelect} aria-label="网站主题">
+                  <SelectTrigger
+                    id={themeControlId}
+                    aria-describedby={`${themeControlId}-description`}
+                    className={styles.themeSelect}
+                    aria-label="网站主题"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -510,20 +521,26 @@ function AccountContent(props: ReadyProps) {
 function SettingItem({
   label,
   description,
+  controlId,
   children,
 }: {
   label: string
   description?: string
+  controlId?: string
   children: ReactNode
 }) {
   return (
-    <div className={styles.item}>
-      <div className={styles.itemText}>
-        <span className={styles.itemLabel}>{label}</span>
-        {description && <p>{description}</p>}
-      </div>
-      <div className={styles.itemControl}>{children}</div>
-    </div>
+    <ExItem
+      className={styles.item}
+      title={label}
+      desc={description}
+      controlId={controlId}
+      layout="horizontal"
+      contentAlign="right"
+      contentMaxWidth="24rem"
+    >
+      {children}
+    </ExItem>
   )
 }
 
@@ -538,9 +555,12 @@ function SettingRow({
   value: string
   onEdit: (trigger: HTMLButtonElement) => void
 }) {
+  const controlId = useId()
   return (
-    <SettingItem label={label} description={description}>
+    <SettingItem label={label} description={description} controlId={controlId}>
       <Button
+        id={controlId}
+        aria-describedby={description ? `${controlId}-description` : undefined}
         className={styles.valueAction}
         type="button"
         variant="ghost"

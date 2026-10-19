@@ -40,6 +40,16 @@ vi.stubGlobal(
     disconnect() {}
   },
 )
+vi.stubGlobal('matchMedia', (media: string) => ({
+  media,
+  matches: false,
+  onchange: null,
+  addListener: vi.fn(),
+  removeListener: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn(),
+}))
 beforeAll(async () => {
   await import('./FeedbackModal')
 })
@@ -201,6 +211,18 @@ it('continues after closing and blocks both entrances until the submission finis
   expect(await screen.findByText('反馈已提交')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: '投诉和建议' }))
   expect(await screen.findByText('反馈和建议')).toBeTruthy()
+})
+
+it('continues the frozen submission after Escape hides its dialog', async () => {
+  const resolve = deferPrepare()
+  port.advance.mockResolvedValueOnce(snapshot('completed', 'done'))
+  mount()
+  await start()
+  fireEvent.keyDown(document, { key: 'Escape' })
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  await resolve(snapshot('ready', 'continue'))
+  expect(await screen.findByText('反馈已提交')).toBeTruthy()
+  expect(screen.queryByRole('dialog')).toBeNull()
 })
 
 it('keeps advancing and reports completion after navigating to another page', async () => {

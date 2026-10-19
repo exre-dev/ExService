@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   NotificationHistoryModal,
@@ -11,6 +11,13 @@ import type {
   NotificationDetailView,
 } from '@components/src/notifications/notificationsView'
 
+beforeEach(() =>
+  vi.stubGlobal('matchMedia', () => ({
+    matches: false,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  })),
+)
 afterEach(() => {
   cleanup()
   restoreScrollIntoView()
@@ -613,5 +620,60 @@ describe('NotificationHistoryModal', () => {
     render(<NotificationHistoryModal {...props({ onClose })} />)
     await userEvent.click(screen.getByRole('button', { name: '关闭通知历史' }))
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+  })
+
+  it('keeps all dismissal paths blocked during bulk submission and restores them afterward', async () => {
+    const onClose = vi.fn()
+    const value = props({ onClose, bulk: { ...props().bulk, pending: 'clear' } })
+    const view = render(<NotificationHistoryModal {...value} />)
+    const close = screen.getByRole('button', { name: '关闭通知历史' }) as HTMLButtonElement
+    expect(close.disabled).toBe(true)
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+    fireEvent.pointerDown(document.body)
+    fireEvent.click(document.body)
+    expect(onClose).not.toHaveBeenCalled()
+
+    view.rerender(<NotificationHistoryModal {...value} bulk={{ ...value.bulk, pending: null }} />)
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+  })
+
+  it('returns final focus when the history closes', async () => {
+    const finalFocus = document.createElement('button')
+    document.body.append(finalFocus)
+    try {
+      const value = props({ finalFocusRef: { current: finalFocus } })
+      const view = render(<NotificationHistoryModal {...value} />)
+      view.rerender(<NotificationHistoryModal {...value} open={false} />)
+      await waitFor(() => expect(document.activeElement).toBe(finalFocus))
+    } finally {
+      finalFocus.remove()
+    }
+  })
+
+  it('allows outside dismissal again after bulk submission settles', async () => {
+    const onClose = vi.fn()
+    const value = props({ onClose, bulk: { ...props().bulk, pending: 'read-all' } })
+    const view = render(<NotificationHistoryModal {...value} />)
+    const overlay = document.querySelector('[data-slot="dialog-overlay"]') as HTMLElement
+    await userEvent.click(overlay)
+    expect(onClose).not.toHaveBeenCalled()
+    view.rerender(<NotificationHistoryModal {...value} bulk={{ ...value.bulk, pending: null }} />)
+    await userEvent.click(overlay)
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+  })
+
+  it('keeps the history open after cancelling its nested confirmation', async () => {
+    const onClose = vi.fn()
+    const onCancel = vi.fn()
+    const value = props({ onClose, confirm: { ...props().confirm, kind: 'clear', onCancel } })
+    const view = render(<NotificationHistoryModal {...value} />)
+    await userEvent.click(screen.getByRole('button', { name: '取消' }))
+    expect(onCancel).toHaveBeenCalledOnce()
+    view.rerender(
+      <NotificationHistoryModal {...value} confirm={{ ...value.confirm, kind: null }} />,
+    )
+    expect(screen.getByRole('dialog', { name: '通知历史' })).toBeTruthy()
+    expect(onClose).not.toHaveBeenCalled()
   })
 })

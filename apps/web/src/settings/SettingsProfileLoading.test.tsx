@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { StrictMode } from 'react'
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { writeToken } from '@web/src/auth/storage'
 import { bindSettingsToken } from '@web/src/settings/settingsConfig'
@@ -45,12 +45,21 @@ const preferences = {
   serverTime: 0,
 }
 
+beforeEach(() =>
+  vi.stubGlobal('matchMedia', () => ({
+    matches: false,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  })),
+)
+
 afterEach(() => {
   cleanup()
   get.mockReset()
   bindSettingsToken(null)
   bindNotificationsToken(null)
   window.localStorage.clear()
+  vi.unstubAllGlobals()
 })
 
 it.each([false, true])(

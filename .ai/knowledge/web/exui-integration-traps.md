@@ -2,7 +2,7 @@
 
 **结论：`@exre/exui` 的几条契约违反了不会报错，只会静默失效；其中三条与 CSS 特异性有关，读我们自己的代码看不出来。**
 
-_最后更新：2026-10-15_
+_最后更新：2026-10-19_
 
 ## 已知陷阱
 
@@ -76,9 +76,9 @@ ExUI 的 `NavigationMenu`（Radix）渲染出的是 `<nav aria-label="Main">`。
 </NavigationMenuLink>
 ```
 
-### 7. 没有通用圆角 token
+### 7. 圆角使用发行包公开 Token
 
-ExUI 有 `--exui-border-*`、`--exui-surface-*`、`--exui-text-*`、`--exui-shadow-*`、`--exui-control-*`，但**没有** `--exui-radius-*` 命名空间。圆角值分散在 `--density-control-radius` 与 `--exui-component-*-radius` 里。自定义容器需要圆角时，从这些值里取，或按 scaling rules 用 `rem`。
+ExUI 1.0 的 `dist/tokens/style.css` 公开 `--exui-radius-*`；`--density-control-radius` 与 `--exui-component-*-radius` 也继续存在。自定义容器按用途选用通用或组件 Token，不新建本地圆角层；例如通知筛选使用 `--exui-radius-full`。旧的「没有通用圆角 token」结论不适用于当前发行包。
 
 ### 8. 按钮会自动给子图标定尺寸
 
@@ -104,6 +104,8 @@ ExUI 的 `Button` 渲染 `<button>` 但**不写** `role="button"`（依赖隐式
 
 ExUI 弹窗的滚动锁定会给 `body[data-scroll-locked]` 添加滚动条宽度的右外边距。根节点已固定占位时，这会重复补偿，因此在支持 `scrollbar-gutter` 的浏览器中将该右外边距覆盖为零。必须同时验证短页、长页以及弹窗打开和关闭，不能只检查页面切换。
 
+顶栏的 52rem 折叠阈值使用命名容器查询，随容器当前字号计算；CSS media query 的 rem 只读取初始字号，会在放大根字号后仍保留已容纳不下的桌面导航。内层宽度上限为 77.5rem，在默认 16px 下等于 1240px；导航、账号与通知槽需一起验证。
+
 `tests/browser/navbar-geometry.mjs` 提供真实浏览器的坐标断言，接受 Browser Use 的 tab；这不是 Vitest/jsdom 测试，也不由 `pnpm test` 自动执行。使用桌面视口与传统滚动条运行 `assertNavbarGeometry(tab, baseUrl)` 和 `assertNavbarModalGeometry(tab, baseUrl)`；jsdom 没有布局计算，无法覆盖该问题。
 
 ### 13. `NativeSelect` 的弹层仍由系统绘制
@@ -116,8 +118,27 @@ Radix 的 `SelectItem` 不接受空字符串值；可选字段通过独立的「
 
 ExUI `Textarea` 启用 `field-sizing: content`，空值时按内容和最小高度计算尺寸，仅传 `rows` 可能仍得到较矮的输入框。需要明确主次层级时，在消费方 CSS Module 设置 `min-height`；支持反馈使用 `lh` 单位分别保留约八行和三行的空间，继续允许内容增长。实现见 `apps/web/src/pages/Support/feedback/FeedbackModal.module.scss`。
 
+### 15. Dialog 的正文、关闭策略与响应式分别接线
+
+ExUI 1.0 已移除 `Modal`。长正文使用 `DialogContent` 的直接子级 `DialogBody`，标题和底栏放在同级；不要继续选择 `.ex-modal-*` 私有类。成员简介采用快捷 `Dialog`，关闭文案、宽度与归还焦点通过 `contentProps` 提供。
+
+`closeButtonDisabled` 仅禁用角落按钮。通知历史在批量操作期间同时拦截 Escape、外部交互与 `onOpenChange(false)`；反馈提交仍允许隐藏，继续由其业务 `changeOpen` 判断草稿与在途任务，不能共用关闭锁定策略。反馈生命周期归 `.ai/architectures/support-center/feedback-lifecycle.md`。
+
+通知历史使用公开 `useIsMobile` 与 `data-layout` 控制列表/正文布局，和 `responsiveFullscreen` 共用 48 个当前根 rem 的判断。CSS media query 的 rem 使用初始字号，不能替代这个动态阈值；跨阈值保留同一棵内容节点。浏览器验证脚本为 `tests/browser/notification-experience.mjs`。
+
+根 `scrollbar-gutter: stable` 会使库全屏表面的 `width: 100%` 在 Chromium 中保留滚动条占位。通知历史与成员简介在同源窄屏判断下通过公开 `style` 设置 `width/maxWidth: 100vw`，桌面尺寸仍交给各自 CSS Module。
+
+设置面板仅在 Dialog 宿主中允许 `min-height: 0`，保持独立资料页的最小高度。Join 审核的 Body 最小高度需容纳分类轨道与一行正文，并用业务类和公开 `data-slot` 提供高于库默认规则的特异性；否则全局 CSS 后加载时会重新压回一行，导致正文溢入底栏命中区。极低视口同时验证外层兜底滚动、正文实际滚轮命中和底栏键盘可达。
+
+### 16. 邀请验证码失焦时保留原定的表单内焦点
+
+InputOTP 的假光标在 blur 时移除；Radix FocusScope 的 MutationObserver 可能在原生 Tab 的焦点过渡期间看到 `activeElement === body`，将焦点抢回 DialogContent。该组合在 ExUI 0.8 与 1.0 均可复现，不能仅凭升级后的失败断言为新回归。
+
+`packages/components/src/auth/InvitationForms.tsx` 继续调用 RHF `field.onBlur`，仅在 `relatedTarget` 属于同一表单且活动焦点暂为 body 时同步聚焦原定目标。不接管 Tab、不创建新的焦点顺序，也不将焦点带到表单外。真实 Chromium 回归为 `tests/browser/exui-v1-overlays.mjs` 的邀请验证码场景。
+
 ## 证据
 
 - 已安装包内：`dist/index.css`（含 `body{background-color:var(--background);color:var(--foreground)}`、`html{font-family:var(--exui-font-family)}`）、`dist/tokens/style.css`（`:root` / `.dark` / `.pitch-black` 三个主题选择器）、`src/components/theme-provider.tsx`、`src/components/ui/{button,navigation-menu,dropdown-menu}.tsx`、`types/components/ui/*.d.ts`。
 - `apps/web/src/main.tsx`、`apps/web/src/styles/index.scss`、`packages/components/src/SiteHeader.module.scss`。
-- `.agents/skills/exui-usage/references/react-setup.md`、`theme-usage.md`、`icon-usage.md`、`guides/EXUI_SCALING_RULES.md`（本机保留、未纳入版本控制，见 `.gitignore`）。
+- `packages/components/src/notifications/NotificationHistoryModal.tsx`、`apps/web/src/pages/Support/feedback/FeedbackModal.tsx`、`apps/web/src/pages/AboutUs/MemberModal.tsx`。
+- `.agents/skills/exui/SKILL.md` 及其 Dialog、Form、缩放参考；具体 API 仍以安装的发行包为准。

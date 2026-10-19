@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { StrictMode } from 'react'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -54,9 +54,17 @@ function props(overrides: Partial<SettingsPanelProps> = {}): SettingsPanelProps 
   }
 }
 
+beforeEach(() =>
+  vi.stubGlobal('matchMedia', () => ({
+    matches: false,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  })),
+)
 afterEach(() => {
   cleanup()
   cropperCallbacks.current = null
+  vi.unstubAllGlobals()
 })
 
 describe('SettingsPanel', () => {
@@ -151,6 +159,22 @@ describe('SettingsPanel', () => {
       if (originalScrollIntoView) Element.prototype.scrollIntoView = originalScrollIntoView
       else Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
     }
+  })
+
+  it('associates setting titles and descriptions with their actual controls', () => {
+    const view = render(<SettingsPanel {...props()} />)
+    const theme = screen.getByRole('combobox', { name: '网站主题' })
+    const themeLabel = screen.getByText('网站主题') as HTMLLabelElement
+    const themeDescription = screen.getByText('选择网站的显示主题。')
+    expect(themeLabel.htmlFor).toBe(theme.id)
+    expect(theme.getAttribute('aria-describedby')?.split(' ')).toContain(themeDescription.id)
+
+    view.rerender(<SettingsPanel {...props({ category: 'account' })} />)
+    const fiveM = screen.getByRole('button', { name: '编辑FiveM ID' })
+    const fiveMLabel = screen.getByText('FiveM ID') as HTMLLabelElement
+    const fiveMDescription = screen.getByText(/未验证。此信息由用户手填/)
+    expect(fiveMLabel.htmlFor).toBe(fiveM.id)
+    expect(fiveM.getAttribute('aria-describedby')?.split(' ')).toContain(fiveMDescription.id)
   })
 
   it('groups QQ and an unverified FiveM ID under account while keeping email read-only', () => {

@@ -27,6 +27,16 @@ vi.stubGlobal(
     disconnect() {}
   },
 )
+vi.stubGlobal('matchMedia', (media: string) => ({
+  media,
+  matches: false,
+  onchange: null,
+  addListener: vi.fn(),
+  removeListener: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn(),
+}))
 const originalScroll = Element.prototype.scrollIntoView
 beforeAll(async () => {
   Element.prototype.scrollIntoView = vi.fn()
@@ -112,6 +122,33 @@ function mount(area: 'development' | 'community' = 'development') {
 function mountCommunity() {
   mount('community')
 }
+
+it('keeps the form in a direct scrolling dialog body and submits through its fixed footer', async () => {
+  options.mockResolvedValue(good)
+  mount()
+  fireEvent.click((await screen.findByText('需求')).closest('button')!)
+  const dialog = screen.getByRole('dialog', { name: '需求' })
+  const body = dialog.querySelector('[data-slot="dialog-body"]')
+  const footer = dialog.querySelector('[data-slot="dialog-footer"]')
+  const form = screen.getByRole('textbox', { name: '标题' }).closest('form')
+  expect(body?.parentElement).toBe(dialog)
+  expect(footer?.parentElement).toBe(dialog)
+  expect(body?.contains(form)).toBe(true)
+  expect(footer?.querySelector('button[type="submit"]')?.getAttribute('form')).toBe(form?.id)
+})
+
+it('routes Escape through discard confirmation without losing the draft', async () => {
+  options.mockResolvedValue(good)
+  mount()
+  fireEvent.click((await screen.findByText('需求')).closest('button')!)
+  fireEvent.change(screen.getByLabelText('标题'), { target: { value: '暂存标题' } })
+  fireEvent.keyDown(document, { key: 'Escape' })
+  const confirmation = await screen.findByRole('dialog', { name: '放弃未提交内容？' })
+  expect(confirmation.getAttribute('aria-describedby')).toBeNull()
+  fireEvent.keyDown(document, { key: 'Escape' })
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: '放弃未提交内容？' })).toBeNull())
+  expect((screen.getByLabelText('标题') as HTMLInputElement).value).toBe('暂存标题')
+})
 
 it('submits formatted editor content as Markdown and keeps rich paste downgrade silent', async () => {
   options.mockResolvedValue({

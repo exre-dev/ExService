@@ -1,19 +1,36 @@
 .panel {
-  width: min(358px, calc(100vw - 1rem));
+  width: min(22.375rem, calc(100vw - 1rem));
   max-width: var(--radix-popover-content-available-width);
   padding: 0.25rem;
   gap: 0;
 }
-.panel :global(.EmojiPickerReact) {
-  border: 0;
-  --epr-bg-color: transparent;
-  --epr-category-label-bg-color: var(--exui-glass-background);
-  --epr-search-input-bg-color: var(--exui-surface-background);
-  --epr-search-input-bg-color-active: var(--exui-surface-background);
-  --epr-picker-border-color: var(--exui-border-default);
-  --epr-text-color: var(--exui-text-primary);
-  --epr-highlight-color: var(--exui-control-selected);
-  --epr-hover-bg-color: var(--exui-surface-background);
-  --epr-focus-bg-color: var(--exui-surface-background);
-  --epr-picker-border-radius: var(--density-control-radius);
+
+.panel .picker {
+  --emoji-picker-surface: var(--exui-glass-background);
+}
+
+.picker :global([data-slot='emoji-picker-list']) {
+  // A sticky section label precedes the first emoji row in the virtual list.
+  // Keep room for both so the option remains a real pointer target.
+  height: clamp(
+    3.625rem,
+    calc(var(--radix-popover-content-available-height, 32rem) - 3rem),
+    26.25rem
+  );
+  min-height: 3.625rem;
+  max-height: calc(100dvh - 4rem);
+  overflow-y: auto;
+}
+
+@media (max-height: 22rem) {
+  .panel {
+    padding: 0;
+    max-height: min(var(--radix-popover-content-available-height, 100dvh), calc(100dvh - 1rem));
+    overflow-y: auto;
+  }
+
+  .panel .picker :global([data-slot='emoji-picker-categories']) {
+    --exui-component-tabs-list-height: 44px;
+    padding-block: 0;
+  }
 }

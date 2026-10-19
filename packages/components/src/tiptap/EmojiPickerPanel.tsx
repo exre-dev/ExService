@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
-import { Popover, PopoverAnchor, PopoverContent } from '@exre/exui'
-import EmojiPicker, {
-  EmojiStyle,
-  Theme,
-  SuggestionMode,
-  SkinTonePickerLocation,
-} from 'emoji-picker-react'
-import emojiData from 'emoji-picker-react/data/emojis-zh'
-import { closeEmojiPicker, insertPickedEmoji } from './emoji-trigger'
+import {
+  EmojiPicker,
+  EmojiPickerPanel as ExEmojiPickerPanel,
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+} from '@exre/exui'
+import { closeEmojiPicker, currentEmojiAnchor, insertPickedEmoji } from './emoji-trigger'
+import { emojiI18n, localEmojiData } from './emoji-data'
 import styles from './EmojiPickerPanel.module.scss'
 
 export default function EmojiPickerPanel({
@@ -22,7 +22,6 @@ export default function EmojiPickerPanel({
 }) {
   const expectedSession = session ?? anchor.session
   const [panel, setPanel] = useState<HTMLDivElement | null>(null)
-  const [dark, setDark] = useState(() => !!editor.view.dom.closest('.dark'))
   const virtualRef = useRef({ getBoundingClientRect: () => new DOMRect() })
   virtualRef.current = {
     getBoundingClientRect: () => {
@@ -35,32 +34,36 @@ export default function EmojiPickerPanel({
       }
     },
   }
+
   useEffect(() => {
-    const theme = new MutationObserver(() => setDark(!!editor.view.dom.closest('.dark')))
-    theme.observe(document.documentElement, {
-      attributes: true,
-      subtree: true,
-      attributeFilter: ['class'],
-    })
-    return () => theme.disconnect()
-  }, [editor])
-  useEffect(() => {
-    // With no search field, focus the first rendered emoji without scrolling
-    // the page away from the caret. The real grid may appear after measurement.
+    if (!panel) return
     let focused = false
-    const focus = () => {
-      const cell = panel?.querySelector<HTMLButtonElement>('[role="gridcell"]')
-      if (!focused && cell) {
+    const focusReadyList = () => {
+      if (
+        focused ||
+        currentEmojiAnchor(editor)?.session !== expectedSession ||
+        document.activeElement !== editor.view.dom
+      )
+        return
+      const list = panel.querySelector<HTMLElement>(
+        '[role="listbox"][tabindex="0"]:not([aria-busy="true"])',
+      )
+      if (list) {
         focused = true
-        cell.focus({ preventScroll: true })
+        list.focus({ preventScroll: true })
         observer.disconnect()
       }
     }
-    const observer = new MutationObserver(focus)
-    if (panel) observer.observe(panel, { childList: true, subtree: true })
-    focus()
+    const observer = new MutationObserver(focusReadyList)
+    observer.observe(panel, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['tabindex', 'aria-busy'],
+    })
+    focusReadyList()
     return () => observer.disconnect()
-  }, [panel])
+  }, [editor, expectedSession, panel])
 
   return (
     <Popover
@@ -77,6 +80,7 @@ export default function EmojiPickerPanel({
         data-tiptap-emoji-picker=""
         className={styles.panel}
         align="start"
+        side="top"
         sideOffset={4}
         collisionPadding={8}
         updatePositionStrategy="always"
@@ -93,35 +97,21 @@ export default function EmojiPickerPanel({
         }}
       >
         <EmojiPicker
-          emojiData={emojiData}
-          emojiStyle={EmojiStyle.NATIVE}
-          colorScheme={dark ? Theme.DARK : Theme.LIGHT}
-          width="100%"
-          height="min(420px, calc(var(--radix-popover-content-available-height, 428px) - .5rem))"
-          suggestedEmojisMode={SuggestionMode.RECENT}
-          skinTonePickerLocation={SkinTonePickerLocation.NONE}
-          searchDisabled
-          autoFocusSearch={false}
-          previewConfig={{ showPreview: false }}
-          labels={{
-            loading: '正在加载表情…',
-            loadingError: '表情加载失败',
-            retryLoading: '重试',
-            categoryNavigation: '表情分类',
-            searchResultsNone: '没有匹配的表情',
-            searchResultsOne: '找到一个表情',
-            searchResultsMany: '找到 %n 个表情',
-            skinToneNeutral: '默认肤色',
-            skinToneLight: '浅色肤色',
-            skinToneMediumLight: '中浅色肤色',
-            skinToneMedium: '中等肤色',
-            skinToneMediumDark: '中深色肤色',
-            skinToneDark: '深色肤色',
+          value={null}
+          hideSearch
+          skinTone={0}
+          skinToneStorageKey={null}
+          recentMode="recent"
+          recentStorageKey="exwebsite.emoji.recent.v1"
+          locale="zh"
+          data={localEmojiData}
+          i18n={emojiI18n}
+          onEmojiSelect={(selection) => {
+            insertPickedEmoji(editor, selection.value, expectedSession)
           }}
-          onEmojiClick={(data) => {
-            insertPickedEmoji(editor, data.emoji, expectedSession)
-          }}
-        />
+        >
+          <ExEmojiPickerPanel className={styles.picker} />
+        </EmojiPicker>
       </PopoverContent>
     </Popover>
   )

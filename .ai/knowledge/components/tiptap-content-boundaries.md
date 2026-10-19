@@ -4,7 +4,7 @@
 
 `useTiptapEditor` 配合 `useMarkdownPreset` 使用独立纯 GFM 预设，面向以 Markdown 交换的轻量正文；完整富文本预设继续使用受控 HTML。两者的转换入口与 schema 分开，不能混用 JSON 或沿用完整预设的属性。
 
-_最后更新：2026-10-15_
+_最后更新：2026-10-19_
 
 ## 双 Preset 与统一接入
 
@@ -60,13 +60,19 @@ GFM Slash 复用同一触发、session、映射与弹层，仅列出正文、H1�
 
 `packages/components/src/tiptap/emoji-trigger.ts` 只在可编辑正文的直接 `$` 输入时打开选择框；代码区域、粘贴、导入、Undo 和组合输入不会触发。选择时将仍有效的 `$` 替换为 Unicode 文本，不新增 Emoji 节点、外部图片或独立 schema；JSON 与 Markdown 沿用现有文本转换。取消保留 `$`。触发位置随 transaction mapping 更新，删除或替换触发内容、完整文档替换、失焦和只读切换会关闭，迟到的选择不能写入新位置。
 
-`packages/components/src/tiptap/EmojiPickerPanel.tsx` 按需加载 `emoji-picker-react` 与本地中文数据。ExUI 公共 `Popover` 和虚拟 `PopoverAnchor` 负责 portal、光标定位、碰撞避让及关闭交互；不安装第二份浮层库。Popup 外边距为 4px，用户已要求隐藏搜索框与顶部肤色选择栏，保留分类与原生表情网格。打开后聚焦网格，选择或 Escape 后返回编辑器；外部点击不抢回焦点。完整替换失败仍保留当前编辑状态。
+`packages/components/src/tiptap/EmojiPickerPanel.tsx` 按需加载 ExUI `EmojiPicker` 与 inline `EmojiPickerPanel`。ExUI 公共 `Popover` 和虚拟 `PopoverAnchor` 负责唯一的 portal、光标定位、碰撞避让及关闭交互；内层不生成第二个 trigger/popup。Popup 外边距为 4px，隐藏搜索框与肤色选择器，保留分类与原生表情列表。
+
+`packages/components/src/tiptap/emoji-data.ts` 只导入 `emojibase-data@17.0.0` 的中文 data/messages，经公开 `normalizeEmojibaseData` 规范化一次并显式传入 `data`，避免默认 CDN 加载。中文 i18n 与数据处于面板的 lazy 边界；固定默认肤色，最近使用采用独立 key `exwebsite.emoji.recent.v1`，不迁移旧 picker 的偏好结构。正文仍只插入 Unicode 文本。
+
+只有 session 仍有效且编辑器仍聚焦时，适配层才将初始焦点交给 ready 的 `role="listbox"`；方向键与确认由原生组件处理。选择或 Escape 后返回编辑器，外部点击不抢回焦点。迟到挂载不会从外部目标夺焦，内容门禁拒绝插入时保留有效面板。
+
+Radix 的可用高度按当前光标与弹出方向计算，不能直接减去固定 rem 后假定仍为正数。面板优先向上弹出并允许碰撞翻转，列表保留原生 sticky 分类标题与一整行表情的高度，极低视口通过公开分类栏变量收紧其布局。外层受可用高度约束并提供滚动兜底，内层仍使用原生虚拟列表；验证须实际滚轮、检查选项命中并点击插入，仅有正高度不足以证明表情可选。
 
 回归入口为 `packages/components/src/tiptap/emoji.test.tsx`；弹层定位、主题与键盘焦点仍需在实际消费页面中独立进行浏览器验收。
 
 Mention 候选也通过 `packages/components/src/tiptap/MentionPopup.tsx` 使用 ExUI `Popover` 与虚拟光标锚点，沿用 4px 外边距；宽度为 12rem，并受视口宽度约束。打开时不移走正文焦点，保留 Suggestion 的方向键、Enter、查询取消与组合输入保护；候选按钮不在鼠标按下时抢走焦点，外部关闭不会把焦点强制拉回编辑器。
 
-Emoji 与 Mention 的 `PopoverContent` 均启用 ExUI 公共 `glass` 属性，共用应用已有的 `GlassSeed`。Emoji Picker 根背景透明，分类标题使用 `--exui-glass-background`，避免不透明内层遮住材质；玻璃样式及不支持 backdrop-filter 时的回退由 ExUI 负责。
+Emoji 与 Mention 的 `PopoverContent` 均启用 ExUI 公共 `glass` 属性，共用应用已有的 `GlassSeed`。Emoji 面板通过公开材质变量 `--emoji-picker-surface` 使用 `--exui-glass-background`，玻璃样式及不支持 backdrop-filter 时的回退由 ExUI 负责。
 
 ## 同一 schema 与输入门禁
 

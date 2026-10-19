@@ -1,9 +1,27 @@
 .modal {
-  max-height: 85dvh;
+  width: min(48rem, calc(100vw - 1.5rem));
   max-width: calc(100vw - 1.5rem);
+  max-height: calc(100dvh - 1.5rem);
 }
-.formModal :global(.ex-modal-header) {
-  padding-bottom: 0.5rem;
+.confirmationModal {
+  width: min(26rem, calc(100vw - 1.5rem));
+}
+.formModal {
+  height: min(85dvh, 52rem);
+}
+.formBody,
+.typeBody {
+  padding-inline: 0.5rem;
+  padding-bottom: 0.25rem;
+}
+.formBody {
+  padding-top: 0.25rem;
+}
+.typeBody {
+  padding-top: 0.75rem;
+}
+.confirmationBody {
+  padding-bottom: 0.25rem;
 }
 .form {
   display: grid;
@@ -135,7 +153,7 @@
   min-width: 0;
   max-width: 26rem;
 }
-.formModal :global(.ex-modal-footer):has(.anonymousFooter) {
+.footer:has(.anonymousFooter) {
   flex-direction: row;
   align-items: center;
 }

@@ -240,6 +240,19 @@ export const InvitationCodeForm = forwardRef<InvitationFormHandle, CodeProps>(
                   disabled={disabled}
                   aria-invalid={!!form.formState.errors.code}
                   aria-describedby={form.formState.errors.code ? `${id}-error` : undefined}
+                  onBlur={(event) => {
+                    field.onBlur()
+                    const next = event.relatedTarget
+                    // The OTP caret unmounts on blur; preserve the browser's next form target during that transition.
+                    if (
+                      next instanceof HTMLElement &&
+                      event.currentTarget.form?.contains(next) &&
+                      event.currentTarget.ownerDocument.activeElement ===
+                        event.currentTarget.ownerDocument.body
+                    ) {
+                      next.focus()
+                    }
+                  }}
                   onChange={(value) => {
                     const digits = value.replace(/\D/g, '').slice(0, 6)
                     field.onChange(digits)

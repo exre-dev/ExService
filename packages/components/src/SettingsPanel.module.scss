@@ -5,6 +5,9 @@
   min-height: min(32rem, 100dvh);
   overflow: hidden;
 }
+:global([data-slot='dialog-content']) .panel {
+  min-height: 0;
+}
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -65,34 +68,18 @@
   margin: 0 0 0.5rem;
 }
 .item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(12rem, 1fr);
-  align-items: center;
-  gap: 1rem;
-  min-width: 0;
   padding: 1rem 0;
   border-bottom: 1px solid var(--exui-border-default);
 }
-.itemText {
-  min-width: 0;
+.item :global(.ex-item-body) {
+  align-items: flex-start;
 }
-.itemLabel {
-  font-size: 1rem;
-  line-height: 1.5;
-  font-weight: 500;
+@container ex-item (width >= 21.75rem) {
+  .item :global(.ex-item-body) {
+    align-items: flex-end;
+  }
 }
-.itemText p {
-  margin: 0.25rem 0 0;
-  color: var(--exui-text-secondary);
-  font-size: 0.875rem;
-  line-height: 1.4;
-}
-.itemControl {
-  display: flex;
-  justify-content: flex-end;
-  min-width: 0;
-}
-.itemControl button {
+.item button {
   max-width: 100%;
   overflow-wrap: anywhere;
 }
@@ -182,6 +169,12 @@
   display: grid;
   gap: 1rem;
 }
+.editDialog,
+.uploadDialog,
+.cropDialog {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
 .editDialog {
   max-width: 28rem;
 }
@@ -249,13 +242,6 @@
   }
   .contentHeader {
     display: none;
-  }
-  .item {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-  .itemControl {
-    justify-content: flex-start;
   }
   .profileHero {
     padding: 1.5rem 0;

@@ -1,8 +1,10 @@
 // Isolated shared-UI acceptance fixture. No API, session, or persistent data.
 import { useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ThemeProvider } from '@exre/exui'
+import { GlassSeed, ThemeProvider } from '@exre/exui'
 import '@exre/exui/style.css'
+import '@web/src/styles/website-theme.css'
+import '@web/src/styles/index.scss'
 import { NotificationBell } from '@components/src/notifications/NotificationBell'
 import { NotificationHistoryModal } from '@components/src/notifications/NotificationHistoryModal'
 import {
@@ -267,8 +269,10 @@ function PreferencesFixture() {
   )
 }
 
+document.documentElement.classList.add('website-theme-profile')
 createRoot(document.getElementById('root')!).render(
   <ThemeProvider>
+    <GlassSeed />
     {window.location.hash === '#preferences' ? <PreferencesFixture /> : <Fixture />}
   </ThemeProvider>,
 )

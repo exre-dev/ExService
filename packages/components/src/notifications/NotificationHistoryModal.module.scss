@@ -1,13 +1,17 @@
-.modal :global(.ex-modal-body) {
+.modal {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  width: min(64rem, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+  height: min(48rem, calc(100dvh - 2rem));
+  min-height: 0;
 }
 
 .modalBody {
   display: flex;
   flex: 1;
   min-height: 0;
+  padding: 0;
 }
 
 .grid {
@@ -266,12 +270,10 @@
   display: none;
 }
 
-@media (width < 768px) {
-  .grid {
-    display: block;
-    min-height: 0;
-    overflow: hidden;
-  }
+.grid[data-layout='narrow'] {
+  display: block;
+  min-height: 0;
+  overflow: hidden;
 
   .listColumn {
     height: 100%;
@@ -284,10 +286,10 @@
     display: none;
   }
 
-  .grid.detailMode .listColumn {
+  &[data-detail-mode='true'] .listColumn {
     display: none;
   }
-  .grid.detailMode .detailColumn {
+  &[data-detail-mode='true'] .detailColumn {
     display: flex;
   }
   .backButton {

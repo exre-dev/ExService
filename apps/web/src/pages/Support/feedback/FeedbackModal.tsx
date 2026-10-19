@@ -10,7 +10,13 @@ import {
   FieldError,
   FieldLabel,
   Input,
-  Modal,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   SelectField,
   SelectTrigger,
   SelectValue,
@@ -609,213 +615,221 @@ export function FeedbackModal({
       </Button>
     </>
   )
+  const dialogTitle = confirmation
+    ? '放弃未提交内容？'
+    : kind
+      ? currentRule!.label
+      : area === 'community'
+        ? '投诉和建议'
+        : '功能和需求'
+  const dialogDescription = confirmation
+    ? null
+    : currentRule?.body === 'bug'
+      ? '标题、问题分类和问题描述为必填，其余内容可按实际情况补充。'
+      : kind
+        ? '标题和内容为必填，标注「选填」的内容可留空。'
+        : '选择最贴近你想法的类型，开始填写反馈。'
   return (
     <>
-      <Modal
-        title={
-          confirmation
-            ? '放弃未提交内容？'
-            : kind
-              ? currentRule!.label
-              : area === 'community'
-                ? '投诉和建议'
-                : '功能和需求'
-        }
-        description={
-          confirmation
-            ? undefined
-            : currentRule?.body === 'bug'
-              ? '标题、问题分类和问题描述为必填，其余内容可按实际情况补充。'
-              : kind
-                ? '标题和内容为必填，标注「选填」的内容可留空。'
-                : '选择最贴近你想法的类型，开始填写反馈。'
-        }
-        open={open}
-        onOpenChange={changeOpen}
-        width={confirmation ? '26rem' : '48rem'}
-        height={!confirmation && kind ? 'min(85dvh, 52rem)' : undefined}
-        padding={
-          confirmation ? undefined : kind ? '.25rem 1.5rem 1.25rem' : '.75rem 1.5rem 1.25rem'
-        }
-        mobileFullscreen={false}
-        className={`${styles.modal} ${!confirmation && kind ? styles.formModal : ''}`}
-        footer={confirmation || kind || snapshot || pointer ? footer : undefined}
-        closeLabel={confirmation ? '关闭确认' : '关闭反馈表单'}
-        onCloseAutoFocus={(event) => {
-          if (returnFocus?.isConnected) {
-            event.preventDefault()
-            returnFocus.focus()
-          }
-        }}
-      >
-        {confirmation ? (
-          <p>关闭将丢弃尚未提交的内容和附件。</p>
-        ) : (
-          <>
-            {options && !options.available ? (
-              <p role="status">
-                {options.reason === 'not_configured'
-                  ? '反馈提交暂未配置，请稍后再试。'
-                  : '反馈提交暂不可用，请稍后再试。'}
-              </p>
-            ) : null}
-            {notice && (
-              <p className={styles.notice} role="alert">
-                {notice}
-              </p>
-            )}
-            {!kind &&
-              !snapshot &&
-              !pointer &&
-              (optionsLoading || busy ? (
-                <FeedbackSkeleton choices={choices} />
-              ) : (
-                options && (
-                  <div className={styles.typeGrid}>
-                    {choices.map((choice) => {
-                      const entry = options?.kinds.find((item) => item.kind === choice.kind)
-                      return (
-                        <button
-                          type="button"
-                          key={choice.kind}
-                          className={styles.typeCard}
-                          disabled={!entry?.available}
-                          onClick={() => selectKind(choice.kind)}
-                        >
-                          <img
-                            className={styles.typeIcon}
-                            src={`/3d-icons/${choice.icon}.png`}
-                            alt=""
-                            width={64}
-                            height={64}
-                          />
-                          <span className={styles.typeCopy}>
-                            <strong>{choice.label}</strong>
-                            <span className={styles.typeDescription}>{choice.description}</span>
-                            {entry && !entry.available && <small>此类型暂不可用</small>}
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )
-              ))}
-            {kind &&
-              (optionsLoading ? (
-                <FeedbackSkeleton form choices={choices} />
-              ) : (
-                (options || snapshot) && (
-                  <form
-                    id={formId}
-                    onSubmit={submit}
-                    noValidate
-                    className={styles.form}
-                    aria-busy={busy}
-                  >
-                    {!locked && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className={styles.back}
-                        onClick={() => {
-                          drafts.current[kind] = form.getValues()
-                          setKind(null)
-                        }}
-                      >
-                        <ArrowLeft aria-hidden="true" />
-                        返回选择类型
-                      </Button>
-                    )}
-                    {field('title', '标题')}
-                    {options && classification && (
-                      <div className={currentRule?.department ? styles.columns : undefined}>
-                        {clickup(
-                          'typeOptionId',
-                          classification.label,
-                          '4c3befc0-5146-43a2-8610-86efe4e8124a',
-                          { ...classification, required: currentRule?.typeField === 'required' },
-                        )}
-                        {currentRule?.department &&
-                          clickup(
-                            'departmentOptionId',
-                            '部门',
-                            '9b3d2027-2162-42e2-81b9-d907592cdb5b',
-                          )}
+      <Dialog open={open} onOpenChange={changeOpen}>
+        <DialogContent
+          {...(dialogDescription === null ? { 'aria-describedby': undefined } : {})}
+          responsiveFullscreen={false}
+          className={`${styles.modal} ${confirmation ? styles.confirmationModal : ''} ${!confirmation && kind ? styles.formModal : ''}`}
+          closeLabel={confirmation ? '关闭确认' : '关闭反馈表单'}
+          onCloseAutoFocus={(event) => {
+            if (returnFocus?.isConnected) {
+              event.preventDefault()
+              returnFocus.focus()
+            }
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>{dialogTitle}</DialogTitle>
+            {dialogDescription && <DialogDescription>{dialogDescription}</DialogDescription>}
+          </DialogHeader>
+          <DialogBody
+            className={
+              confirmation ? styles.confirmationBody : kind ? styles.formBody : styles.typeBody
+            }
+          >
+            {confirmation ? (
+              <p>关闭将丢弃尚未提交的内容和附件。</p>
+            ) : (
+              <>
+                {options && !options.available ? (
+                  <p role="status">
+                    {options.reason === 'not_configured'
+                      ? '反馈提交暂未配置，请稍后再试。'
+                      : '反馈提交暂不可用，请稍后再试。'}
+                  </p>
+                ) : null}
+                {notice && (
+                  <p className={styles.notice} role="alert">
+                    {notice}
+                  </p>
+                )}
+                {!kind &&
+                  !snapshot &&
+                  !pointer &&
+                  (optionsLoading || busy ? (
+                    <FeedbackSkeleton choices={choices} />
+                  ) : (
+                    options && (
+                      <div className={styles.typeGrid}>
+                        {choices.map((choice) => {
+                          const entry = options?.kinds.find((item) => item.kind === choice.kind)
+                          return (
+                            <button
+                              type="button"
+                              key={choice.kind}
+                              className={styles.typeCard}
+                              disabled={!entry?.available}
+                              onClick={() => selectKind(choice.kind)}
+                            >
+                              <img
+                                className={styles.typeIcon}
+                                src={`/3d-icons/${choice.icon}.png`}
+                                alt=""
+                                width={64}
+                                height={64}
+                              />
+                              <span className={styles.typeCopy}>
+                                <strong>{choice.label}</strong>
+                                <span className={styles.typeDescription}>{choice.description}</span>
+                                {entry && !entry.available && <small>此类型暂不可用</small>}
+                              </span>
+                            </button>
+                          )
+                        })}
                       </div>
-                    )}
-                    {currentRule?.action &&
-                      selection(
-                        'action',
-                        '操作',
-                        Object.entries(actions).map(([id, label]) => ({
-                          id,
-                          label,
-                          disabled: !options?.actions.find((item) => item.action === id)?.available,
-                        })),
-                      )}
-                    {currentRule?.body === 'bug' ? (
-                      <>
-                        {field('description', '问题描述', true)}
-                        {field('reproductionSteps', '复现步骤', true)}
-                        {field('expectedResult', '预期结果', true)}
-                        {field('actualResult', '实际结果', true)}
-                        {selection(
-                          'frequency',
-                          '发生频率',
-                          Object.entries(FREQUENCIES).map(([id, label]) => ({
-                            id,
-                            label,
-                          })),
+                    )
+                  ))}
+                {kind &&
+                  (optionsLoading ? (
+                    <FeedbackSkeleton form choices={choices} />
+                  ) : (
+                    (options || snapshot) && (
+                      <form
+                        id={formId}
+                        onSubmit={submit}
+                        noValidate
+                        className={styles.form}
+                        aria-busy={busy}
+                      >
+                        {!locked && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className={styles.back}
+                            onClick={() => {
+                              drafts.current[kind] = form.getValues()
+                              setKind(null)
+                            }}
+                          >
+                            <ArrowLeft aria-hidden="true" />
+                            返回选择类型
+                          </Button>
                         )}
-                      </>
-                    ) : (
-                      field('contentText', '内容', true)
-                    )}
-                    <FileUploader
-                      value={files}
-                      onChange={(next) => {
-                        form.setValue('files', next, {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                        form.clearErrors('files')
-                      }}
-                      maxFiles={FEEDBACK_LIMITS.files}
-                      maxFileSize={FEEDBACK_LIMITS.fileBytes}
-                      maxTotalSize={FEEDBACK_LIMITS.totalFileBytes}
-                      disabled={busy}
-                      fileSelectionDisabled={
-                        Boolean(snapshot && snapshot.nextAction !== 'upload') ||
-                        (frozen && !snapshot)
-                      }
-                      error={errors.files?.message}
-                      onSelectionError={(message) =>
-                        form.setError('files', { type: 'manual', message })
-                      }
-                      enableLargeFileInfo
-                      largeFileInfoEnabled={largeFileInfoEnabled}
-                      onLargeFileInfoEnabledChange={(value) =>
-                        form.setValue('largeFileInfoEnabled', value, {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                      largeFileInfo={largeFileInfo}
-                      onLargeFileInfoChange={(value) =>
-                        form.setValue('largeFileInfo', value, {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                      largeFileInfoError={errors.largeFileInfo?.message}
-                      largeFileInfoDisabled={frozen}
-                    />
-                  </form>
-                )
-              ))}
-          </>
-        )}
-      </Modal>
+                        {field('title', '标题')}
+                        {options && classification && (
+                          <div className={currentRule?.department ? styles.columns : undefined}>
+                            {clickup(
+                              'typeOptionId',
+                              classification.label,
+                              '4c3befc0-5146-43a2-8610-86efe4e8124a',
+                              {
+                                ...classification,
+                                required: currentRule?.typeField === 'required',
+                              },
+                            )}
+                            {currentRule?.department &&
+                              clickup(
+                                'departmentOptionId',
+                                '部门',
+                                '9b3d2027-2162-42e2-81b9-d907592cdb5b',
+                              )}
+                          </div>
+                        )}
+                        {currentRule?.action &&
+                          selection(
+                            'action',
+                            '操作',
+                            Object.entries(actions).map(([id, label]) => ({
+                              id,
+                              label,
+                              disabled: !options?.actions.find((item) => item.action === id)
+                                ?.available,
+                            })),
+                          )}
+                        {currentRule?.body === 'bug' ? (
+                          <>
+                            {field('description', '问题描述', true)}
+                            {field('reproductionSteps', '复现步骤', true)}
+                            {field('expectedResult', '预期结果', true)}
+                            {field('actualResult', '实际结果', true)}
+                            {selection(
+                              'frequency',
+                              '发生频率',
+                              Object.entries(FREQUENCIES).map(([id, label]) => ({
+                                id,
+                                label,
+                              })),
+                            )}
+                          </>
+                        ) : (
+                          field('contentText', '内容', true)
+                        )}
+                        <FileUploader
+                          value={files}
+                          onChange={(next) => {
+                            form.setValue('files', next, {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            })
+                            form.clearErrors('files')
+                          }}
+                          maxFiles={FEEDBACK_LIMITS.files}
+                          maxFileSize={FEEDBACK_LIMITS.fileBytes}
+                          maxTotalSize={FEEDBACK_LIMITS.totalFileBytes}
+                          disabled={busy}
+                          fileSelectionDisabled={
+                            Boolean(snapshot && snapshot.nextAction !== 'upload') ||
+                            (frozen && !snapshot)
+                          }
+                          error={errors.files?.message}
+                          onSelectionError={(message) =>
+                            form.setError('files', { type: 'manual', message })
+                          }
+                          enableLargeFileInfo
+                          largeFileInfoEnabled={largeFileInfoEnabled}
+                          onLargeFileInfoEnabledChange={(value) =>
+                            form.setValue('largeFileInfoEnabled', value, {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            })
+                          }
+                          largeFileInfo={largeFileInfo}
+                          onLargeFileInfoChange={(value) =>
+                            form.setValue('largeFileInfo', value, {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            })
+                          }
+                          largeFileInfoError={errors.largeFileInfo?.message}
+                          largeFileInfoDisabled={frozen}
+                        />
+                      </form>
+                    )
+                  ))}
+              </>
+            )}
+          </DialogBody>
+          {(confirmation || kind || snapshot || pointer) && (
+            <DialogFooter className={styles.footer}>{footer}</DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

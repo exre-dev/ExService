@@ -2,7 +2,7 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { StrictMode } from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ExAxiosError } from '@workspace/sdk'
 import { AUTH_TOKEN_KEY } from '@web/src/auth/storage'
 
@@ -35,10 +35,24 @@ function show(phase: 'login' | 'consent' | 'logout', query: string, strict = fal
   return render(strict ? <StrictMode>{routes}</StrictMode> : routes)
 }
 
+// Dialog observes viewport changes; jsdom does not implement matchMedia.
+beforeEach(() =>
+  vi.stubGlobal('matchMedia', (media: string) => ({
+    media,
+    matches: false,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+)
 afterEach(() => {
   cleanup()
   post.mockReset()
   window.localStorage.clear()
+  vi.unstubAllGlobals()
 })
 
 describe('Website OIDC browser flow', () => {

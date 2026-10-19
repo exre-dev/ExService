@@ -3,9 +3,11 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { createRef, StrictMode } from 'react'
 import type { Editor } from '@tiptap/core'
+import { Plugin } from '@tiptap/pm/state'
 import { TiptapEditor } from './TiptapEditor'
+import EmojiPickerPanel from './EmojiPickerPanel'
 import type { TiptapEditorHandle } from './types'
-import { insertPickedEmoji } from './emoji-trigger'
+import { closeEmojiPicker, currentEmojiAnchor, insertPickedEmoji } from './emoji-trigger'
 
 beforeEach(() => {
   Object.defineProperty(Range.prototype, 'getClientRects', { configurable: true, value: () => [] })
@@ -13,21 +15,17 @@ beforeEach(() => {
     configurable: true,
     value: () => new DOMRect(),
   })
-  // jsdom has no layout. Supply the measured browser boundary used by the
-  // real picker's grid, without replacing its search or selection behavior.
+  // jsdom has no layout. Supply the real list's measurement boundary without
+  // replacing the picker's selection or keyboard implementation.
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (
     this: HTMLElement,
   ) {
-    return this.closest('.EmojiPickerReact') ? 350 : 0
+    return this.matches('[data-slot="emoji-picker-panel"]') ? 350 : 0
   })
   vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function (
     this: HTMLElement,
   ) {
-    return this.matches('[data-epr-part="emoji"]')
-      ? 32
-      : this.closest('.EmojiPickerReact')
-        ? 300
-        : 0
+    return this.matches('[data-slot="emoji-picker-list"]') ? 300 : 0
   })
   vi.stubGlobal(
     'ResizeObserver',
@@ -120,10 +118,13 @@ it('opens the real picker on typed $ and replaces only that trigger with Unicode
   expect(picker.getAttribute('data-slot')).toBe('popover-content')
   expect(within(picker).queryAllByRole('button', { name: /肤色/ })).toHaveLength(0)
   expect(within(picker).queryByRole('textbox')).toBeNull()
-  await waitFor(() => expect(document.activeElement?.getAttribute('role')).toBe('gridcell'))
+  const list = await within(picker).findByRole('listbox', { name: '表情列表' })
+  await waitFor(() => expect(document.activeElement).toBe(list))
+  expect(list.getAttribute('aria-busy')).toBeNull()
+  expect(list.tabIndex).toBe(0)
   const face = await waitFor(() => {
-    const cell = within(picker)
-      .getAllByRole('gridcell')
+    const cell = within(list)
+      .getAllByRole('option')
       .find((item) => item.textContent === '😀')
     expect(cell).toBeTruthy()
     return cell!
@@ -134,6 +135,72 @@ it('opens the real picker on typed $ and replaces only that trigger with Unicode
   expect(ref.current!.exportMarkdown()).toMatchObject({ ok: true, value: 'before 😀after' })
   expect(editor.state.selection.from).toBe(10)
   expect(document.activeElement).toBe(textbox)
+})
+
+it('uses the real listbox keyboard navigation and confirms the highlighted emoji', async () => {
+  render(<TiptapEditor ariaLabel="keyboard emoji" />)
+  const textbox = screen.getByRole('textbox', { name: 'keyboard emoji' })
+  typeDollar(textbox)
+  const list = await screen.findByRole('listbox', { name: '表情列表' })
+  await waitFor(() => expect(document.activeElement).toBe(list))
+  fireEvent.keyDown(list, { key: 'ArrowRight' })
+  const active = list.getAttribute('aria-activedescendant')
+  expect(active).toBeTruthy()
+  const option = document.getElementById(active!)
+  expect(option?.getAttribute('role')).toBe('option')
+  const emoji = option?.textContent
+  expect(emoji).toBeTruthy()
+  fireEvent.keyDown(list, { key: 'Enter' })
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: '选择 Emoji' })).toBeNull())
+  expect(textbox.textContent).toBe(emoji)
+  expect(document.activeElement).toBe(textbox)
+})
+
+it('browses local Chinese data without requesting remote emoji data', async () => {
+  const fetch = vi.spyOn(globalThis, 'fetch')
+  render(<TiptapEditor ariaLabel="offline emoji" />)
+  const textbox = screen.getByRole('textbox', { name: 'offline emoji' })
+  typeDollar(textbox)
+  const picker = await screen.findByRole('dialog', { name: '选择 Emoji' })
+  const list = await within(picker).findByRole('listbox', { name: '表情列表' })
+  expect(within(picker).getByRole('tablist', { name: '表情分类' })).toBeTruthy()
+  await waitFor(() => expect(within(list).getAllByRole('option').length).toBeGreaterThan(0))
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('keeps the picker and trigger when the document gate rejects selection', async () => {
+  render(<TiptapEditor ariaLabel="guarded selection" />)
+  const textbox = screen.getByRole('textbox', { name: 'guarded selection' })
+  const editor = typeDollar(textbox)
+  const picker = await screen.findByRole('dialog', { name: '选择 Emoji' })
+  const option = (await within(picker).findAllByRole('option'))[0]!
+  editor.registerPlugin(new Plugin({ filterTransaction: (transaction) => !transaction.docChanged }))
+  fireEvent.click(option)
+  expect(textbox.textContent).toBe('$')
+  expect(screen.getByRole('dialog', { name: '选择 Emoji' })).toBeTruthy()
+})
+
+it('rejects a real pick from a stale panel after another session opens', async () => {
+  render(<TiptapEditor ariaLabel="stale emoji" />)
+  const textbox = screen.getByRole('textbox', { name: 'stale emoji' })
+  const editor = typeDollar(textbox)
+  const previous = currentEmojiAnchor(editor)!
+  await screen.findByRole('dialog', { name: '选择 Emoji' })
+  act(() => {
+    closeEmojiPicker(editor, previous.session)
+  })
+  typeDollar(textbox)
+  const current = currentEmojiAnchor(editor)!
+  expect(current.session).not.toBe(previous.session)
+  const stale = render(
+    <EmojiPickerPanel editor={editor} anchor={previous} session={previous.session} />,
+  )
+  const panels = await screen.findAllByRole('dialog', { name: '选择 Emoji' })
+  const staleOption = (await within(panels[1]!).findAllByRole('option'))[0]!
+  fireEvent.click(staleOption)
+  expect(textbox.textContent).toBe('$$')
+  expect(currentEmojiAnchor(editor)?.session).toBe(current.session)
+  stale.unmount()
 })
 
 it('keeps literal $ on Escape and does not reopen after paste or ordinary transactions', async () => {

@@ -11,12 +11,17 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
-  Modal,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   Skeleton,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
+  useIsMobile,
 } from '@exre/exui'
 import {
   NotificationBody,
@@ -96,7 +101,7 @@ export interface NotificationHistoryModalProps {
 
 /** Shared UI owns geometry and focus; the Website controller owns requests and count authority. */
 export function NotificationHistoryModal(props: NotificationHistoryModalProps) {
-  const narrow = useIsNarrow()
+  const narrow = useIsMobile()
   const [detailMode, setDetailMode] = useState(props.selectedId !== null)
   const listScroll = useRef<HTMLDivElement>(null)
   const [listElement, setListElement] = useState<HTMLDivElement | null>(null)
@@ -238,146 +243,170 @@ export function NotificationHistoryModal(props: NotificationHistoryModalProps) {
   const label = operation === null && !ready ? '加载中…' : readAll ? '已读全部' : '清理全部'
   const retryKind = lastPreparation.current ?? (ready ? (readAll ? 'read-all' : 'clear') : null)
 
+  const blockClose = props.bulk.pending !== null || props.confirm.kind !== null
+
   return (
-    <Modal
-      title="通知历史"
-      size="xl"
-      height="min(48rem, calc(100dvh - 2rem))"
-      padding={0}
-      mobileFullscreen
-      closeLabel="关闭通知历史"
-      className={styles.modal}
-      bodyClassName={styles.modalBody}
+    <Dialog
       open={props.open}
-      dismissible={props.bulk.pending === null}
       onOpenChange={(open) => {
-        if (!open) props.onClose()
-      }}
-      onCloseAutoFocus={(event) => {
-        event.preventDefault()
-        props.finalFocusRef?.current?.focus()
+        if (!open && !blockClose) props.onClose()
       }}
     >
-      <div className={`${styles.grid}${detailMode ? ` ${styles.detailMode}` : ''}`}>
-        <section className={styles.listColumn} aria-label="通知列表">
-          <Tabs
-            className={styles.listTabs}
-            value={props.list.filter}
-            onValueChange={(value) => {
-              if (value !== 'all' && value !== 'unread') return
-              setDetailMode(false)
-              props.list.onFilterChange(value)
-            }}
+      <DialogContent
+        className={styles.modal}
+        responsiveFullscreen
+        closeLabel="关闭通知历史"
+        style={narrow ? { width: '100vw', maxWidth: '100vw' } : undefined}
+        closeButtonDisabled={props.bulk.pending !== null}
+        aria-describedby={undefined}
+        onEscapeKeyDown={(event) => {
+          if (blockClose) event.preventDefault()
+        }}
+        onInteractOutside={(event) => {
+          if (blockClose) event.preventDefault()
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+          props.finalFocusRef?.current?.focus()
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>通知历史</DialogTitle>
+        </DialogHeader>
+        <DialogBody className={styles.modalBody}>
+          <div
+            className={styles.grid}
+            data-layout={narrow ? 'narrow' : 'wide'}
+            data-detail-mode={detailMode || undefined}
           >
-            <div className={styles.listTools}>
-              <TabsList
-                ref={tabList}
-                variant="default"
-                aria-label="通知筛选"
-                className={styles.tabList}
+            <section className={styles.listColumn} aria-label="通知列表">
+              <Tabs
+                className={styles.listTabs}
+                value={props.list.filter}
+                onValueChange={(value) => {
+                  if (value !== 'all' && value !== 'unread') return
+                  setDetailMode(false)
+                  props.list.onFilterChange(value)
+                }}
               >
-                <TabsTrigger value="all" className={styles.tabTrigger}>
-                  全部
-                </TabsTrigger>
-                <TabsTrigger value="unread" className={styles.tabTrigger}>
-                  未读
-                </TabsTrigger>
-              </TabsList>
-              <Button
-                type="button"
-                variant={readAll ? 'outline' : 'ghost'}
-                size="sm"
-                disabled={disabled}
-                className={readAll ? undefined : styles.clearAllButton}
-                onClick={readAll ? props.bulk.onReadAll : props.bulk.onClearAll}
-              >
-                {label}
-              </Button>
-            </div>
-            {props.bulk.error && (
-              <div role="alert" className={styles.pageError}>
-                <p>{props.bulk.error}</p>
+                <div className={styles.listTools}>
+                  <TabsList
+                    ref={tabList}
+                    variant="default"
+                    aria-label="通知筛选"
+                    className={styles.tabList}
+                  >
+                    <TabsTrigger value="all" className={styles.tabTrigger}>
+                      全部
+                    </TabsTrigger>
+                    <TabsTrigger value="unread" className={styles.tabTrigger}>
+                      未读
+                    </TabsTrigger>
+                  </TabsList>
+                  <Button
+                    type="button"
+                    variant={readAll ? 'outline' : 'ghost'}
+                    size="sm"
+                    disabled={disabled}
+                    className={readAll ? undefined : styles.clearAllButton}
+                    onClick={readAll ? props.bulk.onReadAll : props.bulk.onClearAll}
+                  >
+                    {label}
+                  </Button>
+                </div>
+                {props.bulk.error && (
+                  <div role="alert" className={styles.pageError}>
+                    <p>{props.bulk.error}</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={operation !== null || retryKind === null}
+                      onClick={
+                        retryKind === 'read-all' ? props.bulk.onReadAll : props.bulk.onClearAll
+                      }
+                    >
+                      重新准备
+                    </Button>
+                  </div>
+                )}
+                <TabsContent
+                  ref={bindListScroll}
+                  value={props.list.filter}
+                  className={styles.listScroll}
+                >
+                  {props.list.status === 'error' ? (
+                    <div className={styles.notice} role="alert">
+                      <p>通知暂时无法加载，计数未更新。</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={props.list.onRetry}
+                      >
+                        重试加载
+                      </Button>
+                    </div>
+                  ) : props.list.status !== 'ready' ? (
+                    <div role="status" aria-label="正在加载通知" className={styles.skeletons}>
+                      <Skeleton className={styles.skeleton} />
+                      <Skeleton className={styles.skeleton} />
+                      <Skeleton className={styles.skeleton} />
+                    </div>
+                  ) : (
+                    <>
+                      <NotificationItemList
+                        items={props.list.items}
+                        selectedId={props.selectedId}
+                        onSelect={select}
+                        empty={listEmptyState(props.list.filter)}
+                      />
+                      {props.list.nextPageStatus === 'loading' && (
+                        <p className={styles.pageRetrying} role="status">
+                          {props.list.hasMore ? '正在加载…' : notificationCopy.pageRetrying}
+                        </p>
+                      )}
+                      {props.list.nextPageStatus === 'error' && (
+                        <div role="alert" className={styles.pageError}>
+                          <p>{notificationCopy.nextPageError}</p>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={props.list.onRetryPage}
+                          >
+                            {notificationCopy.retryNextPage}
+                          </Button>
+                        </div>
+                      )}
+                      {props.list.hasMore && (
+                        <div ref={sentinel} className={styles.sentinel} aria-hidden="true" />
+                      )}
+                    </>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </section>
+            <section className={styles.detailColumn} aria-label="通知正文">
+              {detailMode && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  disabled={operation !== null || retryKind === null}
-                  onClick={retryKind === 'read-all' ? props.bulk.onReadAll : props.bulk.onClearAll}
+                  className={styles.backButton}
+                  onClick={backToList}
                 >
-                  重新准备
+                  <ChevronLeft aria-hidden="true" />
+                  返回列表
                 </Button>
-              </div>
-            )}
-            <TabsContent
-              ref={bindListScroll}
-              value={props.list.filter}
-              className={styles.listScroll}
-            >
-              {props.list.status === 'error' ? (
-                <div className={styles.notice} role="alert">
-                  <p>通知暂时无法加载，计数未更新。</p>
-                  <Button type="button" variant="outline" size="sm" onClick={props.list.onRetry}>
-                    重试加载
-                  </Button>
-                </div>
-              ) : props.list.status !== 'ready' ? (
-                <div role="status" aria-label="正在加载通知" className={styles.skeletons}>
-                  <Skeleton className={styles.skeleton} />
-                  <Skeleton className={styles.skeleton} />
-                  <Skeleton className={styles.skeleton} />
-                </div>
-              ) : (
-                <>
-                  <NotificationItemList
-                    items={props.list.items}
-                    selectedId={props.selectedId}
-                    onSelect={select}
-                    empty={listEmptyState(props.list.filter)}
-                  />
-                  {props.list.nextPageStatus === 'loading' && (
-                    <p className={styles.pageRetrying} role="status">
-                      {props.list.hasMore ? '正在加载…' : notificationCopy.pageRetrying}
-                    </p>
-                  )}
-                  {props.list.nextPageStatus === 'error' && (
-                    <div role="alert" className={styles.pageError}>
-                      <p>{notificationCopy.nextPageError}</p>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={props.list.onRetryPage}
-                      >
-                        {notificationCopy.retryNextPage}
-                      </Button>
-                    </div>
-                  )}
-                  {props.list.hasMore && (
-                    <div ref={sentinel} className={styles.sentinel} aria-hidden="true" />
-                  )}
-                </>
               )}
-            </TabsContent>
-          </Tabs>
-        </section>
-        <section className={styles.detailColumn} aria-label="通知正文">
-          {detailMode && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={styles.backButton}
-              onClick={backToList}
-            >
-              <ChevronLeft aria-hidden="true" />
-              返回列表
-            </Button>
-          )}
-          <DetailPane {...props} narrow={narrow} />
-        </section>
-      </div>
-      <ConfirmDialog {...props.confirm} />
-    </Modal>
+              <DetailPane {...props} narrow={narrow} />
+            </section>
+          </div>
+        </DialogBody>
+        <ConfirmDialog {...props.confirm} />
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -585,9 +614,7 @@ function ConfirmDialog(props: NotificationConfirmSlice) {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={props.pending} onClick={props.onCancel}>
-            取消
-          </AlertDialogCancel>
+          <AlertDialogCancel disabled={props.pending}>取消</AlertDialogCancel>
           <AlertDialogAction
             disabled={props.pending || props.expired}
             onClick={(event) => {
@@ -618,23 +645,4 @@ function listEmptyState(filter: NotificationHistoryFilter): ReactNode {
       <p className={styles.emptyBody}>收到的公告与个人通知会显示在这里。</p>
     </div>
   )
-}
-
-/** Same breakpoint as ExUI; initializing from media avoids a Popup-to-body list flash. */
-function useIsNarrow(query = '(width < 768px)'): boolean {
-  const [narrow, setNarrow] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia(query).matches,
-  )
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
-    const media = window.matchMedia(query)
-    const sync = () => setNarrow(media.matches)
-    sync()
-    media.addEventListener('change', sync)
-    return () => media.removeEventListener('change', sync)
-  }, [query])
-  return narrow
 }

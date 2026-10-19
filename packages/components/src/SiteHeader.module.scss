@@ -13,6 +13,7 @@
   position: sticky;
   top: 0;
   z-index: 10;
+  container: site-header / inline-size;
   box-shadow: inset 0 -1px 0 transparent;
   transition:
     background-color 200ms ease-out,
@@ -55,7 +56,7 @@
   /* 撑满外层高度并水平居中：grow 到 max-width 上限后，剩余空间由 auto 外边距吸收。 */
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 1240px;
+  max-width: 77.5rem;
   margin-inline: auto;
   padding-inline: 1.5rem;
 }
@@ -100,7 +101,7 @@
   display: contents;
 }
 
-@media (max-width: 52rem) {
+@container site-header (width <= 52rem) {
   .inner {
     grid-template-columns: auto minmax(0, 1fr) auto auto;
     gap: 0;

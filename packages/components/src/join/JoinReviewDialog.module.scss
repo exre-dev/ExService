@@ -5,16 +5,22 @@
   max-width: 42rem;
   max-height: calc(100dvh - 2rem);
   min-height: 0;
-  overflow: hidden;
   padding: 1.5rem;
   gap: 1.25rem;
+}
+.content[data-slot='dialog-content'] > .body[data-slot='dialog-body'] {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(
+    var(--exui-component-tabs-list-height) + var(--exui-component-dialog-title-line-height) +
+      1.25rem
+  );
 }
 .tabs {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
   gap: 1rem;
 }
 .tabList {
@@ -22,10 +28,11 @@
   width: 100%;
 }
 .scroll {
+  flex: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  min-height: 0;
+  min-height: calc(var(--exui-component-dialog-title-line-height) + 0.25rem);
   padding: 0.125rem;
 }
 .footer {

@@ -5,11 +5,11 @@
   background: var(--exui-component-form-control-base-background);
 }
 .field:focus-within {
-  outline: 2px solid var(--exui-border-focus, var(--exui-text-primary));
+  outline: 2px solid var(--exui-border-focused);
   outline-offset: 2px;
 }
 .field[data-invalid] {
-  border-color: var(--exui-feedback-error);
+  border-color: var(--exui-feedback-danger);
 }
 .field[data-readonly] {
   background: var(--exui-surface-secondary);
@@ -46,7 +46,7 @@
 }
 .error {
   padding: 0 1rem 0.5rem;
-  color: var(--exui-feedback-error);
+  color: var(--exui-feedback-danger);
   font-size: 0.8125rem;
 }
 .error p {
