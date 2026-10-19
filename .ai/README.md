@@ -21,6 +21,7 @@ _最后更新：2026-10-19_
 | Contract Test | `tests/contract/` | `.ai/architectures/contract-tests/test-layers.md` |
 | 持久通知 | `apps/server/src/modules/notifications/`、`apps/web/src/notifications/`、`packages/components/src/notifications/` | `.ai/knowledge/notifications/clear-preview-coexistence.md`、`.ai/knowledge/notifications/command-idempotency.md`、`.ai/knowledge/notifications/request-lifecycle.md`、`.ai/knowledge/server/query-string-type-enforcement.md` |
 | Monica 项目协作 | Exre Delivery Squad | `.ai/architectures/monica-team/workflow.md` |
+| 提交前格式化 | `.husky/`、`.lintstagedrc.json`、`.prettierrc.json`、`.prettierignore` | `.ai/knowledge/tooling/pre-commit-formatting.md` |
 
 跨模块结构见 `.ai/architectures/overview.md`；业务术语见 `.ai/CONTEXT.md`；账号、申请与邀请数据规则见 `.ai/databases/data-model.md`；决策索引见 `.ai/decisions/README.md`。
 

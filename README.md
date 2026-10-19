@@ -34,21 +34,29 @@ Website 使用独立 PostgreSQL `exre`；Hydra 提供 OIDC 协议并使用独立
 
 ## 常用命令
 
-| 目的 | 命令 |
-| --- | --- |
-| 启动/停止后台依赖 | `pnpm service:start` / `pnpm service:stop` |
-| 查看状态/日志 | `pnpm service:status` / `pnpm service:logs [postgres\|hydra]` |
-| 开发监听 | `pnpm dev` |
-| Website 显式迁移 | `pnpm db:migrate` |
-| Hydra 显式迁移 | `pnpm infra migrate` |
-| 显式登记身份客户端 | `pnpm infra clients` |
-| 自动测试/监听测试 | `pnpm test` / `pnpm test:watch` |
-| 构建 | `pnpm build` |
+| 目的                | 命令                                                                        |
+| ------------------- | --------------------------------------------------------------------------- |
+| 启动/停止后台依赖   | `pnpm service:start` / `pnpm service:stop`                                  |
+| 查看状态/日志       | `pnpm service:status` / `pnpm service:logs [postgres\|hydra]`               |
+| 开发监听            | `pnpm dev`                                                                  |
+| Website 显式迁移    | `pnpm db:migrate`                                                           |
+| Hydra 显式迁移      | `pnpm infra migrate`                                                        |
+| 显式登记身份客户端  | `pnpm infra clients`                                                        |
+| 自动测试/监听测试   | `pnpm test` / `pnpm test:watch`                                             |
+| 构建                | `pnpm build`                                                                |
 | Contract 与类型检查 | `pnpm api:lint` / `pnpm api:generate` / `pnpm api:check` / `pnpm typecheck` |
 
 首次本地测试前先执行 `pnpm exec playwright install chromium`，准备默认测试使用的 Browser SDK Chromium 夹具；Linux 需要系统依赖时使用 `pnpm exec playwright install --with-deps chromium`。日常 runtime 不自动安装浏览器。
 
 测试使用临时数据库，不连接开发库；Build 不连接数据库或启动 Docker。自动测试、本机生命周期、浏览器和部署验收分别报告。
+
+## 提交前格式化
+
+`pnpm install --frozen-lockfile` 会通过 `prepare` 安装当前工作树的 Git Hook；已有依赖时可运行 `pnpm prepare`。Codex 的 `$commit`、CodeBuddy、Claude 和手动 `git commit` 都使用同一提交流程。
+
+提交前由 Husky 调用 lint-staged，只对暂存文件执行 Prettier，格式化结果自动进入本次提交。部分暂存文件的未暂存改动会保留。格式化失败时提交中止，修复错误后重新暂存并提交。
+
+格式规则位于 `.prettierrc.json`，生成文件和输出目录由 `.prettierignore` 排除。手动处理单个文件可执行 `pnpm exec prettier --write <文件路径>`；`pnpm format` 和 `pnpm format:check` 分别格式化、检查全仓库，范围与提交前检查不同。Hook 的隔离验证命令为 `pnpm test:formatting`，安装边界见 `.ai/knowledge/tooling/pre-commit-formatting.md`。
 
 ## 工程入口
 
