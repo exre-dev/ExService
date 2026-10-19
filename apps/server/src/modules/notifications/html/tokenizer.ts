@@ -18,14 +18,33 @@ export type HtmlToken =
   | { kind: 'text'; value: string }
   | { kind: 'comment'; value: string }
   | { kind: 'doctype'; value: string }
-  | { kind: 'start'; name: string; attributes: Array<{ name: string; value: string }>; selfClosing: boolean }
+  | {
+      kind: 'start'
+      name: string
+      attributes: Array<{ name: string; value: string }>
+      selfClosing: boolean
+    }
   | { kind: 'end'; name: string; selfClosing: boolean }
 
 /** 原始文本元素：内容直到对应结束标签为止，不再解析标签。 */
-const RAW_TEXT = new Set(['script', 'style', 'title', 'textarea', 'iframe', 'noembed', 'noframes', 'xmp'])
+const RAW_TEXT = new Set([
+  'script',
+  'style',
+  'title',
+  'textarea',
+  'iframe',
+  'noembed',
+  'noframes',
+  'xmp',
+])
 
 const NAMED_REFERENCES: Record<string, string> = {
-  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: ' ',
 }
 
 function isAsciiAlpha(code: number): boolean {
@@ -120,7 +139,12 @@ export function tokenizeHtml(input: string): HtmlToken[] {
       continue
     }
     flushText()
-    tokens.push({ kind: 'start', name: start.name, attributes: start.attributes, selfClosing: start.selfClosing })
+    tokens.push({
+      kind: 'start',
+      name: start.name,
+      attributes: start.attributes,
+      selfClosing: start.selfClosing,
+    })
     if (RAW_TEXT.has(start.name) && !start.selfClosing) {
       const raw = readRawText(input, index, start.name)
       if (raw.value.length > 0) tokens.push({ kind: 'text', value: raw.value })
@@ -137,7 +161,10 @@ export function tokenizeHtml(input: string): HtmlToken[] {
   return tokens
 }
 
-function readCharacterReference(input: string, start: number): { value: string; next: number } | undefined {
+function readCharacterReference(
+  input: string,
+  start: number,
+): { value: string; next: number } | undefined {
   if (input[start + 1] === '#') {
     let index = start + 2
     let hex = false
@@ -146,7 +173,10 @@ function readCharacterReference(input: string, start: number): { value: string; 
       index += 1
     }
     let digits = ''
-    while (index < input.length && (hex ? /[0-9a-fA-F]/.test(input[index]!) : /[0-9]/.test(input[index]!))) {
+    while (
+      index < input.length &&
+      (hex ? /[0-9a-fA-F]/.test(input[index]!) : /[0-9]/.test(input[index]!))
+    ) {
       digits += input[index]
       index += 1
     }
@@ -181,7 +211,10 @@ function replacementFor(codePoint: number): string {
   return String.fromCodePoint(codePoint)
 }
 
-function readMarkupDeclaration(input: string, start: number): { token: HtmlToken | null; next: number } | undefined {
+function readMarkupDeclaration(
+  input: string,
+  start: number,
+): { token: HtmlToken | null; next: number } | undefined {
   if (input.startsWith('<!--', start)) {
     const end = input.indexOf('-->', start + 4)
     if (end === -1) {
@@ -204,10 +237,18 @@ function readMarkupDeclaration(input: string, start: number): { token: HtmlToken
   return { token: { kind: 'comment', value: input.slice(start, close + 1) }, next: close + 1 }
 }
 
-function readEndTag(input: string, start: number): { name: string; selfClosing: boolean; next: number } | undefined {
+function readEndTag(
+  input: string,
+  start: number,
+): { name: string; selfClosing: boolean; next: number } | undefined {
   let index = start + 2
   let name = ''
-  while (index < input.length && !isSpace(input.charCodeAt(index)) && input[index] !== '>' && input[index] !== '/') {
+  while (
+    index < input.length &&
+    !isSpace(input.charCodeAt(index)) &&
+    input[index] !== '>' &&
+    input[index] !== '/'
+  ) {
     name += input[index]
     index += 1
   }
@@ -223,11 +264,25 @@ function readEndTag(input: string, start: number): { name: string; selfClosing: 
   return { name: name.toLowerCase(), selfClosing, next: index + 1 }
 }
 
-function readStartTag(input: string, start: number):
-  { name: string; attributes: Array<{ name: string; value: string }>; selfClosing: boolean; next: number } | undefined {
+function readStartTag(
+  input: string,
+  start: number,
+):
+  | {
+      name: string
+      attributes: Array<{ name: string; value: string }>
+      selfClosing: boolean
+      next: number
+    }
+  | undefined {
   let index = start + 1
   let name = ''
-  while (index < input.length && !isSpace(input.charCodeAt(index)) && input[index] !== '>' && input[index] !== '/') {
+  while (
+    index < input.length &&
+    !isSpace(input.charCodeAt(index)) &&
+    input[index] !== '>' &&
+    input[index] !== '/'
+  ) {
     name += input[index]
     index += 1
   }
@@ -251,8 +306,13 @@ function readStartTag(input: string, start: number):
     }
 
     let attributeName = ''
-    while (index < input.length && !isSpace(input.charCodeAt(index)) && input[index] !== '=' &&
-      input[index] !== '>' && input[index] !== '/') {
+    while (
+      index < input.length &&
+      !isSpace(input.charCodeAt(index)) &&
+      input[index] !== '=' &&
+      input[index] !== '>' &&
+      input[index] !== '/'
+    ) {
       attributeName += input[index]
       index += 1
     }
@@ -304,13 +364,17 @@ function readStartTag(input: string, start: number):
         }
       }
     }
-    if (!attributes.some(attribute => attribute.name === attributeName)) {
+    if (!attributes.some((attribute) => attribute.name === attributeName)) {
       attributes.push({ name: attributeName, value })
     }
   }
 }
 
-function readRawText(input: string, start: number, tagName: string): { value: string; next: number; closed: boolean } {
+function readRawText(
+  input: string,
+  start: number,
+  tagName: string,
+): { value: string; next: number; closed: boolean } {
   const lower = input.toLowerCase()
   const marker = `</${tagName}`
   const searchFrom = start + 1 + tagName.length

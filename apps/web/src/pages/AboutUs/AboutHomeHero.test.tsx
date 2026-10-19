@@ -3,7 +3,11 @@ import { act, cleanup, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { AboutHomeHero } from './AboutHomeHero'
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
 
 const hero = { headline: 'Exre', summary: 'Explore our stories' }
 
@@ -22,17 +26,45 @@ it('runs the cue only while its hit area is visible below the site header and th
   let options: IntersectionObserverInit | undefined
   const disconnect = vi.fn()
   const observe = vi.fn()
-  vi.stubGlobal('IntersectionObserver', class {
-    constructor(callback: IntersectionObserverCallback, config?: IntersectionObserverInit) { notify = callback; options = config }
-    observe = observe
-    disconnect = disconnect
-  })
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      constructor(callback: IntersectionObserverCallback, config?: IntersectionObserverInit) {
+        notify = callback
+        options = config
+      }
+      observe = observe
+      disconnect = disconnect
+    },
+  )
   let hidden = false
   vi.spyOn(document, 'hidden', 'get').mockImplementation(() => hidden)
   const removeListener = vi.spyOn(document, 'removeEventListener')
-  const { unmount } = render(<><header data-site-header ref={node => { if (node) node.getBoundingClientRect = () => new DOMRect(0, 0, 390, 64) }} /><AboutHomeHero hero={hero} /></>)
+  const { unmount } = render(
+    <>
+      <header
+        data-site-header
+        ref={(node) => {
+          if (node) node.getBoundingClientRect = () => new DOMRect(0, 0, 390, 64)
+        }}
+      />
+      <AboutHomeHero hero={hero} />
+    </>,
+  )
   const cue = screen.getByRole('link', { name: '向下滚动，了解 Exre' })
-  const visible = (ratio: number, height: number) => act(() => notify([{ isIntersecting: true, intersectionRatio: ratio, intersectionRect: { height } } as IntersectionObserverEntry], {} as IntersectionObserver))
+  const visible = (ratio: number, height: number) =>
+    act(() =>
+      notify(
+        [
+          {
+            isIntersecting: true,
+            intersectionRatio: ratio,
+            intersectionRect: { height },
+          } as IntersectionObserverEntry,
+        ],
+        {} as IntersectionObserver,
+      ),
+    )
   expect(cue.getAttribute('data-motion')).toBe('paused')
   expect(observe).toHaveBeenCalledExactlyOnceWith(cue)
   expect(options).toEqual({ rootMargin: '-64px 0px 0px 0px', threshold: 0.001 })

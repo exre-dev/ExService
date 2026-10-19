@@ -34,13 +34,21 @@ export function SettingsExperience({ initialCategory }: { initialCategory: Setti
   useEffect(() => subscribeSessionChanges(() => setSessionToken(currentToken())), [])
 
   // StrictMode 清理会使控制层的在途读取失效；重新挂载时必须允许再次读取。
-  useEffect(() => () => { entered.current.clear() }, [])
+  useEffect(
+    () => () => {
+      entered.current.clear()
+    },
+    [],
+  )
 
   useEffect(() => {
     if (auth.state.status !== 'authenticated') return
     const source: SettingsSource | null =
-      category === 'profile' || category === 'account' ? 'profile'
-        : category === 'notifications' ? 'notifications' : null
+      category === 'profile' || category === 'account'
+        ? 'profile'
+        : category === 'notifications'
+          ? 'notifications'
+          : null
     // 初始为 general 时不由设置层触发任何读取。
     if (source === null) return
     const key = `${scope}:${sessionToken ?? 'anonymous'}:${source}`
@@ -52,36 +60,73 @@ export function SettingsExperience({ initialCategory }: { initialCategory: Setti
 
   const profile = settings.snapshot.profile.snapshot
   const authUnavailableWithoutProfile = auth.state.status === 'unavailable' && !profile
-  return <SettingsPanel category={category} onCategoryChange={setCategory}
-    theme={settings.snapshot.general.theme} onThemeChange={settings.setTheme}
-    profile={profile ? {
-      email: profile.email, nickname: profile.nickname, qq: profile.qq ?? null,
-      fivemId: profile.fivemId ?? null, avatarUrl: profile.avatarUrl ?? null,
-    } : null}
-    profileStatus={authUnavailableWithoutProfile ? 'error' : settings.snapshot.profile.status}
-    profileError={authUnavailableWithoutProfile ? settings.authMessage ?? '登录状态不可用' : settings.snapshot.profile.error}
-    onRetry={authUnavailableWithoutProfile ? settings.retryAuth : () => void settings.load()}
-    notifications={preferences.slice}
-    onSave={settings.save} onUpload={settings.upload}
-    onRemoveAvatar={settings.removeAvatar} onLogout={settings.logout}
-    logoutPending={settings.logoutPending} actionPending={settings.actionPending}
-    authMessage={settings.authMessage} onRetryAuth={settings.retryAuth} />
+  return (
+    <SettingsPanel
+      category={category}
+      onCategoryChange={setCategory}
+      theme={settings.snapshot.general.theme}
+      onThemeChange={settings.setTheme}
+      profile={
+        profile
+          ? {
+              email: profile.email,
+              nickname: profile.nickname,
+              qq: profile.qq ?? null,
+              fivemId: profile.fivemId ?? null,
+              avatarUrl: profile.avatarUrl ?? null,
+            }
+          : null
+      }
+      profileStatus={authUnavailableWithoutProfile ? 'error' : settings.snapshot.profile.status}
+      profileError={
+        authUnavailableWithoutProfile
+          ? (settings.authMessage ?? '登录状态不可用')
+          : settings.snapshot.profile.error
+      }
+      onRetry={authUnavailableWithoutProfile ? settings.retryAuth : () => void settings.load()}
+      notifications={preferences.slice}
+      onSave={settings.save}
+      onUpload={settings.upload}
+      onRemoveAvatar={settings.removeAvatar}
+      onLogout={settings.logout}
+      logoutPending={settings.logoutPending}
+      actionPending={settings.actionPending}
+      authMessage={settings.authMessage}
+      onRetryAuth={settings.retryAuth}
+    />
+  )
 }
 
-export function SettingsModal({ initialCategory, onClose }: {
-  initialCategory: SettingsCategory; onClose: () => void
+export function SettingsModal({
+  initialCategory,
+  onClose,
+}: {
+  initialCategory: SettingsCategory
+  onClose: () => void
 }) {
   const auth = useAuth()
-  useEffect(() => { if (auth.state.status === 'anonymous') onClose() }, [auth.state.status, onClose])
-  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
-    <DialogContent className={styles.modal}>
-      <DialogTitle className={styles.visuallyHidden}>设置</DialogTitle>
-      <SettingsExperience initialCategory={initialCategory} />
-    </DialogContent>
-  </Dialog>
+  useEffect(() => {
+    if (auth.state.status === 'anonymous') onClose()
+  }, [auth.state.status, onClose])
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
+      <DialogContent className={styles.modal}>
+        <DialogTitle className={styles.visuallyHidden}>设置</DialogTitle>
+        <SettingsExperience initialCategory={initialCategory} />
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 function currentToken(): string | null {
-  try { return readToken(window.localStorage) }
-  catch { return null }
+  try {
+    return readToken(window.localStorage)
+  } catch {
+    return null
+  }
 }

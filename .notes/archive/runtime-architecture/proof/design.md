@@ -51,12 +51,31 @@ const item = {
     Env: ['A=1'],
   },
   HostConfig: {
-    Dns: null, DnsOptions: null, DnsSearch: null, Privileged: false,
+    Dns: null,
+    DnsOptions: null,
+    DnsSearch: null,
+    Privileged: false,
     PortBindings: { '5432/tcp': [{ HostIp: '127.0.0.1', HostPort: '15432' }] },
   },
   Mounts: [
-    { Type: 'volume', Name: 'vol-b', Source: '/var/lib/docker/volumes/vol-b/_data', Destination: '/b', Driver: 'local', Mode: 'rw', RW: true, Propagation: '' },
-    { Type: 'bind', Source: '/host/a', Destination: '/a', Mode: 'ro', RW: false, Propagation: 'rprivate' },
+    {
+      Type: 'volume',
+      Name: 'vol-b',
+      Source: '/var/lib/docker/volumes/vol-b/_data',
+      Destination: '/b',
+      Driver: 'local',
+      Mode: 'rw',
+      RW: true,
+      Propagation: '',
+    },
+    {
+      Type: 'bind',
+      Source: '/host/a',
+      Destination: '/a',
+      Mode: 'ro',
+      RW: false,
+      Propagation: 'rprivate',
+    },
   ],
 }
 const expected = {

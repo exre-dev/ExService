@@ -15,12 +15,20 @@ it('sets the referrer policy before Vite injects its development entry scripts',
     await server.listen()
     const address = server.httpServer?.address()
     assert.ok(address && typeof address !== 'string')
-    const response = await new Promise<{ status: number | undefined; policy: string | string[] | undefined }>((resolveResponse, reject) => {
-      get(`http://127.0.0.1:${address.port}/register?email=entry.fixture%40example.com&code=001234`, res => {
-        res.resume()
-        res.once('end', () => resolveResponse({ status: res.statusCode, policy: res.headers['referrer-policy'] }))
-        res.once('error', reject)
-      }).once('error', reject)
+    const response = await new Promise<{
+      status: number | undefined
+      policy: string | string[] | undefined
+    }>((resolveResponse, reject) => {
+      get(
+        `http://127.0.0.1:${address.port}/register?email=entry.fixture%40example.com&code=001234`,
+        (res) => {
+          res.resume()
+          res.once('end', () =>
+            resolveResponse({ status: res.statusCode, policy: res.headers['referrer-policy'] }),
+          )
+          res.once('error', reject)
+        },
+      ).once('error', reject)
     })
     expect(response.status).toBe(200)
     expect(response.policy).toBe('no-referrer')

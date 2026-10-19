@@ -17,19 +17,19 @@
 
 ## 实施涉及的文件
 
-| 路径 | 实施职责 |
-| --- | --- |
-| `apps/server/src/business-services.ts` | 提取已有业务服务类型及只读注入接口，不建立字符串服务字典 |
-| `apps/server/src/business-plugins.ts` | 发现候选入口、检查 fp 元信息和依赖图，按阶段调用 Autoload |
-| `apps/server/src/business-plugin-errors.ts` | 固定错误分类及安全 formatter |
-| `apps/server/src/app.ts` | 删除六个业务入口的显式 import/register，调用业务总入口，保留两项 HTTP 显式装配 |
-| `apps/server/src/modules/{auth,profile,identity,storage,notifications}/plugin.ts` | 改为各模块自身的具名服务参数，保留 decorator 及 fp 名称/依赖 |
-| `apps/server/src/domains/join/plugin.ts` | 具名注入 join 与 invitation 服务 |
-| `apps/server/src/start-application.ts` | 管理 app 创建、ready、listen、worker 与一次性资源清理 |
-| `apps/server/src/server.ts` | 准备资源后移交 helper；识别安全业务加载错误，保留已有配置与就绪检查 |
-| `scripts/clean-server-build.mjs` | 固定目标、拒绝链接的 Server dist 清理 |
-| `apps/server/package.json`、`pnpm-lock.yaml` | 精确 Autoload 依赖与编译前清理接线 |
-| `tests/server-plugins/`、`tests/server-types/types.fixture.ts` | 更新直接注册类型与 boot 测试，增加发现、失败清理和产物回归 |
+| 路径                                                                              | 实施职责                                                                       |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `apps/server/src/business-services.ts`                                            | 提取已有业务服务类型及只读注入接口，不建立字符串服务字典                       |
+| `apps/server/src/business-plugins.ts`                                             | 发现候选入口、检查 fp 元信息和依赖图，按阶段调用 Autoload                      |
+| `apps/server/src/business-plugin-errors.ts`                                       | 固定错误分类及安全 formatter                                                   |
+| `apps/server/src/app.ts`                                                          | 删除六个业务入口的显式 import/register，调用业务总入口，保留两项 HTTP 显式装配 |
+| `apps/server/src/modules/{auth,profile,identity,storage,notifications}/plugin.ts` | 改为各模块自身的具名服务参数，保留 decorator 及 fp 名称/依赖                   |
+| `apps/server/src/domains/join/plugin.ts`                                          | 具名注入 join 与 invitation 服务                                               |
+| `apps/server/src/start-application.ts`                                            | 管理 app 创建、ready、listen、worker 与一次性资源清理                          |
+| `apps/server/src/server.ts`                                                       | 准备资源后移交 helper；识别安全业务加载错误，保留已有配置与就绪检查            |
+| `scripts/clean-server-build.mjs`                                                  | 固定目标、拒绝链接的 Server dist 清理                                          |
+| `apps/server/package.json`、`pnpm-lock.yaml`                                      | 精确 Autoload 依赖与编译前清理接线                                             |
+| `tests/server-plugins/`、`tests/server-types/types.fixture.ts`                    | 更新直接注册类型与 boot 测试，增加发现、失败清理和产物回归                     |
 
 `http/plugin.ts`、`http/service-handlers.ts` 和所属模块 API 文件沿用现有装配；修改仅限必要的消费者适配，不启动 API 自动发现。服务核心不导入应用注入接口、加载器或 HTTP 类型。共享工作区修改和构建写入串行，实施前核对重叠改动并保留其他任务工作。
 
@@ -37,14 +37,14 @@
 
 `BusinessServices` 提取 `CreateAppOptions` 现有服务字段，由后者在类型上复用；不要改变调用方传参形状。所有字段在总接口中只读，但服务实例自身不冻结、不复制。
 
-| 插件名 | 自身 options 接口需要的字段 | decorator |
-| --- | --- | --- |
-| `business-auth` | `authServices: AuthService` | `authServices` |
-| `business-profile` | `profileServices: ProfileService` | `profileServices` |
-| `business-identity` | `oidcServices?: OidcService` | `oidcServices` |
-| `business-storage` | `storageServices: StorageServices` | `storageServices` |
-| `business-notifications` | `notifications: NotificationModule` | `notifications` |
-| `business-join` | `joinServices: JoinService`、`invitationServices: InvitationService` | 两个同名字段 |
+| 插件名                   | 自身 options 接口需要的字段                                          | decorator         |
+| ------------------------ | -------------------------------------------------------------------- | ----------------- |
+| `business-auth`          | `authServices: AuthService`                                          | `authServices`    |
+| `business-profile`       | `profileServices: ProfileService`                                    | `profileServices` |
+| `business-identity`      | `oidcServices?: OidcService`                                         | `oidcServices`    |
+| `business-storage`       | `storageServices: StorageServices`                                   | `storageServices` |
+| `business-notifications` | `notifications: NotificationModule`                                  | `notifications`   |
+| `business-join`          | `joinServices: JoinService`、`invitationServices: InvitationService` | 两个同名字段      |
 
 `app.ts` 仅选取这七个字段形成浅层只读快照。Autoload 的 `options` 指向这份快照，不包含 `identityKeys`、logger、代理、CORS 或进程环境。每个业务插件保留自身 options 类型，只读取自己拥有的具名字段。必需服务未提供时在插件入口明确拒绝 boot，固定校验文案只列字段名，不序列化参数对象。
 
@@ -68,17 +68,17 @@ OIDC 关闭时，identity 插件仍注册 `oidcServices` decorator，值允许�
 
 ### Autoload 选项
 
-| 选项 | 约束 |
-| --- | --- |
-| `dir` | 当前批次的已验证根目录 |
-| `maxDepth` | `1`，不进入模块内部子目录 |
-| `indexPattern` | 精确匹配当前模式的 `plugin.ts` 或 `plugin.js` |
-| `matchFilter` | 精确接受预检确定的相对入口集合，规范化路径分隔符 |
-| `ignorePattern` | 按相对根目录首个路径段，仅允许本批候选模块目录，提前排除其他目录 |
-| `dirNameRoutePrefix` | `false` |
-| `autoHooks`、`routeParams` | `false` |
-| `forceESM`、`encapsulate` | `true` |
-| `options` | 本次应用的业务服务只读快照 |
+| 选项                       | 约束                                                             |
+| -------------------------- | ---------------------------------------------------------------- |
+| `dir`                      | 当前批次的已验证根目录                                           |
+| `maxDepth`                 | `1`，不进入模块内部子目录                                        |
+| `indexPattern`             | 精确匹配当前模式的 `plugin.ts` 或 `plugin.js`                    |
+| `matchFilter`              | 精确接受预检确定的相对入口集合，规范化路径分隔符                 |
+| `ignorePattern`            | 按相对根目录首个路径段，仅允许本批候选模块目录，提前排除其他目录 |
+| `dirNameRoutePrefix`       | `false`                                                          |
+| `autoHooks`、`routeParams` | `false`                                                          |
+| `forceESM`、`encapsulate`  | `true`                                                           |
+| `options`                  | 本次应用的业务服务只读快照                                       |
 
 `ignorePattern` 和 `matchFilter` 从同一集合派生，无候选时不调用该批 Autoload。带 `package.json` 的无入口目录必须在 Autoload 进入之前排除；不能依赖稍后发生的 `matchFilter`。不传自动前缀或额外 route 配置。
 
@@ -104,16 +104,16 @@ OIDC 关闭时，identity 插件仍注册 `oidcServices` decorator，值允许�
 
 `BusinessPluginLoadError` 只携带固定 code 与白名单上下文。内部 code 细化如下，不属于 HTTP Contract：
 
-| code | 触发 |
-| --- | --- |
-| `BUSINESS_PLUGIN_ENTRY_CONFLICT` | 候选目录同时出现两种入口扩展 |
-| `BUSINESS_PLUGIN_INVALID_ENTRY` | 非法目录、包类型、导出、元信息、配置或目录读失败 |
-| `BUSINESS_PLUGIN_DUPLICATE_NAME` | 跨两个业务根目录重复 name |
-| `BUSINESS_PLUGIN_MISSING_DEPENDENCY` | 已声明目标不存在 |
-| `BUSINESS_PLUGIN_INVALID_DEPENDENCY_DIRECTION` | 公共模块依赖具体业务 |
-| `BUSINESS_PLUGIN_CYCLIC_DEPENDENCY` | 业务依赖环 |
-| `BUSINESS_PLUGIN_IMPORT_FAILED` | 指定候选入口 import 失败 |
-| `BUSINESS_PLUGIN_BOOT_FAILED` | 必需服务缺失，或未知的业务注册/初始化异常 |
+| code                                           | 触发                                             |
+| ---------------------------------------------- | ------------------------------------------------ |
+| `BUSINESS_PLUGIN_ENTRY_CONFLICT`               | 候选目录同时出现两种入口扩展                     |
+| `BUSINESS_PLUGIN_INVALID_ENTRY`                | 非法目录、包类型、导出、元信息、配置或目录读失败 |
+| `BUSINESS_PLUGIN_DUPLICATE_NAME`               | 跨两个业务根目录重复 name                        |
+| `BUSINESS_PLUGIN_MISSING_DEPENDENCY`           | 已声明目标不存在                                 |
+| `BUSINESS_PLUGIN_INVALID_DEPENDENCY_DIRECTION` | 公共模块依赖具体业务                             |
+| `BUSINESS_PLUGIN_CYCLIC_DEPENDENCY`            | 业务依赖环                                       |
+| `BUSINESS_PLUGIN_IMPORT_FAILED`                | 指定候选入口 import 失败                         |
+| `BUSINESS_PLUGIN_BOOT_FAILED`                  | 必需服务缺失，或未知的业务注册/初始化异常        |
 
 非法 dependencies 类型归入非法入口。定位上下文限于已验证的插件名、依赖名、模块相对位置、`modules`/`domains` 阶段，以及必需服务缺失时的 `missingServiceFields`；不合语法的名称不回显。禁止将底层异常的 message、cause、stack 或对象转成对外文案。
 
@@ -151,17 +151,17 @@ Server build 的顺序为 Contract 生成、固定 dist 清理、`tsc`、现有 
 
 作为一个相互配套的改造交付，不能先落扫描后补构建清理。先落实内部具名参数、元信息适配和失败分类，再完成业务发现/注册与 runtime 清理，最后接入依赖、干净构建和编译环境验证。步骤是本 RFC 的依赖顺序，不是独立的实现计划或 Git 提交授权。
 
-| 证据组 | 必需验证 |
-| --- | --- |
-| 发现 | 新入口无中央登记即可提供 decorator；无入口目录（含 package 文件）跳过；根目录 package 文件拒绝；排除文件 import 哨兵不执行 |
-| 模式和文件系统 | ts/js 双入口拒绝、无跨模式回退、任意 cwd 下路径一致、链接根/候选拒绝、候选 CommonJS 包拒绝 |
-| 图和元信息 | 同批乱序成功、跨批合法依赖成功，重复/缺失/循环/反向依赖失败；namespace/default 两处违规均失败；无 dependencies 的现有入口正常加载 |
-| 注入和隔离 | 运行时拒绝必需服务字段为 undefined；OIDC undefined 保持；两个 app 的服务身份独立；app 不关闭注入资源 |
-| HTTP 回归 | 根作用域无 API 字段/hook；完整路由集合、隐式 HEAD、重复 operation、覆盖检查与原始 handler 输出保持 |
-| runtime 失败 | 准备失败、createApp 抛错、ready/listen 失败及第二个 worker 失败；监听关闭、stop 调用、数据库单次关闭；清理失败不遮盖原错误；子进程非零退出，无持续 worker 重试 |
-| 安全诊断 | 插件分类及缺失服务的白名单字段名到达实际启动输出；带秘密哨兵的 import/boot/cleanup 异常不出现在日志中；非法名称及非法服务字段名不回显 |
-| 构建 | 删除/重命名前后重建，旧入口消失；data/环境哨兵保留；dist 链接与清理失败拒绝；根/独立构建均先清理 |
-| 实际执行环境 | Vitest、开发 tsx、编译 JS 无 TS loader 三种路径实际 boot，覆盖动态 import 和 alias |
+| 证据组         | 必需验证                                                                                                                                                       |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 发现           | 新入口无中央登记即可提供 decorator；无入口目录（含 package 文件）跳过；根目录 package 文件拒绝；排除文件 import 哨兵不执行                                     |
+| 模式和文件系统 | ts/js 双入口拒绝、无跨模式回退、任意 cwd 下路径一致、链接根/候选拒绝、候选 CommonJS 包拒绝                                                                     |
+| 图和元信息     | 同批乱序成功、跨批合法依赖成功，重复/缺失/循环/反向依赖失败；namespace/default 两处违规均失败；无 dependencies 的现有入口正常加载                              |
+| 注入和隔离     | 运行时拒绝必需服务字段为 undefined；OIDC undefined 保持；两个 app 的服务身份独立；app 不关闭注入资源                                                           |
+| HTTP 回归      | 根作用域无 API 字段/hook；完整路由集合、隐式 HEAD、重复 operation、覆盖检查与原始 handler 输出保持                                                             |
+| runtime 失败   | 准备失败、createApp 抛错、ready/listen 失败及第二个 worker 失败；监听关闭、stop 调用、数据库单次关闭；清理失败不遮盖原错误；子进程非零退出，无持续 worker 重试 |
+| 安全诊断       | 插件分类及缺失服务的白名单字段名到达实际启动输出；带秘密哨兵的 import/boot/cleanup 异常不出现在日志中；非法名称及非法服务字段名不回显                          |
+| 构建           | 删除/重命名前后重建，旧入口消失；data/环境哨兵保留；dist 链接与清理失败拒绝；根/独立构建均先清理                                                               |
+| 实际执行环境   | Vitest、开发 tsx、编译 JS 无 TS loader 三种路径实际 boot，覆盖动态 import 和 alias                                                                             |
 
 已有直接 Fastify 乱序注册失败用例保留；它与经过 Autoload 的乱序成功用例验证不同路径。更新 `tests/server-types/types.fixture.ts`，保留完整声明图、精确 decorator/handler 类型及错误参数编译失败的检查。服务参数错类型由这些 TypeScript 编译检查拒绝，与运行时必需字段缺失检查分别验收。
 
@@ -173,14 +173,14 @@ Server build 的顺序为 Contract 生成、固定 dist 清理、`tsc`、现有 
 
 ## 风险、备选方案与回退
 
-| 风险 | 控制与检测 |
-| --- | --- |
-| 目录存在就参与启动，误加载未完成模块 | 只有约定入口参与；元信息预检、import 哨兵和代码审查；不把目录存在视为完整业务上线 |
-| Autoload 同名元信息覆盖 | 进入任何 Autoload 前做跨批唯一性检查 |
-| 元信息适配依赖 fp 内部结构 | 单一适配器、精确依赖版本与升级回归；结构异常拒绝启动 |
-| 动态 import 在测试或产物中不同 | 工程实际三种环境验证，保留 API 静态 handler 类型 |
-| 已删除产物仍参与加载 | 每次 Server 构建先清理，删除/重命名回归 |
-| boot 失败遗留 worker 或重复关闭连接池 | 监听成功后启动、单 owner、共享清理 promise、子进程失败退出证据 |
+| 风险                                  | 控制与检测                                                                        |
+| ------------------------------------- | --------------------------------------------------------------------------------- |
+| 目录存在就参与启动，误加载未完成模块  | 只有约定入口参与；元信息预检、import 哨兵和代码审查；不把目录存在视为完整业务上线 |
+| Autoload 同名元信息覆盖               | 进入任何 Autoload 前做跨批唯一性检查                                              |
+| 元信息适配依赖 fp 内部结构            | 单一适配器、精确依赖版本与升级回归；结构异常拒绝启动                              |
+| 动态 import 在测试或产物中不同        | 工程实际三种环境验证，保留 API 静态 handler 类型                                  |
+| 已删除产物仍参与加载                  | 每次 Server 构建先清理，删除/重命名回归                                           |
+| boot 失败遗留 worker 或重复关闭连接池 | 监听成功后启动、单 owner、共享清理 promise、子进程失败退出证据                    |
 
 保留显式注册仍可行，当前成本较小，但不满足用户已确认的插件清单维护目标。构建时生成静态注册适合将来同时汇总有类型的 operations，此轮引入会增加不必要的生成/监听流程。
 

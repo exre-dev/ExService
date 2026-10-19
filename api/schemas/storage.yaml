@@ -6,7 +6,7 @@ StorageKey:
   description: 相对存储路径，以 `/` 分段；每段只含小写字母、数字、点、下划线与连字符，段首为字母或数字且段尾不得为点。服务端另外逐段拒绝 Windows 保留设备名，并核对解析路径仍位于 uploads 根目录内；不清洗、不自动小写、不二次 URL 解码。
 StorageMedium:
   type: string
-  enum: [ file, cos ]
+  enum: [file, cos]
   description: 目标存储介质；缺省时取运行时配置 STORAGE_DEFAULT_ADAPTER，不回退。
 StorageContentType:
   type: string
@@ -32,7 +32,7 @@ StorageUploadTicket:
 StorageUploadCredential:
   type: object
   additionalProperties: false
-  required: [ tmpSecretId, tmpSecretKey, securityToken, startTime, expiredTime ]
+  required: [tmpSecretId, tmpSecretKey, securityToken, startTime, expiredTime]
   properties:
     tmpSecretId: { type: string, minLength: 1, maxLength: 256 }
     tmpSecretKey: { type: string, minLength: 1, maxLength: 256 }
@@ -42,7 +42,7 @@ StorageUploadCredential:
 PrepareStorageUploadRequest:
   type: object
   additionalProperties: false
-  required: [ key, size, contentType ]
+  required: [key, size, contentType]
   properties:
     key: { $ref: '../openapi.yaml#/components/schemas/StorageKey' }
     size: { $ref: '../openapi.yaml#/components/schemas/StorageByteSize' }
@@ -51,14 +51,14 @@ PrepareStorageUploadRequest:
 StorageFileUploadPlan:
   type: object
   additionalProperties: false
-  required: [ medium, maxBytes ]
+  required: [medium, maxBytes]
   properties:
     medium: { type: string, const: file }
     maxBytes: { $ref: '../openapi.yaml#/components/schemas/StorageByteSize' }
 StorageCosUploadPlan:
   type: object
   additionalProperties: false
-  required: [ medium, maxBytes, bucket, region, key, credentials, uploadTicket ]
+  required: [medium, maxBytes, bucket, region, key, credentials, uploadTicket]
   properties:
     medium: { type: string, const: cos }
     maxBytes: { $ref: '../openapi.yaml#/components/schemas/StorageByteSize' }
@@ -76,7 +76,7 @@ StorageUploadRequest:
   description: 仅用于 multipart。恰好一个二进制 data part，以及限定的 key、medium、contentType 文本字段；重复字段、未知字段、多文件与截断都被拒绝。data 的值是由解析器生成的占位标识，handler 必须核对可信解析上下文，伪造的 JSON 占位不能绕过真实解析。
   type: object
   additionalProperties: false
-  required: [ key, data ]
+  required: [key, data]
   properties:
     key: { $ref: '../openapi.yaml#/components/schemas/StorageKey' }
     medium: { $ref: '../openapi.yaml#/components/schemas/StorageMedium' }
@@ -87,14 +87,14 @@ StorageUploadRequest:
 CompleteStorageUploadRequest:
   type: object
   additionalProperties: false
-  required: [ key, uploadTicket ]
+  required: [key, uploadTicket]
   properties:
     key: { $ref: '../openapi.yaml#/components/schemas/StorageKey' }
     uploadTicket: { $ref: '../openapi.yaml#/components/schemas/StorageUploadTicket' }
 StorageUploadResult:
   type: object
   additionalProperties: false
-  required: [ url ]
+  required: [url]
   properties:
     url:
       type: string

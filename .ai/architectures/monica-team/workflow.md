@@ -6,15 +6,15 @@ ExWebsite 由 Exre Delivery Squad 承接，入口为 Exre Lead。团队可服务
 
 ## 本项目分工
 
-| 角色 | 职责 |
-| --- | --- |
-| Lead | 协调范围、负责人、依赖、审批和验证证据，推动验收。 |
-| Architect | 形成符合已接受架构和契约的功能设计，不写生产实现。 |
-| Interaction Designer | 调研同类设计、制定规划、制作交互 HTML 并交付 Frontend。 |
-| Engineer | Server、Contract、Client、数据库开发与 Debug，负责授权内 Git 写入。 |
-| Frontend | 正式页面及共享组件开发、UI Debug 和实现优化。 |
-| Reviewer | 独立审查产物，返回问题及证据，由原作者修复。 |
-| Tester | 独立验证功能、接口及真实浏览器行为，按需增加测试。 |
+| 角色                 | 职责                                                                |
+| -------------------- | ------------------------------------------------------------------- |
+| Lead                 | 协调范围、负责人、依赖、审批和验证证据，推动验收。                  |
+| Architect            | 形成符合已接受架构和契约的功能设计，不写生产实现。                  |
+| Interaction Designer | 调研同类设计、制定规划、制作交互 HTML 并交付 Frontend。             |
+| Engineer             | Server、Contract、Client、数据库开发与 Debug，负责授权内 Git 写入。 |
+| Frontend             | 正式页面及共享组件开发、UI Debug 和实现优化。                       |
+| Reviewer             | 独立审查产物，返回问题及证据，由原作者修复。                        |
+| Tester               | 独立验证功能、接口及真实浏览器行为，按需增加测试。                  |
 
 ## 任务路径
 

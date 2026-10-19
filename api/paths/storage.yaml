@@ -5,7 +5,7 @@
     description: Server selects the medium for this call from runtime configuration unless the caller pins medium. The file branch only returns the current byte ceiling. The cos branch validates configuration, key, declared size and media type before requesting scoped STS credentials and signing the upload ticket, and returns no partial credentials when any step fails. Credentials authorize exactly one key for PutObject. All responses use no-store.
     security:
       - bearerAuth: []
-    tags: [ storage ]
+    tags: [storage]
     requestBody:
       required: true
       content:
@@ -41,7 +41,7 @@
     description: Multipart with exactly one binary data part plus keyword text fields in any order. Repeated fields, unknown fields, more than one file, a missing data part, an invalid media type and a non-multipart request are rejected. An explicit contentType wins, otherwise the part media type is used, otherwise application/octet-stream. The filename never selects the stored path. Bearer authentication completes before any content is consumed. Byte and wire ceilings are enforced while parsing, not from the supplied Content-Length. Two failures answer 503 — exhausted upload slots (STORAGE_BUSY) carries Retry-After, a requested medium that is not enabled (STORAGE_UNAVAILABLE) does not. All responses use no-store.
     security:
       - bearerAuth: []
-    tags: [ storage ]
+    tags: [storage]
     x-fastify-config:
       storageUpload:
         wireOverheadBytes: 65536
@@ -99,7 +99,7 @@
     description: Verifies the ticket length and structure, the fixed HMAC algorithm, the signature, the version and validity window, the current session user, the key against the current bucket and region, and the current size ceiling before querying the object. Never issues a request from a region or bucket taken from an unverified ticket. A size above the ceiling returns 413 and a different size than declared returns 409. The client cannot submit a bucket, download host, URL or existence flag. All responses use no-store.
     security:
       - bearerAuth: []
-    tags: [ storage ]
+    tags: [storage]
     requestBody:
       required: true
       content:
@@ -140,7 +140,7 @@
     summary: Read one object from the local file medium
     description: Public read of the local uploads root only. Directories are never returned as files. Range is unsupported in this version and a Range request still returns the full 200 body. Bytes are sent as application/octet-stream with attachment disposition and MIME sniffing disabled. Failures before the headers are flushed return the error envelope; a failure afterwards terminates the connection instead of appending JSON. The implicit HEAD route stays closed because the contract does not declare it.
     security: []
-    tags: [ storage ]
+    tags: [storage]
     x-fastify-config:
       storageDownload:
         deadlineMs: 120000

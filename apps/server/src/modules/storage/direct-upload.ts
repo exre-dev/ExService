@@ -1,9 +1,17 @@
 import type { StorageConfig } from '@server/src/modules/storage/config.js'
-import { CREDENTIAL_DURATION_SECONDS, type CosAdapter, type CosTemporaryCredentials } from '@server/src/modules/storage/adapters/cos.js'
+import {
+  CREDENTIAL_DURATION_SECONDS,
+  type CosAdapter,
+  type CosTemporaryCredentials,
+} from '@server/src/modules/storage/adapters/cos.js'
 import { StorageError } from '@server/src/modules/storage/errors.js'
 import { assertStorageKey } from '@server/src/modules/storage/key.js'
 import { assertContentType, resolveMedium } from '@server/src/modules/storage/service.js'
-import { signUploadTicket, verifyUploadTicket, type UploadTicketPayload } from '@server/src/modules/storage/upload-ticket.js'
+import {
+  signUploadTicket,
+  verifyUploadTicket,
+  type UploadTicketPayload,
+} from '@server/src/modules/storage/upload-ticket.js'
 
 export interface PrepareUploadInput {
   key: string
@@ -46,14 +54,22 @@ export class DirectUploadService {
   ) {}
 
   private requireCos(): { adapter: CosAdapter; hmacKey: Buffer } {
-    if (this.cosAdapter === undefined || this.config.cos === undefined || this.config.uploadHmacKey === undefined) {
+    if (
+      this.cosAdapter === undefined ||
+      this.config.cos === undefined ||
+      this.config.uploadHmacKey === undefined
+    ) {
       throw new StorageError('STORAGE_UNAVAILABLE')
     }
     return { adapter: this.cosAdapter, hmacKey: this.config.uploadHmacKey }
   }
 
   /** 先校验配置、key、size、MIME，再申请 STS，最后签发凭据；任一步失败不返回部分凭证。 */
-  async prepare(userId: string, input: PrepareUploadInput, nowSeconds = currentSeconds()): Promise<UploadPlan> {
+  async prepare(
+    userId: string,
+    input: PrepareUploadInput,
+    nowSeconds = currentSeconds(),
+  ): Promise<UploadPlan> {
     const key = assertStorageKey(input.key)
     if (typeof input.size !== 'number' || !Number.isSafeInteger(input.size) || input.size < 0) {
       throw new StorageError('STORAGE_INVALID_INPUT')
@@ -95,7 +111,11 @@ export class DirectUploadService {
    * 完成确认：只验证对象是否存在以及大小是否相符。
    * HEAD 不证明字节摘要或上传者身份，也不消除同 key 并发覆盖。
    */
-  async complete(userId: string, input: CompleteUploadInput, nowSeconds = currentSeconds()): Promise<{ url: string }> {
+  async complete(
+    userId: string,
+    input: CompleteUploadInput,
+    nowSeconds = currentSeconds(),
+  ): Promise<{ url: string }> {
     const { adapter } = this.requireCos()
     const payload = verifyUploadTicket({
       ticket: input.uploadTicket,

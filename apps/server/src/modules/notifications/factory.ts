@@ -12,7 +12,10 @@ export interface NotificationModuleOptions {
   tokenKey: Buffer
   now?: () => number
   leaseOwner?: string
-  workers?: Pick<ProjectionWorkerOptions, 'eventsPerRound' | 'recipientsPerEvent' | 'leaseMs' | 'retryBaseDelayMs'>
+  workers?: Pick<
+    ProjectionWorkerOptions,
+    'eventsPerRound' | 'recipientsPerEvent' | 'leaseMs' | 'retryBaseDelayMs'
+  >
 }
 
 export interface NotificationModule {
@@ -32,7 +35,10 @@ export function createNotificationModule(options: NotificationModuleOptions): No
   const now = options.now ?? (() => Date.now())
   const repository = new NotificationRepository(options.db)
   const service = new NotificationService({
-    repository, db: options.db, tokenKey: options.tokenKey, now,
+    repository,
+    db: options.db,
+    tokenKey: options.tokenKey,
+    now,
     createId: () => randomUUID(),
   })
   const producer = new NotificationProducer({ repository, now, createId: () => randomUUID() })
@@ -75,7 +81,10 @@ export function createNotificationModule(options: NotificationModuleOptions): No
 }
 
 export async function assertNotificationSchemaAvailable(db: AppDatabase): Promise<void> {
-  const columns = await db.query<{ table_name: string; column_name: string }>(`SELECT table_name, column_name
+  const columns = await db.query<{
+    table_name: string
+    column_name: string
+  }>(`SELECT table_name, column_name
     FROM information_schema.columns WHERE table_schema = current_schema()
       AND table_name LIKE 'notification_%'`)
   const available = new Map<string, Set<string>>()
@@ -87,10 +96,30 @@ export async function assertNotificationSchemaAvailable(db: AppDatabase): Promis
   const required: Record<string, string[]> = {
     notification_events: ['event_id', 'dedupe_key', 'digest', 'projection_status'],
     notification_event_recipients: ['event_id', 'user_id', 'state'],
-    notification_contents: ['content_id', 'html', 'text', 'summary_text', 'category', 'necessity', 'withdrawn_at'],
+    notification_contents: [
+      'content_id',
+      'html',
+      'text',
+      'summary_text',
+      'category',
+      'necessity',
+      'withdrawn_at',
+    ],
     notification_user_streams: ['user_id', 'last_sequence', 'state_version'],
-    notification_receipts: ['receipt_id', 'user_id', 'content_id', 'sequence', 'cleared_at', 'clear_revision'],
-    notification_preferences: ['user_id', 'announcement_enabled', 'personal_update_enabled', 'revision'],
+    notification_receipts: [
+      'receipt_id',
+      'user_id',
+      'content_id',
+      'sequence',
+      'cleared_at',
+      'clear_revision',
+    ],
+    notification_preferences: [
+      'user_id',
+      'announcement_enabled',
+      'personal_update_enabled',
+      'revision',
+    ],
     notification_mutations: ['user_id', 'request_id', 'kind', 'digest', 'result_json'],
     notification_clear_batches: ['batch_id', 'user_id', 'status', 'preview_expires_at'],
     notification_clear_batch_items: ['batch_id', 'receipt_id', 'expected_clear_revision'],

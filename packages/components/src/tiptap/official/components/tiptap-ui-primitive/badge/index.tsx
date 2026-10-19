@@ -1,1 +1,1 @@
-export { Badge } from "../../../primitives"
+export { Badge } from '../../../primitives'

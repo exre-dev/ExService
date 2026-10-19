@@ -6,33 +6,33 @@
     tags:
       - authentication
     responses:
-      "200":
+      '200':
         description: Successful operation
         headers:
           X-Request-Id:
             $ref: '../openapi.yaml#/components/headers/RequestId'
           Cache-Control:
-            $ref: "../openapi.yaml#/components/headers/CacheControl"
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
         content:
           application/json:
             schema:
-              $ref: "../openapi.yaml#/components/schemas/InvitationEligibility"
-      "400":
-        $ref: "../openapi.yaml#/components/responses/ErrorResponse"
-      "404":
-        $ref: "../openapi.yaml#/components/responses/ErrorResponse"
-      "409":
-        $ref: "../openapi.yaml#/components/responses/ErrorResponse"
-      "429":
-        $ref: "../openapi.yaml#/components/responses/RetryableErrorResponse"
+              $ref: '../openapi.yaml#/components/schemas/InvitationEligibility'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '404':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '429':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
       default:
-        $ref: "../openapi.yaml#/components/responses/ErrorResponse"
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            $ref: "../openapi.yaml#/components/schemas/InvitationEligibilityRequest"
+            $ref: '../openapi.yaml#/components/schemas/InvitationEligibilityRequest'
 /auth/invitations/code:
   post:
     operationId: requestInvitationCode
@@ -41,29 +41,29 @@
     tags:
       - authentication
     responses:
-      "202":
+      '202':
         description: Successful operation
         headers:
           X-Request-Id:
             $ref: '../openapi.yaml#/components/headers/RequestId'
           Cache-Control:
-            $ref: "../openapi.yaml#/components/headers/CacheControl"
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
         content:
           application/json:
             schema:
-              $ref: "../openapi.yaml#/components/schemas/InvitationCodeAccepted"
-      "400":
-        $ref: "../openapi.yaml#/components/responses/ErrorResponse"
-      "429":
-        $ref: "../openapi.yaml#/components/responses/RetryableErrorResponse"
+              $ref: '../openapi.yaml#/components/schemas/InvitationCodeAccepted'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '429':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
       default:
-        $ref: "../openapi.yaml#/components/responses/ErrorResponse"
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            $ref: "../openapi.yaml#/components/schemas/InvitationCodeRequest"
+            $ref: '../openapi.yaml#/components/schemas/InvitationCodeRequest'
 /auth/invitations/verify:
   post:
     operationId: verifyInvitationCode
@@ -72,29 +72,29 @@
     tags:
       - authentication
     responses:
-      "200":
+      '200':
         description: Successful operation
         headers:
           X-Request-Id:
             $ref: '../openapi.yaml#/components/headers/RequestId'
           Cache-Control:
-            $ref: "../openapi.yaml#/components/headers/CacheControl"
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
         content:
           application/json:
             schema:
-              $ref: "../openapi.yaml#/components/schemas/InvitationVerified"
-      "400":
-        $ref: "../openapi.yaml#/components/responses/ErrorResponse"
-      "429":
-        $ref: "../openapi.yaml#/components/responses/RetryableErrorResponse"
+              $ref: '../openapi.yaml#/components/schemas/InvitationVerified'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '429':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
       default:
-        $ref: "../openapi.yaml#/components/responses/ErrorResponse"
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            $ref: "../openapi.yaml#/components/schemas/InvitationVerifyRequest"
+            $ref: '../openapi.yaml#/components/schemas/InvitationVerifyRequest'
 /auth/invitations/complete:
   post:
     operationId: completeInvitationRegistration
@@ -103,32 +103,32 @@
     tags:
       - authentication
     responses:
-      "200":
+      '200':
         description: Successful operation
         headers:
           X-Request-Id:
             $ref: '../openapi.yaml#/components/headers/RequestId'
           Cache-Control:
-            $ref: "../openapi.yaml#/components/headers/CacheControl"
+            $ref: '../openapi.yaml#/components/headers/CacheControl'
         content:
           application/json:
             schema:
-              $ref: "../openapi.yaml#/components/schemas/InvitationRegistrationCompleted"
-      "400":
-        $ref: "../openapi.yaml#/components/responses/ErrorResponse"
-      "401":
-        $ref: "../openapi.yaml#/components/responses/ErrorResponse"
-      "409":
-        $ref: "../openapi.yaml#/components/responses/ErrorResponse"
-      "429":
-        $ref: "../openapi.yaml#/components/responses/RetryableErrorResponse"
-      "503":
-        $ref: "../openapi.yaml#/components/responses/RetryableErrorResponse"
+              $ref: '../openapi.yaml#/components/schemas/InvitationRegistrationCompleted'
+      '400':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '401':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '409':
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
+      '429':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
+      '503':
+        $ref: '../openapi.yaml#/components/responses/RetryableErrorResponse'
       default:
-        $ref: "../openapi.yaml#/components/responses/ErrorResponse"
+        $ref: '../openapi.yaml#/components/responses/ErrorResponse'
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            $ref: "../openapi.yaml#/components/schemas/InvitationCompleteRequest"
+            $ref: '../openapi.yaml#/components/schemas/InvitationCompleteRequest'

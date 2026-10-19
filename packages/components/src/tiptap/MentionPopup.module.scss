@@ -2,10 +2,19 @@
   width: min(12rem, calc(100vw - 1rem));
   max-width: var(--radix-popover-content-available-width);
   max-height: min(15rem, var(--radix-popover-content-available-height));
-  padding: .25rem;
+  padding: 0.25rem;
   gap: 0;
   overflow-y: auto;
 }
-.popup [role='option'] { justify-content: flex-start; flex-shrink: 0; }
-.popup [aria-selected='true'] { background: color-mix(in srgb, var(--exui-control-selected) 10%, transparent); color: var(--exui-text-primary); }
-.popup p { padding: .5rem; margin: 0; }
+.popup [role='option'] {
+  justify-content: flex-start;
+  flex-shrink: 0;
+}
+.popup [aria-selected='true'] {
+  background: color-mix(in srgb, var(--exui-control-selected) 10%, transparent);
+  color: var(--exui-text-primary);
+}
+.popup p {
+  padding: 0.5rem;
+  margin: 0;
+}

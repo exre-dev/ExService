@@ -47,7 +47,7 @@
   text-align: center;
   overflow-wrap: anywhere;
 }
-.trigger[data-state="active"] {
+.trigger[data-state='active'] {
   background: var(--exui-surface-secondary);
   color: var(--exui-text-primary);
   box-shadow: none;
@@ -69,7 +69,7 @@
   box-shadow: var(--exui-shadow-card);
   outline: none;
 }
-.panel[data-state="inactive"] {
+.panel[data-state='inactive'] {
   display: none;
 }
 .background {

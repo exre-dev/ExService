@@ -64,7 +64,8 @@ export class FileAdapter implements StorageAdapter {
   private child(parent: string, segment: string): string {
     const next = resolve(parent, segment)
     // key 不含 `..`，这里仍然显式复核，避免解析规则变化时越界。
-    if (dirname(next) !== parent || !this.isInside(next)) throw new StorageError('STORAGE_INVALID_INPUT')
+    if (dirname(next) !== parent || !this.isInside(next))
+      throw new StorageError('STORAGE_INVALID_INPUT')
     return next
   }
 
@@ -171,7 +172,8 @@ async function lstatOrUndefined(path: string) {
     return await lstat(path)
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
-    if ((error as NodeJS.ErrnoException).code === 'ENOTDIR') throw new StorageError('STORAGE_CONFLICT')
+    if ((error as NodeJS.ErrnoException).code === 'ENOTDIR')
+      throw new StorageError('STORAGE_CONFLICT')
     throw new StorageError('INTERNAL_ERROR')
   }
 }
@@ -180,7 +182,8 @@ function mapWriteError(error: unknown): StorageError {
   if (error instanceof StorageError) return error
   const code = (error as NodeJS.ErrnoException).code
   // 路径前缀冲突：已有文件挡在目录路径上。
-  if (code === 'ENOTDIR' || code === 'EEXIST' || code === 'EISDIR') return new StorageError('STORAGE_CONFLICT')
+  if (code === 'ENOTDIR' || code === 'EEXIST' || code === 'EISDIR')
+    return new StorageError('STORAGE_CONFLICT')
   if (code === 'ENOENT') return new StorageError('STORAGE_NOT_FOUND')
   // 这些 errno 都归为内部故障：Windows 上目标被占用时 rename 会失败（EBUSY/EPERM/EACCES），
   // 只读文件系统（EROFS）与磁盘写满（ENOSPC）同样不可对外细分；已有内容保持可读，临时文件已清理。

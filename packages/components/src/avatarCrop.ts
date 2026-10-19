@@ -15,7 +15,8 @@ export async function cropAvatar(imageUrl: string, area: Area): Promise<Blob> {
   const context = canvas.getContext('2d')
   if (!context) throw new Error('当前浏览器无法裁剪图片')
   context.drawImage(image, area.x, area.y, area.width, area.height, 0, 0, 512, 512)
-  const encode = (type: string) => new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.9))
+  const encode = (type: string) =>
+    new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.9))
   const result = await encode('image/webp')
   const blob = result?.type === 'image/webp' ? result : await encode('image/png')
   if (!blob || !['image/webp', 'image/png', 'image/jpeg'].includes(blob.type)) {

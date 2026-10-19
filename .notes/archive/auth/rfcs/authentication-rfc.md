@@ -19,17 +19,17 @@
 
 ## 2. 当前事实与约束
 
-| 仓库证据 | 对设计的约束 |
-| --- | --- |
-| OpenAPI `api/openapi.yaml` 只有 `getHealth` | 下文所有认证路径均为提案，不是已有接口；保留健康检查语义 |
-| app.ts `apps/mock-server/src/app.ts` 导出静态 `serviceHandlers` | 保留显式映射与 handler 原始输出测试能力，不依赖 `this` 获得 Fastify 实例 |
-| errors.ts `apps/mock-server/src/errors.ts` 统一 envelope | 增加受信任业务错误类型，不能直接回显异常 message |
-| server.ts `apps/mock-server/src/server.ts` 只监听回环并检查数据库存在 | 保留回环监听；增加只读的认证表可用性与密钥检查，不自动 migration |
-| 数据库 schema `apps/mock-server/src/db/schema.ts` 尚无业务表 | 用新的 migration 创建业务表，不修改 baseline |
-| Client `packages/api-client/src/client.ts` 是 openapi-fetch 工厂 | 不让 Client 读取 localStorage；应用逐请求传递 Authorization |
-| AuthArea `packages/components/src/AuthArea.tsx` 使用本地占位登录态 | 替换为受控 UI，不保留第二份会话状态 |
-| .ai 架构 `.ai/architectures/overview.md` 的模块边界 | 共享 UI 不导入 Client、不定义路由；前端不直接 fetch、不复制 DTO |
-| Contract 测试 `tests/contract/health.test.ts` 使用真实 app 和独立 Ajv | 保留 HTTP、原始输出、覆盖检查三层；新增测试不触碰开发数据库 |
+| 仓库证据                                                              | 对设计的约束                                                             |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| OpenAPI `api/openapi.yaml` 只有 `getHealth`                           | 下文所有认证路径均为提案，不是已有接口；保留健康检查语义                 |
+| app.ts `apps/mock-server/src/app.ts` 导出静态 `serviceHandlers`       | 保留显式映射与 handler 原始输出测试能力，不依赖 `this` 获得 Fastify 实例 |
+| errors.ts `apps/mock-server/src/errors.ts` 统一 envelope              | 增加受信任业务错误类型，不能直接回显异常 message                         |
+| server.ts `apps/mock-server/src/server.ts` 只监听回环并检查数据库存在 | 保留回环监听；增加只读的认证表可用性与密钥检查，不自动 migration         |
+| 数据库 schema `apps/mock-server/src/db/schema.ts` 尚无业务表          | 用新的 migration 创建业务表，不修改 baseline                             |
+| Client `packages/api-client/src/client.ts` 是 openapi-fetch 工厂      | 不让 Client 读取 localStorage；应用逐请求传递 Authorization              |
+| AuthArea `packages/components/src/AuthArea.tsx` 使用本地占位登录态    | 替换为受控 UI，不保留第二份会话状态                                      |
+| .ai 架构 `.ai/architectures/overview.md` 的模块边界                   | 共享 UI 不导入 Client、不定义路由；前端不直接 fetch、不复制 DTO          |
+| Contract 测试 `tests/contract/health.test.ts` 使用真实 app 和独立 Ajv | 保留 HTTP、原始输出、覆盖检查三层；新增测试不触碰开发数据库              |
 
 当前 Node 最低版本为 22.12，Mock Server 为 NodeNext 编译；运行时代码的相对 import 保留 `.js`。共享包继续通过消费方编译，不增加独立打包流程。
 
@@ -49,15 +49,15 @@ flowchart LR
   Services --> Mail[终端模拟邮件]
 ```
 
-| 建议模块位置 | 责任和接口 |
-| --- | --- |
-| `packages/components/src/auth/` | `AuthForm`、`AuthModal`、各表单步骤与 UI 专属类型 |
-| `packages/components/src/AuthArea.tsx`、`SiteHeader.tsx` | 接收用户展示状态及登录/注册/退出回调 |
-| `apps/web/src/auth/` | API 适配、流程状态、token 存储、会话恢复、SSO 上下文、导航 |
-| `apps/web/src/pages/` | `Login`、`Register`、`SsoSuccess` 页面容器 |
-| `apps/mock-server/src/auth/` | 注册/会话/SSO 服务、密码与验证码工具、只操作注入数据库的 repository |
-| `apps/mock-server/src/handlers/auth/` | Contract 到服务的薄适配，返回公开 DTO |
-| `apps/mock-server/src/cli/` | 本地 SSO 请求创建与检查入口；不允许被 import 执行 |
+| 建议模块位置                                             | 责任和接口                                                          |
+| -------------------------------------------------------- | ------------------------------------------------------------------- |
+| `packages/components/src/auth/`                          | `AuthForm`、`AuthModal`、各表单步骤与 UI 专属类型                   |
+| `packages/components/src/AuthArea.tsx`、`SiteHeader.tsx` | 接收用户展示状态及登录/注册/退出回调                                |
+| `apps/web/src/auth/`                                     | API 适配、流程状态、token 存储、会话恢复、SSO 上下文、导航          |
+| `apps/web/src/pages/`                                    | `Login`、`Register`、`SsoSuccess` 页面容器                          |
+| `apps/mock-server/src/auth/`                             | 注册/会话/SSO 服务、密码与验证码工具、只操作注入数据库的 repository |
+| `apps/mock-server/src/handlers/auth/`                    | Contract 到服务的薄适配，返回公开 DTO                               |
+| `apps/mock-server/src/cli/`                              | 本地 SSO 请求创建与检查入口；不允许被 import 执行                   |
 
 以上为拟新增文件/目录，实施可合并过小文件，但不能合并职责边界。采用应用层 React context 与 hooks 管理认证，不另外引入全局状态库或认证框架。
 
@@ -87,13 +87,13 @@ Glue 使用 `securityHandlers.bearerAuth` 校验受保护 operation。通过的�
 
 登录与注册共同使用以下规范；登录不引入不同的邮箱或密码处理。
 
-| 字段 | Contract 和行为 |
-| --- | --- |
-| `email` | 字符串，trim 后转小写，最长 254 个码点；模式 `^[^\s@]+@[^\s@]+\.[^\s@]+$`；项目只做基础邮箱语法校验，注册通过验证码确认可访问性 |
-| `nickname` | 字符串，trim 后 1–32 个码点；模式 `^[^\u0000-\u001F\u007F-\u009F]+$`，拒绝控制字符；不要求唯一 |
-| `qq` | 字符串，trim；模式 `^[1-9][0-9]{4,11}$`，数据库按字符串保存 |
-| `password` | 字符串，8–64 个 Unicode 码点，不 trim、不做 Unicode 归一化、不限制字符组合；按 UTF-8 编码参与密码哈希 |
-| `code` | 字符串，模式 `^[0-9]{6}$`，保留前导 0 |
+| 字段       | Contract 和行为                                                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `email`    | 字符串，trim 后转小写，最长 254 个码点；模式 `^[^\s@]+@[^\s@]+\.[^\s@]+$`；项目只做基础邮箱语法校验，注册通过验证码确认可访问性 |
+| `nickname` | 字符串，trim 后 1–32 个码点；模式 `^[^\u0000-\u001F\u007F-\u009F]+$`，拒绝控制字符；不要求唯一                                  |
+| `qq`       | 字符串，trim；模式 `^[1-9][0-9]{4,11}$`，数据库按字符串保存                                                                     |
+| `password` | 字符串，8–64 个 Unicode 码点，不 trim、不做 Unicode 归一化、不限制字符组合；按 UTF-8 编码参与密码哈希                           |
+| `code`     | 字符串，模式 `^[0-9]{6}$`，保留前导 0                                                                                           |
 
 确认密码只属于 UI，不在请求中发送。前端用码点数计算长度，不依赖 HTML `maxLength` 的 UTF-16 计数来限制密码。禁止修剪密码、禁止将密码转小写。规范化的精确规则在 Contract description 中记录。
 
@@ -103,64 +103,64 @@ Fastify `preValidation` 仅对 body 中字符串类型的 email、nickname、qq 
 
 本表中的命名将作为 `components.schemas` 名称；TypeScript 使用生成类型索引引用，不人工复制 DTO。时间字段均使用本节整数时间 schema，其余字段均为 string 并引用对应约束；status 使用列出的 const/enum。
 
-| Schema | 必填字段 |
-| --- | --- |
-| `RegisterRequest` | `email, nickname, qq, password`，约束见上表 |
-| `RegistrationRef` | `registrationId` |
-| `VerifyRegistrationRequest` | `registrationId, code` |
-| `RegistrationChallenge` | `registrationId, email, serverTime, codeExpiresAt, resendAvailableAt` |
-| `RegistrationVerified` | `status: const registered, email` |
-| `RegistrationCancelled` | `status: const cancelled` |
-| `LoginRequest` | `email, password` |
-| `LoginResponse` | `token, expiresAt`，不含刷新 token |
-| `CurrentUser` | `id, email, nickname`，不包含 QQ、密码或 token |
-| `LogoutResponse` | `status: const signed-out` |
-| `SsoRequestRef` | `ssoRequestId` |
-| `SsoPasswordRequest` | `ssoRequestId, email, password` |
-| `SsoRequestInfo` | `ssoRequestId, status: enum [pending, completed], expiresAt, serverTime`，不暴露绑定账号 |
-| `SsoCompleted` | `status: const completed, ssoRequestId`，不含 token |
+| Schema                      | 必填字段                                                                                 |
+| --------------------------- | ---------------------------------------------------------------------------------------- |
+| `RegisterRequest`           | `email, nickname, qq, password`，约束见上表                                              |
+| `RegistrationRef`           | `registrationId`                                                                         |
+| `VerifyRegistrationRequest` | `registrationId, code`                                                                   |
+| `RegistrationChallenge`     | `registrationId, email, serverTime, codeExpiresAt, resendAvailableAt`                    |
+| `RegistrationVerified`      | `status: const registered, email`                                                        |
+| `RegistrationCancelled`     | `status: const cancelled`                                                                |
+| `LoginRequest`              | `email, password`                                                                        |
+| `LoginResponse`             | `token, expiresAt`，不含刷新 token                                                       |
+| `CurrentUser`               | `id, email, nickname`，不包含 QQ、密码或 token                                           |
+| `LogoutResponse`            | `status: const signed-out`                                                               |
+| `SsoRequestRef`             | `ssoRequestId`                                                                           |
+| `SsoPasswordRequest`        | `ssoRequestId, email, password`                                                          |
+| `SsoRequestInfo`            | `ssoRequestId, status: enum [pending, completed], expiresAt, serverTime`，不暴露绑定账号 |
+| `SsoCompleted`              | `status: const completed, ssoRequestId`，不含 token                                      |
 
 `RegistrationChallenge` 的初次发送和重发均使用同一 schema。即使检查 SSO 请求返回 completed，也不能仅凭该结果显示登录成功；必须通过密码/有效本站会话确认同一个用户，或具有当前标签页本次流程保存的成功展示记录。
 
 ### 4.4 Operation 清单
 
-| 方法与路径 | operationId | 输入 | 成功结果 | 业务错误 |
-| --- | --- | --- | --- | --- |
-| POST `/auth/registrations` | `startRegistration` | RegisterRequest | 201 RegistrationChallenge | 409 邮箱/QQ 占用，429 冷却 |
-| POST `/auth/registrations/resend` | `resendRegistrationCode` | RegistrationRef | 200 RegistrationChallenge | 404 不存在，409 已完成/取消，410 尝试过期，429 冷却 |
-| POST `/auth/registrations/cancel` | `cancelRegistration` | RegistrationRef | 200 RegistrationCancelled | 404 不存在，409 已完成 |
-| POST `/auth/registrations/verify` | `verifyRegistration` | VerifyRegistrationRequest | 200 RegistrationVerified | 400 验证码不符，404 不存在，409 占用/已取消/次数耗尽，410 过期 |
-| POST `/auth/login` | `login` | LoginRequest | 200 LoginResponse | 401 凭据错误 |
-| GET `/auth/me` | `getCurrentUser` | Bearer，无 body | 200 CurrentUser | 401 会话无效 |
-| POST `/auth/logout` | `logout` | Bearer，无 body | 200 LogoutResponse | 401 会话无效，客户端视为已退出 |
-| POST `/auth/sso/inspect` | `inspectSsoRequest` | SsoRequestRef | 200 SsoRequestInfo | 404 请求不存在，410 过期 |
-| POST `/auth/sso/login` | `loginForSso` | SsoPasswordRequest | 200 SsoCompleted | 401 凭据错误，404 不存在，409 绑定其他用户，410 过期 |
-| POST `/auth/sso/confirm` | `confirmSsoWithSession` | Bearer + SsoRequestRef | 200 SsoCompleted | 401 会话无效，404 不存在，409 绑定其他用户，410 过期 |
+| 方法与路径                        | operationId              | 输入                      | 成功结果                  | 业务错误                                                       |
+| --------------------------------- | ------------------------ | ------------------------- | ------------------------- | -------------------------------------------------------------- |
+| POST `/auth/registrations`        | `startRegistration`      | RegisterRequest           | 201 RegistrationChallenge | 409 邮箱/QQ 占用，429 冷却                                     |
+| POST `/auth/registrations/resend` | `resendRegistrationCode` | RegistrationRef           | 200 RegistrationChallenge | 404 不存在，409 已完成/取消，410 尝试过期，429 冷却            |
+| POST `/auth/registrations/cancel` | `cancelRegistration`     | RegistrationRef           | 200 RegistrationCancelled | 404 不存在，409 已完成                                         |
+| POST `/auth/registrations/verify` | `verifyRegistration`     | VerifyRegistrationRequest | 200 RegistrationVerified  | 400 验证码不符，404 不存在，409 占用/已取消/次数耗尽，410 过期 |
+| POST `/auth/login`                | `login`                  | LoginRequest              | 200 LoginResponse         | 401 凭据错误                                                   |
+| GET `/auth/me`                    | `getCurrentUser`         | Bearer，无 body           | 200 CurrentUser           | 401 会话无效                                                   |
+| POST `/auth/logout`               | `logout`                 | Bearer，无 body           | 200 LogoutResponse        | 401 会话无效，客户端视为已退出                                 |
+| POST `/auth/sso/inspect`          | `inspectSsoRequest`      | SsoRequestRef             | 200 SsoRequestInfo        | 404 请求不存在，410 过期                                       |
+| POST `/auth/sso/login`            | `loginForSso`            | SsoPasswordRequest        | 200 SsoCompleted          | 401 凭据错误，404 不存在，409 绑定其他用户，410 过期           |
+| POST `/auth/sso/confirm`          | `confirmSsoWithSession`  | Bearer + SsoRequestRef    | 200 SsoCompleted          | 401 会话无效，404 不存在，409 绑定其他用户，410 过期           |
 
 每个 operation 另有 Contract 校验 400 与 default ErrorEnvelope；所有错误状态均显式列出并引用共享 ErrorResponse。不增加验证码状态读取或 SSO 轮询的 HTTP operation。verify 遇到已完成但超出重试窗口时，使用 409 REGISTRATION_COMPLETED；cancel 遇到仍保留墓碑的 expired 尝试时，幂等返回 cancelled。
 
 ### 4.5 错误映射
 
-| code | HTTP | UI 行为与固定文案 |
-| --- | --- | --- |
-| `BAD_REQUEST` | 400 | Contract 输入校验；前端仍提供自身字段提示 |
-| `EMAIL_IN_USE` | 409 | 邮箱字段：“该邮箱已注册” |
-| `QQ_IN_USE` | 409 | QQ 字段：“该 QQ 号已注册” |
-| `INVALID_CREDENTIALS` | 401 | “邮箱或密码错误” |
-| `SESSION_INVALID` | 401 | 清除匹配的失效 token，恢复未登录或展示 SSO 表单 |
-| `REGISTRATION_NOT_FOUND` | 404 | “注册请求不存在，请重新注册” |
-| `REGISTRATION_CANCELLED` | 409 | 返回资料步骤；旧尝试不能继续使用 |
-| `REGISTRATION_COMPLETED` | 409 | 重发/取消遇到完成状态，转向登录，不重复创建 |
-| `REGISTRATION_EXPIRED` | 410 | 整个尝试失效，重新填写 |
-| `CODE_INVALID` | 400 | “验证码错误，请重新输入” |
-| `CODE_EXPIRED` | 410 | “验证码已过期，请重新获取” |
-| `CODE_ATTEMPTS_EXHAUSTED` | 409 | 禁止继续验证，允许冷却结束后重发 |
-| `CODE_RESEND_TOO_SOON` | 429 | 根据 Retry-After 更新重发等待时间 |
-| `SSO_REQUEST_NOT_FOUND` | 404 | “登录请求不存在，请从发起应用重新登录” |
-| `SSO_REQUEST_EXPIRED` | 410 | “登录请求已过期，请从发起应用重新登录” |
-| `SSO_ACCOUNT_CONFLICT` | 409 | “该登录请求已由其他账号完成” |
-| `AUTH_BUSY` | 503 | “服务繁忙，请稍后重试”，Retry-After 为 1 秒 |
-| `INTERNAL_ERROR` | 500 | 沿用安全固定文案，允许重试 |
+| code                      | HTTP | UI 行为与固定文案                               |
+| ------------------------- | ---- | ----------------------------------------------- |
+| `BAD_REQUEST`             | 400  | Contract 输入校验；前端仍提供自身字段提示       |
+| `EMAIL_IN_USE`            | 409  | 邮箱字段：“该邮箱已注册”                        |
+| `QQ_IN_USE`               | 409  | QQ 字段：“该 QQ 号已注册”                       |
+| `INVALID_CREDENTIALS`     | 401  | “邮箱或密码错误”                                |
+| `SESSION_INVALID`         | 401  | 清除匹配的失效 token，恢复未登录或展示 SSO 表单 |
+| `REGISTRATION_NOT_FOUND`  | 404  | “注册请求不存在，请重新注册”                    |
+| `REGISTRATION_CANCELLED`  | 409  | 返回资料步骤；旧尝试不能继续使用                |
+| `REGISTRATION_COMPLETED`  | 409  | 重发/取消遇到完成状态，转向登录，不重复创建     |
+| `REGISTRATION_EXPIRED`    | 410  | 整个尝试失效，重新填写                          |
+| `CODE_INVALID`            | 400  | “验证码错误，请重新输入”                        |
+| `CODE_EXPIRED`            | 410  | “验证码已过期，请重新获取”                      |
+| `CODE_ATTEMPTS_EXHAUSTED` | 409  | 禁止继续验证，允许冷却结束后重发                |
+| `CODE_RESEND_TOO_SOON`    | 429  | 根据 Retry-After 更新重发等待时间               |
+| `SSO_REQUEST_NOT_FOUND`   | 404  | “登录请求不存在，请从发起应用重新登录”          |
+| `SSO_REQUEST_EXPIRED`     | 410  | “登录请求已过期，请从发起应用重新登录”          |
+| `SSO_ACCOUNT_CONFLICT`    | 409  | “该登录请求已由其他账号完成”                    |
+| `AUTH_BUSY`               | 503  | “服务繁忙，请稍后重试”，Retry-After 为 1 秒     |
+| `INTERNAL_ERROR`          | 500  | 沿用安全固定文案，允许重试                      |
 
 没有增加开放的 `message` 参数。`AuthError` 携带受限 code，只有限流错误可另携带正整数 retryAfterSeconds；`errors.ts` 从固定映射决定 HTTP 与文案并设置声明的 header。Glue 可能包裹 security handler 错误，错误处理器只提取明确的内部 `AuthError` 实例，不能信任任意异常的 code/message；必须覆盖包装场景测试。未经信任的 4xx 仍沿用现有安全回退。
 
@@ -170,13 +170,13 @@ Fastify `preValidation` 仅对 body 中字符串类型的 email、nickname、qq 
 
 SQLite INTEGER 保存毫秒，TEXT 保存字符串与状态。除表中明确标注可 null 的字段外，全部 NOT NULL。连接显式开启外键。所有 FK 不使用删除账号级联，因为本期没有删除账号功能。
 
-| 表 | 字段及约束 |
-| --- | --- |
-| `auth_users` | `id` PK；`email` UNIQUE NOT NULL；`nickname`；`qq` UNIQUE NOT NULL；`password_hash`；`created_at` |
-| `auth_registrations` | `id_hash` PK；`email`；`nickname`/`qq`/`password_hash` 可在清理后为 null；`code_digest` 可 null；`status` CHECK pending/completed/cancelled/expired；`failed_attempts` 0–5；`last_sent_at`；`code_expires_at`；`retain_until`；`completed_user_id` FK 可 null；`completed_at` 可 null |
-| `auth_email_delivery` | `email` PK；`next_send_at`；独立于注册尝试，取消或创建新尝试不能清除冷却 |
-| `auth_sessions` | `token_hash` PK；`user_id` FK；`created_at`；`expires_at`；`revoked_at` 可 null；索引 user_id 和 expires_at |
-| `auth_sso_requests` | `id_hash` PK；`created_at`；`expires_at`；`status` CHECK pending/completed；`user_id` FK 可 null；`completed_at` 可 null |
+| 表                    | 字段及约束                                                                                                                                                                                                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth_users`          | `id` PK；`email` UNIQUE NOT NULL；`nickname`；`qq` UNIQUE NOT NULL；`password_hash`；`created_at`                                                                                                                                                                                     |
+| `auth_registrations`  | `id_hash` PK；`email`；`nickname`/`qq`/`password_hash` 可在清理后为 null；`code_digest` 可 null；`status` CHECK pending/completed/cancelled/expired；`failed_attempts` 0–5；`last_sent_at`；`code_expires_at`；`retain_until`；`completed_user_id` FK 可 null；`completed_at` 可 null |
+| `auth_email_delivery` | `email` PK；`next_send_at`；独立于注册尝试，取消或创建新尝试不能清除冷却                                                                                                                                                                                                              |
+| `auth_sessions`       | `token_hash` PK；`user_id` FK；`created_at`；`expires_at`；`revoked_at` 可 null；索引 user_id 和 expires_at                                                                                                                                                                           |
+| `auth_sso_requests`   | `id_hash` PK；`created_at`；`expires_at`；`status` CHECK pending/completed；`user_id` FK 可 null；`completed_at` 可 null                                                                                                                                                              |
 
 用户邮箱与 QQ 的预查询只能用于早期提示，最终依赖数据库唯一约束。多个未验证注册可暂存相同资料；成功创建账号后，同邮箱其他 pending 尝试取消并清除密码哈希。已存在账号不能被注册流程修改密码或资料。
 
@@ -237,14 +237,14 @@ NavBar 接收 `loading | anonymous | authenticated | unavailable` 展示状态�
 
 ### 6.2 路由与容器
 
-| 页面 | 行为 |
-| --- | --- |
-| `/login` | 普通登录；成功保存 token 后 `location.replace('/')` |
-| `/register` | 普通注册；成功后 SPA replace 到 `/login`，邮箱通过 router state 传递，不进入 URL |
-| `/login?ssoRequestId=...` | SSO 登录/免登录；成功整页 replace 到 `/sso/success` |
-| `/register?ssoRequestId=...` | SSO 注册；成功 SPA replace 到保留同一参数的登录页 |
-| `/sso/success` | 读取标签页成功展示记录，显示成功及返回发起应用提示；不发 token、不发起轮询 |
-| 其他页面的 NavBar | 打开 Modal；普通登录保存 token 后 `location.reload()` |
+| 页面                         | 行为                                                                             |
+| ---------------------------- | -------------------------------------------------------------------------------- |
+| `/login`                     | 普通登录；成功保存 token 后 `location.replace('/')`                              |
+| `/register`                  | 普通注册；成功后 SPA replace 到 `/login`，邮箱通过 router state 传递，不进入 URL |
+| `/login?ssoRequestId=...`    | SSO 登录/免登录；成功整页 replace 到 `/sso/success`                              |
+| `/register?ssoRequestId=...` | SSO 注册；成功 SPA replace 到保留同一参数的登录页                                |
+| `/sso/success`               | 读取标签页成功展示记录，显示成功及返回发起应用提示；不发 token、不发起轮询       |
+| 其他页面的 NavBar            | 打开 Modal；普通登录保存 token 后 `location.reload()`                            |
 
 独立认证页面点击 NavBar 登录/注册切换路由，不再打开第二个认证容器。只要参数名 ssoRequestId 存在，就进入 SSO 解析分支；空值、重复参数或格式错误显示入口无效，不能悄悄退回普通登录。缺少该参数才是普通模式。忽略其他未经定义的跳转参数。
 
@@ -283,17 +283,17 @@ SSO 成功展示记录 key 为 `exwebsite.auth.sso-success`，值为 `{ssoReques
 
 ## 8. 安全边界与风险
 
-| 风险 | 本期处理与检测 |
-| --- | --- |
-| localStorage token 可被同源脚本读取 | 这是已确认的存储选择；不把 token 放 URL/日志/页面，不用 HTML 注入渲染昵称，测试成功/错误输出不泄露凭据。生产站点需另行落实脚本与内容安全策略 |
-| 邮箱/QQ 枚举、QQ 被他人抢占 | 本期接受明确唯一性错误与不验证 QQ 归属；不将 QQ 当作身份凭据。生产归属找回属于后续产品设计 |
-| 无人机验证、口令暴力尝试、批量邮箱投递 | 本地 Mock 继续只绑定回环；实现验证码次数与每邮箱冷却，不声称具有生产反滥用能力。真实外网发布须独立设计限流与人机验证 |
-| scrypt 并发耗尽内存 | 本地异步哈希最多 2 个同时运行；最多 16 个等待，超出以固定安全 503 错误响应，不阻塞事件循环；容量不是生产承诺 |
-| 响应序列化掩盖内部额外字段 | 直接校验注册的 handler 返回值；测试 raw 返回值不能携带密码哈希、QQ、token 等未声明字段 |
-| SSO 请求被转发、盗取或恶意引导 | 本期只使用显式本地请求验证，不宣称实现生产 SSO；请求签发方身份、浏览器绑定/同意、发起方凭证与结果获取协议必须在生产对接设计中解决 |
-| 用户手改成功展示记录 | 记录只影响 UI，不能改变数据库或生成会话；CLI 检查以服务器结果为准 |
-| 日志携带凭据或 SQL 参数 | 禁止记录请求 body/Authorization；业务错误只记 code/requestId，认证内部异常日志也不 dump 带 SQL 参数的对象；模拟邮箱验证码是唯一明确允许的开发期例外 |
-| 重试与取消造成重复创建/绑定 | SQLite 事务、唯一索引与状态检查；覆盖并发提交、迟到响应、重发与验证竞争测试 |
+| 风险                                   | 本期处理与检测                                                                                                                                      |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| localStorage token 可被同源脚本读取    | 这是已确认的存储选择；不把 token 放 URL/日志/页面，不用 HTML 注入渲染昵称，测试成功/错误输出不泄露凭据。生产站点需另行落实脚本与内容安全策略        |
+| 邮箱/QQ 枚举、QQ 被他人抢占            | 本期接受明确唯一性错误与不验证 QQ 归属；不将 QQ 当作身份凭据。生产归属找回属于后续产品设计                                                          |
+| 无人机验证、口令暴力尝试、批量邮箱投递 | 本地 Mock 继续只绑定回环；实现验证码次数与每邮箱冷却，不声称具有生产反滥用能力。真实外网发布须独立设计限流与人机验证                                |
+| scrypt 并发耗尽内存                    | 本地异步哈希最多 2 个同时运行；最多 16 个等待，超出以固定安全 503 错误响应，不阻塞事件循环；容量不是生产承诺                                        |
+| 响应序列化掩盖内部额外字段             | 直接校验注册的 handler 返回值；测试 raw 返回值不能携带密码哈希、QQ、token 等未声明字段                                                              |
+| SSO 请求被转发、盗取或恶意引导         | 本期只使用显式本地请求验证，不宣称实现生产 SSO；请求签发方身份、浏览器绑定/同意、发起方凭证与结果获取协议必须在生产对接设计中解决                   |
+| 用户手改成功展示记录                   | 记录只影响 UI，不能改变数据库或生成会话；CLI 检查以服务器结果为准                                                                                   |
+| 日志携带凭据或 SQL 参数                | 禁止记录请求 body/Authorization；业务错误只记 code/requestId，认证内部异常日志也不 dump 带 SQL 参数的对象；模拟邮箱验证码是唯一明确允许的开发期例外 |
+| 重试与取消造成重复创建/绑定            | SQLite 事务、唯一索引与状态检查；覆盖并发提交、迟到响应、重发与验证竞争测试                                                                         |
 
 哈希资源饱和的错误固定为 `AUTH_BUSY` / 503 / “服务繁忙，请稍后重试”，相关三个密码路径（startRegistration、login、loginForSso）在 Contract 增加 503 ErrorResponse 与 Retry-After: 1。客户端不自动循环重试。其他未预期故障继续 INTERNAL_ERROR。
 
@@ -319,16 +319,16 @@ SSO 成功展示记录 key 为 `exwebsite.auth.sso-success`，值为 `{ssoReques
 
 最低验收矩阵：
 
-| 场景 | 必须观测的结果 |
-| --- | --- |
-| Modal 注册 → 登录 | 注册成功仅切换表单；登录写 token 后刷新原 URL |
-| 独立注册 → 登录 | 邮箱预填、密码清空；登录整页回首页 |
-| SSO 密码登录 | 服务端请求 completed；localStorage 无新增 token；整页成功页 |
-| SSO 有效本站 token | 无需输密码；服务器完成请求；原 token 不变 |
-| SSO 失效 token/请求 | 按错误来源分别显示登录或请求错误，不误显示成功 |
-| 网络/存储失败与迟到响应 | 不误清有效 token、不伪造成功、不由关闭的表单导航 |
-| 重发/自动提交 | 倒计时依据 serverTime 校准；重复 render 不重复请求；失败可重试 |
-| 键盘/主题/窄屏 | Modal 焦点恢复、错误关联、OTP 粘贴、明暗主题与滚动正常 |
+| 场景                    | 必须观测的结果                                                 |
+| ----------------------- | -------------------------------------------------------------- |
+| Modal 注册 → 登录       | 注册成功仅切换表单；登录写 token 后刷新原 URL                  |
+| 独立注册 → 登录         | 邮箱预填、密码清空；登录整页回首页                             |
+| SSO 密码登录            | 服务端请求 completed；localStorage 无新增 token；整页成功页    |
+| SSO 有效本站 token      | 无需输密码；服务器完成请求；原 token 不变                      |
+| SSO 失效 token/请求     | 按错误来源分别显示登录或请求错误，不误显示成功                 |
+| 网络/存储失败与迟到响应 | 不误清有效 token、不伪造成功、不由关闭的表单导航               |
+| 重发/自动提交           | 倒计时依据 serverTime 校准；重复 render 不重复请求；失败可重试 |
+| 键盘/主题/窄屏          | Modal 焦点恢复、错误关联、OTP 粘贴、明暗主题与滚动正常         |
 
 浏览器验证使用实际 Mock Server 和明确的测试账户；邮件验证码从服务端终端获取。SSO 请求用显式 CLI 创建并检查。不运行 db:reset 清理开发者数据。单测模拟通过与真实浏览器通过分别报告。
 

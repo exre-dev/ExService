@@ -1,6 +1,6 @@
-import { ActionButton, Card } from "@exre/exui";
-import { LiquidMetal } from "@paper-design/shaders-react";
-import styles from "@web/src/pages/Home.module.scss";
+import { ActionButton, Card } from '@exre/exui'
+import { LiquidMetal } from '@paper-design/shaders-react'
+import styles from '@web/src/pages/Home.module.scss'
 
 /**
  * 首页展示 ExIcon 液态金属动画；底部按钮暂未接入行为。
@@ -36,23 +36,18 @@ export function Home() {
           <div className={styles.actions}>
             <ActionButton
               type="button"
-              variant={"ghost"}
+              variant={'ghost'}
               size="lg"
               className={`${styles.heroAction} ${styles.fivemAction}`}
             >
               FiveM打开
             </ActionButton>
-            <ActionButton
-              type="button"
-              size="lg"
-              variant="outline"
-              className={styles.heroAction}
-            >
+            <ActionButton type="button" size="lg" variant="outline" className={styles.heroAction}>
               玩家社区
             </ActionButton>
           </div>
         </Card>
       </div>
     </main>
-  );
+  )
 }

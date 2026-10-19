@@ -87,7 +87,11 @@ export function parseStoredActions(raw: string): StoredActionDescriptor[] {
     if (typeof entry !== 'object' || entry === null) throw new NotificationError('CONTENT_UNSAFE')
     const candidate = entry as Record<string, unknown>
     const actionId = candidate.actionId
-    if (typeof actionId !== 'string' || !/^[a-z0-9._-]{1,64}$/.test(actionId) || seen.has(actionId)) {
+    if (
+      typeof actionId !== 'string' ||
+      !/^[a-z0-9._-]{1,64}$/.test(actionId) ||
+      seen.has(actionId)
+    ) {
       throw new NotificationError('CONTENT_UNSAFE')
     }
     seen.add(actionId)
@@ -104,8 +108,11 @@ export function parseStoredActions(raw: string): StoredActionDescriptor[] {
     if (candidate.kind === 'command') {
       const actionType = candidate.actionType
       const commandVersion = candidate.commandVersion
-      if (typeof actionType !== 'string' || !/^[a-z0-9.]{1,64}$/.test(actionType) ||
-        commandVersion !== 1) {
+      if (
+        typeof actionType !== 'string' ||
+        !/^[a-z0-9.]{1,64}$/.test(actionType) ||
+        commandVersion !== 1
+      ) {
         throw new NotificationError('CONTENT_UNSAFE')
       }
       actions.push({ kind: 'command', actionId, actionType, commandVersion, emphasis })
@@ -127,7 +134,7 @@ export function resolveActions(
   context: { expired: boolean; visible: boolean },
 ): { actions: ResolvedAction[]; available: boolean } {
   if (!context.visible) return { actions: [], available: false }
-  const actions = stored.map<ResolvedAction>(descriptor => {
+  const actions = stored.map<ResolvedAction>((descriptor) => {
     if (descriptor.kind === 'command') {
       return {
         actionId: descriptor.actionId,

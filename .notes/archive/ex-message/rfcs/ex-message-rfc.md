@@ -49,7 +49,7 @@ ExMessage.loading(content: React.ReactNode, options?: MessageOptions): LoadingHa
 ```
 
 ```tsx
-<ExMessage duration={3000} placement="top-right" maxCount={3} />
+;<ExMessage duration={3000} placement="top-right" maxCount={3} />
 
 ExMessage.info('资料已更新')
 ExMessage.warn('请检查输入', { duration: 6000 })
@@ -75,14 +75,14 @@ loading 不继承全站 3 秒。仅当 `ExMessage.loading` 的 `options.duration
 
 ## 失败模式与验证
 
-| 风险或场景 | 设计处理 | 验证 |
-| --- | --- | --- |
+| 风险或场景                                          | 设计处理                                               | 验证                                                         |
+| --------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
 | 用 `visibleToasts` 误当容量控制，旧消息仍在底层排队 | 登记表按创建顺序主动 `toast.dismiss`，同时设置视觉上限 | 连续发送超过 `maxCount` 条，断言最早 ID 被关闭且不会重新出现 |
-| loading 的底层 `duration` 被忽略 | 包装层独立计时，完成和驱逐时清理 | 假计时器分别验证默认持续、显式截止、提前完成 |
-| 异步完成晚于截止或容量驱逐 | 结束态幂等检查，完成方法不再调用 ExUI | 驱逐、超时和手动关闭后调用两种完成方法，断言无新消息 |
-| 快速连续调用及运行时降低 `maxCount` | 同步登记和驱逐，完成态不重新排序 | 连续调用与变更属性后检查活动 ID 顺序及数量 |
-| 重复宿主或开发期 StrictMode 重挂载 | 单宿主检查与清理 | 挂载、卸载、重挂载及重复挂载测试 |
-| 包装层和 ExUI 使用不同 Sonner 实例 | `Toaster`、`toast` 均从 `@exre/exui` 根入口导入 | 真实组件测试确认静态调用出现在宿主 DOM 中 |
+| loading 的底层 `duration` 被忽略                    | 包装层独立计时，完成和驱逐时清理                       | 假计时器分别验证默认持续、显式截止、提前完成                 |
+| 异步完成晚于截止或容量驱逐                          | 结束态幂等检查，完成方法不再调用 ExUI                  | 驱逐、超时和手动关闭后调用两种完成方法，断言无新消息         |
+| 快速连续调用及运行时降低 `maxCount`                 | 同步登记和驱逐，完成态不重新排序                       | 连续调用与变更属性后检查活动 ID 顺序及数量                   |
+| 重复宿主或开发期 StrictMode 重挂载                  | 单宿主检查与清理                                       | 挂载、卸载、重挂载及重复挂载测试                             |
+| 包装层和 ExUI 使用不同 Sonner 实例                  | `Toaster`、`toast` 均从 `@exre/exui` 根入口导入        | 真实组件测试确认静态调用出现在宿主 DOM 中                    |
 
 在 `packages/components/src/ExMessage.test.tsx` 使用 jsdom 和受控计时验证公开 API、生命周期与容量；必要时分离控制模块单测，但关键路径仍需经过真实 `ExMessage` 宿主和 ExUI 显示。验证 `apps/web` 根入口只挂载一个宿主，主题切换后显示仍跟随现有 `ThemeProvider`。执行仓库现有的 `pnpm typecheck`、`pnpm test`、`pnpm build`；若既有工作区失败，分别报告本变更的验证结果与已存在的失败。
 

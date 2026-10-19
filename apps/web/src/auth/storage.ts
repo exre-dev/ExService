@@ -14,7 +14,10 @@ let selected = { key: AUTH_TOKEN_KEY, custom: false }
 let revision = 0
 const scopeState = () => {
   let state = scopes.get(selected.key)
-  if (!state) { state = {}; scopes.set(selected.key, state) }
+  if (!state) {
+    state = {}
+    scopes.set(selected.key, state)
+  }
   return state
 }
 export const sessionScopeRevision = (): number => revision
@@ -24,7 +27,10 @@ export function selectSessionScope(baseUrl: string): void {
   const normalized = new URL(baseUrl, window.location.origin).href.replace(/\/+$/, '')
   const custom = normalized !== `${new URL(window.location.origin).origin}/api`
   const key = custom ? `${AUTH_TOKEN_KEY}:${encodeURIComponent(normalized)}` : AUTH_TOKEN_KEY
-  if (key !== selected.key) { selected = { key, custom }; revision++ }
+  if (key !== selected.key) {
+    selected = { key, custom }
+    revision++
+  }
   syncSessionToken()
 }
 const subscribers = new Set<() => void>()
@@ -43,7 +49,11 @@ export function startSessionSync(): () => void {
   if (!stopStorageListener) {
     const onStorage = (event: StorageEvent) => {
       if (event.key !== null && event.key !== selected.key) return
-      try { if (event.storageArea && event.storageArea !== window.localStorage) return } catch { return }
+      try {
+        if (event.storageArea && event.storageArea !== window.localStorage) return
+      } catch {
+        return
+      }
       syncSessionToken()
     }
     const owner = window
@@ -52,12 +62,20 @@ export function startSessionSync(): () => void {
   }
   syncLeases++
   let released = false
-  return () => { if (!released) { released = true; releaseSessionSync() } }
+  return () => {
+    if (!released) {
+      released = true
+      releaseSessionSync()
+    }
+  }
 }
 let syncLeases = 0
 let stopStorageListener: (() => void) | undefined
 function releaseSessionSync(): void {
-  if (--syncLeases === 0) { stopStorageListener?.(); stopStorageListener = undefined }
+  if (--syncLeases === 0) {
+    stopStorageListener?.()
+    stopStorageListener = undefined
+  }
 }
 
 export function syncSessionToken(): string | null | undefined {
@@ -110,7 +128,10 @@ export function writeToken(storage: Pick<Storage, 'setItem'>, token: string): vo
   changed()
 }
 
-export function removeMatchingToken(storage: Pick<Storage, 'getItem' | 'removeItem'>, token: string): void {
+export function removeMatchingToken(
+  storage: Pick<Storage, 'getItem' | 'removeItem'>,
+  token: string,
+): void {
   if (readRawToken(storage) === token) {
     storage.removeItem(selected.key)
     scopeState().persistedLogin = undefined
@@ -136,7 +157,11 @@ export function expirePersistedSession(): void {
     return
   }
   state.suppressed = { baseline: owned.token }
-  try { browserStorage.removeItem(selected.key) } catch { /* keep the effective session anonymous */ }
+  try {
+    browserStorage.removeItem(selected.key)
+  } catch {
+    /* keep the effective session anonymous */
+  }
 }
 
 /** Explicit logout clears browser state before any remote revocation can finish. */
@@ -145,10 +170,22 @@ export function clearBrowserSession(): void {
   state.persistedLogin = undefined
   state.needsSdkRestore = undefined
   let baseline: string | null | undefined
-  try { baseline = readRawToken(window.localStorage) } catch { /* adopt the first readable baseline */ }
+  try {
+    baseline = readRawToken(window.localStorage)
+  } catch {
+    /* adopt the first readable baseline */
+  }
   state.suppressed = { baseline }
-  try { window.localStorage.removeItem(selected.key) } catch { /* still clear in-memory authentication */ }
-  try { window.sessionStorage.removeItem(SSO_SUCCESS_KEY) } catch { /* independent of token cleanup */ }
+  try {
+    window.localStorage.removeItem(selected.key)
+  } catch {
+    /* still clear in-memory authentication */
+  }
+  try {
+    window.sessionStorage.removeItem(SSO_SUCCESS_KEY)
+  } catch {
+    /* independent of token cleanup */
+  }
   setAccessToken(null)
   changed()
 }
@@ -171,12 +208,12 @@ export function readRecentSsoSuccess(
   try {
     const value = JSON.parse(raw) as { ssoRequestId?: unknown; confirmedAt?: unknown }
     if (
-      typeof value.ssoRequestId !== 'string'
-      || !/^[A-Za-z0-9_-]{43}$/.test(value.ssoRequestId)
-      || typeof value.confirmedAt !== 'number'
-      || !Number.isSafeInteger(value.confirmedAt)
-      || now - value.confirmedAt < 0
-      || now - value.confirmedAt > 5 * 60 * 1000
+      typeof value.ssoRequestId !== 'string' ||
+      !/^[A-Za-z0-9_-]{43}$/.test(value.ssoRequestId) ||
+      typeof value.confirmedAt !== 'number' ||
+      !Number.isSafeInteger(value.confirmedAt) ||
+      now - value.confirmedAt < 0 ||
+      now - value.confirmedAt > 5 * 60 * 1000
     ) {
       storage.removeItem(SSO_SUCCESS_KEY)
       return null

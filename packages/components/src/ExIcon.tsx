@@ -19,13 +19,15 @@ export function ExIcon({
     <span
       {...props}
       className={`ex-glass ${styles.base}${className ? ` ${className}` : ''}`}
-      style={{
-        ...style,
-        width: size,
-        height: size,
-        borderRadius: "28%",
-        ...(backgroundColor ? { '--exui-glass-background': backgroundColor } : {}),
-      } as CSSProperties}
+      style={
+        {
+          ...style,
+          width: size,
+          height: size,
+          borderRadius: '28%',
+          ...(backgroundColor ? { '--exui-glass-background': backgroundColor } : {}),
+        } as CSSProperties
+      }
       aria-hidden={props['aria-hidden'] ?? true}
     >
       <span className={styles.mark} />

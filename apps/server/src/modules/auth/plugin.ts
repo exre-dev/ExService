@@ -3,7 +3,9 @@ import fp from 'fastify-plugin'
 import type { AuthService } from './service.js'
 import { requireBusinessServices } from '../../business-plugin-errors.js'
 
-export interface AuthPluginOptions { authServices: AuthService }
+export interface AuthPluginOptions {
+  authServices: AuthService
+}
 
 const plugin: FastifyPluginAsync<AuthPluginOptions> = async (app, options) => {
   requireBusinessServices('business-auth', { authServices: options.authServices })
@@ -11,5 +13,6 @@ const plugin: FastifyPluginAsync<AuthPluginOptions> = async (app, options) => {
 }
 
 export default fp(plugin, {
-  name: 'business-auth', fastify: '5.x',
+  name: 'business-auth',
+  fastify: '5.x',
 })

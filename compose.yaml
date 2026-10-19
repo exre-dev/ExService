@@ -2,7 +2,7 @@ name: exwebsite-runtime
 services:
   postgres:
     image: ${RUNTIME_POSTGRES_IMAGE:?}
-    labels: {dev.exwebsite.runtime: dependencies}
+    labels: { dev.exwebsite.runtime: dependencies }
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
@@ -15,7 +15,7 @@ services:
       retries: 30
   hydra:
     image: ${RUNTIME_HYDRA_IMAGE:?}
-    labels: {dev.exwebsite.runtime: dependencies}
+    labels: { dev.exwebsite.runtime: dependencies }
     command: [serve, all, --dev]
     ports:
       - '127.0.0.1:${LOCAL_HYDRA_PUBLIC_PORT:?}:4444'
@@ -36,7 +36,7 @@ services:
       LOG_LEVEL: warn
       LOG_LEAK_SENSITIVE_VALUES: 'false'
     depends_on:
-      postgres: {condition: service_healthy}
+      postgres: { condition: service_healthy }
 volumes:
   pgdata:
     name: ${POSTGRES_VOLUME_NAME:?}

@@ -14,16 +14,16 @@
 
 ## 已核对的实现基础
 
-| 位置 | 当前事实及设计影响 |
-| --- | --- |
-| `packages/components/src/tiptap/types.ts` | `toolbar?: boolean` 控制挂载，ref 只提供 JSON、Markdown、显式替换与 focus；保持这一公开边界。 |
-| `packages/components/src/tiptap/TiptapEditor.tsx` | 每个编辑器拥有生命周期实例，`shouldRerenderOnTransaction: false`；工具栏独立订阅 Editor 状态。只读模式取消上传和 Mention。 |
-| `packages/components/src/tiptap/toolbar/TiptapToolbar.tsx` | 现有链接、图片表单使用 RHF/Zod；`applyDocumentCommand` 以实际 transaction 事件区分提交成功与过滤器拒绝，重构需保留。 |
-| `packages/components/src/tiptap/lifecycle.ts` | filterTransaction 校验完整候选文档；显式 replace 在 dispatch 前更新私有 generation；上传锚点随 transaction mapping 移动。 |
-| `packages/components/src/tiptap/conversion/policy.ts` | 字号规范化为 0.75–3rem，颜色以规范化十六进制表示；持久内容不接受 CSS 变量。 |
-| `packages/components/src/tiptap/components.test.tsx` | 组件回归使用真实 Editor 与扩展，覆写组件不采用整体 Editor mock。 |
-| `tests/browser/tiptap-preview.mjs` | 真实浏览器辅助断言，由调用方提供已运行服务与 Playwright Page；测试不自行启动业务服务。 |
-| `packages/components/package.json` | 已锁定 ExUI 0.8.0、Tiptap 3.32.0，并以 sideEffects 清单控制 tree-shaking；新模块保留在既有 tiptap 目录。 |
+| 位置                                                       | 当前事实及设计影响                                                                                                         |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `packages/components/src/tiptap/types.ts`                  | `toolbar?: boolean` 控制挂载，ref 只提供 JSON、Markdown、显式替换与 focus；保持这一公开边界。                              |
+| `packages/components/src/tiptap/TiptapEditor.tsx`          | 每个编辑器拥有生命周期实例，`shouldRerenderOnTransaction: false`；工具栏独立订阅 Editor 状态。只读模式取消上传和 Mention。 |
+| `packages/components/src/tiptap/toolbar/TiptapToolbar.tsx` | 现有链接、图片表单使用 RHF/Zod；`applyDocumentCommand` 以实际 transaction 事件区分提交成功与过滤器拒绝，重构需保留。       |
+| `packages/components/src/tiptap/lifecycle.ts`              | filterTransaction 校验完整候选文档；显式 replace 在 dispatch 前更新私有 generation；上传锚点随 transaction mapping 移动。  |
+| `packages/components/src/tiptap/conversion/policy.ts`      | 字号规范化为 0.75–3rem，颜色以规范化十六进制表示；持久内容不接受 CSS 变量。                                                |
+| `packages/components/src/tiptap/components.test.tsx`       | 组件回归使用真实 Editor 与扩展，覆写组件不采用整体 Editor mock。                                                           |
+| `tests/browser/tiptap-preview.mjs`                         | 真实浏览器辅助断言，由调用方提供已运行服务与 Playwright Page；测试不自行启动业务服务。                                     |
+| `packages/components/package.json`                         | 已锁定 ExUI 0.8.0、Tiptap 3.32.0，并以 sideEffects 清单控制 tree-shaking；新模块保留在既有 tiptap 目录。                   |
 
 规范依据：`AGENTS.md`、`.ai/rules/frontend-forms.md`、`.ai/rules/frontend-notifications.md`、`.ai/knowledge/web/exui-integration-traps.md`、`.ai/knowledge/components/tiptap-content-boundaries.md`、`.ai/architectures/contract-tests/test-layers.md` 与 `CONTRIBUTING.md`。
 
@@ -46,9 +46,7 @@ renderToolbar?: (toolbar: ReactNode) => ReactNode
 ```tsx
 <TiptapEditor
   ariaLabel="反馈内容"
-  renderToolbar={toolbar => (
-    <div className={styles.businessToolbarSurface}>{toolbar}</div>
-  )}
+  renderToolbar={(toolbar) => <div className={styles.businessToolbarSurface}>{toolbar}</div>}
 />
 ```
 
@@ -60,17 +58,17 @@ renderToolbar?: (toolbar: ReactNode) => ReactNode
 
 在 `packages/components/src/tiptap/toolbar/` 内拆分以下职责。文件名作为实施切分约定，不建立通用插件注册系统：
 
-| 模块 | 责任 |
-| --- | --- |
-| `TiptapToolbar.tsx`、`TiptapToolbar.module.scss` | 透明根容器、分组、TooltipProvider、更多入口及内部组件协调。 |
-| `state.ts` | 当前选区的激活、混合、禁用及字号/颜色状态；统一命令描述和固定文案。 |
-| `layout.ts` | 固定逻辑单元、收纳级别、测量和 ResizeObserver 生命周期。 |
-| `selection.ts` | 菜单会话选区书签、transaction mapping、代际与焦点恢复。 |
-| `ParagraphControls.tsx` | 正文/H1–H4、引用、代码块、列表类型及缩进菜单。 |
-| `FontSizeControl.tsx` | 独立字号选择，预设、默认与混合状态。 |
-| `ColorControls.tsx`、`colors.ts` | 三类圆形色块面板、token 解析、当前值及清除。 |
-| `InsertControls.tsx`、`UrlForms.tsx` | 链接、图片地址、本地上传及区块菜单；保留当前字段校验与命令提交判断。 |
-| `ToolbarButton.tsx`、`focus.ts` | 统一按钮、Tooltip、可读名称与 roving focus。 |
+| 模块                                             | 责任                                                                 |
+| ------------------------------------------------ | -------------------------------------------------------------------- |
+| `TiptapToolbar.tsx`、`TiptapToolbar.module.scss` | 透明根容器、分组、TooltipProvider、更多入口及内部组件协调。          |
+| `state.ts`                                       | 当前选区的激活、混合、禁用及字号/颜色状态；统一命令描述和固定文案。  |
+| `layout.ts`                                      | 固定逻辑单元、收纳级别、测量和 ResizeObserver 生命周期。             |
+| `selection.ts`                                   | 菜单会话选区书签、transaction mapping、代际与焦点恢复。              |
+| `ParagraphControls.tsx`                          | 正文/H1–H4、引用、代码块、列表类型及缩进菜单。                       |
+| `FontSizeControl.tsx`                            | 独立字号选择，预设、默认与混合状态。                                 |
+| `ColorControls.tsx`、`colors.ts`                 | 三类圆形色块面板、token 解析、当前值及清除。                         |
+| `InsertControls.tsx`、`UrlForms.tsx`             | 链接、图片地址、本地上传及区块菜单；保留当前字段校验与命令提交判断。 |
+| `ToolbarButton.tsx`、`focus.ts`                  | 统一按钮、Tooltip、可读名称与 roving focus。                         |
 
 这些模块只依赖 ExUI 包根、Lucide、现有 Tiptap、RHF/Zod 及内部公开能力；不访问业务 API。可用状态与激活状态由 `useEditorState` 订阅；布局和菜单状态由 React 管理。Editor 文档不复制为工具栏 React state，不随布局重建。
 
@@ -78,16 +76,16 @@ renderToolbar?: (toolbar: ReactNode) => ReactNode
 
 逻辑单元按以下顺序展示；命令状态、直接入口及更多入口使用同一份定义。
 
-| 单元 | 命令与状态 |
-| --- | --- |
-| history，核心 | undo、redo；不可执行时禁用。 |
-| paragraph，核心 | setParagraph、setHeading H1–H4；默认正文、当前标题或“混合”。 |
-| paragraphExtra | toggleBlockquote、toggleCodeBlock、列表菜单；列表菜单包含三种列表与 sink/lift 操作。taskItem 使用 taskItem 命令目标，其余使用 listItem。 |
-| marks，核心 | bold、italic、underline。 |
-| textExtra | strike、inline code、字号、unsetAllMarks；清除范围保持当前选区内 Marks，不擅自重置段落、对齐或节点。 |
-| colors | 文字颜色、文字背景、高亮三个独立触发器。 |
-| insert | 链接、图片地址、配置 uploadImage 时的本地图片；Details 的创建/解除、四类 Admonition 的设置/解除、HorizontalRule、HardBreak。 |
-| align | 段落及标题的 left、center、right、justify。 |
+| 单元            | 命令与状态                                                                                                                               |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| history，核心   | undo、redo；不可执行时禁用。                                                                                                             |
+| paragraph，核心 | setParagraph、setHeading H1–H4；默认正文、当前标题或“混合”。                                                                             |
+| paragraphExtra  | toggleBlockquote、toggleCodeBlock、列表菜单；列表菜单包含三种列表与 sink/lift 操作。taskItem 使用 taskItem 命令目标，其余使用 listItem。 |
+| marks，核心     | bold、italic、underline。                                                                                                                |
+| textExtra       | strike、inline code、字号、unsetAllMarks；清除范围保持当前选区内 Marks，不擅自重置段落、对齐或节点。                                     |
+| colors          | 文字颜色、文字背景、高亮三个独立触发器。                                                                                                 |
+| insert          | 链接、图片地址、配置 uploadImage 时的本地图片；Details 的创建/解除、四类 Admonition 的设置/解除、HorizontalRule、HardBreak。             |
+| align           | 段落及标题的 left、center、right、justify。                                                                                              |
 
 所有项目具有稳定命令 ID、中文可读名称和适用的激活/禁用状态。按钮使用当前 `can()` 与扩展命令判定；表单提交的可用性由校验后的真实参数决定，不能用空 URL 的 can 检查禁用整个链接入口。
 
@@ -113,14 +111,14 @@ token 解析在挂载及主题变化时执行，不在每次 Editor transaction 
 
 定义固定收纳级别：
 
-| 级别 | 被收纳的逻辑单元，累计 |
-| --- | --- |
-| 0 | 无，隐藏更多入口。 |
-| 1 | align。 |
-| 2 | align、insert。 |
-| 3 | align、insert、colors。 |
-| 4 | align、insert、colors、textExtra。 |
-| 5 | align、insert、colors、textExtra、paragraphExtra；仅保留核心与更多。 |
+| 级别 | 被收纳的逻辑单元，累计                                               |
+| ---- | -------------------------------------------------------------------- |
+| 0    | 无，隐藏更多入口。                                                   |
+| 1    | align。                                                              |
+| 2    | align、insert。                                                      |
+| 3    | align、insert、colors。                                              |
+| 4    | align、insert、colors、textExtra。                                   |
+| 5    | align、insert、colors、textExtra、paragraphExtra；仅保留核心与更多。 |
 
 使用无交互的测量标尺收集每个逻辑单元、分隔线、gap 和更多按钮的 max-content 占用；标尺不挂载第二份命令控件、文件 input、Tooltip 或 portal，不重复注册 Editor 订阅，也不能进入可访问树。字号及标题触发器保留稳定最小宽度，标签变化时重新测量。文字、主题、密度、字体加载和 pointer 类型变化也触发测量。
 
@@ -181,15 +179,15 @@ pnpm --filter @workspace/web build
 
 `vitest.config.ts` 已包含共享包测试路径，DOM 用例遵循既有 jsdom 注释。新增 `toolbar/state.test.ts`、`toolbar/layout.test.ts`、`toolbar/components.test.tsx` 或按现有结构归并测试；工具状态与命令使用真实 Editor，只有浏览器几何和颜色解析边界允许受控替换。测试不能只是重复固定配置。
 
-| 检查 | 必须证明的行为 |
-| --- | --- |
-| 状态与命令 | 光标、统一/混合选区、非预设字号及颜色，菜单选中、can 禁用；全部当前命令都有唯一可用入口。 |
-| 字号与色块 | 实际 Marks 变化、默认清除、重复高亮选择不清除、背景与高亮独立，JSON/Markdown 往返保持语义。 |
-| 会话 | 菜单/表单保住文字及 NodeSelection；异步上传移动锚点；replace、只读、卸载与锚点删除阻止旧会话命令。 |
-| 门禁 | 危险链接/图片、非法属性、预算过滤拒绝，表单仍可修正且不丢失文档/输入。 |
-| 宽度变化 | 收纳顺序、更多宽度预算、每个命令只有一个控件、菜单/焦点期间延迟重排、恢复及测量失败回退。 |
-| 生命周期 | StrictMode 无重复 observer/listener；关闭表单不重复上传；业务包装 rerender 保持 Editor 与可恢复会话。 |
-| 公开契约 | 默认工具栏、renderToolbar 包装、toolbar=false、未就绪、只读切换及多编辑器隔离。 |
+| 检查       | 必须证明的行为                                                                                        |
+| ---------- | ----------------------------------------------------------------------------------------------------- |
+| 状态与命令 | 光标、统一/混合选区、非预设字号及颜色，菜单选中、can 禁用；全部当前命令都有唯一可用入口。             |
+| 字号与色块 | 实际 Marks 变化、默认清除、重复高亮选择不清除、背景与高亮独立，JSON/Markdown 往返保持语义。           |
+| 会话       | 菜单/表单保住文字及 NodeSelection；异步上传移动锚点；replace、只读、卸载与锚点删除阻止旧会话命令。    |
+| 门禁       | 危险链接/图片、非法属性、预算过滤拒绝，表单仍可修正且不丢失文档/输入。                                |
+| 宽度变化   | 收纳顺序、更多宽度预算、每个命令只有一个控件、菜单/焦点期间延迟重排、恢复及测量失败回退。             |
+| 生命周期   | StrictMode 无重复 observer/listener；关闭表单不重复上传；业务包装 rerender 保持 Editor 与可恢复会话。 |
+| 公开契约   | 默认工具栏、renderToolbar 包装、toolbar=false、未就绪、只读切换及多编辑器隔离。                       |
 
 真实浏览器通过现有开发路由验证，并更新 `tests/browser/tiptap-preview.mjs`。覆盖 1440px、375px、pointer:coarse、200% 浏览器缩放以及同一 viewport 下业务容器独立变窄；实际截图和 computed geometry 必须证明字号菜单、圆形色块、状态、全部收纳入口及无横向溢出。检查 light/dark/system、实际 token 颜色转换、键盘流程、滚动后的 portal 定位和临时业务背景包装。
 
@@ -197,15 +195,15 @@ pnpm --filter @workspace/web build
 
 ## 风险与对应门禁
 
-| 风险 | 缓解与检测 |
-| --- | --- |
-| 缩小后用户无法操作被隐藏工具 | 单一完整命令定义、更多面板覆盖全部收纳单元；各级别按可读名称遍历入口。 |
+| 风险                              | 缓解与检测                                                                          |
+| --------------------------------- | ----------------------------------------------------------------------------------- |
+| 缩小后用户无法操作被隐藏工具      | 单一完整命令定义、更多面板覆盖全部收纳单元；各级别按可读名称遍历入口。              |
 | ResizeObserver 导致抖动或重复挂载 | 独立无交互标尺、固定级别、更多宽度预算及 RAF 合并；浏览器边界宽度反复 resize 验证。 |
-| 弹层操作改错选区或替换后的新文档 | mapped bookmark 与 runtime 代际共同门禁；真实 Editor 的删除、上传及 replace 回归。 |
-| 业务 Glass 或定位容器裁切菜单 | ExUI portal；使用滚动、overflow 与业务包装的浏览器几何检查。 |
-| CSS token 返回现代颜色导致无效值 | 浏览器 Canvas 转 sRGB、normalizeColor 门禁、失败禁用；实际 token 明暗主题验收。 |
-| 混合格式状态误导或长文档扫描过重 | 明确三态，仅扫描选区；结构及 storedMarks 用真实 Editor 验证。 |
-| 重构破坏安全输入与预算拒绝提示 | 保留 RHF/Zod、filterTransaction、applied 事件判定及现有拒绝测试。 |
+| 弹层操作改错选区或替换后的新文档  | mapped bookmark 与 runtime 代际共同门禁；真实 Editor 的删除、上传及 replace 回归。  |
+| 业务 Glass 或定位容器裁切菜单     | ExUI portal；使用滚动、overflow 与业务包装的浏览器几何检查。                        |
+| CSS token 返回现代颜色导致无效值  | 浏览器 Canvas 转 sRGB、normalizeColor 门禁、失败禁用；实际 token 明暗主题验收。     |
+| 混合格式状态误导或长文档扫描过重  | 明确三态，仅扫描选区；结构及 storedMarks 用真实 Editor 验证。                       |
+| 重构破坏安全输入与预算拒绝提示    | 保留 RHF/Zod、filterTransaction、applied 事件判定及现有拒绝测试。                   |
 
 ## 落地顺序、回滚与交付
 

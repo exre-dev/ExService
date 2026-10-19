@@ -10,14 +10,24 @@ export const FIELD_DEFINITIONS = Object.freeze([
 ])
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const object = value => value !== null && typeof value === 'object' && !Array.isArray(value)
-function invalid() { throw new Error('Invalid support field') }
+const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
+function invalid() {
+  throw new Error('Invalid support field')
+}
 
 /** Normalize the exact field shape consumed by the Server and checked by packaging. */
 export function parseSupportField(input, id, expectedType) {
-  if (!object(input) || input.id !== id || input.type !== expectedType ||
-      typeof input.name !== 'string' || !input.name.trim() || input.name.length > 255 ||
-      input.required !== undefined && typeof input.required !== 'boolean' || !object(input.type_config)) invalid()
+  if (
+    !object(input) ||
+    input.id !== id ||
+    input.type !== expectedType ||
+    typeof input.name !== 'string' ||
+    !input.name.trim() ||
+    input.name.length > 255 ||
+    (input.required !== undefined && typeof input.required !== 'boolean') ||
+    !object(input.type_config)
+  )
+    invalid()
   const options = []
   if (expectedType === 'drop_down') {
     const raw = input.type_config.options
@@ -25,15 +35,39 @@ export function parseSupportField(input, id, expectedType) {
     for (const item of raw) {
       if (!object(item)) invalid()
       const orderindex = Number(item.orderindex)
-      if (typeof item.id !== 'string' || !uuid.test(item.id) ||
-          typeof item.name !== 'string' || !item.name.trim() || item.name.length > 255 ||
-          !Number.isSafeInteger(orderindex) || orderindex < 0 || orderindex > 500 ||
-          item.color !== undefined && item.color !== null && (typeof item.color !== 'string' || item.color.length > 32)) invalid()
-      options.push({ id: item.id, name: item.name, color: typeof item.color === 'string' ? item.color : null, orderindex })
+      if (
+        typeof item.id !== 'string' ||
+        !uuid.test(item.id) ||
+        typeof item.name !== 'string' ||
+        !item.name.trim() ||
+        item.name.length > 255 ||
+        !Number.isSafeInteger(orderindex) ||
+        orderindex < 0 ||
+        orderindex > 500 ||
+        (item.color !== undefined &&
+          item.color !== null &&
+          (typeof item.color !== 'string' || item.color.length > 32))
+      )
+        invalid()
+      options.push({
+        id: item.id,
+        name: item.name,
+        color: typeof item.color === 'string' ? item.color : null,
+        orderindex,
+      })
     }
-    if (new Set(options.map(option => option.id)).size !== options.length ||
-        new Set(options.map(option => option.orderindex)).size !== options.length) invalid()
+    if (
+      new Set(options.map((option) => option.id)).size !== options.length ||
+      new Set(options.map((option) => option.orderindex)).size !== options.length
+    )
+      invalid()
     options.sort((a, b) => a.orderindex - b.orderindex)
   }
-  return { id, name: input.name, type: expectedType, required: input.required === true, type_config: { options } }
+  return {
+    id,
+    name: input.name,
+    type: expectedType,
+    required: input.required === true,
+    type_config: { options },
+  }
 }

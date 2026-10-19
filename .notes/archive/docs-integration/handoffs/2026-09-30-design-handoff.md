@@ -29,15 +29,15 @@
 
 以下是源码调查线索，不是完整兼容性审计。后续改动前核对当前版本，不依赖旧行号。
 
-| 主题 | 调查入口与观察 |
-| --- | --- |
-| Website 路由 | `apps/web/src/App.tsx` 尚无 `/docs`；`apps/web/vite.config.ts` 仅代理 `/api`；`apps/web/src/api/client.ts` 默认前缀为 `/api`。 |
-| Website 身份能力 | `api/openapi.yaml`、`apps/server/src/auth/service.ts`。既有 SSO 是本地请求确认流程，不能直接当作已实现的 OIDC 身份提供方。会话撤销逻辑存在，账号停用能力是否完整仍须继续调查。 |
-| Outline 子路径 | Outline: `app/utils/ApiClient.ts` 默认 `/api`；`app/utils/history.ts` 调用 `createBrowserHistory()`；`app/index.tsx` 注册 `/static/sw.js`；`vite.config.ts` 构造 `/static/` 资源前缀；`server/routes/index.ts` 包含分享和根路径路由。仅增加反向代理规则不足以证明 `/docs` 可用。 |
-| Outline 身份对接 | Outline: `plugins/oidc/server/auth/oidc.ts`、`oidcRouter.ts`、`OIDCStrategy.ts`、`server/commands/accountProvisioner.ts`、`userProvisioner.ts`。已有 OIDC 接入与主动退出入口，但尚未选定本项目身份协议，也未验证双向退出、账号停用及实时连接撤销。 |
-| 首次管理员 | Outline: `server/commands/accountProvisioner.ts` 有新建团队时授予 Admin 的路径。设计需要明确初始化与普通首次接入的分界，避免触发不符合已确认要求的默认行为。 |
-| 匿名公开内容 | Outline: `server/models/Share.ts`、`server/routes/api/shares/shares.ts`、`server/routes/index.ts`。已有 collection 分享、published、revokedAt、allowIndexing 等机制；尚未证明其能直接提供目标公开目录、草稿隔离及全部阅读体验。 |
-| 权限组合 | Outline: `server/policies/collection.ts`、`document.ts`、`share.ts`、`server/models/Team.ts`。同时存在全局角色、文档集权限、单文档权限及评论配置。不要把产品中的“不能编辑”直接等同于某个角色名称：团队级与文档集级新建规则不同，需沿真实调用链验证。 |
+| 主题             | 调查入口与观察                                                                                                                                                                                                                                                                   |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Website 路由     | `apps/web/src/App.tsx` 尚无 `/docs`；`apps/web/vite.config.ts` 仅代理 `/api`；`apps/web/src/api/client.ts` 默认前缀为 `/api`。                                                                                                                                                   |
+| Website 身份能力 | `api/openapi.yaml`、`apps/server/src/auth/service.ts`。既有 SSO 是本地请求确认流程，不能直接当作已实现的 OIDC 身份提供方。会话撤销逻辑存在，账号停用能力是否完整仍须继续调查。                                                                                                   |
+| Outline 子路径   | Outline: `app/utils/ApiClient.ts` 默认 `/api`；`app/utils/history.ts` 调用 `createBrowserHistory()`；`app/index.tsx` 注册 `/static/sw.js`；`vite.config.ts` 构造 `/static/` 资源前缀；`server/routes/index.ts` 包含分享和根路径路由。仅增加反向代理规则不足以证明 `/docs` 可用。 |
+| Outline 身份对接 | Outline: `plugins/oidc/server/auth/oidc.ts`、`oidcRouter.ts`、`OIDCStrategy.ts`、`server/commands/accountProvisioner.ts`、`userProvisioner.ts`。已有 OIDC 接入与主动退出入口，但尚未选定本项目身份协议，也未验证双向退出、账号停用及实时连接撤销。                               |
+| 首次管理员       | Outline: `server/commands/accountProvisioner.ts` 有新建团队时授予 Admin 的路径。设计需要明确初始化与普通首次接入的分界，避免触发不符合已确认要求的默认行为。                                                                                                                     |
+| 匿名公开内容     | Outline: `server/models/Share.ts`、`server/routes/api/shares/shares.ts`、`server/routes/index.ts`。已有 collection 分享、published、revokedAt、allowIndexing 等机制；尚未证明其能直接提供目标公开目录、草稿隔离及全部阅读体验。                                                  |
+| 权限组合         | Outline: `server/policies/collection.ts`、`document.ts`、`share.ts`、`server/models/Team.ts`。同时存在全局角色、文档集权限、单文档权限及评论配置。不要把产品中的“不能编辑”直接等同于某个角色名称：团队级与文档集级新建规则不同，需沿真实调用链验证。                             |
 
 ## 下一阶段需要完成的设计
 

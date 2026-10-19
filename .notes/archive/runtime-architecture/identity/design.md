@@ -51,12 +51,12 @@ runtime 的 `readRuntimeConfiguration()` 保留根文件和受支持进程变量
 
 实现影响 `packages/common/src/node/identity-config/index.mjs`、`index.d.mts`、`apps/server/src/modules/identity/config.ts`、`scripts/runtime/settings.mjs`。主要测试在 `packages/common/test/config.test.mjs`、`packages/common/test/entry.test.mjs`、`tests/auth/identity-config.test.ts`、`scripts/runtime/settings.test.mjs`、`scripts/runtime/identity-runtime.test.mjs`、`tests/auth/deployment-binding.test.ts` 与 `scripts/runtime/deployment.test.mjs`；`scripts/runtime/tests.mjs` 已列出 Common 与 runtime 测试，无需增加新测试入口。
 
-| 验证面 | 必须证明 |
-| --- | --- |
-| Common 纯入口 | 空客户端和有效 local/deployment 配置、不可变返回；非法 URL/密钥/重复客户端、同名投递目标冲突均按固定变量失败且无秘密；无环境读取或 I/O。 |
-| Server 与 runtime adapter | 禁用 Server 不解析其他字段；runtime 根来源和拓扑诊断不变；身份两键缺失/格式错误保留 `CONFIG_REQUIRED`/`CRYPTO_KEY_INVALID`；runtime Server 环境投影经 `parseIdentityConfig()` 后，身份字段与权限映射逐项相等。 |
-| 权限与绑定 | cleanup-only 不成为批准客户端或 integration caller；现役/历史同名目标不一致拒绝；用变更前固定 v2 JSON 夹具分别对照各端原始字节，跨端以全字段深度相等或规范化 digest 对照；空与非空客户端均不要求刷新 pin，秘密不出现在 receipt/Web 环境。 |
-| 包边界 | 标准 Node 导入新聚合导出成功；根入口和未公开深路径拒绝；Node `browser` 条件拒绝；`packages/common/test/entry.test.mjs` 的真实 Vite 浏览器构建对该 Node 子入口仍明确失败。 |
+| 验证面                    | 必须证明                                                                                                                                                                                                                                  |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Common 纯入口             | 空客户端和有效 local/deployment 配置、不可变返回；非法 URL/密钥/重复客户端、同名投递目标冲突均按固定变量失败且无秘密；无环境读取或 I/O。                                                                                                  |
+| Server 与 runtime adapter | 禁用 Server 不解析其他字段；runtime 根来源和拓扑诊断不变；身份两键缺失/格式错误保留 `CONFIG_REQUIRED`/`CRYPTO_KEY_INVALID`；runtime Server 环境投影经 `parseIdentityConfig()` 后，身份字段与权限映射逐项相等。                            |
+| 权限与绑定                | cleanup-only 不成为批准客户端或 integration caller；现役/历史同名目标不一致拒绝；用变更前固定 v2 JSON 夹具分别对照各端原始字节，跨端以全字段深度相等或规范化 digest 对照；空与非空客户端均不要求刷新 pin，秘密不出现在 receipt/Web 环境。 |
+| 包边界                    | 标准 Node 导入新聚合导出成功；根入口和未公开深路径拒绝；Node `browser` 条件拒绝；`packages/common/test/entry.test.mjs` 的真实 Vite 浏览器构建对该 Node 子入口仍明确失败。                                                                 |
 
 方向行为测试通过后，按目标文件执行 `pnpm api:check`、`pnpm typecheck`、`pnpm test`、`pnpm build`，共享生成产物的阶段串行。自动测试只证明源码与隔离夹具行为；真实浏览器应用流程、现场身份服务和部署另行报告。
 

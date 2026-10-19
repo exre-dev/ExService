@@ -4,9 +4,9 @@ Browser 与 Node.js 共用的本站 HTTP 与上传入口。`instance({...})` 从
 
 ## 入口与准备
 
-| 入口 | 内容 |
-| --- | --- |
-| `@workspace/sdk` | 构建后的 ESM；按 `browser` / `node` 条件选择实现，`default` 为 Browser。 |
+| 入口                   | 内容                                                                                            |
+| ---------------------- | ----------------------------------------------------------------------------------------------- |
+| `@workspace/sdk`       | 构建后的 ESM；按 `browser` / `node` 条件选择实现，`default` 为 Browser。                        |
 | `@workspace/sdk/types` | Contract 生成类型（`paths`、`operations`、`components` 等），使用 `import type`，无运行时入口。 |
 
 包当前是私有 workspace 包。公开入口读取 `dist/`；消费前依次运行 `pnpm api:generate`、`pnpm --filter @workspace/sdk build`。根开发、检查、测试和构建入口自动准备，顺序与同一 checkout 的串行约束见 `README.md`。
@@ -57,15 +57,15 @@ const url = await storage.upload('uploads/example.bin', new Uint8Array([1, 2, 3]
 
 ## 对象请求参数
 
-| 字段 | 规则 |
-| --- | --- |
-| `url` / `method` | 使用 Contract 路径模板；省略方法仅表示 GET，方法可大写或小写。 |
-| `pathParams` / `params` | 路径与查询参数按 Contract 推导，不能内联 query 或完整 URL。 |
-| `data` | JSON DTO 或 multipart 的 `FormData`，是否必填由 Contract 决定。 |
-| `headers` | 字符串 header；未显式提供 Authorization 时才附加有效 token。 |
-| `timeout` / `signal` | 超时毫秒数，缺省 30,000；支持 `AbortSignal`。 |
-| `responseType` | 缺省 `json`，也支持 `text`、`blob`、`arraybuffer`，返回类型随之推导。 |
-| `alert` | 缺省 true；Browser 错误使用 ExUI 提示。false 只关闭提示，不阻止会话失效处理。 |
+| 字段                    | 规则                                                                          |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| `url` / `method`        | 使用 Contract 路径模板；省略方法仅表示 GET，方法可大写或小写。                |
+| `pathParams` / `params` | 路径与查询参数按 Contract 推导，不能内联 query 或完整 URL。                   |
+| `data`                  | JSON DTO 或 multipart 的 `FormData`，是否必填由 Contract 决定。               |
+| `headers`               | 字符串 header；未显式提供 Authorization 时才附加有效 token。                  |
+| `timeout` / `signal`    | 超时毫秒数，缺省 30,000；支持 `AbortSignal`。                                 |
+| `responseType`          | 缺省 `json`，也支持 `text`、`blob`、`arraybuffer`，返回类型随之推导。         |
+| `alert`                 | 缺省 true；Browser 错误使用 ExUI 提示。false 只关闭提示，不阻止会话失效处理。 |
 
 成功返回响应 body，204 返回 `undefined`。请求不携带 cookie，不跟随重定向；路径必须保留在 API root 的 origin 与路径范围内，不接受 adapter、每请求 base URL 等底层配置。第三方请求使用独立工具，不能携带本站 token。
 

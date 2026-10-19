@@ -12,9 +12,16 @@ const publicEntry = '@workspace/common/node/identity-config'
 const feedbackEntry = '@workspace/common/feedback-content'
 
 function importWithConditions(specifier, conditions = []) {
-  return spawnSync(process.execPath, [...conditions.map(condition => `--conditions=${condition}`),
-    '--input-type=module', '-e', `await import(${JSON.stringify(specifier)})`],
-  { cwd: packageRoot, encoding: 'utf8' })
+  return spawnSync(
+    process.execPath,
+    [
+      ...conditions.map((condition) => `--conditions=${condition}`),
+      '--input-type=module',
+      '-e',
+      `await import(${JSON.stringify(specifier)})`,
+    ],
+    { cwd: packageRoot, encoding: 'utf8' },
+  )
 }
 
 test('Node exposes the identity configuration through its public subpath', async () => {
@@ -22,7 +29,10 @@ test('Node exposes the identity configuration through its public subpath', async
   assert.equal(typeof imported.parseIdentityClients, 'function')
   assert.equal(typeof imported.parseIdentityConfiguration, 'function')
   assert.deepEqual(imported.parseIdentityClients(undefined, 'local'), {})
-  for (const specifier of ['@workspace/common', '@workspace/common/src/node/identity-config/index.mjs']) {
+  for (const specifier of [
+    '@workspace/common',
+    '@workspace/common/src/node/identity-config/index.mjs',
+  ]) {
     const result = importWithConditions(specifier)
     assert.notEqual(result.status, 0, `${specifier} unexpectedly imported`)
     assert.match(result.stderr, /ERR_PACKAGE_PATH_NOT_EXPORTED/)
@@ -43,8 +53,11 @@ test('Vite browser build rejects the Node identity configuration subpath', async
     const safe = join(source, 'safe.js')
     await writeFile(safe, 'export const browserBundleWorks = true\n')
     const control = join(source, 'control.js')
-    await writeFile(control, "import { browserBundleWorks } from './safe.js'\nconsole.log(browserBundleWorks)\n")
-    const settings = input => ({
+    await writeFile(
+      control,
+      "import { browserBundleWorks } from './safe.js'\nconsole.log(browserBundleWorks)\n",
+    )
+    const settings = (input) => ({
       configFile: false,
       root: temporary,
       logLevel: 'silent',
@@ -52,9 +65,15 @@ test('Vite browser build rejects the Node identity configuration subpath', async
     })
     await build(settings(control))
     const entry = join(source, 'entry.js')
-    await writeFile(entry, `import { parseIdentityConfiguration } from '${publicEntry}'\nconsole.log(parseIdentityConfiguration)\n`)
-    await assert.rejects(build(settings(entry)), error => {
-      assert.match(String(error), /"\.\/node\/identity-config" is not exported under the conditions \[[^\]]*"browser"/)
+    await writeFile(
+      entry,
+      `import { parseIdentityConfiguration } from '${publicEntry}'\nconsole.log(parseIdentityConfiguration)\n`,
+    )
+    await assert.rejects(build(settings(entry)), (error) => {
+      assert.match(
+        String(error),
+        /"\.\/node\/identity-config" is not exported under the conditions \[[^\]]*"browser"/,
+      )
       assert.match(String(error), /packages[\\/]common/)
       return true
     })
@@ -70,7 +89,10 @@ test('Node consumes feedback rules directly through the public Common entry', as
 })
 
 test('Common rejects its root and private implementation paths', async () => {
-  for (const specifier of ['@workspace/common', '@workspace/common/src/feedback-content/index.mjs']) {
+  for (const specifier of [
+    '@workspace/common',
+    '@workspace/common/src/feedback-content/index.mjs',
+  ]) {
     await assert.rejects(import(specifier), { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' })
   }
 })
@@ -80,12 +102,18 @@ test('a real Vite browser bundle executes the shared feedback rules in a DOM env
     configFile: false,
     root: packageRoot,
     logLevel: 'silent',
-    build: { write: false, minify: false, lib: {
-      entry: fileURLToPath(new URL('fixtures/browser.mjs', import.meta.url)), formats: ['iife'], name: 'CommonFeedback',
-    } },
+    build: {
+      write: false,
+      minify: false,
+      lib: {
+        entry: fileURLToPath(new URL('fixtures/browser.mjs', import.meta.url)),
+        formats: ['iife'],
+        name: 'CommonFeedback',
+      },
+    },
   })
-  const outputs = (Array.isArray(result) ? result : [result]).flatMap(bundle => bundle.output)
-  const chunk = outputs.find(output => output.type === 'chunk' && output.isEntry)
+  const outputs = (Array.isArray(result) ? result : [result]).flatMap((bundle) => bundle.output)
+  const chunk = outputs.find((output) => output.type === 'chunk' && output.isEntry)
   assert.ok(chunk, 'browser entry was not emitted')
   // The serializer's browser dependency decodes character references through
   // document.createElement, so execute the browser artifact with a real DOM API.
@@ -100,5 +128,7 @@ test('a real Vite browser bundle executes the shared feedback rules in a DOM env
     assert.equal(result.reason, null)
     assert.equal(browser.analyzeRequest(' \n').reason, 'empty')
     assert.equal(browser.normalizeMime('bad\r\nheader'), 'application/octet-stream')
-  } finally { dom.window.close() }
+  } finally {
+    dom.window.close()
+  }
 })

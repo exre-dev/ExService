@@ -2,8 +2,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Readable } from 'node:stream'
 import type { FastifyInstance, FastifyReply, FastifyRequest, RouteOptions } from 'fastify'
 import {
-  MultipartWireCounter, multipartBoundary,
-  type MultipartWireErrors, type MultipartWireLimits,
+  MultipartWireCounter,
+  multipartBoundary,
+  type MultipartWireErrors,
+  type MultipartWireLimits,
 } from './multipart-counter.js'
 import { resolveErrorResponse, type ErrorCode, type SafeErrorLog } from '../../errors.js'
 
@@ -127,11 +129,18 @@ class UploadSession<T> {
   /** 占位成功后安装期限与连接监听；此时还没有消费任何请求体。 */
   start(boundary: string, original: IncomingMessage): void {
     const policy = this.policy
-    this.timer = setTimeout(() => this.terminate('timeout', policy.timedOut()), policy.limits.deadlineMs)
+    this.timer = setTimeout(
+      () => this.terminate('timeout', policy.timedOut()),
+      policy.limits.deadlineMs,
+    )
     this.timer.unref()
     // 监听挂在原连接上，不依赖被临时替换的 `request.raw`。
-    const onAborted = (): void => { this.terminate('abort', policy.errors.malformed()) }
-    const onClose = (): void => { this.terminate('close', policy.errors.malformed()) }
+    const onAborted = (): void => {
+      this.terminate('abort', policy.errors.malformed())
+    }
+    const onClose = (): void => {
+      this.terminate('close', policy.errors.malformed())
+    }
     original.once('aborted', onAborted)
     this.reply.raw.once('close', onClose)
     this.detach = () => {
@@ -140,7 +149,9 @@ class UploadSession<T> {
     }
     // counter 直接持有调用方的活动限额对象，测试对 route config 的覆盖仍然生效。
     this.counter = new MultipartWireCounter(boundary, policy.limits, policy.errors)
-    this.counter.on('error', error => { this.terminate('wire', policy.classify(error)) })
+    this.counter.on('error', (error) => {
+      this.terminate('wire', policy.classify(error))
+    })
     this.controller.track(this.request, this)
   }
 
@@ -148,7 +159,7 @@ class UploadSession<T> {
   wire(source: Readable): Readable {
     if (this.state !== 'admitted') return source
     this.source = source
-    source.on('error', error => this.counter?.destroy(error))
+    source.on('error', (error) => this.counter?.destroy(error))
     source.pipe(this.counter!)
     this.state = 'wired'
     return this.counter!
@@ -236,7 +247,10 @@ class UploadSession<T> {
     if (failure !== undefined) this.failure ??= failure
 
     // 1. 停 timer，禁止发布
-    if (this.timer !== undefined) { clearTimeout(this.timer); this.timer = undefined }
+    if (this.timer !== undefined) {
+      clearTimeout(this.timer)
+      this.timer = undefined
+    }
 
     // 2. 停止消费输入
     this.source?.unpipe(this.counter)
@@ -252,10 +266,17 @@ class UploadSession<T> {
     this.restoreRaw()
 
     // 5. 确定响应归属：只有尚未被 Fastify 接管、且已有本 module 的已分类失败时才由本 module 输出
-    if (this.ownership === 'undecided' && reason !== 'response' && this.failure !== undefined) this.ownership = 'external'
+    if (this.ownership === 'undecided' && reason !== 'response' && this.failure !== undefined)
+      this.ownership = 'external'
     if (this.ownership === 'external') {
       // 断开的连接不发送 JSON，但仍 hijack 以停止尚未开始的 Fastify 阶段。
-      this.controller.takeOver(this.request, this.reply, this.failure, reason !== 'abort' && reason !== 'close', this.policy)
+      this.controller.takeOver(
+        this.request,
+        this.reply,
+        this.failure,
+        reason !== 'abort' && reason !== 'close',
+        this.policy,
+      )
     }
 
     this.finished ??= this.finish()
@@ -268,7 +289,7 @@ class UploadSession<T> {
 
   private async finish(): Promise<void> {
     while (this.parseStarted && !this.parseSettled) {
-      await new Promise<void>(resolve => this.parseWaiters.push(resolve))
+      await new Promise<void>((resolve) => this.parseWaiters.push(resolve))
     }
     // 解除 transport 持有的 byte array 与流引用；不清零、不修改已交给业务服务的数组。
     this.value = undefined
@@ -287,7 +308,10 @@ class UploadSession<T> {
   private lockFastify(): void {
     if (this.ownership !== 'undecided') return
     this.ownership = 'fastify'
-    if (this.timer !== undefined) { clearTimeout(this.timer); this.timer = undefined }
+    if (this.timer !== undefined) {
+      clearTimeout(this.timer)
+      this.timer = undefined
+    }
   }
 
   private settleParse(): void {
@@ -298,7 +322,7 @@ class UploadSession<T> {
 
   private scope(): MultipartUploadScope {
     return {
-      parts: limits => this.iterate(limits),
+      parts: (limits) => this.iterate(limits),
       readFile: (file, maxBytes) => this.read(file, maxBytes),
     }
   }
@@ -364,16 +388,23 @@ class MultipartUploadController<T> {
       const boundary = multipartBoundary(request.headers['content-type'], policy.errors)
       if (this.active >= policy.limits.slots) throw policy.busy()
       const length = request.headers['content-length']
-      if (length !== undefined && (!/^\d+$/.test(length) || Number(length) > policy.limits.wireBytes)) {
+      if (
+        length !== undefined &&
+        (!/^\d+$/.test(length) || Number(length) > policy.limits.wireBytes)
+      ) {
         throw policy.errors.tooLarge()
       }
       this.active++
       new UploadSession<T>(this, policy, request, reply).start(boundary, request.raw)
     })
-    appendHook(route, 'preParsing', async (request: FastifyRequest, _reply: FastifyReply, payload: Readable) => {
-      const session = this.sessions.get(request)
-      return session === undefined ? payload : session.wire(payload)
-    })
+    appendHook(
+      route,
+      'preParsing',
+      async (request: FastifyRequest, _reply: FastifyReply, payload: Readable) => {
+        const session = this.sessions.get(request)
+        return session === undefined ? payload : session.wire(payload)
+      },
+    )
     appendHook(route, 'preValidation', async (request: FastifyRequest) => {
       const session = this.sessions.get(request)
       if (session === undefined) throw policy.errors.malformed()
@@ -381,8 +412,16 @@ class MultipartUploadController<T> {
     })
 
     const sessions = this.sessions
-    const handler = route.handler as (this: unknown, request: FastifyRequest, reply: FastifyReply) => unknown
-    route.handler = function wrappedHandler(this: unknown, request: FastifyRequest, reply: FastifyReply): unknown {
+    const handler = route.handler as (
+      this: unknown,
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ) => unknown
+    route.handler = function wrappedHandler(
+      this: unknown,
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ): unknown {
       const session = sessions.get(request)
       if (session === undefined) return handler.call(this, request, reply)
       return session.invoke(() => handler.call(this, request, reply))
@@ -426,7 +465,13 @@ class MultipartUploadController<T> {
    *
    * `write` 为 false 时（连接已断开）只 hijack 并销毁，不发送 JSON。
    */
-  takeOver(request: FastifyRequest, reply: FastifyReply, failure: Error | undefined, write: boolean, policy: MultipartUploadPolicy<T>): void {
+  takeOver(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    failure: Error | undefined,
+    write: boolean,
+    policy: MultipartUploadPolicy<T>,
+  ): void {
     const raw = reply.raw
     if (raw.destroyed || raw.writableEnded) return
     const resolution = resolveErrorResponse(failure, request.log as SafeErrorLog, request.id)
@@ -455,20 +500,33 @@ class MultipartUploadController<T> {
     try {
       void reply.hijack()
       void reply.code(resolution.statusCode)
-      const serialized = reply.serializeInput(resolution.envelope, String(resolution.statusCode), 'application/json')
-      if (typeof serialized !== 'string') throw new Error('Contract serializer did not return a string')
-      raw.writeHead(resolution.statusCode, takeoverHeaders(reply, resolution.retryAfterSeconds, Buffer.byteLength(serialized)))
+      const serialized = reply.serializeInput(
+        resolution.envelope,
+        String(resolution.statusCode),
+        'application/json',
+      )
+      if (typeof serialized !== 'string')
+        throw new Error('Contract serializer did not return a string')
+      raw.writeHead(
+        resolution.statusCode,
+        takeoverHeaders(reply, resolution.retryAfterSeconds, Buffer.byteLength(serialized)),
+      )
       raw.end(serialized)
     } catch {
       // 序列化或 raw 写入失败只记录安全分类并销毁，不回到 Fastify 再试一次发送。
-      request.log.error({ code: resolution.code, statusCode: resolution.statusCode }, 'upload takeover failed')
+      request.log.error(
+        { code: resolution.code, statusCode: resolution.statusCode },
+        'upload takeover failed',
+      )
       safeDestroy(raw)
     }
   }
 }
 
 function takeoverHeaders(
-  reply: FastifyReply, retryAfterSeconds: number | undefined, contentLength: number,
+  reply: FastifyReply,
+  retryAfterSeconds: number | undefined,
+  contentLength: number,
 ): Record<string, number | string | string[]> {
   // 键统一小写：`reply.getHeaders()` 混用原始与 Fastify 归一化的大小写，
   // 同一 header 以两种大小写传入 writeHead 会被写成两份值。
@@ -490,15 +548,25 @@ function takeoverHeaders(
 }
 
 function safeDestroy(raw: ServerResponse): void {
-  try { raw.destroy() } catch { /* 连接已断开时无需处理 */ }
+  try {
+    raw.destroy()
+  } catch {
+    /* 连接已断开时无需处理 */
+  }
 }
 
-function appendHook<K extends 'onRequest' | 'preParsing' | 'preValidation' | 'onResponse' | 'onError' | 'onRequestAbort'>(
-  route: RouteOptions, key: K, hook: NonNullable<RouteOptions[K]>,
-): void {
+function appendHook<
+  K extends
+    'onRequest' | 'preParsing' | 'preValidation' | 'onResponse' | 'onError' | 'onRequestAbort',
+>(route: RouteOptions, key: K, hook: NonNullable<RouteOptions[K]>): void {
   const previous = route[key]
   // Each stage keeps existing Glue/consumer hooks in their declared order.
-  Object.assign(route, { [key]: [...(previous === undefined ? [] : Array.isArray(previous) ? previous : [previous]), hook] })
+  Object.assign(route, {
+    [key]: [
+      ...(previous === undefined ? [] : Array.isArray(previous) ? previous : [previous]),
+      hook,
+    ],
+  })
 }
 
 export interface MultipartUploadLifecycle<T> {
@@ -532,7 +600,10 @@ export function createMultipartUploadRegistry<T>(): MultipartUploadRegistry<T> {
   const sessions = new WeakMap<FastifyRequest, UploadSession<T>>()
   return {
     create(app) {
-      if (registered.has(app)) throw new Error('Multipart upload lifecycle is already registered for this Fastify instance.')
+      if (registered.has(app))
+        throw new Error(
+          'Multipart upload lifecycle is already registered for this Fastify instance.',
+        )
       registered.add(app)
       const controller = new MultipartUploadController<T>(sessions)
       return { attach: (route, policy) => controller.attach(route, policy) }
@@ -551,10 +622,14 @@ export function createMultipartUploadRegistry<T>(): MultipartUploadRegistry<T> {
  * 通用的，命中未声明状态码时 `serializeInput` 会抛异常而不是回退到默认 serializer。
  */
 export function declaredResponseStatuses(route: RouteOptions): number[] {
-  const response = (route.schema as { response?: Record<string, unknown> } | undefined)?.response ?? {}
-  const statuses = Object.keys(response).filter(key => /^[1-9]\d{2}$/.test(key)).map(Number)
+  const response =
+    (route.schema as { response?: Record<string, unknown> } | undefined)?.response ?? {}
+  const statuses = Object.keys(response)
+    .filter((key) => /^[1-9]\d{2}$/.test(key))
+    .map(Number)
   if (statuses.length === 0) {
-    const operationId = (route.schema as { operationId?: string } | undefined)?.operationId ?? route.url
+    const operationId =
+      (route.schema as { operationId?: string } | undefined)?.operationId ?? route.url
     throw new Error(`No declared response status codes for operation ${operationId}`)
   }
   return statuses

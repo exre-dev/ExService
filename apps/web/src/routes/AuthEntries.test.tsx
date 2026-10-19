@@ -7,40 +7,79 @@ import { AuthProvider } from '@web/src/auth/AuthContext'
 import { RootLayout } from '@web/src/routes/RootLayout'
 import { ExMessage } from '@exre/exui'
 const { post, get } = vi.hoisted(() => ({ post: vi.fn(), get: vi.fn() }))
-vi.mock('@workspace/sdk', async importOriginal => ({ ...await importOriginal<object>(),
+vi.mock('@workspace/sdk', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   instance: (config: { method?: string }) => {
     const handlers = { POST: post, GET: get }
     return handlers[(config.method ?? 'GET') as keyof typeof handlers](config)
   },
 }))
 let mobile = false
-class TestResizeObserver { observe() {} unobserve() {} disconnect() {} }
+class TestResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
 vi.stubGlobal('ResizeObserver', TestResizeObserver)
-Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: () => document.body })
+Object.defineProperty(document, 'elementFromPoint', {
+  configurable: true,
+  value: () => document.body,
+})
 beforeEach(() => {
   window.localStorage.clear()
-  vi.stubGlobal('matchMedia', () => ({ matches: mobile, addEventListener() {}, removeEventListener() {} }))
+  vi.stubGlobal('matchMedia', () => ({
+    matches: mobile,
+    addEventListener() {},
+    removeEventListener() {},
+  }))
   Element.prototype.scrollIntoView = vi.fn()
   vi.spyOn(ExMessage, 'info').mockReturnValue('info')
 })
-afterEach(() => { cleanup(); post.mockReset(); get.mockReset(); vi.restoreAllMocks(); mobile = false })
-function renderLayout() { return render(<MemoryRouter><AuthProvider><Routes><Route element={<RootLayout />}><Route path="/" element={<p>首页</p>} /><Route path="/communities/rifling-911" element={<h1>社区页面</h1>} /></Route></Routes></AuthProvider></MemoryRouter>) }
-
-it.each([false, true])('preserves registration modal and restores its corresponding trigger for mobile=%s', async isMobile => {
-  mobile = isMobile
-  const user = userEvent.setup()
-  renderLayout()
-  const trigger = isMobile ? await screen.findByRole('combobox', { name: '用户菜单' }) : await screen.findByRole('button', { name: '注册' })
-  if (isMobile) { trigger.focus(); await user.keyboard('[Space]'); await user.click(screen.getByRole('option', { name: '注册' })) }
-  else await user.click(trigger)
-  expect(await screen.findByRole('dialog', { name: '注册' })).toBeTruthy()
-  expect(screen.queryByLabelText('密码')).toBeNull()
-  await user.keyboard('[Escape]')
-  await waitFor(() => expect(document.activeElement).toBe(trigger))
-  expect(screen.queryByRole('dialog')).toBeNull()
-  expect(post).not.toHaveBeenCalled()
-  expect(get).not.toHaveBeenCalled()
+afterEach(() => {
+  cleanup()
+  post.mockReset()
+  get.mockReset()
+  vi.restoreAllMocks()
+  mobile = false
 })
+function renderLayout() {
+  return render(
+    <MemoryRouter>
+      <AuthProvider>
+        <Routes>
+          <Route element={<RootLayout />}>
+            <Route path="/" element={<p>首页</p>} />
+            <Route path="/communities/rifling-911" element={<h1>社区页面</h1>} />
+          </Route>
+        </Routes>
+      </AuthProvider>
+    </MemoryRouter>,
+  )
+}
+
+it.each([false, true])(
+  'preserves registration modal and restores its corresponding trigger for mobile=%s',
+  async (isMobile) => {
+    mobile = isMobile
+    const user = userEvent.setup()
+    renderLayout()
+    const trigger = isMobile
+      ? await screen.findByRole('combobox', { name: '用户菜单' })
+      : await screen.findByRole('button', { name: '注册' })
+    if (isMobile) {
+      trigger.focus()
+      await user.keyboard('[Space]')
+      await user.click(screen.getByRole('option', { name: '注册' }))
+    } else await user.click(trigger)
+    expect(await screen.findByRole('dialog', { name: '注册' })).toBeTruthy()
+    expect(screen.queryByLabelText('密码')).toBeNull()
+    await user.keyboard('[Escape]')
+    await waitFor(() => expect(document.activeElement).toBe(trigger))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(post).not.toHaveBeenCalled()
+    expect(get).not.toHaveBeenCalled()
+  },
+)
 
 it('closes the ordinary login dialog before navigating to the community', async () => {
   const user = userEvent.setup()
@@ -54,7 +93,18 @@ it('closes the ordinary login dialog before navigating to the community', async 
 
 it('switches the same registration dialog to ordinary login with only the completed email', async () => {
   const user = userEvent.setup()
-  post.mockResolvedValueOnce({ email: 'member@example.com', serverTime: 1000, resendAvailableAt: 1000 }).mockResolvedValueOnce({ email: 'member@example.com', nickname: '成员', completionToken: 't'.repeat(43) }).mockResolvedValueOnce({ email: 'member@example.com', status: 'registered' })
+  post
+    .mockResolvedValueOnce({
+      email: 'member@example.com',
+      serverTime: 1000,
+      resendAvailableAt: 1000,
+    })
+    .mockResolvedValueOnce({
+      email: 'member@example.com',
+      nickname: '成员',
+      completionToken: 't'.repeat(43),
+    })
+    .mockResolvedValueOnce({ email: 'member@example.com', status: 'registered' })
   renderLayout()
   await user.click(await screen.findByRole('button', { name: '注册' }))
   const dialog = screen.getByRole('dialog')
@@ -67,5 +117,9 @@ it('switches the same registration dialog to ordinary login with only the comple
   expect(screen.getByRole('dialog', { name: '登录' })).toBe(dialog)
   expect((screen.getByLabelText('邮箱') as HTMLInputElement).value).toBe('member@example.com')
   expect((screen.getByLabelText('密码') as HTMLInputElement).value).toBe('')
-  expect(post.mock.calls.map(([config]) => config.url)).toEqual(['/auth/invitations/check', '/auth/invitations/verify', '/auth/invitations/complete'])
+  expect(post.mock.calls.map(([config]) => config.url)).toEqual([
+    '/auth/invitations/check',
+    '/auth/invitations/verify',
+    '/auth/invitations/complete',
+  ])
 })

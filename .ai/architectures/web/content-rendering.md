@@ -2,7 +2,7 @@
 
 Website 的仓库内容通过通用 Fumadocs 编译链路接入 SPA。每个业务集合独立定义字段、公开投影和引用语义，编译、资源处理及正文加载不依赖 About。当前使用者是 About 和 Support；其他 Website 栏目可以注册新的 namespace。
 
-_最后更新：2026-10-15_
+_最后更新：2026-10-19_
 
 ## 边界与数据流
 
@@ -32,9 +32,11 @@ flowchart LR
 
 ## 浏览器与 UI
 
-`apps/web/src/content/store.ts` 管理固定正文加载器，共享进行中的 Promise、缓存成功结果、移除失败以支持重试。`useContent` 在切换 id 或重试时立即呈现 loading，并隔离旧请求和卸载后的结果。
+`apps/web/src/content/store.ts` 管理固定正文加载器，共享进行中的 Promise、缓存成功结果、移除失败以支持重试。`useContent` 在切换 id 或重试时立即呈现 loading，保留失败的原始错误，并隔离旧请求和卸载后的结果。
 
-浏览器自身可能缓存失败的原生 import；移除应用 Promise 不能清除这个缓存。正文错误态除普通重试外提供重新加载当前页面，恢复整份 document 的模块状态，保留当前地址。不能只用可再次成功的测试 loader 推定网络失败恢复；需要在真实浏览器阻断 chunk 请求后验证恢复入口。
+浏览器自身可能缓存失败的原生 import；移除应用 Promise 不能清除这个缓存。About/Support 页面模块和页面正文的「重试」由 `apps/web/src/content/reloadPage.ts` 刷新当前 document，保留当前地址，不再提供重复的刷新操作。普通 AsyncBoundary loader 的重试仍重新执行区域请求。不能只用可再次成功的测试 loader 推定模块网络失败恢复；真实浏览器检查位于 `tests/browser/async-boundary.mjs`。
+
+页面模块通过 `apps/web/src/routes/PageAsyncBoundary.tsx` 导入；正文通过受控 AsyncBoundary 复用已有 useContent 状态。共享反馈、详情展开与复制规则见 `.ai/knowledge/components/async-boundary.md`。成员简介弹窗只替换等待展示，继续保留原有局部重试、刷新和返回概览流程。
 
 `apps/web/src/content/mdx.tsx` 提供可扩展组件映射。`packages/components/src/content/` 提供无路由/API 依赖的 CodeBlock、ContentImage、Callout、ContentProse。路由链接、业务按钮和资源 URL 由 Web 集合适配器注入。全局主题、ExUI CSS 和 ExMessage 宿主继续由既有应用入口持有。
 
@@ -69,6 +71,8 @@ Media 介绍使用独立 `aboutMediaPage` 集合与 `kind: "media"` 投影，交
 iframe 只由受控播放列表地址与固定权限组生成，桌面展示高度 640px、最大宽度 800px；Apple 原生内容固定 450px 高，容器按比例缩小 iframe 布局宽度再整体放大，使内容与可见框一同增大，而非在底部留白。手机保留原生 450px 高与完整布局宽度，避免缩小内部视口后产生横向裁切。页面不追加播放器下方的来源文字或外部打开链接；原生控件由 Apple 管理。不能将跨域 iframe 的 load 事件解释为播放或账号验收。视频目录仅展示 video 条目并沿用草稿过滤、封面降级与相关内容入口。Media 反色样式只作用于本页，正文容器和关联成员按钮的交互状态也需继承可读前景色。内容维护见 `.ai/knowledge/web/content-authoring.md`。
 
 About 入口及正文分别懒加载。成员只拥有正文 id，不创建个人路由；简介 Modal 不改变 URL。阅读位置按 Router location key 保存于模块内有限 Map，离开 About 再后退仍能恢复，页面刷新不持久化该状态。位置由 scroll 事件记录；离开时不再读取 window.scrollY，因为目的页 DOM 已可能缩短文档并将位置压缩，cleanup 再保存会覆盖原阅读位置。
+
+location key 变化时先清除当前的「已恢复」标识，即使目的页正文仍未就绪；历史位置 Map 继续保留。这样在目的页加载期间立即后退时，旧页会重新执行恢复，不会因遗留的旧 key 跳过定位。POP 恢复仍等待足够的文档高度，并保留当前焦点。回归位于 `apps/web/src/pages/AboutUs/useReadingPosition.test.tsx` 与 `tests/browser/about-home-refined.mjs`。
 
 首页由 `AboutHome.tsx` 组合背景 Hero 与品牌叙事布局。`AboutHomeHero.tsx` 暂用 Rifling 911 加入页的首张图片和相同 HalftoneDots 参数，标题、引言与简介叠在渐变遮罩上。图片先显示，再检查 WebGL2 并懒加载半调组件；WebGL 不可用时保留原图，图片失败时保留纯色背景与文案。半调设置 `speed=0`，不持续绘制，像素预算限制为 200 万。
 
@@ -108,7 +112,7 @@ Hero 在正常文档流中占满顶栏下方的首屏，圆角图片背景与页
 
 `apps/web/src/content/support/` 适配虚拟注册表、资源及正文 store。`apps/web/src/pages/Support/` 消费同一投影生成首页精选、列表与详情，正文目录只从实际渲染的 h2/h3 派生。路由导航聚焦并滚动至标题；有 hash 时优先定位当前页面的目标，正文迟到加载不会在无 hash 时再次抢焦点。
 
-`apps/web/src/routes/SupportAccess.tsx` 位于页面 lazy/Suspense 与内容错误边界之外，读取既有 AuthProvider 的会话结果。只有 authenticated 才挂载 Support 子树；其他状态不启动页面 lazy loader。App、RootLayout 与 SiteHeader 不静态导入 Support 注册表。登录按钮经 RootLayout Outlet context 打开既有弹窗，关闭时优先归还页面触发器焦点，失效后回退顶栏。
+`apps/web/src/routes/SupportAccess.tsx` 位于 PageAsyncBoundary 之外，读取既有 AuthProvider 的会话结果。只有 authenticated 才挂载 Support 子树；其他状态不启动页面 loader。App、RootLayout 与 SiteHeader 不静态导入 Support 注册表。登录按钮经 RootLayout Outlet context 打开既有弹窗，关闭时优先归还页面触发器焦点，失效后回退顶栏。
 
 共享 Web Client 收到当前会话的 SESSION_INVALID 时仍清理 token 并通知认证订阅者；在 `/support` 及其后代停留原地址，交给上述边界显示登录提示并保留 query/hash。仅名称前缀相似的其他路由不使用此例外。
 

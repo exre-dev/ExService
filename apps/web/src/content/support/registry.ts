@@ -4,4 +4,6 @@ import type { ContentImageData } from './types'
 
 export const supportRegistry = data
 export const supportStore = createContentStore(loaders)
-export function supportImage(image: ContentImageData): ContentImageData { return { ...image, src: assets[image.src] ?? '' } }
+export function supportImage(image: ContentImageData): ContentImageData {
+  return { ...image, src: assets[image.src] ?? '' }
+}

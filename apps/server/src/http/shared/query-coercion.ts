@@ -50,11 +50,14 @@ function coerceText(value: string, types: readonly string[]): unknown {
  * 只处理**声明了**标量类型、且当前值确实是单个字符串的属性；重复参数（Fastify 解析成数组）
  * 与其他类型原样保留，由校验决定接受或拒绝。
  */
-export function coerceQueryStringTypes(query: Record<string, unknown>, querystringSchema: unknown): void {
+export function coerceQueryStringTypes(
+  query: Record<string, unknown>,
+  querystringSchema: unknown,
+): void {
   const properties = (querystringSchema as { properties?: unknown } | null | undefined)?.properties
   if (typeof properties !== 'object' || properties === null) return
   for (const [name, declared] of Object.entries(properties as Record<string, unknown>)) {
-    const coercible = declaredTypes(declared).filter(type => COERCIBLE_SCALARS.has(type))
+    const coercible = declaredTypes(declared).filter((type) => COERCIBLE_SCALARS.has(type))
     if (coercible.length === 0) continue
     const value = query[name]
     if (typeof value !== 'string') continue

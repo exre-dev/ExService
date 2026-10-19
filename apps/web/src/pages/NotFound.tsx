@@ -13,8 +13,17 @@ export function NotFound() {
       <AuthBackdrop />
       <section className={styles.frame}>
         <Card glass className={styles.content}>
-          <img className={styles.logo} src="/ExIcon.svg" alt="Ex" width="160" height="160" draggable={false} />
-          <h1 id="not-found-title" className={styles.code}>404</h1>
+          <img
+            className={styles.logo}
+            src="/ExIcon.svg"
+            alt="Ex"
+            width="160"
+            height="160"
+            draggable={false}
+          />
+          <h1 id="not-found-title" className={styles.code}>
+            404
+          </h1>
           <p className={styles.description}>Page not found</p>
           <Button asChild className={styles.homeLink}>
             <Link to="/">返回首页</Link>

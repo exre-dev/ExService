@@ -9,10 +9,10 @@ import { runMigrations } from '@server/src/db/migration-runner'
 let containerPromise: Promise<StartedPostgreSqlContainer> | undefined
 
 async function testContainer(): Promise<StartedPostgreSqlContainer> {
-  const images = JSON.parse(readFileSync(new URL('../../infra/runtime/images.lock.json', import.meta.url), 'utf8')) as { postgres: string }
-  containerPromise ??= new PostgreSqlContainer(images.postgres)
-    .withDatabase('exre')
-    .start()
+  const images = JSON.parse(
+    readFileSync(new URL('../../infra/runtime/images.lock.json', import.meta.url), 'utf8'),
+  ) as { postgres: string }
+  containerPromise ??= new PostgreSqlContainer(images.postgres).withDatabase('exre').start()
   return containerPromise
 }
 
@@ -37,24 +37,35 @@ export async function isolatedPostgres(options: { migrate?: boolean } = {}): Pro
   }
   let db: AppDatabase | undefined
   try {
-    if (options.migrate !== false) await runMigrations({ connectionString, searchPath: schema, migrationsSchema: schema })
+    if (options.migrate !== false)
+      await runMigrations({ connectionString, searchPath: schema, migrationsSchema: schema })
     db = await openDatabase({ connectionString, searchPath: schema })
   } catch (error) {
     await db?.close()
     const cleanup = new Client({ connectionString })
     await cleanup.connect()
-    try { await cleanup.query(`DROP SCHEMA "${schema}" CASCADE`) } finally { await cleanup.end() }
+    try {
+      await cleanup.query(`DROP SCHEMA "${schema}" CASCADE`)
+    } finally {
+      await cleanup.end()
+    }
     throw error
   }
   if (!db) throw new Error('Test database did not open')
   const ready = db
   return {
-    db: ready, connectionString, schema,
+    db: ready,
+    connectionString,
+    schema,
     async close() {
       await ready.close()
       const cleanup = new Client({ connectionString })
       await cleanup.connect()
-      try { await cleanup.query(`DROP SCHEMA "${schema}" CASCADE`) } finally { await cleanup.end() }
+      try {
+        await cleanup.query(`DROP SCHEMA "${schema}" CASCADE`)
+      } finally {
+        await cleanup.end()
+      }
     },
   }
 }

@@ -11,11 +11,11 @@
 
 ## 场景与方法
 
-| 场景 | 使用方式 |
-| --- | --- |
-| 普通反馈或无需等待的操作结果 | `ExMessage.info(content, options?)` |
-| 提醒用户注意或检查输入 | `ExMessage.warn(content, options?)` |
-| 操作失败 | `ExMessage.error(content, options?)` |
+| 场景                         | 使用方式                                                       |
+| ---------------------------- | -------------------------------------------------------------- |
+| 普通反馈或无需等待的操作结果 | `ExMessage.info(content, options?)`                            |
+| 提醒用户注意或检查输入       | `ExMessage.warn(content, options?)`                            |
+| 操作失败                     | `ExMessage.error(content, options?)`                           |
 | 需要进度和完成反馈的异步操作 | `ExMessage.loading(content, options?)`，通过返回句柄完成或关闭 |
 
 字段校验错误继续在对应 Form 字段内显示，页面的持续错误和重试入口继续由页面状态承载；ExMessage 用于临时反馈。聊天消息和持久通知中心不属于本规则的临时通知范围。

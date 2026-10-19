@@ -16,22 +16,22 @@ Website 与挂载在同源 `/docs` 的 Outline 共用浏览器主题偏好，支
 
 ## 2. 当前实现证据
 
-| 来源 | 当前行为及设计影响 |
-| --- | --- |
-| `apps/web/src/main.tsx`、`packages/components/src/ThemeToggle.tsx` | 主站使用 ExUI `ThemeProvider` 与三态主题菜单。 |
-| 主站安装的 ExUI `ThemeProvider` 实现 | 默认存储键为 `theme`，值为无 JSON 包装的字符串；默认 `system`；监听其他文档的主题键 `storage` 事件。 |
-| `apps/outline/app/stores/UiStore.ts` | Outline 从 JSON 对象 `UI_STORE.theme` 恢复偏好，监听自己的存储对象，存在另一份主题来源。 |
-| `apps/outline/app/hooks/useBuildTheme.ts` | 支持查询参数主题覆盖；手机深色自动选择 `pitchBlack`；打印使用浅色。 |
-| `apps/outline/shared/styles/exuiTheme.ts` | 通过公开 `@exre/exui/tokens` 将 token 映射到 Outline 主题，支持工作区品牌色覆盖。 |
-| `apps/outline/app/components/PageTheme.ts` | 已根据构建后的主题更新页面背景、浏览器主题色及原生控件色彩方案，并处理打印。 |
-| `apps/outline/server/static/index.html` | 首屏脚本读取 `theme`，但深色背景使用旧硬编码色，未完整解析 `system`。 |
-| `apps/outline/server/env.ts`、`apps/outline/server/models/User.ts` | 服务默认语言当前为 `en_US`；新用户的 ORM 默认语言来自服务配置。 |
-| `apps/outline/app/index.tsx`、`apps/outline/app/utils/i18n.ts` | 客户端从公开环境中的默认语言初始化 i18n。 |
-| `apps/outline/app/scenes/Login/`、`apps/outline/app/scenes/Shared/index.tsx` | 部分入口主动按浏览器语言切换，单改服务默认值不足以实现中文默认。 |
-| `apps/outline/app/components/Authenticated.tsx` | 登录后根据账号保存的语言切换。 |
-| `apps/outline/server/identity/websiteProvisioner.ts` | 新集成用户没有显式提供语言，已有用户资料同步没有改写语言。 |
-| `apps/outline/app/scenes/WebsitePublic.tsx` | 公共目录、搜索、阅读及评论相关界面包含硬编码英文。 |
-| `apps/outline/i18next-parser.config.js`、`apps/outline/shared/i18n/README.md` | 提取工具生成英文目录；中文由正式翻译流程提供，不能手改生成的 locale 文件。 |
+| 来源                                                                          | 当前行为及设计影响                                                                                   |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `apps/web/src/main.tsx`、`packages/components/src/ThemeToggle.tsx`            | 主站使用 ExUI `ThemeProvider` 与三态主题菜单。                                                       |
+| 主站安装的 ExUI `ThemeProvider` 实现                                          | 默认存储键为 `theme`，值为无 JSON 包装的字符串；默认 `system`；监听其他文档的主题键 `storage` 事件。 |
+| `apps/outline/app/stores/UiStore.ts`                                          | Outline 从 JSON 对象 `UI_STORE.theme` 恢复偏好，监听自己的存储对象，存在另一份主题来源。             |
+| `apps/outline/app/hooks/useBuildTheme.ts`                                     | 支持查询参数主题覆盖；手机深色自动选择 `pitchBlack`；打印使用浅色。                                  |
+| `apps/outline/shared/styles/exuiTheme.ts`                                     | 通过公开 `@exre/exui/tokens` 将 token 映射到 Outline 主题，支持工作区品牌色覆盖。                    |
+| `apps/outline/app/components/PageTheme.ts`                                    | 已根据构建后的主题更新页面背景、浏览器主题色及原生控件色彩方案，并处理打印。                         |
+| `apps/outline/server/static/index.html`                                       | 首屏脚本读取 `theme`，但深色背景使用旧硬编码色，未完整解析 `system`。                                |
+| `apps/outline/server/env.ts`、`apps/outline/server/models/User.ts`            | 服务默认语言当前为 `en_US`；新用户的 ORM 默认语言来自服务配置。                                      |
+| `apps/outline/app/index.tsx`、`apps/outline/app/utils/i18n.ts`                | 客户端从公开环境中的默认语言初始化 i18n。                                                            |
+| `apps/outline/app/scenes/Login/`、`apps/outline/app/scenes/Shared/index.tsx`  | 部分入口主动按浏览器语言切换，单改服务默认值不足以实现中文默认。                                     |
+| `apps/outline/app/components/Authenticated.tsx`                               | 登录后根据账号保存的语言切换。                                                                       |
+| `apps/outline/server/identity/websiteProvisioner.ts`                          | 新集成用户没有显式提供语言，已有用户资料同步没有改写语言。                                           |
+| `apps/outline/app/scenes/WebsitePublic.tsx`                                   | 公共目录、搜索、阅读及评论相关界面包含硬编码英文。                                                   |
+| `apps/outline/i18next-parser.config.js`、`apps/outline/shared/i18n/README.md` | 提取工具生成英文目录；中文由正式翻译流程提供，不能手改生成的 locale 文件。                           |
 
 两边当前安装包均声明 ExUI `0.6.0`，但消费链接目标不同。同版本号不足以证明构建产物一致；实现时需比较公开导出的相关 token 和对应 CSS 结果，不能只比较版本号，也不能把某个本机绝对路径固化到设计或依赖声明。
 
@@ -45,17 +45,17 @@ Website 与挂载在同源 `/docs` 的 Outline 共用浏览器主题偏好，支
 
 ## 4. 主题偏好契约与数据流
 
-| 项目 | 规则 |
-| --- | --- |
-| 存储键与格式 | `theme`，值为原始字符串 `light`、`dark`、`system`，不使用 JSON 引号包装。 |
-| 初始化 | 有效共享值优先；缺失或非法值使用 `system`。初始化只读，不因加载 Outline 写入主题。 |
-| 原 Outline 偏好 | 集成模式忽略 `UI_STORE.theme`，不将其迁移到共享键，不影响其他 `UI_STORE` 属性。 |
-| 本页主动切换 | 更新本页可观察状态并写入共享键；现有菜单选中项与实际主题同步。 |
-| 跨文档更新 | 只接受对应 `localStorage` 的共享主题键事件，重新读取当前共享值更新本页状态，不反向写入，避免延迟事件恢复旧值。 |
-| 主题键删除或非法值 | 回到 `system`，不回退到旧 Outline 偏好。 |
-| 系统偏好变化 | 仅在选择 `system` 时响应 `prefers-color-scheme`，两边保留同样的三态语义。 |
-| 并发切换 | 浏览器存储的最后一次写入决定偏好；若该值非法则解析为 `system`，不回溯历史有效值；不添加服务器仲裁或双向回写循环。 |
-| 导航与恢复 | 整页导航重新读取；Outline 从后台或页面缓存恢复时核对共享键，避免遗漏事件后的旧状态。 |
+| 项目               | 规则                                                                                                              |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| 存储键与格式       | `theme`，值为原始字符串 `light`、`dark`、`system`，不使用 JSON 引号包装。                                         |
+| 初始化             | 有效共享值优先；缺失或非法值使用 `system`。初始化只读，不因加载 Outline 写入主题。                                |
+| 原 Outline 偏好    | 集成模式忽略 `UI_STORE.theme`，不将其迁移到共享键，不影响其他 `UI_STORE` 属性。                                   |
+| 本页主动切换       | 更新本页可观察状态并写入共享键；现有菜单选中项与实际主题同步。                                                    |
+| 跨文档更新         | 只接受对应 `localStorage` 的共享主题键事件，重新读取当前共享值更新本页状态，不反向写入，避免延迟事件恢复旧值。    |
+| 主题键删除或非法值 | 回到 `system`，不回退到旧 Outline 偏好。                                                                          |
+| 系统偏好变化       | 仅在选择 `system` 时响应 `prefers-color-scheme`，两边保留同样的三态语义。                                         |
+| 并发切换           | 浏览器存储的最后一次写入决定偏好；若该值非法则解析为 `system`，不回溯历史有效值；不添加服务器仲裁或双向回写循环。 |
+| 导航与恢复         | 整页导航重新读取；Outline 从后台或页面缓存恢复时核对共享键，避免遗漏事件后的旧状态。                              |
 
 适配层集中负责值校验、存储访问和订阅。`UiStore` 负责主题可观察状态与现有切换动作；主题构建器只负责把偏好解析为渲染主题。每个订阅都有与其宿主生命周期匹配的清理方式，测试也能显式释放。
 
@@ -95,35 +95,35 @@ Outline 对存储读写失败采取安全降级：读取失败视为无偏好；
 
 ## 7. 预计改动边界
 
-| 路径 | 责任 |
-| --- | --- |
-| `apps/outline/app/utils/` | 共享主题偏好适配与公共界面文案回退辅助模块。 |
-| `apps/outline/app/stores/UiStore.ts` | 集成模式读写和订阅共享主题；保留独立模式。 |
-| `apps/outline/app/hooks/useBuildTheme.ts`、`apps/outline/app/components/Theme.tsx` | 标准主题组、集成覆盖策略和渲染接入。 |
-| `apps/outline/server/static/index.html`、`apps/outline/server/routes/app.ts` | 首屏主题 token 和安全的模板注入。 |
-| `apps/outline/server/env.ts`、`apps/outline/server/identity/websiteProvisioner.ts` | 集成默认语言与新账号语言。 |
+| 路径                                                                                 | 责任                                             |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| `apps/outline/app/utils/`                                                            | 共享主题偏好适配与公共界面文案回退辅助模块。     |
+| `apps/outline/app/stores/UiStore.ts`                                                 | 集成模式读写和订阅共享主题；保留独立模式。       |
+| `apps/outline/app/hooks/useBuildTheme.ts`、`apps/outline/app/components/Theme.tsx`   | 标准主题组、集成覆盖策略和渲染接入。             |
+| `apps/outline/server/static/index.html`、`apps/outline/server/routes/app.ts`         | 首屏主题 token 和安全的模板注入。                |
+| `apps/outline/server/env.ts`、`apps/outline/server/identity/websiteProvisioner.ts`   | 集成默认语言与新账号语言。                       |
 | `apps/outline/app/utils/i18n.ts`、`apps/outline/app/utils/language.ts`、相关语言入口 | 默认值、匿名入口、退出后的回退与 HTML 语言属性。 |
-| `apps/outline/app/scenes/WebsitePublic.tsx` | 公共界面翻译及同主题显示。 |
-| 对应已有测试位置或相邻测试文件 | 偏好协议、模式边界、翻译、首屏和页面行为。 |
+| `apps/outline/app/scenes/WebsitePublic.tsx`                                          | 公共界面翻译及同主题显示。                       |
+| 对应已有测试位置或相邻测试文件                                                       | 偏好协议、模式边界、翻译、首屏和页面行为。       |
 
 主站优先复用现有行为；仅在实测显示同源同步契约需要消费方接线调整时，局部调整 `apps/web/src/main.tsx` 或主题相关组件，不替换 ExUI provider。Outline 独立 Git/Yarn 边界保持，Website pnpm workspace 不新增 Outline 包。
 
 ## 8. 验证与验收
 
-| 场景 | 必须观察的结果 |
-| --- | --- |
-| 全新浏览器、无共享主题 | 两边跟随系统；Outline 访客界面中文。 |
-| 主站设置深色后访问或刷新 `/docs` | Outline 首屏及挂载后的页面均为标准深色。 |
-| 两个同源标签页双向切换三态 | 另一侧页面与菜单选中项同步，不反复回写。 |
-| 系统颜色变化 | `system` 两边同步变化；显式浅色、深色不变化。 |
-| 旧 `UI_STORE.theme` 与主站不同 | 主站共享值获胜；旧存储事件不覆盖它。 |
-| 删除主题键、写入非法值 | 两边回到 `system`；不恢复旧 Outline 主题。 |
-| 刷新、主站与文档往返、页面缓存恢复 | 始终重新读取或核对最新共享偏好。 |
-| 手机深色、带主题查询参数、工作区品牌配置 | 普通集成页仍为标准深色，与主站共享配色一致。 |
-| 打印与结束打印 | 打印浅色，结束恢复共享主题；共享键不改变。 |
-| 新账号、已有中文或英文账号、退出登录 | 新账号中文；已有账号保留语言；退出回到中文。 |
-| 英文浏览器匿名访问、公共目录/搜索/阅读/评论 | 默认中文，加载及错误等关键状态不残留英文。 |
-| 独立 Outline | 原主题存储、手机纯黑、查询覆盖及语言配置仍正常。 |
+| 场景                                        | 必须观察的结果                                   |
+| ------------------------------------------- | ------------------------------------------------ |
+| 全新浏览器、无共享主题                      | 两边跟随系统；Outline 访客界面中文。             |
+| 主站设置深色后访问或刷新 `/docs`            | Outline 首屏及挂载后的页面均为标准深色。         |
+| 两个同源标签页双向切换三态                  | 另一侧页面与菜单选中项同步，不反复回写。         |
+| 系统颜色变化                                | `system` 两边同步变化；显式浅色、深色不变化。    |
+| 旧 `UI_STORE.theme` 与主站不同              | 主站共享值获胜；旧存储事件不覆盖它。             |
+| 删除主题键、写入非法值                      | 两边回到 `system`；不恢复旧 Outline 主题。       |
+| 刷新、主站与文档往返、页面缓存恢复          | 始终重新读取或核对最新共享偏好。                 |
+| 手机深色、带主题查询参数、工作区品牌配置    | 普通集成页仍为标准深色，与主站共享配色一致。     |
+| 打印与结束打印                              | 打印浅色，结束恢复共享主题；共享键不改变。       |
+| 新账号、已有中文或英文账号、退出登录        | 新账号中文；已有账号保留语言；退出回到中文。     |
+| 英文浏览器匿名访问、公共目录/搜索/阅读/评论 | 默认中文，加载及错误等关键状态不残留英文。       |
+| 独立 Outline                                | 原主题存储、手机纯黑、查询覆盖及语言配置仍正常。 |
 
 实施前读取适用的 `TESTING.md`（若存在），沿用各应用现有测试工作流。自动测试覆盖协议和状态变化，定向类型检查与构建覆盖消费边界；只修改 UI 偏好时不执行数据库 reset 或 migration。
 

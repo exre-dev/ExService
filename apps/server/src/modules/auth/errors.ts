@@ -45,16 +45,28 @@ const AUTH_ERROR_DETAILS: Record<AuthErrorCode, { statusCode: number; message: s
   IDENTITY_UNAUTHORIZED: { statusCode: 401, message: 'Identity client authentication failed.' },
   IDENTITY_NOT_FOUND: { statusCode: 404, message: 'Identity account not found.' },
   IDENTITY_UPSTREAM_UNAVAILABLE: { statusCode: 503, message: 'Identity service is unavailable.' },
-  IDENTITY_CHALLENGE_INVALID: { statusCode: 400, message: 'Identity challenge is invalid or expired.' },
+  IDENTITY_CHALLENGE_INVALID: {
+    statusCode: 400,
+    message: 'Identity challenge is invalid or expired.',
+  },
   IDENTITY_CLIENT_FORBIDDEN: { statusCode: 403, message: 'Identity client is not approved.' },
-  IDENTITY_RESTART_REQUIRED: { statusCode: 409, message: 'Restart the identity authorization flow.' },
+  IDENTITY_RESTART_REQUIRED: {
+    statusCode: 409,
+    message: 'Restart the identity authorization flow.',
+  },
   CODE_RESEND_TOO_SOON: { statusCode: 429, message: '验证码发送过于频繁，请稍后重试' },
   SSO_REQUEST_NOT_FOUND: { statusCode: 404, message: '登录请求不存在，请从发起应用重新登录' },
   SSO_REQUEST_EXPIRED: { statusCode: 410, message: '登录请求已过期，请从发起应用重新登录' },
   SSO_ACCOUNT_CONFLICT: { statusCode: 409, message: '该登录请求已由其他账号完成' },
   JOIN_APPLICATION_NOT_FOUND: { statusCode: 404, message: '申请不存在' },
-  INVITATION_APPLICATION_NOT_FOUND: { statusCode: 404, message: '未找到该邮箱的申请，请先申请加入' },
-  INVITATION_NOT_ELIGIBLE: { statusCode: 409, message: '该邮箱暂不符合注册条件，请确认申请已通过且邀请仍有效' },
+  INVITATION_APPLICATION_NOT_FOUND: {
+    statusCode: 404,
+    message: '未找到该邮箱的申请，请先申请加入',
+  },
+  INVITATION_NOT_ELIGIBLE: {
+    statusCode: 409,
+    message: '该邮箱暂不符合注册条件，请确认申请已通过且邀请仍有效',
+  },
   JOIN_STATE_CONFLICT: { statusCode: 409, message: '申请审核状态已发生变化，请刷新后重试' },
   INVITATION_CODE_INVALID: { statusCode: 400, message: '验证码无效或已过期，请重新获取' },
   INVITATION_CODE_LOCKED: { statusCode: 429, message: '验证码错误次数过多，请稍后重试' },
@@ -68,7 +80,10 @@ export class AuthError extends Error {
   readonly publicMessage: string
   readonly retryAfterSeconds?: number
 
-  constructor(readonly code: AuthErrorCode, options: { retryAfterSeconds?: number } = {}) {
+  constructor(
+    readonly code: AuthErrorCode,
+    options: { retryAfterSeconds?: number } = {},
+  ) {
     const details = AUTH_ERROR_DETAILS[code]
     super(code)
     this.name = 'AuthError'

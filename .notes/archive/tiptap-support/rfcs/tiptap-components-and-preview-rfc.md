@@ -12,17 +12,17 @@
 
 ## 当前证据与约束
 
-| 已核对来源 | 对实现的影响 |
-| --- | --- |
-| `packages/components/package.json`、`src/index.ts`、`tsconfig.json` | 共享包源码导出，浏览器 DOM 可用，组件携带 CSS Modules；没有独立打包流程。 |
-| `apps/web/src/App.tsx`、`main.tsx`、`vite.config.ts` | 路由归 Web，已有唯一 ThemeProvider、BrowserRouter、ExMessage 宿主与 ExUI 样式。 |
-| `vitest.config.ts`、`scripts/runtime/tests.mjs` | 新共享测试已在现有 include 范围；DOM 用例需显式使用 jsdom。根测试还包括独立容器和 Outline 流程。 |
-| Tiptap 3.32.0 StarterKit 发布源码 | 已含 Link、Underline、ListKeymap、TrailingNode、UndoRedo、光标及基础节点，不重复安装扩展实例。 |
-| Tiptap 3.32.0 Image 发布源码 | 官方 image 节点保存 width、height，并提供 resize；默认 Markdown 不保留尺寸。 |
-| Tiptap 3.32.0 Details 发布源码 | persist 可保存 open；只读时 toggle 可改变显示而不提交文档属性。默认 Markdown 使用官方块语法，本 RFC 为批准的 HTML 表达覆盖转换钩子。 |
-| Tiptap 3.32.0 Mention 发布源码 | 保存 id、label、mentionSuggestionChar，官方 HTML 可携带稳定身份；禁止导出成只有 @显示名的文本。 |
-| Tiptap 3.32.0 MarkdownManager 与 Marked 17.0.1 公开类型 | MarkdownManager 是公开导出；默认会修改提供的 Marked 配置，必须隔离每个转换器的 tokenizers 与 defaults。 |
-| ExUI 0.8.0 发布包 `dist/tokens/style.css` | 下方 token 表来自真实发布包，不能使用不存在的通用 radius 命名。 |
+| 已核对来源                                                          | 对实现的影响                                                                                                                         |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `packages/components/package.json`、`src/index.ts`、`tsconfig.json` | 共享包源码导出，浏览器 DOM 可用，组件携带 CSS Modules；没有独立打包流程。                                                            |
+| `apps/web/src/App.tsx`、`main.tsx`、`vite.config.ts`                | 路由归 Web，已有唯一 ThemeProvider、BrowserRouter、ExMessage 宿主与 ExUI 样式。                                                      |
+| `vitest.config.ts`、`scripts/runtime/tests.mjs`                     | 新共享测试已在现有 include 范围；DOM 用例需显式使用 jsdom。根测试还包括独立容器和 Outline 流程。                                     |
+| Tiptap 3.32.0 StarterKit 发布源码                                   | 已含 Link、Underline、ListKeymap、TrailingNode、UndoRedo、光标及基础节点，不重复安装扩展实例。                                       |
+| Tiptap 3.32.0 Image 发布源码                                        | 官方 image 节点保存 width、height，并提供 resize；默认 Markdown 不保留尺寸。                                                         |
+| Tiptap 3.32.0 Details 发布源码                                      | persist 可保存 open；只读时 toggle 可改变显示而不提交文档属性。默认 Markdown 使用官方块语法，本 RFC 为批准的 HTML 表达覆盖转换钩子。 |
+| Tiptap 3.32.0 Mention 发布源码                                      | 保存 id、label、mentionSuggestionChar，官方 HTML 可携带稳定身份；禁止导出成只有 @显示名的文本。                                      |
+| Tiptap 3.32.0 MarkdownManager 与 Marked 17.0.1 公开类型             | MarkdownManager 是公开导出；默认会修改提供的 Marked 配置，必须隔离每个转换器的 tokenizers 与 defaults。                              |
+| ExUI 0.8.0 发布包 `dist/tokens/style.css`                           | 下方 token 表来自真实发布包，不能使用不存在的通用 radius 命名。                                                                      |
 
 约束还包括 `AGENTS.md`、`CONTRIBUTING.md`、`.ai/architectures/overview.md`、`.ai/knowledge/web/exui-integration-traps.md`、`.ai/rules/frontend-forms.md`、`.ai/rules/frontend-notifications.md` 与 `.ai/architectures/contract-tests/test-layers.md`。不修改 Contract、数据库、Outline submodule 或网站运行配置。
 
@@ -30,18 +30,18 @@
 
 以下目录是新增实现的归属，文件可在同一责任范围内进一步拆分：
 
-| 路径 | 内容 |
-| --- | --- |
-| `packages/components/src/tiptap/types.ts` | 公开输入、结果、组件和异步回调类型。 |
-| `packages/components/src/tiptap/TiptapEditor.tsx` | 实例生命周期、受控替换、编辑事件及 Ref。 |
-| `packages/components/src/tiptap/TiptapViewer.tsx` | 官方只读实例、无效内容展示和可交互折叠。 |
-| `packages/components/src/tiptap/toolbar/` | ExUI 工具栏、节点菜单、链接及图片输入、文本样式选择。 |
-| `packages/components/src/tiptap/extensions/` | 官方扩展工厂、Admonition、官方节点转换钩子适配。 |
-| `packages/components/src/tiptap/conversion/` | Marked 隔离适配、JSON 校验、HTML AST 白名单、Markdown 转换。 |
-| `packages/components/src/tiptap/TiptapContent.module.scss` | 编辑与查看共用的作用域内容排版。 |
-| `packages/components/src/tiptap/TiptapEditor.module.scss` | 编辑外框、工具栏、菜单及状态。 |
-| `apps/web/src/pages/Dev/TiptapPreview/` | 开发页面、示例 JSON、演示回调、局部样式及页面测试。 |
-| `tests/browser/tiptap-preview.mjs` | 真实浏览器验收入口，遵循既有 browser 脚本约定。 |
+| 路径                                                       | 内容                                                         |
+| ---------------------------------------------------------- | ------------------------------------------------------------ |
+| `packages/components/src/tiptap/types.ts`                  | 公开输入、结果、组件和异步回调类型。                         |
+| `packages/components/src/tiptap/TiptapEditor.tsx`          | 实例生命周期、受控替换、编辑事件及 Ref。                     |
+| `packages/components/src/tiptap/TiptapViewer.tsx`          | 官方只读实例、无效内容展示和可交互折叠。                     |
+| `packages/components/src/tiptap/toolbar/`                  | ExUI 工具栏、节点菜单、链接及图片输入、文本样式选择。        |
+| `packages/components/src/tiptap/extensions/`               | 官方扩展工厂、Admonition、官方节点转换钩子适配。             |
+| `packages/components/src/tiptap/conversion/`               | Marked 隔离适配、JSON 校验、HTML AST 白名单、Markdown 转换。 |
+| `packages/components/src/tiptap/TiptapContent.module.scss` | 编辑与查看共用的作用域内容排版。                             |
+| `packages/components/src/tiptap/TiptapEditor.module.scss`  | 编辑外框、工具栏、菜单及状态。                               |
+| `apps/web/src/pages/Dev/TiptapPreview/`                    | 开发页面、示例 JSON、演示回调、局部样式及页面测试。          |
+| `tests/browser/tiptap-preview.mjs`                         | 真实浏览器验收入口，遵循既有 browser 脚本约定。              |
 
 在 `packages/components/package.json` 添加以下直接依赖，官方编辑器功能包锁定为 3.32.0：`@tiptap/core`、`@tiptap/pm`、`@tiptap/react`、`@tiptap/starter-kit`、`@tiptap/extension-list`、`@tiptap/extension-details`、`@tiptap/extension-image`、`@tiptap/extension-mention`、`@tiptap/suggestion`、`@tiptap/extension-highlight`、`@tiptap/extension-text-style`、`@tiptap/extension-text-align`、`@tiptap/extension-drag-handle`、`@tiptap/extension-drag-handle-react`、`@tiptap/extension-node-range`、`@tiptap/extension-collaboration`、`@tiptap/markdown`。
 
@@ -59,13 +59,17 @@
 import type { JSONContent } from '@tiptap/core'
 
 export type TiptapInput =
-  | { format: 'json'; content: JSONContent }
-  | { format: 'markdown'; content: string }
+  { format: 'json'; content: JSONContent } | { format: 'markdown'; content: string }
 
 export type TiptapIssueCode =
-  | 'not-ready' | 'invalid-content' | 'unsupported-content'
-  | 'unsafe-content' | 'limit-exceeded' | 'conversion-failed'
-  | 'upload-failed' | 'mention-failed'
+  | 'not-ready'
+  | 'invalid-content'
+  | 'unsupported-content'
+  | 'unsafe-content'
+  | 'limit-exceeded'
+  | 'conversion-failed'
+  | 'upload-failed'
+  | 'mention-failed'
 
 export interface TiptapIssue {
   code: TiptapIssueCode
@@ -110,10 +114,7 @@ export interface TiptapEditorProps {
   policy?: TiptapContentPolicy
   onChange?: (content: JSONContent) => void
   onError?: (issues: readonly TiptapIssue[]) => void
-  uploadImage?: (
-    file: File,
-    context: { signal: AbortSignal },
-  ) => Promise<TiptapUploadedImage>
+  uploadImage?: (file: File, context: { signal: AbortSignal }) => Promise<TiptapUploadedImage>
   resolveMentions?: (
     query: string,
     context: { signal: AbortSignal },
@@ -153,19 +154,19 @@ export function serializeTiptapMarkdown(
 
 工厂接收 editing、viewing 或 conversion 用途，建立新的配置实例和可变 storage。用途间的节点名、属性、Marks 和合法文档结构必须一致，只改变交互插件与 NodeView 配置。
 
-| 配置 | 精确约定 |
-| --- | --- |
+| 配置       | 精确约定                                                                                                                                                                                                          |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | StarterKit | heading.levels 为 [1, 2, 3, 4]；保留基础 Marks、Link、HorizontalRule、ListKeymap、UndoRedo、光标；TrailingNode 配置 node=paragraph、notAfter=[paragraph]，避免末尾已有 paragraph 时重复增加。不再重复登记其节点。 |
-| Link | 编辑时 openOnClick 为 false，阅读时允许安全导航；新增链接经同一 URL 策略；新窗口链接固定安全 rel。 |
-| List | 从官方 extension-list 增加 TaskList 和 TaskItem，nested 为 true；BulletList、OrderedList、ListItem 留给 StarterKit。 |
-| Details | 官方 Details、DetailsSummary、DetailsContent；persist 为 true；toggle 按官方 renderToggleButton 钩子设置中文名称与展开状态。 |
-| Image | 官方 block image；编辑用途 resize.enabled 为 true，最小交互尺寸 50px，保持宽高比；查看与转换用途 resize 为 false。allowBase64 只随内容策略显式开启。 |
-| Mention | 官方 Mention，固定 @ 触发，使用 label 和 id；候选源只接注入回调。查看与转换不启动查询插件。 |
-| Highlight | 官方扩展，multicolor 为 true；属性经过有限 CSS 值校验。 |
-| TextStyle | 使用官方 TextStyleKit，关闭 fontFamily 和 lineHeight，保留 TextStyle、Color、BackgroundColor、FontSize；不额外登记相同扩展。 |
-| TextAlign | types 为 heading、paragraph，值为 left、center、right、justify。 |
-| DragHandle | 只在编辑器可编辑时挂官方 React DragHandle；不另把同一 DragHandle 插件重复加进扩展数组。 |
-| Markdown | 使用官方 MarkdownManager 的独立转换器；编辑器直接操作 JSON，不启用另一条绕过校验的 Markdown setContent 路径。 |
+| Link       | 编辑时 openOnClick 为 false，阅读时允许安全导航；新增链接经同一 URL 策略；新窗口链接固定安全 rel。                                                                                                                |
+| List       | 从官方 extension-list 增加 TaskList 和 TaskItem，nested 为 true；BulletList、OrderedList、ListItem 留给 StarterKit。                                                                                              |
+| Details    | 官方 Details、DetailsSummary、DetailsContent；persist 为 true；toggle 按官方 renderToggleButton 钩子设置中文名称与展开状态。                                                                                      |
+| Image      | 官方 block image；编辑用途 resize.enabled 为 true，最小交互尺寸 50px，保持宽高比；查看与转换用途 resize 为 false。allowBase64 只随内容策略显式开启。                                                              |
+| Mention    | 官方 Mention，固定 @ 触发，使用 label 和 id；候选源只接注入回调。查看与转换不启动查询插件。                                                                                                                       |
+| Highlight  | 官方扩展，multicolor 为 true；属性经过有限 CSS 值校验。                                                                                                                                                           |
+| TextStyle  | 使用官方 TextStyleKit，关闭 fontFamily 和 lineHeight，保留 TextStyle、Color、BackgroundColor、FontSize；不额外登记相同扩展。                                                                                      |
+| TextAlign  | types 为 heading、paragraph，值为 left、center、right、justify。                                                                                                                                                  |
+| DragHandle | 只在编辑器可编辑时挂官方 React DragHandle；不另把同一 DragHandle 插件重复加进扩展数组。                                                                                                                           |
+| Markdown   | 使用官方 MarkdownManager 的独立转换器；编辑器直接操作 JSON，不启用另一条绕过校验的 Markdown setContent 路径。                                                                                                     |
 
 普通正文的 Tab 和 Shift+Tab 不拦截。列表和代码的上下文行为沿用官方；工具栏提供列表缩进和取消缩进。不增加 Blankspace 节点或全局快捷键扩展。
 
@@ -210,18 +211,18 @@ HTML token 先由 parse5 解析为 AST、检查，再进入官方 HTML 到 JSON 
 
 ### 允许内容与边界
 
-| 对象 | 允许值 |
-| --- | --- |
-| JSON 结构 | 当前工厂 schema 节点和 Marks；仅 type、attrs、content、marks、text 等 Tiptap 文档字段，未知字段报错。缺省属性规范化为官方默认值。 |
-| 标题及对齐 | heading level 1–4；textAlign 为 null、left、center、right、justify。 |
-| 有序列表 | start 为安全正整数；官方 type 属性仅 null 或 1、a、A、i、I，带显式 type 的列表使用 HTML 保留。 |
-| 任务与折叠 | checked、open 为 boolean；不允许以字符串冒充 JSON boolean。 |
-| 图片 | src 符合 URL 策略；width、height 为 null 或 1–8192 的整数；alt、title 为文本或 null。 |
-| Mention | id 非空字符串，label 为字符串或 null，mentionSuggestionChar 为 @；默认 label 缺失时显示 id。 |
-| 文本颜色 | null，或合法十六进制 #RGB、#RGBA、#RRGGBB、#RRGGBBAA，规范化为统一形式；HTML 的有限 rgb/rgba 数值可规范化为十六进制。禁止 CSS var、url、expression、关键字和任意函数。 |
-| 字号 | null，或 0.75–3rem；外部 px 输入按 16px=1rem 规范化，保留 notices，不依赖当前浏览器缩放。工具栏提供 0.75、0.875、1、1.125、1.25、1.5、2、3rem。 |
-| 链接 | HTTP、HTTPS、单斜线开头的站内路径或 mailto；拒绝协议相对地址、用户名密码、控制字符和其他协议。 |
-| 图片地址 | HTTP、HTTPS、单斜线站内路径；策略开启时另允许 PNG、JPEG、GIF、WebP 的 Base64 Data URL。拒绝 SVG、blob、协议相对地址和其他协议。 |
+| 对象       | 允许值                                                                                                                                                                 |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| JSON 结构  | 当前工厂 schema 节点和 Marks；仅 type、attrs、content、marks、text 等 Tiptap 文档字段，未知字段报错。缺省属性规范化为官方默认值。                                      |
+| 标题及对齐 | heading level 1–4；textAlign 为 null、left、center、right、justify。                                                                                                   |
+| 有序列表   | start 为安全正整数；官方 type 属性仅 null 或 1、a、A、i、I，带显式 type 的列表使用 HTML 保留。                                                                         |
+| 任务与折叠 | checked、open 为 boolean；不允许以字符串冒充 JSON boolean。                                                                                                            |
+| 图片       | src 符合 URL 策略；width、height 为 null 或 1–8192 的整数；alt、title 为文本或 null。                                                                                  |
+| Mention    | id 非空字符串，label 为字符串或 null，mentionSuggestionChar 为 @；默认 label 缺失时显示 id。                                                                           |
+| 文本颜色   | null，或合法十六进制 #RGB、#RGBA、#RRGGBB、#RRGGBBAA，规范化为统一形式；HTML 的有限 rgb/rgba 数值可规范化为十六进制。禁止 CSS var、url、expression、关键字和任意函数。 |
+| 字号       | null，或 0.75–3rem；外部 px 输入按 16px=1rem 规范化，保留 notices，不依赖当前浏览器缩放。工具栏提供 0.75、0.875、1、1.125、1.25、1.5、2、3rem。                        |
+| 链接       | HTTP、HTTPS、单斜线开头的站内路径或 mailto；拒绝协议相对地址、用户名密码、控制字符和其他协议。                                                                         |
+| 图片地址   | HTTP、HTTPS、单斜线站内路径；策略开启时另允许 PNG、JPEG、GIF、WebP 的 Base64 Data URL。拒绝 SVG、blob、协议相对地址和其他协议。                                        |
 
 以上有限范围是本 RFC 的实现选择；超范围必须返回诊断，不截断内容。Data URL 解码后核对类型和图片签名，不信任 MIME 声明；默认关闭，开发本地图片演示显式开启。
 
@@ -243,16 +244,16 @@ MarkdownManager 每次使用该实例和新扩展配置登记一次 tokenizer。
 
 ### Markdown 输出
 
-| 内容 | 规范输出 |
-| --- | --- |
-| 无附加样式的常规结构与 Marks | 官方常规 Markdown；删除线和任务列表使用 GFM；有序列表保留 start。 |
-| 代码 | 官方代码语法，围栏足够长以容纳正文；保留语言及正文的换行，不进行 HTML 校验。 |
-| 硬换行与分隔线 | 显式 Markdown hard break 与 horizontal rule；不把普通段落边界当硬换行。 |
-| Admonition | 至少三个冒号、空格、类型、可选内联 Markdown 标题；换行后为正文，最后为等长冒号闭合行。 |
-| Details | 完整 `<details>`，含 open、summary 和 `div[data-type="detailsContent"]`；内部正文渲染为 HTML。 |
-| Mention | 官方 span 结构及 ID、显示名、触发字符；显示文本转义。 |
-| 图片 | 无尺寸时官方图片 Markdown；任一尺寸存在时输出受控 img HTML。 |
-| 颜色、字号、高亮、下划线、对齐 | 用规范化受控 HTML 保留。 |
+| 内容                           | 规范输出                                                                                       |
+| ------------------------------ | ---------------------------------------------------------------------------------------------- |
+| 无附加样式的常规结构与 Marks   | 官方常规 Markdown；删除线和任务列表使用 GFM；有序列表保留 start。                              |
+| 代码                           | 官方代码语法，围栏足够长以容纳正文；保留语言及正文的换行，不进行 HTML 校验。                   |
+| 硬换行与分隔线                 | 显式 Markdown hard break 与 horizontal rule；不把普通段落边界当硬换行。                        |
+| Admonition                     | 至少三个冒号、空格、类型、可选内联 Markdown 标题；换行后为正文，最后为等长冒号闭合行。         |
+| Details                        | 完整 `<details>`，含 open、summary 和 `div[data-type="detailsContent"]`；内部正文渲染为 HTML。 |
+| Mention                        | 官方 span 结构及 ID、显示名、触发字符；显示文本转义。                                          |
+| 图片                           | 无尺寸时官方图片 Markdown；任一尺寸存在时输出受控 img HTML。                                   |
+| 颜色、字号、高亮、下划线、对齐 | 用规范化受控 HTML 保留。                                                                       |
 
 混合格式采用完整 HTML 子树边界：若普通 paragraph、heading、list、blockquote 等块含 HTML 专属样式、非默认 Link target/rel 或需要 HTML 的后代，以官方 generateHTML 输出该完整块，不在 HTML span 内嵌未经处理的 ** 或 ::: 文本。容器中的受控 HTML 子树继续用 HTML 表示，包括 Details 内的 Admonition，以保存嵌套结构。顶层 Admonition 仍优先输出容器，正文通过官方 helpers 递归处理。
 
@@ -274,14 +275,14 @@ Mention 以查询序号与 generation 决定结果是否有效，离开建议范
 
 ## ExUI 排版和工具栏
 
-| 用途 | 已验证 token |
-| --- | --- |
-| 正文及次级文字 | `--exui-text-primary`、`--exui-text-secondary`、`--exui-text-tertiary`。 |
-| 容器与代码表面 | `--exui-surface-background`、`--exui-surface-card`、`--exui-surface-secondary`。 |
-| 边框及焦点 | `--exui-border-default`、`--exui-border-divider`、`--exui-border-focused`、`--exui-control-focus-ring`。 |
-| 交互及链接 | `--exui-control-primary`、`--exui-control-hover`、`--exui-control-selected`、`--exui-text-link`。 |
-| Admonition | tip 使用 `--exui-feedback-success`，info、warning、error 分别使用 feedback-info、feedback-warning、feedback-danger，并搭配对应 foreground。 |
-| 字体与圆角 | `--exui-font-family`、`--exui-font-family-mono`、`--density-control-radius`。 |
+| 用途           | 已验证 token                                                                                                                                |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 正文及次级文字 | `--exui-text-primary`、`--exui-text-secondary`、`--exui-text-tertiary`。                                                                    |
+| 容器与代码表面 | `--exui-surface-background`、`--exui-surface-card`、`--exui-surface-secondary`。                                                            |
+| 边框及焦点     | `--exui-border-default`、`--exui-border-divider`、`--exui-border-focused`、`--exui-control-focus-ring`。                                    |
+| 交互及链接     | `--exui-control-primary`、`--exui-control-hover`、`--exui-control-selected`、`--exui-text-link`。                                           |
+| Admonition     | tip 使用 `--exui-feedback-success`，info、warning、error 分别使用 feedback-info、feedback-warning、feedback-danger，并搭配对应 foreground。 |
+| 字体与圆角     | `--exui-font-family`、`--exui-font-family-mono`、`--density-control-radius`。                                                               |
 
 共享内容容器 line-height 为 1.6，正文继承 ExUI 字体；H1–H4 采用 2、1.6、1.3、1.1rem 的固定层级，line-height 为 1.35，首个标题不因主题或位置变大。标题 margin-block 按层级调整，段落和列表自然排布；长文本换行，代码局部横向滚动，图片 max-width 为 100%。不使用全局 .tiptap 或 .ProseMirror 选择器污染其他页面，必要内部类限定在 CSS Module 内容容器内。
 
@@ -305,18 +306,18 @@ Mention 以查询序号与 generation 决定结果是否有效，离开建议范
 
 ## 验证矩阵与执行
 
-| 范围 | 关键回归 |
-| --- | --- |
-| 扩展和 schema | 所有扩展名唯一，三用途 schema 等价；官方节点清单可创建；未知 attrs 在官方忽略前被拒绝。 |
-| Admonition | 新建、改类型、解除、撤销；标题 Marks、空标题、列表、代码含 :::、嵌套围栏均保留。 |
-| 格式转换 | 逐节点/Mark 及混合正文往返；Mention ID、图片宽高、任务 checked、Details open、有序 start/type 不丢。 |
-| HTML 边界 | 合法混合格式解析；未知标签、事件、脚本、协议混淆、SVG Data URL、CSS 函数失败；代码中的相同样本保留。 |
-| 原子性 | 非法初始输入和显式导入；导入失败不改变 doc、历史、选区及 generation；输出失败不返回成功文本。 |
-| 多实例 | A 的 Marked tokenizer/配置不影响 B；反复创建销毁不叠加 tokenizer；相邻文本和空段落规范化一致。 |
-| React 生命周期 | 最新回调生效；无关重渲染、主题和 editable 切换不丢选区；只读输入更新正确，不修改消费方 JSON。 |
-| 异步 | 上传后选区移动、目标被删、文档替换、卸载；旧候选晚于新候选返回；Abort 不响应时结果仍丢弃。 |
-| 页面与构建 | 示例同步、导入失败、恢复、主题；DEV 直达正常，生产预览代码与路由不存在。 |
-| 真实浏览器 | 明暗/system、375px、200% 缩放；工具栏键盘、中文输入法、拖动书签、图片缩放、Details 与只读任务交互。 |
+| 范围           | 关键回归                                                                                             |
+| -------------- | ---------------------------------------------------------------------------------------------------- |
+| 扩展和 schema  | 所有扩展名唯一，三用途 schema 等价；官方节点清单可创建；未知 attrs 在官方忽略前被拒绝。              |
+| Admonition     | 新建、改类型、解除、撤销；标题 Marks、空标题、列表、代码含 :::、嵌套围栏均保留。                     |
+| 格式转换       | 逐节点/Mark 及混合正文往返；Mention ID、图片宽高、任务 checked、Details open、有序 start/type 不丢。 |
+| HTML 边界      | 合法混合格式解析；未知标签、事件、脚本、协议混淆、SVG Data URL、CSS 函数失败；代码中的相同样本保留。 |
+| 原子性         | 非法初始输入和显式导入；导入失败不改变 doc、历史、选区及 generation；输出失败不返回成功文本。        |
+| 多实例         | A 的 Marked tokenizer/配置不影响 B；反复创建销毁不叠加 tokenizer；相邻文本和空段落规范化一致。       |
+| React 生命周期 | 最新回调生效；无关重渲染、主题和 editable 切换不丢选区；只读输入更新正确，不修改消费方 JSON。        |
+| 异步           | 上传后选区移动、目标被删、文档替换、卸载；旧候选晚于新候选返回；Abort 不响应时结果仍丢弃。           |
+| 页面与构建     | 示例同步、导入失败、恢复、主题；DEV 直达正常，生产预览代码与路由不存在。                             |
+| 真实浏览器     | 明暗/system、375px、200% 缩放；工具栏键盘、中文输入法、拖动书签、图片缩放、Details 与只读任务交互。  |
 
 DOM 测试文件设置 jsdom 环境，使用真实 Tiptap 与文档 schema，不能把编辑器整体 mock 后声称节点可编辑。HTML AST 和格式测试覆盖真实转换，不只比较静态对象。浏览器脚本检查布局、页面横向溢出、可用命令及图片尺寸变更；jsdom 通过不等于这些检查通过。
 
@@ -330,15 +331,15 @@ DOM 测试文件设置 jsdom 环境，使用真实 Tiptap 与文档 schema，不
 
 首次只通过开发预览消费组件，不迁移现有业务或持久内容。回滚先移除 DEV 路由与导入，再回滚公开导出、新模块及对应 pnpm 依赖变更；不得清理数据库、头像、用户配置或其他工作树内容。后续真实业务接入另行定义其回滚与数据格式承诺。
 
-| 风险 | 处理及检测 |
-| --- | --- |
-| Markdown Beta 或升级改变转换 | 锁定版本、真实往返语义对比、多实例隔离测试；升级前重跑同一矩阵。 |
-| HTML 混合样式丢失或原始输入越界 | parse5 预检查、同一 attrs 白名单、完整 HTML 子树边界、导出自检；失败保留原文。 |
-| 上传迟到或建议覆盖新查询 | AbortController 加 operationId/generation，映射书签和最新查询序号；独立竞争用例。 |
-| 官方只读 NodeView 意外变更 | resize=false、任务禁止修改、Details 仅本地展开；冻结输入并验证交互前后 JSON。 |
-| 重复扩展或共享 Marked storage | 工厂建立独立配置和 Marked facade，名称及双实例检查。 |
-| 开发页面进入生产 | DEV 内动态 import、manifest/产物和生产导航检查。 |
-| 局部主题值与当前 ExUI 不符 | 使用已核对 token，真实明暗截图与布局检查；不新增本地主题层。 |
+| 风险                            | 处理及检测                                                                        |
+| ------------------------------- | --------------------------------------------------------------------------------- |
+| Markdown Beta 或升级改变转换    | 锁定版本、真实往返语义对比、多实例隔离测试；升级前重跑同一矩阵。                  |
+| HTML 混合样式丢失或原始输入越界 | parse5 预检查、同一 attrs 白名单、完整 HTML 子树边界、导出自检；失败保留原文。    |
+| 上传迟到或建议覆盖新查询        | AbortController 加 operationId/generation，映射书签和最新查询序号；独立竞争用例。 |
+| 官方只读 NodeView 意外变更      | resize=false、任务禁止修改、Details 仅本地展开；冻结输入并验证交互前后 JSON。     |
+| 重复扩展或共享 Marked storage   | 工厂建立独立配置和 Marked facade，名称及双实例检查。                              |
+| 开发页面进入生产                | DEV 内动态 import、manifest/产物和生产导航检查。                                  |
+| 局部主题值与当前 ExUI 不符      | 使用已核对 token，真实明暗截图与布局检查；不新增本地主题层。                      |
 
 不继续直接迁移旧实现，原因是旧 UI 依赖、重复登记、未实现命令和属性丢失。采用静态 HTML 查看器虽然更轻，但会增加折叠与任务交互重建，本阶段选择官方只读 EditorContent。将 Markdown 单独改成另一套自研解析器会扩大维护边界，本方案只补充官方扩展钩子和安全门禁。
 

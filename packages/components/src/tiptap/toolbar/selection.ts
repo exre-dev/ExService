@@ -1,5 +1,11 @@
 import type { Editor } from '@tiptap/core'
-import { NodeSelection, TextSelection, type Selection, type SelectionBookmark, type Transaction } from '@tiptap/pm/state'
+import {
+  NodeSelection,
+  TextSelection,
+  type Selection,
+  type SelectionBookmark,
+  type Transaction,
+} from '@tiptap/pm/state'
 import type { StepMap } from '@tiptap/pm/transform'
 import type { TiptapLifecycle } from '../lifecycle'
 
@@ -7,10 +13,15 @@ import type { TiptapLifecycle } from '../lifecycle'
 export function applyDocumentCommand(editor: Editor, command: () => boolean): boolean {
   if (editor.isDestroyed || !editor.isEditable) return false
   let applied = false
-  const observe = () => { applied = true }
+  const observe = () => {
+    applied = true
+  }
   editor.on('transaction', observe)
-  try { return command() && applied }
-  finally { editor.off('transaction', observe) }
+  try {
+    return command() && applied
+  } finally {
+    editor.off('transaction', observe)
+  }
 }
 
 type Span = { from: number; to: number }
@@ -23,12 +34,18 @@ function survivingSpans(spans: readonly Span[], map: StepMap): Span[] {
     if (oldEnd === oldStart) {
       // Track original characters on each side separately. Otherwise a later
       // deletion could leave only the inserted text and falsely keep us valid.
-      if (newEnd > newStart) remaining = remaining.flatMap(span => span.from < oldStart && span.to > oldStart
-        ? [{ from: span.from, to: oldStart }, { from: oldStart, to: span.to }]
-        : [span])
+      if (newEnd > newStart)
+        remaining = remaining.flatMap((span) =>
+          span.from < oldStart && span.to > oldStart
+            ? [
+                { from: span.from, to: oldStart },
+                { from: oldStart, to: span.to },
+              ]
+            : [span],
+        )
       return
     }
-    remaining = remaining.flatMap(span => {
+    remaining = remaining.flatMap((span) => {
       if (oldEnd <= span.from || oldStart >= span.to) return [span]
       const pieces: Span[] = []
       if (span.from < oldStart) pieces.push({ from: span.from, to: oldStart })
@@ -36,7 +53,9 @@ function survivingSpans(spans: readonly Span[], map: StepMap): Span[] {
       return pieces
     })
   })
-  return remaining.map(span => ({ from: map.map(span.from, 1), to: map.map(span.to, -1) })).filter(span => span.from < span.to)
+  return remaining
+    .map((span) => ({ from: map.map(span.from, 1), to: map.map(span.to, -1) }))
+    .filter((span) => span.from < span.to)
 }
 
 /** One root menu owns one session; nested panels reuse it until close. */
@@ -51,24 +70,46 @@ export class ToolbarSession {
   private to: number
   private active = true
   private applying = false
-  private readonly observe = ({ transaction, appendedTransactions }: { transaction: Transaction; appendedTransactions: Transaction[] }) => {
+  private readonly observe = ({
+    transaction,
+    appendedTransactions,
+  }: {
+    transaction: Transaction
+    appendedTransactions: Transaction[]
+  }) => {
     this.map(transaction)
     for (const appended of appendedTransactions) this.map(appended)
   }
-  private readonly observeAvailability = () => { void this.valid }
+  private readonly observeAvailability = () => {
+    void this.valid
+  }
   private readonly observeDestroy = () => this.invalidate()
 
-  constructor(private readonly editor: Editor, private readonly runtime: TiptapLifecycle, private readonly onInvalidate?: () => void) {
+  constructor(
+    private readonly editor: Editor,
+    private readonly runtime: TiptapLifecycle,
+    private readonly onInvalidate?: () => void,
+  ) {
     const selection = editor.state.selection
     this.generation = runtime.documentGeneration
     this.bookmark = selection.getBookmark()
-    this.kind = selection instanceof TextSelection ? 'text' : selection instanceof NodeSelection ? 'node' : 'other'
+    this.kind =
+      selection instanceof TextSelection
+        ? 'text'
+        : selection instanceof NodeSelection
+          ? 'node'
+          : 'other'
     this.backward = selection.anchor > selection.head
     this.empty = selection.empty
-    this.from = selection.from; this.to = selection.to
+    this.from = selection.from
+    this.to = selection.to
     if (!selection.empty && this.kind !== 'node') {
       editor.state.doc.nodesBetween(this.from, this.to, (node, pos) => {
-        if (node.isInline) this.spans.push({ from: Math.max(this.from, pos), to: Math.min(this.to, pos + node.nodeSize) })
+        if (node.isInline)
+          this.spans.push({
+            from: Math.max(this.from, pos),
+            to: Math.min(this.to, pos + node.nodeSize),
+          })
       })
       if (!this.spans.length) this.spans.push({ from: this.from, to: this.to })
     }
@@ -81,7 +122,13 @@ export class ToolbarSession {
   }
 
   get valid(): boolean {
-    if (this.active && (this.editor.isDestroyed || !this.editor.isEditable || this.runtime.documentGeneration !== this.generation)) this.invalidate()
+    if (
+      this.active &&
+      (this.editor.isDestroyed ||
+        !this.editor.isEditable ||
+        this.runtime.documentGeneration !== this.generation)
+    )
+      this.invalidate()
     return this.active
   }
 
@@ -99,15 +146,25 @@ export class ToolbarSession {
     for (const map of transaction.mapping.maps) {
       if (this.kind === 'node') {
         const result = map.mapResult(this.from, 1)
-        if (result.deleted) { this.invalidate(); return }
-        this.from = result.pos; this.to = map.map(this.to, -1)
+        if (result.deleted) {
+          this.invalidate()
+          return
+        }
+        this.from = result.pos
+        this.to = map.map(this.to, -1)
       } else if (this.empty) {
         const result = map.mapResult(this.from, 1)
-        if (result.deleted) { this.invalidate(); return }
+        if (result.deleted) {
+          this.invalidate()
+          return
+        }
         this.from = this.to = result.pos
       } else {
         this.spans = survivingSpans(this.spans, map)
-        if (!this.spans.length) { this.invalidate(); return }
+        if (!this.spans.length) {
+          this.invalidate()
+          return
+        }
         this.from = this.spans[0]!.from
         this.to = this.spans.at(-1)!.to
       }
@@ -122,14 +179,35 @@ export class ToolbarSession {
       if (this.kind === 'text') {
         // TextBookmark.resolve falls back to Selection.near when anchors cease
         // to be text positions. Refuse that silent change of operation target.
-        const $from = doc.resolve(this.from), $to = doc.resolve(this.to)
-        if (!$from.parent.inlineContent || !$to.parent.inlineContent || !this.empty && this.from >= this.to) { this.invalidate(); return null }
-        return TextSelection.create(doc, this.backward ? this.to : this.from, this.backward ? this.from : this.to)
+        const $from = doc.resolve(this.from),
+          $to = doc.resolve(this.to)
+        if (
+          !$from.parent.inlineContent ||
+          !$to.parent.inlineContent ||
+          (!this.empty && this.from >= this.to)
+        ) {
+          this.invalidate()
+          return null
+        }
+        return TextSelection.create(
+          doc,
+          this.backward ? this.to : this.from,
+          this.backward ? this.from : this.to,
+        )
       }
       const selection = this.bookmark.resolve(doc)
-      if (this.kind === 'node' && (!(selection instanceof NodeSelection) || selection.from !== this.from)) { this.invalidate(); return null }
+      if (
+        this.kind === 'node' &&
+        (!(selection instanceof NodeSelection) || selection.from !== this.from)
+      ) {
+        this.invalidate()
+        return null
+      }
       return selection
-    } catch { this.invalidate(); return null }
+    } catch {
+      this.invalidate()
+      return null
+    }
   }
 
   /** Restore before starting an upload, so runtime owns the mapped upload anchor. */
@@ -145,10 +223,18 @@ export class ToolbarSession {
     if (!this.restore()) return false
     this.applying = true
     let accepted: boolean
-    try { accepted = applyDocumentCommand(this.editor, () => command(this.editor)) }
-    finally { this.applying = false }
+    try {
+      accepted = applyDocumentCommand(this.editor, () => command(this.editor))
+    } finally {
+      this.applying = false
+    }
     if (!accepted) return false
-    if (this.editor.isDestroyed || !this.editor.isEditable || this.runtime.documentGeneration !== this.generation) return false
+    if (
+      this.editor.isDestroyed ||
+      !this.editor.isEditable ||
+      this.runtime.documentGeneration !== this.generation
+    )
+      return false
     // Keep the command's resulting selection; focus never restores the bookmark.
     this.editor.view.focus()
     return true

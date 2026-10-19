@@ -8,7 +8,13 @@ import {
   type LoginDraft,
 } from '@workspace/components'
 import { instance, ExAxiosError } from '@workspace/sdk'
-import { readRawToken, readToken, sessionScopeRevision, writeSsoSuccess, writeToken } from '@web/src/auth/storage'
+import {
+  readRawToken,
+  readToken,
+  sessionScopeRevision,
+  writeSsoSuccess,
+  writeToken,
+} from '@web/src/auth/storage'
 
 export interface AuthFlowProps {
   initialMode?: 'login'
@@ -44,10 +50,13 @@ export function AuthFlow({
   const scope = useRef(sessionScopeRevision()).current
   const ownsScope = () => scope === sessionScopeRevision()
 
-  useEffect(() => () => {
-    generation.current += 1
-    pendingDraft.current = null
-  }, [])
+  useEffect(
+    () => () => {
+      generation.current += 1
+      pendingDraft.current = null
+    },
+    [],
+  )
 
   function continueLogin(draft: LoginDraft) {
     pendingDraft.current = draft
@@ -77,7 +86,12 @@ export function AuthFlow({
     setSsoRetryError(null)
     setFlowBusy(true)
     try {
-      await instance({ url: '/auth/sso/inspect', method: 'POST', data: { ssoRequestId: requestId }, alert: false })
+      await instance({
+        url: '/auth/sso/inspect',
+        method: 'POST',
+        data: { ssoRequestId: requestId },
+        alert: false,
+      })
       if (!isCurrent()) return
       let token: string | null
       try {
@@ -91,7 +105,12 @@ export function AuthFlow({
         setFlowBusy(false)
         return
       }
-      await instance({ url: '/auth/sso/confirm', method: 'POST', data: { ssoRequestId: requestId }, alert: false })
+      await instance({
+        url: '/auth/sso/confirm',
+        method: 'POST',
+        data: { ssoRequestId: requestId },
+        alert: false,
+      })
       if (!isCurrent()) return
       finishSso(requestId)
     } catch (error) {
@@ -100,7 +119,8 @@ export function AuthFlow({
           setFlowBusy(false)
           return
         }
-        if (error instanceof ExAxiosError && isFatalSsoCode(error.code)) setFatalSsoError(error.message)
+        if (error instanceof ExAxiosError && isFatalSsoCode(error.code))
+          setFatalSsoError(error.message)
         else setSsoRetryError('暂时无法连接认证服务，请重试')
         setFlowBusy(false)
       }
@@ -114,13 +134,23 @@ export function AuthFlow({
     authForm.current?.clearServerErrors()
     try {
       if (ssoRequestId !== undefined) {
-        await instance({ url: '/auth/sso/login', method: 'POST', data: { ssoRequestId, email: draft.email, password: draft.password }, alert: false })
+        await instance({
+          url: '/auth/sso/login',
+          method: 'POST',
+          data: { ssoRequestId, email: draft.email, password: draft.password },
+          alert: false,
+        })
         if (!isCurrent()) return
         finishSso(ssoRequestId)
         return
       }
 
-      const result = await instance({ url: '/auth/login', method: 'POST', data: { email: draft.email, password: draft.password }, alert: false })
+      const result = await instance({
+        url: '/auth/login',
+        method: 'POST',
+        data: { email: draft.email, password: draft.password },
+        alert: false,
+      })
       if (!isCurrent()) return
       let oldToken: string | null
       try {
@@ -131,7 +161,12 @@ export function AuthFlow({
       }
       if (oldToken !== null && oldToken !== result.token) {
         try {
-          await instance({ url: '/auth/logout', method: 'POST', headers: { Authorization: `Bearer ${oldToken}` }, alert: false })
+          await instance({
+            url: '/auth/logout',
+            method: 'POST',
+            headers: { Authorization: `Bearer ${oldToken}` },
+            alert: false,
+          })
           if (!isCurrent()) return
         } catch (error) {
           if (!isCurrent()) return
@@ -194,7 +229,14 @@ export function AuthFlow({
   const visibleFooter = step === 'captcha' ? null : footer
 
   if (fatalSsoError !== null) {
-    return <><Alert variant="destructive" role="alert"><AlertDescription>{fatalSsoError}</AlertDescription></Alert>{visibleFooter}</>
+    return (
+      <>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription>{fatalSsoError}</AlertDescription>
+        </Alert>
+        {visibleFooter}
+      </>
+    )
   }
 
   if (ssoRetryError !== null && ssoRequestId !== undefined) {
@@ -202,7 +244,11 @@ export function AuthFlow({
       <>
         <Alert variant="destructive" role="alert">
           <AlertDescription>{ssoRetryError}</AlertDescription>
-          <Button type="button" variant="outline" onClick={() => void prepareSso(ssoRequestId, ++generation.current)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void prepareSso(ssoRequestId, ++generation.current)}
+          >
             重试
           </Button>
         </Alert>
@@ -214,14 +260,14 @@ export function AuthFlow({
   return (
     <>
       <AuthForm
-      ref={authForm}
-      step={step}
-      busy={flowBusy}
-      initialEmail={email}
-      description={description}
-      onContinueLogin={continueLogin}
-      onCaptchaSubmit={submitCaptcha}
-      onJoin={join}
+        ref={authForm}
+        step={step}
+        busy={flowBusy}
+        initialEmail={email}
+        description={description}
+        onContinueLogin={continueLogin}
+        onCaptchaSubmit={submitCaptcha}
+        onJoin={join}
       />
       {visibleFooter}
     </>
@@ -236,5 +282,9 @@ function mapError(code: string, message: string): AuthFormErrors {
 }
 
 function isFatalSsoCode(code: string): boolean {
-  return code === 'SSO_REQUEST_NOT_FOUND' || code === 'SSO_REQUEST_EXPIRED' || code === 'SSO_ACCOUNT_CONFLICT'
+  return (
+    code === 'SSO_REQUEST_NOT_FOUND' ||
+    code === 'SSO_REQUEST_EXPIRED' ||
+    code === 'SSO_ACCOUNT_CONFLICT'
+  )
 }

@@ -16,21 +16,21 @@
 
 ## 已验证的现状与实现约束
 
-| 现状证据 | 对实施的约束 |
-| --- | --- |
-| `apps/server/src/app.ts` 集中 serviceHandlers、decorate、hook、securityHandlers 和 Glue | 新 app 只保留实例创建、选项传递和显式注册；保留 createApp 同步返回 Fastify 实例 |
-| `apps/server/src/auth/fastify.d.ts` 集中所有 service/request 字段 | 按字段拥有者拆分，不能保留重复声明 |
+| 现状证据                                                                                                      | 对实施的约束                                                                                        |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `apps/server/src/app.ts` 集中 serviceHandlers、decorate、hook、securityHandlers 和 Glue                       | 新 app 只保留实例创建、选项传递和显式注册；保留 createApp 同步返回 Fastify 实例                     |
+| `apps/server/src/auth/fastify.d.ts` 集中所有 service/request 字段                                             | 按字段拥有者拆分，不能保留重复声明                                                                  |
 | `apps/server/src/auth/create-services.ts` 已创建 Auth/Invitation/Join，JoinService 构造注入 InvitationService | 综合工厂迁入应用组装层，保留创建行为及资源所有权；首轮插件接收已创建服务，公共 auth 不反向依赖 join |
-| `apps/server/src/auth/bearer.ts` 接收 FastifyRequest 并写 authSession | 移至 API 认证层；AuthService.authenticateToken 留在业务层 |
-| join/storage transport 通过 onRoute 调整上传、下载配置 | API 模块共享同一个 API 作用域，先安装 transport，再加载 Glue |
-| `apps/server/src/join/form-validation.ts` 直接读取根 YAML，校验输入和已存表单 | 继续作为业务校验，改用中立 Contract reader；不能只将其移至 HTTP 层 |
-| `apps/server/src/http/cors.ts` 从 Contract 枚举允许方法 | 改读统一 JSON，同时保留 OPTIONS、未知路径及错误响应的应用级 hook 行为 |
-| `scripts/runtime/nginx.mjs` 读取 join/storage 的 x-fastify-config 上传预算 | 同步迁移 reader，保留预算计算；拆源文件不能让代理限额缺失 |
-| 部分 Contract tests、Client tests 直接解析根 YAML | 全部切换单文件 JSON 和共享枚举/校验辅助逻辑 |
-| Server 为 NodeNext、rootDir:src，并经 rewrite-server-imports.mjs 改写产物别名 | 类型入口只导出声明，运行时 import 必须能由 Node 正常加载 |
-| Client 包根 exports 指向 src/index.ts，同时导出 runtime client | 增加类型专用子路径，避免 NodeNext 把客户端源码带入 Server 编译 |
-| lockfile 已解析 fastify-plugin 6.0.0，但 Server 未直接声明它 | Server 添加直接依赖并锁定现有版本，不依赖 pnpm 隐式提升 |
-| 当前源 Contract 有 43 个 operationId，未发现重复 | 实施时固定当次完整基线；43 是本次观察值，不是长期硬编码上限 |
+| `apps/server/src/auth/bearer.ts` 接收 FastifyRequest 并写 authSession                                         | 移至 API 认证层；AuthService.authenticateToken 留在业务层                                           |
+| join/storage transport 通过 onRoute 调整上传、下载配置                                                        | API 模块共享同一个 API 作用域，先安装 transport，再加载 Glue                                        |
+| `apps/server/src/join/form-validation.ts` 直接读取根 YAML，校验输入和已存表单                                 | 继续作为业务校验，改用中立 Contract reader；不能只将其移至 HTTP 层                                  |
+| `apps/server/src/http/cors.ts` 从 Contract 枚举允许方法                                                       | 改读统一 JSON，同时保留 OPTIONS、未知路径及错误响应的应用级 hook 行为                               |
+| `scripts/runtime/nginx.mjs` 读取 join/storage 的 x-fastify-config 上传预算                                    | 同步迁移 reader，保留预算计算；拆源文件不能让代理限额缺失                                           |
+| 部分 Contract tests、Client tests 直接解析根 YAML                                                             | 全部切换单文件 JSON 和共享枚举/校验辅助逻辑                                                         |
+| Server 为 NodeNext、rootDir:src，并经 rewrite-server-imports.mjs 改写产物别名                                 | 类型入口只导出声明，运行时 import 必须能由 Node 正常加载                                            |
+| Client 包根 exports 指向 src/index.ts，同时导出 runtime client                                                | 增加类型专用子路径，避免 NodeNext 把客户端源码带入 Server 编译                                      |
+| lockfile 已解析 fastify-plugin 6.0.0，但 Server 未直接声明它                                                  | Server 添加直接依赖并锁定现有版本，不依赖 pnpm 隐式提升                                             |
+| 当前源 Contract 有 43 个 operationId，未发现重复                                                              | 实施时固定当次完整基线；43 是本次观察值，不是长期硬编码上限                                         |
 
 本地没有根 TESTING.md，沿用 `.ai/architectures/contract-tests/test-layers.md` 和现有测试入口。本文只做源码和文档核对，不声称插件启动或测试已经通过。
 
@@ -38,26 +38,26 @@
 
 完整目录见批准的 spec。本文补充可执行的迁移归属：
 
-| 当前路径 | 目标路径 / 处理方式 |
-| --- | --- |
-| `apps/server/src/auth/` | 业务内容移至 `apps/server/src/modules/auth/`；bearer.ts 转入 `apps/server/src/modules/auth/api/security.ts`；集中声明拆分；create-services.ts 单独迁入应用组装层 |
-| `apps/server/src/auth/create-services.ts` | `apps/server/src/create-services.ts`；保留综合工厂的行为及 shared passwordHasher，依赖公共模块和 join 领域，避免反向依赖 |
-| `apps/server/src/invitations/` | `apps/server/src/domains/join/invitations/` |
-| `apps/server/src/join/` | 业务内容移至 `apps/server/src/domains/join/applications/`；transport.ts 转入 `apps/server/src/domains/join/api/transport.ts` |
-| `apps/server/src/profile/` | `apps/server/src/modules/profile/` |
-| `apps/server/src/identity/` | `apps/server/src/modules/identity/`，保留配置、OIDC、outbox、就绪与诊断职责 |
-| `apps/server/src/community/` | `apps/server/src/domains/community/`；只有 schema-check，不虚构空 service/plugin |
-| `apps/server/src/handlers/auth.ts` | `apps/server/src/modules/auth/api/handlers.ts` |
-| `apps/server/src/handlers/profile.ts` | `apps/server/src/modules/profile/api/handlers.ts` |
-| `apps/server/src/handlers/join.ts` | `apps/server/src/domains/join/api/handlers.ts`，原有邀请操作继续同组维护 |
-| `apps/server/src/handlers/identity.ts` | `apps/server/src/modules/identity/api/handlers.ts` |
-| `apps/server/src/handlers/health.ts` | `apps/server/src/http/system/handlers.ts` |
-| `apps/server/src/modules/storage/handlers.ts`、transport.ts | `apps/server/src/modules/storage/api/` |
-| `apps/server/src/modules/notifications/handlers.ts` | `apps/server/src/modules/notifications/api/handlers.ts` |
-| `apps/server/src/http/query-coercion.ts`、对应单测、multipart-counter.ts | `apps/server/src/http/shared/` |
-| app 中的预处理/security 配置 | `apps/server/src/http/shared/request-normalization.ts`、`apps/server/src/http/security-handlers.ts` 和所属模块 API 的 security.ts |
-| app 中的 Contract 路径与前缀 | `apps/server/src/contract/document.ts` |
-| app 中的 serviceHandlers | `apps/server/src/http/service-handlers.ts`，app 继续 re-export 同一个映射 |
+| 当前路径                                                                 | 目标路径 / 处理方式                                                                                                                                              |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/server/src/auth/`                                                  | 业务内容移至 `apps/server/src/modules/auth/`；bearer.ts 转入 `apps/server/src/modules/auth/api/security.ts`；集中声明拆分；create-services.ts 单独迁入应用组装层 |
+| `apps/server/src/auth/create-services.ts`                                | `apps/server/src/create-services.ts`；保留综合工厂的行为及 shared passwordHasher，依赖公共模块和 join 领域，避免反向依赖                                         |
+| `apps/server/src/invitations/`                                           | `apps/server/src/domains/join/invitations/`                                                                                                                      |
+| `apps/server/src/join/`                                                  | 业务内容移至 `apps/server/src/domains/join/applications/`；transport.ts 转入 `apps/server/src/domains/join/api/transport.ts`                                     |
+| `apps/server/src/profile/`                                               | `apps/server/src/modules/profile/`                                                                                                                               |
+| `apps/server/src/identity/`                                              | `apps/server/src/modules/identity/`，保留配置、OIDC、outbox、就绪与诊断职责                                                                                      |
+| `apps/server/src/community/`                                             | `apps/server/src/domains/community/`；只有 schema-check，不虚构空 service/plugin                                                                                 |
+| `apps/server/src/handlers/auth.ts`                                       | `apps/server/src/modules/auth/api/handlers.ts`                                                                                                                   |
+| `apps/server/src/handlers/profile.ts`                                    | `apps/server/src/modules/profile/api/handlers.ts`                                                                                                                |
+| `apps/server/src/handlers/join.ts`                                       | `apps/server/src/domains/join/api/handlers.ts`，原有邀请操作继续同组维护                                                                                         |
+| `apps/server/src/handlers/identity.ts`                                   | `apps/server/src/modules/identity/api/handlers.ts`                                                                                                               |
+| `apps/server/src/handlers/health.ts`                                     | `apps/server/src/http/system/handlers.ts`                                                                                                                        |
+| `apps/server/src/modules/storage/handlers.ts`、transport.ts              | `apps/server/src/modules/storage/api/`                                                                                                                           |
+| `apps/server/src/modules/notifications/handlers.ts`                      | `apps/server/src/modules/notifications/api/handlers.ts`                                                                                                          |
+| `apps/server/src/http/query-coercion.ts`、对应单测、multipart-counter.ts | `apps/server/src/http/shared/`                                                                                                                                   |
+| app 中的预处理/security 配置                                             | `apps/server/src/http/shared/request-normalization.ts`、`apps/server/src/http/security-handlers.ts` 和所属模块 API 的 security.ts                                |
+| app 中的 Contract 路径与前缀                                             | `apps/server/src/contract/document.ts`                                                                                                                           |
+| app 中的 serviceHandlers                                                 | `apps/server/src/http/service-handlers.ts`，app 继续 re-export 同一个映射                                                                                        |
 
 所有调用方 import、mock 路径、测试 fixture、CLI 和产物路径同步迁移。旧目录不留转发层，避免形成两套公共入口。根路径别名 `@server` 不改变；`db/`、`cli/` 与 runtime 入口保留原职责。
 
@@ -69,14 +69,14 @@
 
 各模块定义具名参数接口；复杂或复用参数放在 plugin-options.ts，简单参数可在 plugin.ts 就地导出。首次迁移公共模块接收 `{ services: ExistingServiceType }`，identity 的 services 保留可选值；join 的选项为 `{ services: { joinServices: JoinService; invitationServices: InvitationService } }`，同一插件暴露这两个已创建服务。实现先声明 `FastifyPluginAsync<Options>`，再用 fp 包装；fastify 元数据为 5.x。
 
-| 插件 name | 提供 decorator | dependencies / 必需 decorator |
-| --- | --- | --- |
-| business-auth | authServices | 无其他业务依赖 |
-| business-join | joinServices、invitationServices | 无其他业务插件前置依赖；两者在领域内部完成构造注入 |
-| business-profile | profileServices | 无其他业务依赖 |
-| business-identity | oidcServices | business-auth / authServices |
-| business-storage | storageServices | 无认证业务依赖 |
-| business-notifications | notifications | 无其他业务依赖 |
+| 插件 name              | 提供 decorator                   | dependencies / 必需 decorator                      |
+| ---------------------- | -------------------------------- | -------------------------------------------------- |
+| business-auth          | authServices                     | 无其他业务依赖                                     |
+| business-join          | joinServices、invitationServices | 无其他业务插件前置依赖；两者在领域内部完成构造注入 |
+| business-profile       | profileServices                  | 无其他业务依赖                                     |
+| business-identity      | oidcServices                     | business-auth / authServices                       |
+| business-storage       | storageServices                  | 无认证业务依赖                                     |
+| business-notifications | notifications                    | 无其他业务依赖                                     |
 
 依赖表只反映实际跨业务服务关系；数据库、时钟、适配器等仍由现有工厂注入。不要为了统一插件写法额外注册数据库服务或让 storage 业务依赖 HTTP 认证。
 
@@ -92,15 +92,15 @@
 
 API 子插件使用默认 fp，在 website-api 内共享作用域，并用唯一 name 声明依赖：
 
-| API 插件 | 必需依赖 |
-| --- | --- |
-| api-system | 无业务服务 |
-| api-auth | business-auth、business-profile；在插件内 decorateRequest(authSession) |
-| api-profile | business-profile、business-auth、api-auth；需要 authSession |
-| api-join | business-join、api-auth；检查 joinServices/invitationServices 并安装 join transport |
-| api-identity | business-auth、business-identity、api-auth；声明 identityClientId |
-| api-storage | business-storage、business-auth、api-auth；安装 storage transport |
-| api-notifications | business-notifications、api-auth；需要 authSession |
+| API 插件          | 必需依赖                                                                            |
+| ----------------- | ----------------------------------------------------------------------------------- |
+| api-system        | 无业务服务                                                                          |
+| api-auth          | business-auth、business-profile；在插件内 decorateRequest(authSession)              |
+| api-profile       | business-profile、business-auth、api-auth；需要 authSession                         |
+| api-join          | business-join、api-auth；检查 joinServices/invitationServices 并安装 join transport |
+| api-identity      | business-auth、business-identity、api-auth；声明 identityClientId                   |
+| api-storage       | business-storage、business-auth、api-auth；安装 storage transport                   |
+| api-notifications | business-notifications、api-auth；需要 authSession                                  |
 
 自己的 decorator 在插件体中创建，不能在该插件的前置 metadata 中把自己尚未创建的字段声明为必需依赖。其他插件通过 decorators.fastify/request 显式检查所消费的字段。
 
@@ -145,16 +145,16 @@ Glue 的 serviceHandlers 参数本身为 object，具体 handler map 可以保�
 
 ## 模块声明与 Client 类型入口
 
-| 声明拥有者 | 唯一字段 |
-| --- | --- |
-| `apps/server/src/modules/auth/fastify.d.ts` | FastifyInstance.authServices |
-| `apps/server/src/domains/join/fastify.d.ts` | joinServices、invitationServices；各自引用该领域内部 service 类型 |
-| `apps/server/src/modules/profile/fastify.d.ts` | profileServices |
-| `apps/server/src/modules/identity/fastify.d.ts` | oidcServices: OidcService 或 undefined |
-| `apps/server/src/modules/storage/fastify.d.ts` | storageServices |
-| `apps/server/src/modules/notifications/fastify.d.ts` | notifications |
-| `apps/server/src/modules/auth/api/fastify.d.ts` | FastifyRequest.authSession: SessionIdentity 或 undefined |
-| `apps/server/src/modules/identity/api/fastify.d.ts` | FastifyRequest.identityClientId: string 或 undefined |
+| 声明拥有者                                           | 唯一字段                                                          |
+| ---------------------------------------------------- | ----------------------------------------------------------------- |
+| `apps/server/src/modules/auth/fastify.d.ts`          | FastifyInstance.authServices                                      |
+| `apps/server/src/domains/join/fastify.d.ts`          | joinServices、invitationServices；各自引用该领域内部 service 类型 |
+| `apps/server/src/modules/profile/fastify.d.ts`       | profileServices                                                   |
+| `apps/server/src/modules/identity/fastify.d.ts`      | oidcServices: OidcService 或 undefined                            |
+| `apps/server/src/modules/storage/fastify.d.ts`       | storageServices                                                   |
+| `apps/server/src/modules/notifications/fastify.d.ts` | notifications                                                     |
+| `apps/server/src/modules/auth/api/fastify.d.ts`      | FastifyRequest.authSession: SessionIdentity 或 undefined          |
+| `apps/server/src/modules/identity/api/fastify.d.ts`  | FastifyRequest.identityClientId: string 或 undefined              |
 
 声明引用真实业务接口，含顶层 import type，按 NodeNext 使用 `.js` 相对 specifier。src include 自动纳入这些声明；不得 runtime import 声明文件、添加中央重复声明，或把可选身份声明为已认证。
 
@@ -182,12 +182,12 @@ Redocly bundle 输出 JSON，schema 命名冲突按 error 处理。生成结果�
 
 新增 `scripts/api/generate.mjs`，负责 lint、bundle、产物验证和 openapi-typescript。命令入口为：
 
-| 命令 | 行为 |
-| --- | --- |
-| pnpm api:lint | lint 根源 Contract 与引用文件 |
-| pnpm api:bundle | 打包并校验统一 JSON，不生成 Client 类型 |
-| pnpm api:generate | lint、bundle、生成 Client 类型；生成成功后才替换正式文件 |
-| pnpm api:check | 在临时目录生成 JSON/types，比较正式文件，过期或缺失时报错，不覆写正式文件 |
+| 命令              | 行为                                                                      |
+| ----------------- | ------------------------------------------------------------------------- |
+| pnpm api:lint     | lint 根源 Contract 与引用文件                                             |
+| pnpm api:bundle   | 打包并校验统一 JSON，不生成 Client 类型                                   |
+| pnpm api:generate | lint、bundle、生成 Client 类型；生成成功后才替换正式文件                  |
+| pnpm api:check    | 在临时目录生成 JSON/types，比较正式文件，过期或缺失时报错，不覆写正式文件 |
 
 临时目录属于当前任务工作区，失败清理只作用于已核验归属的目录。两份产物先完整生成，成功后写入；发生写入错误恢复原文件并失败。内容未变化则不写，避免产生 watch 循环。禁止安装依赖、读取 `.env.local`、连接数据库或启动 Fastify。
 
@@ -209,16 +209,16 @@ CORS 的 method 枚举改用同一 Server reader。测试增加 `tests/helpers/c
 
 开发、测试、构建入口使用同一个 API 生成脚本；源文件与产物的一致性由构建/CI 的 api:check 保证。production start 只读校验已生成 JSON 的结构及 operation 映射，不依赖 Redocly/类型生成器，不改写产物。集成检查和纯数据库 CLI 不因本次改造启动 API 或执行 schema 迁移。
 
-| 入口 | 接线位置与要求 |
-| --- | --- |
-| 根 pnpm dev | 在应用检查/启动前生成 Contract/types，失败时不启动应用；复用现有监督和资源归属规则 |
-| Server 单独 dev | `scripts/runtime/server.mjs` 的 dev 分支使用同一生成流程；避免根入口重复无效写入 |
-| pnpm test / test:watch | `scripts/runtime/tests.mjs` 在每轮 Website 测试前生成；watch 纳入 api 源文件，生成内容不变不写 |
-| pnpm build | `scripts/runtime/build.mjs` 的构建阶段先生成，保持无需数据库、Docker和后端秘密 |
-| Server 单独 build/typecheck | 显式使用同一生成/有效性检查入口，不能漏掉统一产物 |
-| pnpm typecheck | 接入 server-types 编译检查；现有 workspace 与 Client 类型检查保留 |
-| 直接 vitest | 先运行 api:generate 或 api:check；测试缺产物/结构错误明确失败 |
-| production start、Nginx render | 消费已生成 JSON，校验读取所需结构，缺失或非法即失败；新鲜度在构建/CI 先由 api:check 验证 |
+| 入口                           | 接线位置与要求                                                                                 |
+| ------------------------------ | ---------------------------------------------------------------------------------------------- |
+| 根 pnpm dev                    | 在应用检查/启动前生成 Contract/types，失败时不启动应用；复用现有监督和资源归属规则             |
+| Server 单独 dev                | `scripts/runtime/server.mjs` 的 dev 分支使用同一生成流程；避免根入口重复无效写入               |
+| pnpm test / test:watch         | `scripts/runtime/tests.mjs` 在每轮 Website 测试前生成；watch 纳入 api 源文件，生成内容不变不写 |
+| pnpm build                     | `scripts/runtime/build.mjs` 的构建阶段先生成，保持无需数据库、Docker和后端秘密                 |
+| Server 单独 build/typecheck    | 显式使用同一生成/有效性检查入口，不能漏掉统一产物                                              |
+| pnpm typecheck                 | 接入 server-types 编译检查；现有 workspace 与 Client 类型检查保留                              |
+| 直接 vitest                    | 先运行 api:generate 或 api:check；测试缺产物/结构错误明确失败                                  |
+| production start、Nginx render | 消费已生成 JSON，校验读取所需结构，缺失或非法即失败；新鲜度在构建/CI 先由 api:check 验证       |
 
 不新增 Contract 开发热重启机制；修改 Contract 后生成并重启 Server，沿用现有显式流程。test:watch 的源变更会触发完整生成与验证，不能监听生成物导致无限自触发。
 
@@ -226,15 +226,15 @@ CORS 的 method 枚举改用同一 Server reader。测试增加 `tests/helpers/c
 
 ### 插件与类型门禁
 
-| 门禁 | 必须证明的行为 |
-| --- | --- |
-| 服务插件 boot | 正确顺序可用；缺前置插件、缺字段、反向顺序在 ready 前失败 |
-| API 封装 | 根级测试 route 不受 API 请求字段/hook 影响；API 子插件能看到根服务及前置 auth 字段 |
-| onRoute | join/storage 的配置仍命中其 Glue operation，不覆盖其他 operation |
-| mapping | 重复 map 键、Contract 漏实现、多余实现和重复 operation 均被发现 |
-| 类型正反例 | 参数/返回类型提示正确；错误参数、字段拼写、optional 身份和声明冲突不被放宽 |
-| NodeNext build | 类型子路径无需 frontend runtime；dist 没有源别名和 runtime .d.ts import |
-| 依赖方向 | 业务核心没有 FastifyRequest/Reply 或 API import；公共模块不导入 domains；综合工厂位于应用组装层，新增跨业务依赖无环 |
+| 门禁           | 必须证明的行为                                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 服务插件 boot  | 正确顺序可用；缺前置插件、缺字段、反向顺序在 ready 前失败                                                           |
+| API 封装       | 根级测试 route 不受 API 请求字段/hook 影响；API 子插件能看到根服务及前置 auth 字段                                  |
+| onRoute        | join/storage 的配置仍命中其 Glue operation，不覆盖其他 operation                                                    |
+| mapping        | 重复 map 键、Contract 漏实现、多余实现和重复 operation 均被发现                                                     |
+| 类型正反例     | 参数/返回类型提示正确；错误参数、字段拼写、optional 身份和声明冲突不被放宽                                          |
+| NodeNext build | 类型子路径无需 frontend runtime；dist 没有源别名和 runtime .d.ts import                                             |
+| 依赖方向       | 业务核心没有 FastifyRequest/Reply 或 API import；公共模块不导入 domains；综合工厂位于应用组装层，新增跨业务依赖无环 |
 
 插件测试使用真实 Fastify 与轻量服务替身验证装配，不能以这些替代数据库/HTTP行为验收。原业务类涉及 private 成员时不要双重断言伪造完整实例；优先采用可实例化的轻量依赖或明确的公共 service 接口。
 
@@ -252,17 +252,17 @@ CORS 的 method 枚举改用同一 Server reader。测试增加 `tests/helpers/c
 
 ## 风险与控制
 
-| 风险 | 控制与检测 |
-| --- | --- |
-| 目录移动漏改 import/mock，产物无法加载 | 全量引用清单、workspace typecheck、Server build、dist 静态 import 检查 |
-| 全局类型提示掩盖未注册 decorator | dependencies/decorators 检查与真实 ready 负向测试 |
-| API 子插件隔离导致 transport hook 无效 | 子插件共享 API 作用域、先于 Glue；实际上传/下载测试 |
-| 模块源文件 ref 改写错误，schema 名称漂移 | bundle 严格验证、schema 名称与语义基线比较、Client 类型差异审查 |
-| 只迁移 Server，遗漏 form/CORS/Nginx/tests | 所有旧 YAML reader 清单逐项收敛，回归测试覆盖读取链路 |
-| NodeNext 编译拉入 Client 实现 | 只导出生成声明的 types 子路径、type-only import、实际 Server build |
-| 多处创建/关闭资源或启动 worker | 保留 server.ts 所有权，插件只接收现有服务，生命周期回归检查 |
-| 生成物陈旧或 watch 反馈循环 | api:check、内容不变不写、源文件触发与生成物排除 |
-| 重构同时改变验证或身份语义 | 冻结基线；业务变更另行设计，测试不能靠放宽 schema/类型通过 |
+| 风险                                      | 控制与检测                                                             |
+| ----------------------------------------- | ---------------------------------------------------------------------- |
+| 目录移动漏改 import/mock，产物无法加载    | 全量引用清单、workspace typecheck、Server build、dist 静态 import 检查 |
+| 全局类型提示掩盖未注册 decorator          | dependencies/decorators 检查与真实 ready 负向测试                      |
+| API 子插件隔离导致 transport hook 无效    | 子插件共享 API 作用域、先于 Glue；实际上传/下载测试                    |
+| 模块源文件 ref 改写错误，schema 名称漂移  | bundle 严格验证、schema 名称与语义基线比较、Client 类型差异审查        |
+| 只迁移 Server，遗漏 form/CORS/Nginx/tests | 所有旧 YAML reader 清单逐项收敛，回归测试覆盖读取链路                  |
+| NodeNext 编译拉入 Client 实现             | 只导出生成声明的 types 子路径、type-only import、实际 Server build     |
+| 多处创建/关闭资源或启动 worker            | 保留 server.ts 所有权，插件只接收现有服务，生命周期回归检查            |
+| 生成物陈旧或 watch 反馈循环               | api:check、内容不变不写、源文件触发与生成物排除                        |
+| 重构同时改变验证或身份语义                | 冻结基线；业务变更另行设计，测试不能靠放宽 schema/类型通过             |
 
 ## 落地顺序与回滚
 

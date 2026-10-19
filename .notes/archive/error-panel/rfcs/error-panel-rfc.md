@@ -22,14 +22,14 @@
 
 已核对的源码事实：
 
-| 位置 | 当前行为与问题 |
-| --- | --- |
-| `apps/web/src/invitations/InvitationRegistrationFlow.tsx` | `checkFailure` 同时写入本地 `error`、表单 `root.server` 并调用 `ExMessage.error`；外层再渲染 Alert。 |
-| 同一流程的限流分支 | 429 在上述输出之后只覆盖外层文案，导致不同位置反馈不一致。 |
-| 同一流程的自动验证与重发 | 自动验证先切换到验证码步骤；`[step, error]` effect 将所有错误同步为验证码字段错误，重发失败也会被错误归属。 |
-| `packages/components/src/auth/InvitationForms.tsx` | 三个独立 RHF 表单已有字段错误及 `root.server` Alert，均暴露 `AuthFormHandle`。 |
-| `apps/web/src/pages/AuthPage/InvitationRegistrationPage.tsx` | 页面容器使用共享流程；弹窗也使用该流程，无需另建反馈逻辑。 |
-| `packages/components/src/ContentAreaState.tsx` | 是带必需重试回调的页面状态组件，保留现有职责。 |
+| 位置                                                         | 当前行为与问题                                                                                              |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `apps/web/src/invitations/InvitationRegistrationFlow.tsx`    | `checkFailure` 同时写入本地 `error`、表单 `root.server` 并调用 `ExMessage.error`；外层再渲染 Alert。        |
+| 同一流程的限流分支                                           | 429 在上述输出之后只覆盖外层文案，导致不同位置反馈不一致。                                                  |
+| 同一流程的自动验证与重发                                     | 自动验证先切换到验证码步骤；`[step, error]` effect 将所有错误同步为验证码字段错误，重发失败也会被错误归属。 |
+| `packages/components/src/auth/InvitationForms.tsx`           | 三个独立 RHF 表单已有字段错误及 `root.server` Alert，均暴露 `AuthFormHandle`。                              |
+| `apps/web/src/pages/AuthPage/InvitationRegistrationPage.tsx` | 页面容器使用共享流程；弹窗也使用该流程，无需另建反馈逻辑。                                                  |
+| `packages/components/src/ContentAreaState.tsx`               | 是带必需重试回调的页面状态组件，保留现有职责。                                                              |
 
 表单规则以 `.ai/rules/frontend-forms.md` 为准，临时通知以 `.ai/rules/frontend-notifications.md` 为准。持久错误保留在 RHF，成功通知继续使用 ExUI `ExMessage`。API 请求继续经 `@workspace/api-client`，保持现有 `alert: false`。
 
@@ -58,16 +58,16 @@ export interface ErrorPanelProps {
 }
 ```
 
-| 输入或状态 | 规范行为 |
-| --- | --- |
-| 空 `errors` | 返回 `null`，无容器、边框、间距或播报。 |
-| 非空 `errors` | 按传入顺序展示完整列表；调用方保证 `id` 唯一稳定、`message` 非空。不积累历史，不按文案去重。 |
-| 单条 / 多条 | 单条无编号或数量；多条有轻量序号和条目分隔线。只有提供标题且多条时显示数量。 |
-| `description` | 可选的修正说明；缺省不留占位。全部文案按文本渲染，不接收 HTML 或异常对象。 |
-| `title` | 缺省不渲染标题区。提供时使用小图标及主题主文本；正文与说明使用主、次文本色。 |
-| `maxHeight` | 整体 border-box 的像素上限，默认 240。有限且至少 160 的数值直接生效；缺省、非有限或小于 160 均回退 240。 |
-| `action` | 调用方提供现有 ExUI Button 或路由控件。`undefined` / `null` 时完全不渲染 footer，含其分隔线、提示和留白。 |
-| `id` / `className` | 透传根元素；`id` 可供输入的描述关联使用。调用方样式不得破坏高度、滚动及可访问性契约。 |
+| 输入或状态         | 规范行为                                                                                                  |
+| ------------------ | --------------------------------------------------------------------------------------------------------- |
+| 空 `errors`        | 返回 `null`，无容器、边框、间距或播报。                                                                   |
+| 非空 `errors`      | 按传入顺序展示完整列表；调用方保证 `id` 唯一稳定、`message` 非空。不积累历史，不按文案去重。              |
+| 单条 / 多条        | 单条无编号或数量；多条有轻量序号和条目分隔线。只有提供标题且多条时显示数量。                              |
+| `description`      | 可选的修正说明；缺省不留占位。全部文案按文本渲染，不接收 HTML 或异常对象。                                |
+| `title`            | 缺省不渲染标题区。提供时使用小图标及主题主文本；正文与说明使用主、次文本色。                              |
+| `maxHeight`        | 整体 border-box 的像素上限，默认 240。有限且至少 160 的数值直接生效；缺省、非有限或小于 160 均回退 240。  |
+| `action`           | 调用方提供现有 ExUI Button 或路由控件。`undefined` / `null` 时完全不渲染 footer，含其分隔线、提示和留白。 |
+| `id` / `className` | 透传根元素；`id` 可供输入的描述关联使用。调用方样式不得破坏高度、滚动及可访问性契约。                     |
 
 组件不访问 API、不导入业务路由、不映射状态码、不管理错误来源，也不自动执行 Action。
 
@@ -118,18 +118,18 @@ export interface InvitationFormHandle {
 
 ### 分支映射
 
-| 分支 | 唯一展示位置 | 文案与操作 |
-| --- | --- | --- |
-| URL 入口参数无效 | 邮箱 `root.server` | “注册入口参数无效，请重新填写邮箱”；无 Action。 |
-| 邮箱检查 400 | 邮箱 FieldError | “请输入有效的邮箱地址”；无流程面板。手动与自动入口遵循同一映射。 |
-| 邮箱检查 404 | 邮箱 `root.server` | 标题“暂时无法注册”；正文“未找到该邮箱的申请。”；说明“请先申请加入，获批后再回来注册。”；Action 调用已有 `onJoin`。 |
-| 邮箱检查 409 | 邮箱 `root.server` | “该邮箱暂不符合注册条件，请确认申请已通过且邀请仍有效”；无强制 Action。 |
-| 邮箱检查 429 | 邮箱 `root.server` | 有有效正数等待时间时“检查失败，请在 N 秒后重试”，否则“检查失败，请稍后重试”；映射一次，不先输出通用错误。 |
-| 邮箱检查网络或其它失败 | 邮箱 `root.server` | “检查失败，请重试”；重试使用现有“继续”，无需 footer。 |
-| 手动 / 自动验证码无效、过期或锁定 | 验证码 FieldError | 保留现有固定文案、重试状态及锁定计时；不复制到面板。 |
-| 重发失败 | 验证码表单 `root.server` | “发送失败，请重试”；不标记验证码字段无效，使用现有重发控件。 |
-| 完成注册验证授权失效 | 资料表单 `root.server` | “验证已过期，请返回邮箱重新验证”；使用现有返回控件，无须重复 Action。 |
-| 完成注册其它失败 | 资料表单 `root.server` | “注册失败，请重试”；使用现有提交控件。 |
+| 分支                              | 唯一展示位置             | 文案与操作                                                                                                         |
+| --------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| URL 入口参数无效                  | 邮箱 `root.server`       | “注册入口参数无效，请重新填写邮箱”；无 Action。                                                                    |
+| 邮箱检查 400                      | 邮箱 FieldError          | “请输入有效的邮箱地址”；无流程面板。手动与自动入口遵循同一映射。                                                   |
+| 邮箱检查 404                      | 邮箱 `root.server`       | 标题“暂时无法注册”；正文“未找到该邮箱的申请。”；说明“请先申请加入，获批后再回来注册。”；Action 调用已有 `onJoin`。 |
+| 邮箱检查 409                      | 邮箱 `root.server`       | “该邮箱暂不符合注册条件，请确认申请已通过且邀请仍有效”；无强制 Action。                                            |
+| 邮箱检查 429                      | 邮箱 `root.server`       | 有有效正数等待时间时“检查失败，请在 N 秒后重试”，否则“检查失败，请稍后重试”；映射一次，不先输出通用错误。          |
+| 邮箱检查网络或其它失败            | 邮箱 `root.server`       | “检查失败，请重试”；重试使用现有“继续”，无需 footer。                                                              |
+| 手动 / 自动验证码无效、过期或锁定 | 验证码 FieldError        | 保留现有固定文案、重试状态及锁定计时；不复制到面板。                                                               |
+| 重发失败                          | 验证码表单 `root.server` | “发送失败，请重试”；不标记验证码字段无效，使用现有重发控件。                                                       |
+| 完成注册验证授权失效              | 资料表单 `root.server`   | “验证已过期，请返回邮箱重新验证”；使用现有返回控件，无须重复 Action。                                              |
+| 完成注册其它失败                  | 资料表单 `root.server`   | “注册失败，请重试”；使用现有提交控件。                                                                             |
 
 等待时间沿用响应的 `retryAfterSeconds`，展示前验证为有限正数。只展示固定的用户文案，不回显异常 `message`、堆栈、验证码或完成授权。锁定剩余时间是控件状态提示，与错误正文职责不同；保留现有计时与操作禁用规则。
 
@@ -147,25 +147,25 @@ export interface InvitationFormHandle {
 
 ## 文件与依赖边界
 
-| 拟新增或修改位置 | 责任 |
-| --- | --- |
-| `packages/components/src/ErrorPanel.tsx`、`packages/components/src/ErrorPanel.module.scss` | 纯展示、可访问性、可选区域及滚动。 |
-| `packages/components/src/auth/invitationFeedback.ts` | 注册专用错误类型、根错误到展示数据的静态适配。 |
-| `packages/components/src/auth/InvitationForms.tsx` | 三个表单的 root 面板、注册专用 handle、描述关联及 Action 回调。 |
-| `packages/components/src/index.ts` | 新公开导出；不改变既有登录导出。 |
-| `apps/web/src/invitations/InvitationRegistrationFlow.tsx` | 单次错误映射、挂载交接、移除重复输出。 |
-| 组件、表单及注册流程测试 | 验证展示契约与生命周期分支。 |
-| `tests/browser/error-panel-fixture.tsx`、`tests/browser/error-panel.mjs` | 独立组件真实布局验收，复用现有浏览器测试运行方式。 |
+| 拟新增或修改位置                                                                           | 责任                                                            |
+| ------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| `packages/components/src/ErrorPanel.tsx`、`packages/components/src/ErrorPanel.module.scss` | 纯展示、可访问性、可选区域及滚动。                              |
+| `packages/components/src/auth/invitationFeedback.ts`                                       | 注册专用错误类型、根错误到展示数据的静态适配。                  |
+| `packages/components/src/auth/InvitationForms.tsx`                                         | 三个表单的 root 面板、注册专用 handle、描述关联及 Action 回调。 |
+| `packages/components/src/index.ts`                                                         | 新公开导出；不改变既有登录导出。                                |
+| `apps/web/src/invitations/InvitationRegistrationFlow.tsx`                                  | 单次错误映射、挂载交接、移除重复输出。                          |
+| 组件、表单及注册流程测试                                                                   | 验证展示契约与生命周期分支。                                    |
+| `tests/browser/error-panel-fixture.tsx`、`tests/browser/error-panel.mjs`                   | 独立组件真实布局验收，复用现有浏览器测试运行方式。              |
 
 使用现有 React、RHF、Zod、ExUI、lucide、Vitest 和浏览器测试工具，不新增依赖。组件导入 ExUI 的公开包入口；安装包实现核对不意味着允许深层 import。页面与弹窗通过共享流程同时获得修复。
 
 ## 备选方案与风险
 
-| 方案 | 取舍 |
-| --- | --- |
-| 所有错误都放字段下 | 简短字段错误清晰，但难以归属跨字段、重发或流程失败，也无法满足通用多条错误能力。字段专属错误仍保留此方式。 |
-| B：柔和、限高的通用面板 | 满足多条、可选操作与复用；需要处理真实滚动、可访问性及表单交接。已获用户确认。 |
-| 改为独立加入引导状态 | 可突出申请操作，但会改变注册步骤结构，且无法统一临时失败和后续多条错误。 |
+| 方案                    | 取舍                                                                                                       |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 所有错误都放字段下      | 简短字段错误清晰，但难以归属跨字段、重发或流程失败，也无法满足通用多条错误能力。字段专属错误仍保留此方式。 |
+| B：柔和、限高的通用面板 | 满足多条、可选操作与复用；需要处理真实滚动、可访问性及表单交接。已获用户确认。                             |
+| 改为独立加入引导状态    | 可突出申请操作，但会改变注册步骤结构，且无法统一临时失败和后续多条错误。                                   |
 
 主要风险及验证：
 

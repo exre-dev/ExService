@@ -3,7 +3,11 @@ import { fileURLToPath } from 'node:url'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { createVerifiedPool, type DatabaseOptions } from '@server/src/db/client.js'
-import { APPLICATION_TABLES, BASELINE_APPLICATION_TABLES, assertDatabaseReady } from '@server/src/db/schema-check.js'
+import {
+  APPLICATION_TABLES,
+  BASELINE_APPLICATION_TABLES,
+  assertDatabaseReady,
+} from '@server/src/db/schema-check.js'
 
 const MIGRATIONS_FOLDER = resolve(dirname(fileURLToPath(import.meta.url)), '../../drizzle')
 const SAFE_IDENTIFIER = /^[a-z_][a-z0-9_]*$/
@@ -12,54 +16,96 @@ const SAFE_IDENTIFIER = /^[a-z_][a-z0-9_]*$/
 const COMPLETE_TABLE_SETS = [
   BASELINE_APPLICATION_TABLES, // 0000
   [...BASELINE_APPLICATION_TABLES, 'auth_oidc_flows', 'auth_oidc_bindings', 'auth_identity_outbox'], // 0001
-  APPLICATION_TABLES.filter(table => !table.startsWith('support_feedback_')), // 0002
+  APPLICATION_TABLES.filter((table) => !table.startsWith('support_feedback_')), // 0002
   APPLICATION_TABLES,
 ]
 
-export interface MigrationOptions extends DatabaseOptions { migrationsSchema?: string }
+export interface MigrationOptions extends DatabaseOptions {
+  migrationsSchema?: string
+}
 
 /** Explicit migration body shared by the CLI and isolated PostgreSQL tests. */
 export async function runMigrations(options: MigrationOptions = {}): Promise<void> {
   const schema = options.searchPath ?? 'public'
   const migrationsSchema = options.migrationsSchema ?? 'drizzle'
-  if (!SAFE_IDENTIFIER.test(schema) || !SAFE_IDENTIFIER.test(migrationsSchema)) throw new Error('无效的 migration schema。')
-  if (schema !== 'public' && schema !== migrationsSchema) throw new Error('测试 migration journal 必须和隔离业务 schema 一致。')
+  if (!SAFE_IDENTIFIER.test(schema) || !SAFE_IDENTIFIER.test(migrationsSchema))
+    throw new Error('无效的 migration schema。')
+  if (schema !== 'public' && schema !== migrationsSchema)
+    throw new Error('测试 migration journal 必须和隔离业务 schema 一致。')
   const pool = await createVerifiedPool(options)
   try {
-    const objects = await pool.query<{ relname: string; relkind: string }>(`SELECT c.relname, c.relkind
+    const objects = await pool.query<{ relname: string; relkind: string }>(
+      `SELECT c.relname, c.relkind
       FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-      WHERE n.nspname = $1 AND c.relkind IN ('r','p','v','m','S','f')`, [schema])
-    const found = new Set(objects.rows.filter(row => row.relkind === 'r' || row.relkind === 'p').map(row => row.relname))
-    const unknown = objects.rows.filter(row =>
-      !APPLICATION_TABLES.includes(row.relname as typeof APPLICATION_TABLES[number]) &&
-      !(schema === migrationsSchema && (row.relname === '__drizzle_migrations' ||
-        (row.relkind === 'S' && row.relname === '__drizzle_migrations_id_seq'))))
+      WHERE n.nspname = $1 AND c.relkind IN ('r','p','v','m','S','f')`,
+      [schema],
+    )
+    const found = new Set(
+      objects.rows
+        .filter((row) => row.relkind === 'r' || row.relkind === 'p')
+        .map((row) => row.relname),
+    )
+    const unknown = objects.rows.filter(
+      (row) =>
+        !APPLICATION_TABLES.includes(row.relname as (typeof APPLICATION_TABLES)[number]) &&
+        !(
+          schema === migrationsSchema &&
+          (row.relname === '__drizzle_migrations' ||
+            (row.relkind === 'S' && row.relname === '__drizzle_migrations_id_seq'))
+        ),
+    )
     if (unknown.length) throw new Error('目标 schema 包含非本应用数据表；拒绝迁移。')
-    const appTables = [...found].filter(table => APPLICATION_TABLES.includes(table as typeof APPLICATION_TABLES[number]))
-    if (appTables.length !== 0 && !COMPLETE_TABLE_SETS.some(tables =>
-      tables.length === appTables.length && tables.every(table => found.has(table)))) {
+    const appTables = [...found].filter((table) =>
+      APPLICATION_TABLES.includes(table as (typeof APPLICATION_TABLES)[number]),
+    )
+    if (
+      appTables.length !== 0 &&
+      !COMPLETE_TABLE_SETS.some(
+        (tables) => tables.length === appTables.length && tables.every((table) => found.has(table)),
+      )
+    ) {
       throw new Error('Server schema 部分迁移；请人工核查，不自动修复。')
     }
-    const journal = await pool.query(`SELECT 1 FROM pg_catalog.pg_tables
-      WHERE schemaname = $1 AND tablename = '__drizzle_migrations'`, [migrationsSchema])
-    if ((appTables.length === 0 && journal.rows.length !== 0) ||
-        (appTables.length !== 0 && journal.rows.length !== 1)) {
+    const journal = await pool.query(
+      `SELECT 1 FROM pg_catalog.pg_tables
+      WHERE schemaname = $1 AND tablename = '__drizzle_migrations'`,
+      [migrationsSchema],
+    )
+    if (
+      (appTables.length === 0 && journal.rows.length !== 0) ||
+      (appTables.length !== 0 && journal.rows.length !== 1)
+    ) {
       throw new Error('Server schema 与 migration 记录不一致；请人工核查，不自动修复。')
     }
     if (migrationsSchema !== schema) {
-      const journalObjects = await pool.query<{ relname: string; relkind: string }>(`SELECT c.relname, c.relkind
+      const journalObjects = await pool.query<{ relname: string; relkind: string }>(
+        `SELECT c.relname, c.relkind
         FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-        WHERE n.nspname = $1 AND c.relkind IN ('r','p','v','m','S','f')`, [migrationsSchema])
-      if (journalObjects.rows.some(row => row.relname !== '__drizzle_migrations' &&
-          !(row.relkind === 'S' && row.relname === '__drizzle_migrations_id_seq'))) {
+        WHERE n.nspname = $1 AND c.relkind IN ('r','p','v','m','S','f')`,
+        [migrationsSchema],
+      )
+      if (
+        journalObjects.rows.some(
+          (row) =>
+            row.relname !== '__drizzle_migrations' &&
+            !(row.relkind === 'S' && row.relname === '__drizzle_migrations_id_seq'),
+        )
+      ) {
         throw new Error('migration schema 含非本应用对象；拒绝迁移。')
       }
     }
     await migrate(drizzle(pool), { migrationsFolder: MIGRATIONS_FOLDER, migrationsSchema })
-    const db = { query: async <Row extends Record<string, unknown>>(sql: string, values: readonly unknown[] = []) => {
-      const result = await pool.query<Row>(sql, [...values])
-      return { rows: result.rows, rowCount: result.rowCount }
-    } }
+    const db = {
+      query: async <Row extends Record<string, unknown>>(
+        sql: string,
+        values: readonly unknown[] = [],
+      ) => {
+        const result = await pool.query<Row>(sql, [...values])
+        return { rows: result.rows, rowCount: result.rowCount }
+      },
+    }
     await assertDatabaseReady(db, schema, migrationsSchema)
-  } finally { await pool.end() }
+  } finally {
+    await pool.end()
+  }
 }

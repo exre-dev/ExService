@@ -15,13 +15,13 @@
 
 ## Hydra、第三方登录与 Redis 的职责
 
-| 能力 | 用途与处理 |
-| --- | --- |
-| Website 账号与登录 | 管理用户、凭据、本站会话和账号状态；外部账号接入和关联属于该认证体系。保留。 |
-| Hydra | 提供 OAuth 2.0/OIDC 授权与令牌，委托 Website 完成登录、授权确认和退出，供其他应用使用本站账号。保留服务、数据库、issuer 与协议入口。 |
-| 本地 SSO 接收流程 | 现有 `auth/sso` operation、CLI 和成功页继续保留；该流程不替代 Hydra OIDC。 |
-| Outline | 当前身份系统的一个文档客户端。删除应用、客户端登记、Docs 回调、附件、协作与专属身份通知。 |
-| Redis | 当前由 Outline 使用，Website 业务代码和 Hydra 容器配置没有 Redis 消费方。随 Outline 移除，不为未设计的功能引入 Redis。 |
+| 能力               | 用途与处理                                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Website 账号与登录 | 管理用户、凭据、本站会话和账号状态；外部账号接入和关联属于该认证体系。保留。                                                         |
+| Hydra              | 提供 OAuth 2.0/OIDC 授权与令牌，委托 Website 完成登录、授权确认和退出，供其他应用使用本站账号。保留服务、数据库、issuer 与协议入口。 |
+| 本地 SSO 接收流程  | 现有 `auth/sso` operation、CLI 和成功页继续保留；该流程不替代 Hydra OIDC。                                                           |
+| Outline            | 当前身份系统的一个文档客户端。删除应用、客户端登记、Docs 回调、附件、协作与专属身份通知。                                            |
+| Redis              | 当前由 Outline 使用，Website 业务代码和 Hydra 容器配置没有 Redis 消费方。随 Outline 移除，不为未设计的功能引入 Redis。               |
 
 Hydra 将用户认证委托给登录应用，不自行实现 Google、QQ 等外部账号的接入与关联。职责依据见 [Ory Hydra](https://www.ory.com/hydra) 与 [登录和授权确认流程](https://www.ory.com/docs/oauth2-oidc/custom-login-consent/flow)。工程实际依赖以源码为准。
 
@@ -65,15 +65,15 @@ Compose 保留 PostgreSQL 与 Hydra，删除 Redis。Hydra admin 继续仅供受
 
 ## 工程与配置清理
 
-| 范围 | 处理 |
-| --- | --- |
-| 子模块 | 移除 `apps/outline` gitlink、`.gitmodules` 登记和 workspace 排除项，保留远端仓库和其他 worktree 使用的 Git 对象。 |
-| 工具与依赖 | 删除 Outline 的 Yarn 安装、版本检查、构建、测试和监听要求；保留 Node、pnpm 及其需要的 Corepack。仅删除无其他消费者的包和工具配置。 |
-| 通用工具 | 将 Website/Hydra 仍使用的进程监督、锁、归属核验、脱敏及工具发现迁到 `scripts/runtime/`，替换导入后删除旧文档脚本。 |
-| 配置 | 删除 Outline、Redis、Docs callback 设置；保留 Website、Hydra、第三方认证及通用 OIDC 的数据库、issuer、密钥、端口、镜像和环境隔离。已有 `.env.local` 按键清理，保留现役原值且不回显秘密。 |
-| 代理 | 删除 Outline HTTP、static、附件和 WebSocket 转发；保留 Website API、Hydra public 白名单、身份路由、内部接口拒绝、SPA fallback、转发信任和上传预算。 |
-| 监督与准备 | 删除 Outline 进程、schema、marker、管理员和存储检查；保留 Website/Hydra 的健康、客户端、归属、日志和失败回收检查。 |
-| 文档 | 同步当前 README、AGENTS、架构与运行说明及 `.ai/` 索引；历史设计继续保留历史属性。 |
+| 范围       | 处理                                                                                                                                                                                     |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 子模块     | 移除 `apps/outline` gitlink、`.gitmodules` 登记和 workspace 排除项，保留远端仓库和其他 worktree 使用的 Git 对象。                                                                        |
+| 工具与依赖 | 删除 Outline 的 Yarn 安装、版本检查、构建、测试和监听要求；保留 Node、pnpm 及其需要的 Corepack。仅删除无其他消费者的包和工具配置。                                                       |
+| 通用工具   | 将 Website/Hydra 仍使用的进程监督、锁、归属核验、脱敏及工具发现迁到 `scripts/runtime/`，替换导入后删除旧文档脚本。                                                                       |
+| 配置       | 删除 Outline、Redis、Docs callback 设置；保留 Website、Hydra、第三方认证及通用 OIDC 的数据库、issuer、密钥、端口、镜像和环境隔离。已有 `.env.local` 按键清理，保留现役原值且不回显秘密。 |
+| 代理       | 删除 Outline HTTP、static、附件和 WebSocket 转发；保留 Website API、Hydra public 白名单、身份路由、内部接口拒绝、SPA fallback、转发信任和上传预算。                                      |
+| 监督与准备 | 删除 Outline 进程、schema、marker、管理员和存储检查；保留 Website/Hydra 的健康、客户端、归属、日志和失败回收检查。                                                                       |
+| 文档       | 同步当前 README、AGENTS、架构与运行说明及 `.ai/` 索引；历史设计继续保留历史属性。                                                                                                        |
 
 ## Contract 与数据库
 
@@ -85,17 +85,17 @@ Compose 保留 PostgreSQL 与 Hydra，删除 Redis。Hydra admin 继续仅供受
 
 ## 命令行为
 
-| 命令 | 退役后行为 |
-| --- | --- |
-| `pnpm service:start/stop/status/logs` | 管理 PostgreSQL 与 Hydra，删除 Redis；保留归属核验及日常停止时保留数据的规则。 |
-| `pnpm dev` | 生成 Contract，检查 Website/Hydra 准备状态并启动 Website，不启动或检查 Outline。 |
-| `pnpm build` | 构建 SDK、Website Web/Server，无需 Outline checkout，不连接数据库或启动 Docker。 |
-| `pnpm test` / `pnpm test:watch` | 保留 Website、身份与通用运行工具测试，移除 Outline 测试和文件监听。数据库测试继续使用 Testcontainers。 |
-| `pnpm start/stop/logs` | 保留 Website/Hydra 的原生运行管理，删除 Outline 项。 |
-| `pnpm db:migrate` / `pnpm db:reset` | 保持 Website 显式维护语义与现役 schema 检查。 |
-| `pnpm infra init/migrate` | 保留 Hydra 数据库准备和迁移，移除 Outline 内容；普通启动不隐式执行。 |
-| `pnpm infra bootstrap` | 删除旧 Outline 管理员准备动作，现役客户端由身份准备流程登记，不自动授权管理员。 |
-| `pnpm infra convert/nginx` | 保留 Website/Hydra 仍有用途的转换与代理生成，移除文档和 Redis 强制项。 |
+| 命令                                  | 退役后行为                                                                                             |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `pnpm service:start/stop/status/logs` | 管理 PostgreSQL 与 Hydra，删除 Redis；保留归属核验及日常停止时保留数据的规则。                         |
+| `pnpm dev`                            | 生成 Contract，检查 Website/Hydra 准备状态并启动 Website，不启动或检查 Outline。                       |
+| `pnpm build`                          | 构建 SDK、Website Web/Server，无需 Outline checkout，不连接数据库或启动 Docker。                       |
+| `pnpm test` / `pnpm test:watch`       | 保留 Website、身份与通用运行工具测试，移除 Outline 测试和文件监听。数据库测试继续使用 Testcontainers。 |
+| `pnpm start/stop/logs`                | 保留 Website/Hydra 的原生运行管理，删除 Outline 项。                                                   |
+| `pnpm db:migrate` / `pnpm db:reset`   | 保持 Website 显式维护语义与现役 schema 检查。                                                          |
+| `pnpm infra init/migrate`             | 保留 Hydra 数据库准备和迁移，移除 Outline 内容；普通启动不隐式执行。                                   |
+| `pnpm infra bootstrap`                | 删除旧 Outline 管理员准备动作，现役客户端由身份准备流程登记，不自动授权管理员。                        |
+| `pnpm infra convert/nginx`            | 保留 Website/Hydra 仍有用途的转换与代理生成，移除文档和 Redis 强制项。                                 |
 
 ## 现有开发资源
 

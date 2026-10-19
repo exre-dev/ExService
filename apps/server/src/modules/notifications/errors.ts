@@ -29,9 +29,15 @@ const DETAILS: Record<NotificationErrorCode, { statusCode: number; message: stri
   NOTIFICATION_STATE_CONFLICT: { statusCode: 409, message: '通知状态已变化，请刷新后重试。' },
   NOTIFICATION_TOKEN_INVALID: { statusCode: 400, message: '操作令牌无效，请重新发起。' },
   NOTIFICATION_TOKEN_EXPIRED: { statusCode: 410, message: '操作令牌已过期，请重新发起。' },
-  NOTIFICATION_REQUEST_CONFLICT: { statusCode: 409, message: '相同请求标识携带了不同内容，请确认后重试。' },
+  NOTIFICATION_REQUEST_CONFLICT: {
+    statusCode: 409,
+    message: '相同请求标识携带了不同内容，请确认后重试。',
+  },
   NOTIFICATION_BATCH_NOT_FOUND: { statusCode: 404, message: '清理记录不存在。' },
-  NOTIFICATION_PREFERENCES_CONFLICT: { statusCode: 409, message: '通知偏好已变化，请重新读取后再保存。' },
+  NOTIFICATION_PREFERENCES_CONFLICT: {
+    statusCode: 409,
+    message: '通知偏好已变化，请重新读取后再保存。',
+  },
   NOTIFICATION_AUDIENCE_INVALID: { statusCode: 400, message: '通知受众无效。' },
   NOTIFICATION_EVENT_CONFLICT: { statusCode: 409, message: '相同事件标识携带了不同内容。' },
   NOTIFICATION_PUBLISH_FORBIDDEN: { statusCode: 403, message: '当前身份不能发布该通知。' },

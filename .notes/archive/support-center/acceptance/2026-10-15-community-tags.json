@@ -1,0 +1,24 @@
+{
+  "verifiedAt": "2026-10-15T09:06:42.542Z",
+  "spaceId": "90186006983",
+  "listId": "1100500000004310",
+  "created": ["投诉", "反馈"],
+  "tags": [
+    {
+      "name": "反馈",
+      "tag_fg": "#667085",
+      "tag_bg": "#F2F4F7"
+    },
+    {
+      "name": "投诉",
+      "tag_fg": "#667085",
+      "tag_bg": "#F2F4F7"
+    }
+  ],
+  "encodingCorrection": {
+    "accidentalTag": "??",
+    "cleanup": "verified_removed_after_ui_rename",
+    "userConfirmed": true
+  },
+  "scope": "User-authorized setup of classification tags only; no tasks or attachments created."
+}

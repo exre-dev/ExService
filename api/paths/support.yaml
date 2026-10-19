@@ -13,7 +13,7 @@
     security:
       - bearerAuth: []
     responses:
-      "200":
+      '200':
         description: 当前安全进度；只有 completed 才表示全部完成。
         headers:
           X-Request-Id:
@@ -24,25 +24,25 @@
           application/json:
             schema:
               $ref: ../openapi.yaml#/components/schemas/FeedbackOptions
-      "400":
+      '400':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "401":
+      '401':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "404":
+      '404':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "408":
+      '408':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "409":
+      '409':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "413":
+      '413':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "415":
+      '415':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "429":
+      '429':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "500":
+      '500':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "503":
+      '503':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
       default:
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
@@ -63,7 +63,7 @@
           schema:
             $ref: ../openapi.yaml#/components/schemas/FeedbackPrepare
     responses:
-      "200":
+      '200':
         description: 当前安全进度；只有 completed 才表示全部完成。
         headers:
           X-Request-Id:
@@ -74,7 +74,7 @@
           application/json:
             schema:
               $ref: ../openapi.yaml#/components/schemas/FeedbackSnapshot
-      "201":
+      '201':
         description: 当前安全进度；只有 completed 才表示全部完成。
         headers:
           X-Request-Id:
@@ -85,25 +85,25 @@
           application/json:
             schema:
               $ref: ../openapi.yaml#/components/schemas/FeedbackSnapshot
-      "400":
+      '400':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "401":
+      '401':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "404":
+      '404':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "408":
+      '408':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "409":
+      '409':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "413":
+      '413':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "415":
+      '415':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "429":
+      '429':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "500":
+      '500':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "503":
+      '503':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
       default:
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
@@ -122,7 +122,7 @@
         schema:
           $ref: ../openapi.yaml#/components/schemas/Uuid
     responses:
-      "200":
+      '200':
         description: 当前安全进度；只有 completed 才表示全部完成。
         headers:
           X-Request-Id:
@@ -133,25 +133,25 @@
           application/json:
             schema:
               $ref: ../openapi.yaml#/components/schemas/FeedbackSnapshot
-      "400":
+      '400':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "401":
+      '401':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "404":
+      '404':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "408":
+      '408':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "409":
+      '409':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "413":
+      '413':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "415":
+      '415':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "429":
+      '429':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "500":
+      '500':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "503":
+      '503':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
       default:
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
@@ -170,7 +170,7 @@
         schema:
           $ref: ../openapi.yaml#/components/schemas/Uuid
     responses:
-      "200":
+      '200':
         description: 当前安全进度；只有 completed 才表示全部完成。
         headers:
           X-Request-Id:
@@ -181,25 +181,25 @@
           application/json:
             schema:
               $ref: ../openapi.yaml#/components/schemas/FeedbackSnapshot
-      "400":
+      '400':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "401":
+      '401':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "404":
+      '404':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "408":
+      '408':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "409":
+      '409':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "413":
+      '413':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "415":
+      '415':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "429":
+      '429':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "500":
+      '500':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "503":
+      '503':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
       default:
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
@@ -240,7 +240,7 @@
           schema:
             $ref: ../openapi.yaml#/components/schemas/FeedbackUpload
     responses:
-      "200":
+      '200':
         description: 当前安全进度；只有 completed 才表示全部完成。
         headers:
           X-Request-Id:
@@ -251,25 +251,25 @@
           application/json:
             schema:
               $ref: ../openapi.yaml#/components/schemas/FeedbackSnapshot
-      "400":
+      '400':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "401":
+      '401':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "404":
+      '404':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "408":
+      '408':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "409":
+      '409':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "413":
+      '413':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "415":
+      '415':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "429":
+      '429':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "500":
+      '500':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "503":
+      '503':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
       default:
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
@@ -296,7 +296,7 @@
           schema:
             $ref: ../openapi.yaml#/components/schemas/FeedbackAdvance
     responses:
-      "200":
+      '200':
         description: 当前安全进度；只有 completed 才表示全部完成。
         headers:
           X-Request-Id:
@@ -307,7 +307,7 @@
           application/json:
             schema:
               $ref: ../openapi.yaml#/components/schemas/FeedbackSnapshot
-      "202":
+      '202':
         description: 当前安全进度；只有 completed 才表示全部完成。
         headers:
           X-Request-Id:
@@ -318,25 +318,25 @@
           application/json:
             schema:
               $ref: ../openapi.yaml#/components/schemas/FeedbackSnapshot
-      "400":
+      '400':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "401":
+      '401':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "404":
+      '404':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "408":
+      '408':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "409":
+      '409':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "413":
+      '413':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "415":
+      '415':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "429":
+      '429':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "500":
+      '500':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
-      "503":
+      '503':
         $ref: ../openapi.yaml#/components/responses/ErrorResponse
       default:
         $ref: ../openapi.yaml#/components/responses/ErrorResponse

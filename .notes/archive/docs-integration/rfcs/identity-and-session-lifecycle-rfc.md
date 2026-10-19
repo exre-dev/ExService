@@ -24,19 +24,19 @@ OIDC Token 验证遵循 [OIDC Core ID Token Validation](https://openid.net/specs
 
 ## 接入配置
 
-| 项目 | 选择 |
-| --- | --- |
-| issuer | `http://identity.exwebsite.test:8090/`；配置、discovery、验证使用完全相同字符串 |
-| Outline client | `ex-outline`，机密客户端，token endpoint 使用 client_secret_basic |
-| redirect URI | `http://exwebsite.test:8090/docs/auth/oidc.callback`，精确匹配 |
-| flow | response_type=code；grant_types 仅 authorization_code；PKCE S256 |
-| scope | openid、profile、email；不申请 offline_access，不签发 refresh token |
-| subject | public subject，值为 Website 稳定账号 ID |
-| login/consent UI | Website `/identity/login`、`/identity/consent`，不是 Outline 独立登录页 |
-| logout UI | Website `/identity/logout`，供协议退出确认/收尾 |
-| token 生命周期 | 授权码 60 秒，access token 与 ID Token 60 秒；Outline 会话有效期另受 Website 会话控制 |
-| Hydra remember | login=false、consent=false，每次协议登录都经过 Website 当前会话核验；已有 Website 登录无须重新输入密码 |
-| JWKS | 验签键缓存可复用，未知 kid 刷新；不缓存账号/会话仍有效的结论 |
+| 项目             | 选择                                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------------------------ |
+| issuer           | `http://identity.exwebsite.test:8090/`；配置、discovery、验证使用完全相同字符串                        |
+| Outline client   | `ex-outline`，机密客户端，token endpoint 使用 client_secret_basic                                      |
+| redirect URI     | `http://exwebsite.test:8090/docs/auth/oidc.callback`，精确匹配                                         |
+| flow             | response_type=code；grant_types 仅 authorization_code；PKCE S256                                       |
+| scope            | openid、profile、email；不申请 offline_access，不签发 refresh token                                    |
+| subject          | public subject，值为 Website 稳定账号 ID                                                               |
+| login/consent UI | Website `/identity/login`、`/identity/consent`，不是 Outline 独立登录页                                |
+| logout UI        | Website `/identity/logout`，供协议退出确认/收尾                                                        |
+| token 生命周期   | 授权码 60 秒，access token 与 ID Token 60 秒；Outline 会话有效期另受 Website 会话控制                  |
+| Hydra remember   | login=false、consent=false，每次协议登录都经过 Website 当前会话核验；已有 Website 登录无须重新输入密码 |
+| JWKS             | 验签键缓存可复用，未知 kid 刷新；不缓存账号/会话仍有效的结论                                           |
 
 另一测试客户端固定为 `ex-oidc-probe`，使用独立随机 secret、精确回调 `http://127.0.0.1:18765/callback` 和同源退出回调 `http://127.0.0.1:18765/signed-out`；同样仅允许 authorization_code、client_secret_basic 和 openid/profile/email，不取得 Website 内部核验密钥，仅验证通用接入。通过显式 bootstrap 受控登记，不开放动态客户端注册或通配回调。Hydra admin 内网可达，不将其 SDK 或管理 secret 放到浏览器。
 
@@ -44,15 +44,15 @@ OIDC Token 验证遵循 [OIDC Core ID Token Validation](https://openid.net/specs
 
 先在 `.ai/databases/data-model.md` 中评审以下职责变化，再修改 Website schema/migration。本 RFC 不直接更新持久知识或 schema。
 
-| 数据位置 | 拟新增字段/实体 | 约束 |
-| --- | --- | --- |
-| Website `auth_users` | `disabledAt` nullable epoch ms、`profileVersion` 非负整数默认 0 | 禁用后所有会话无效；昵称/邮箱/头像更新事务内递增 profileVersion |
-| Website `auth_sessions` | `id` UUID，unique/not null | 保留 tokenHash 原主键和 Bearer API；迁移为既有行生成唯一 ID，不外发摘要 |
-| Website `auth_oidc_flows` | phase、challengeHash、sessionId、clientId、hydraSid、state、expiresAt、encryptedRedirect | phase+challengeHash 唯一；10 分钟内有效且不超过本站会话到期；状态 processing/completed/restart_required |
-| Website `auth_oidc_bindings` | clientId、hydraSid、sessionId、userId、createdAt、revokedAt | clientId+hydraSid 唯一；sessionId FK 指向本站会话 id；复合关联保证 userId 与会话拥有者一致 |
+| 数据位置                       | 拟新增字段/实体                                                                                                    | 约束                                                                                                                              |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Website `auth_users`           | `disabledAt` nullable epoch ms、`profileVersion` 非负整数默认 0                                                    | 禁用后所有会话无效；昵称/邮箱/头像更新事务内递增 profileVersion                                                                   |
+| Website `auth_sessions`        | `id` UUID，unique/not null                                                                                         | 保留 tokenHash 原主键和 Bearer API；迁移为既有行生成唯一 ID，不外发摘要                                                           |
+| Website `auth_oidc_flows`      | phase、challengeHash、sessionId、clientId、hydraSid、state、expiresAt、encryptedRedirect                           | phase+challengeHash 唯一；10 分钟内有效且不超过本站会话到期；状态 processing/completed/restart_required                           |
+| Website `auth_oidc_bindings`   | clientId、hydraSid、sessionId、userId、createdAt、revokedAt                                                        | clientId+hydraSid 唯一；sessionId FK 指向本站会话 id；复合关联保证 userId 与会话拥有者一致                                        |
 | Website `auth_identity_outbox` | eventId、kind、sessionId/userId、targetBindings、createdAt、attempts、nextAttemptAt、deliveredTargets、completedAt | 与撤销同事务写入；targetBindings 固化 clientId/hydraSid 快照；eventId 幂等；逐个 sid 和目标记录投递结果，全部完成才写 completedAt |
-| Outline `ExternalIdentity` | issuer、subject、userId、profileVersion | issuer+subject 唯一，userId 唯一；不按邮箱回填或自动迁移 issuer；版本仅递增 |
-| Outline `ExternalSession` | id、userId、websiteSessionId、hydraSid、clientId、expiresAt、revokedAt、encryptedAccessToken | id 随机 UUID；签名 JWT 携带此 id；有效期不超过 Website 会话，token 清理后置空 |
+| Outline `ExternalIdentity`     | issuer、subject、userId、profileVersion                                                                            | issuer+subject 唯一，userId 唯一；不按邮箱回填或自动迁移 issuer；版本仅递增                                                       |
+| Outline `ExternalSession`      | id、userId、websiteSessionId、hydraSid、clientId、expiresAt、revokedAt、encryptedAccessToken                       | id 随机 UUID；签名 JWT 携带此 id；有效期不超过 Website 会话，token 清理后置空                                                     |
 
 Website OIDC tables 只保存身份关联和恢复状态，不保存用户密码副本。flow challenge 只存摘要，返回跳转为短期加密字段供同会话重试；过期清理不得删除撤销未送达 outbox。Outline access token 只用于 userinfo 和主动撤销，按本机密钥加密保存至撤销或到期，不出现在日志、URL、前端存储。
 
@@ -70,15 +70,15 @@ sessionId/subject/hydraSid 是关联标识，不是凭据。服务请求仍需�
 
 以下均为提议的新 operation，实施时先写入 `api/openapi.yaml`，运行 lint/generate 后才实现。表中路径不含 Glue 自动添加的 `/api`。字段名、类型和状态为本 RFC 的实现约束；对象使用 additionalProperties=false。UUID 均用已有 Uuid schema，时间用已有 SafeTimestamp。
 
-| 方法 / 路径 / operationId | 鉴权 | 请求 | 成功响应 |
-| --- | --- | --- | --- |
-| POST `/auth/oidc/inspect` / `inspectOidcRequest` | 无用户鉴权；限流 | `{phase: login或consent, challenge: string}` | `{clientName: string, scopes: string[]}`，只返回批准客户端展示资料 |
-| POST `/auth/oidc/login/accept` / `acceptOidcLogin` | 本站 bearerAuth | `{challenge: string}` | `{redirectUrl: string}` |
-| POST `/auth/oidc/consent/accept` / `acceptOidcConsent` | 本站 bearerAuth | `{challenge: string}` | `{redirectUrl: string}` |
-| POST `/auth/oidc/logout/accept` / `acceptOidcLogout` | 本站 bearerAuth | `{challenge: string}` | `{redirectUrl: string}` |
-| POST `/internal/identity/session/check` / `checkLinkedSession` | integrationKey | `{hydraSid: string, subject: string}` | 下述 SessionCheckResult |
-| POST `/internal/identity/session/revoke` / `revokeLinkedSession` | integrationKey | `{hydraSid: string, subject: string, requestId: UUID}` | `{revoked: true}`；仅撤销调用方绑定所在 Website 会话组 |
-| POST `/internal/identity/user/inspect` / `inspectIdentityUser` | bootstrapKey | `{userId: UUID}` | `{id, nickname, email, avatarUrl: string或null, profileVersion: integer}`；禁用/不存在均拒绝 |
+| 方法 / 路径 / operationId                                        | 鉴权             | 请求                                                   | 成功响应                                                                                     |
+| ---------------------------------------------------------------- | ---------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| POST `/auth/oidc/inspect` / `inspectOidcRequest`                 | 无用户鉴权；限流 | `{phase: login或consent, challenge: string}`           | `{clientName: string, scopes: string[]}`，只返回批准客户端展示资料                           |
+| POST `/auth/oidc/login/accept` / `acceptOidcLogin`               | 本站 bearerAuth  | `{challenge: string}`                                  | `{redirectUrl: string}`                                                                      |
+| POST `/auth/oidc/consent/accept` / `acceptOidcConsent`           | 本站 bearerAuth  | `{challenge: string}`                                  | `{redirectUrl: string}`                                                                      |
+| POST `/auth/oidc/logout/accept` / `acceptOidcLogout`             | 本站 bearerAuth  | `{challenge: string}`                                  | `{redirectUrl: string}`                                                                      |
+| POST `/internal/identity/session/check` / `checkLinkedSession`   | integrationKey   | `{hydraSid: string, subject: string}`                  | 下述 SessionCheckResult                                                                      |
+| POST `/internal/identity/session/revoke` / `revokeLinkedSession` | integrationKey   | `{hydraSid: string, subject: string, requestId: UUID}` | `{revoked: true}`；仅撤销调用方绑定所在 Website 会话组                                       |
+| POST `/internal/identity/user/inspect` / `inspectIdentityUser`   | bootstrapKey     | `{userId: UUID}`                                       | `{id, nickname, email, avatarUrl: string或null, profileVersion: integer}`；禁用/不存在均拒绝 |
 
 `SessionCheckResult` 为判别联合：
 
@@ -177,14 +177,14 @@ Hydra 自身 access token 在清理失败时可能短期仍可读取其 userinfo
 
 ## 故障、隐私与可观测性
 
-| 故障 | 行为 |
-| --- | --- |
-| Website/DB 不可达 | Outline 新受保护请求 503、连接租约失效；匿名公开 GET 仍可读取 Outline 本地数据 |
-| Hydra 不可达 | 新登录/客户端初始化 503；已有绑定可继续按 Website 核验，退出权威撤销照常提交 |
-| Outline 不可达 | Website 可登录与撤销；outbox 重试，恢复时会话核验阻止旧凭据 |
-| Redis/通知丢失 | 不依赖消息证明身份；租约过期断开，重连重新核验 |
-| 已登录浏览器查看公开页而 Website 故障 | 显式降级为公共只读数据，隐藏评论/私有导航，不从旧用户缓存拼页 |
-| OAuth callback 与停用并发 | callback 提交前再 check，失败不建可用会话；绑定可留下撤销记录供清理 |
+| 故障                                  | 行为                                                                           |
+| ------------------------------------- | ------------------------------------------------------------------------------ |
+| Website/DB 不可达                     | Outline 新受保护请求 503、连接租约失效；匿名公开 GET 仍可读取 Outline 本地数据 |
+| Hydra 不可达                          | 新登录/客户端初始化 503；已有绑定可继续按 Website 核验，退出权威撤销照常提交   |
+| Outline 不可达                        | Website 可登录与撤销；outbox 重试，恢复时会话核验阻止旧凭据                    |
+| Redis/通知丢失                        | 不依赖消息证明身份；租约过期断开，重连重新核验                                 |
+| 已登录浏览器查看公开页而 Website 故障 | 显式降级为公共只读数据，隐藏评论/私有导航，不从旧用户缓存拼页                  |
+| OAuth callback 与停用并发             | callback 提交前再 check，失败不建可用会话；绑定可留下撤销记录供清理            |
 
 日志仅记录 requestId、eventId、客户端及脱敏错误类别，不记录 challenge、token、secret、完整 redirect query 或用户资料。记录 check 延迟/失败、租约到期断开、outbox 积压及按浏览器撤销结果；没有数据前不承诺吞吐容量。每请求网络核验的成本是已批准的即时撤销语义所带来的明确代价。
 

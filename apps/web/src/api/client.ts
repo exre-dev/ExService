@@ -1,5 +1,13 @@
 import { setBaseUrl, setSessionExpiredHandler } from '@workspace/sdk'
-import { expirePersistedSession, readToken, selectSessionScope, sessionScopeRevision, startSessionSync, subscribeSessionChanges, syncSessionToken } from '@web/src/auth/storage'
+import {
+  expirePersistedSession,
+  readToken,
+  selectSessionScope,
+  sessionScopeRevision,
+  startSessionSync,
+  subscribeSessionChanges,
+  syncSessionToken,
+} from '@web/src/auth/storage'
 import { bindSettingsToken } from '@web/src/settings/settingsConfig'
 import { bindNotificationsToken } from '@web/src/notifications/notificationsConfig'
 
@@ -7,7 +15,11 @@ let disposeActive: (() => void) | undefined
 
 function syncSessionCaches(): void {
   let token: string | null = null
-  try { token = readToken(window.localStorage) } catch { /* unavailable persistence cannot own cached user data */ }
+  try {
+    token = readToken(window.localStorage)
+  } catch {
+    /* unavailable persistence cannot own cached user data */
+  }
   bindSettingsToken(token)
   bindNotificationsToken(token)
 }
@@ -29,9 +41,14 @@ export function installSdkIntegration(): () => void {
     if (!active || scope !== sessionScopeRevision()) return
     expirePersistedSession()
     if (syncSessionToken() !== null) return
-    if (window.location.pathname === '/support' || window.location.pathname.startsWith('/support/')) return
+    if (window.location.pathname === '/support' || window.location.pathname.startsWith('/support/'))
+      return
     if (window.location.pathname.startsWith('/identity/')) return
-    if (window.location.pathname === '/login' && new URLSearchParams(window.location.search).has('ssoRequestId')) return
+    if (
+      window.location.pathname === '/login' &&
+      new URLSearchParams(window.location.search).has('ssoRequestId')
+    )
+      return
     if (window.location.pathname !== '/login') window.location.replace('/login')
   })
   const dispose = () => {

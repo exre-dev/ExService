@@ -39,17 +39,17 @@
 
 ## 约束与已作决策
 
-| 主题 | 决策与理由 |
-| --- | --- |
-| 工作区 | 使用 pnpm workspace，以根脚本协调 `apps/web`、`apps/mock-server` 和 `packages/api-client`。 |
-| Contract | 使用单文件 OpenAPI 3.1.1：`api/openapi.yaml`。首版规模不拆分 `paths/` 或 `schemas/`。 |
-| Schema 兼容性 | Contract schema 限定在 Fastify 默认 Ajv 的 Draft-07 兼容子集。不可使用 Draft 2020-12 专有语义，直到另行设计并配置 Fastify 的对应 validator 与 serializer compiler。 |
-| API Client | `openapi-typescript` 生成 TypeScript 类型；`openapi-fetch` 实现 `createApiClient({ baseUrl })`。 |
-| 前端 | React、Vite、TypeScript、Sass、Valtio、Framer Motion；首版不为了验证依赖而设计业务或演示交互。 |
-| Mock Server | Fastify、`fastify-openapi-glue`、Drizzle ORM 和 `better-sqlite3`。 |
-| 数据库 | 仅使用 `apps/mock-server/data/mock.sqlite`，不连接或共享 PHP/生产数据库。 |
-| 数据库生命周期 | migration 由显式命令执行；服务启动不得创建 migration、建表或隐式 reset。 |
-| 路由前缀 | OpenAPI `servers[0].url: /api` 仅表示客户端 base URL；Fastify 注册 Glue 时显式配置 `prefix: '/api'`。 |
+| 主题           | 决策与理由                                                                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 工作区         | 使用 pnpm workspace，以根脚本协调 `apps/web`、`apps/mock-server` 和 `packages/api-client`。                                                                         |
+| Contract       | 使用单文件 OpenAPI 3.1.1：`api/openapi.yaml`。首版规模不拆分 `paths/` 或 `schemas/`。                                                                               |
+| Schema 兼容性  | Contract schema 限定在 Fastify 默认 Ajv 的 Draft-07 兼容子集。不可使用 Draft 2020-12 专有语义，直到另行设计并配置 Fastify 的对应 validator 与 serializer compiler。 |
+| API Client     | `openapi-typescript` 生成 TypeScript 类型；`openapi-fetch` 实现 `createApiClient({ baseUrl })`。                                                                    |
+| 前端           | React、Vite、TypeScript、Sass、Valtio、Framer Motion；首版不为了验证依赖而设计业务或演示交互。                                                                      |
+| Mock Server    | Fastify、`fastify-openapi-glue`、Drizzle ORM 和 `better-sqlite3`。                                                                                                  |
+| 数据库         | 仅使用 `apps/mock-server/data/mock.sqlite`，不连接或共享 PHP/生产数据库。                                                                                           |
+| 数据库生命周期 | migration 由显式命令执行；服务启动不得创建 migration、建表或隐式 reset。                                                                                            |
+| 路由前缀       | OpenAPI `servers[0].url: /api` 仅表示客户端 base URL；Fastify 注册 Glue 时显式配置 `prefix: '/api'`。                                                               |
 
 ## 目标工作区
 
@@ -84,13 +84,13 @@
 
 ### 边界
 
-| 边界 | 责任 | 禁止事项 |
-| --- | --- | --- |
-| `api/` | 描述 HTTP 路径、operation、请求、响应及错误 schema。 | 保存前端或 Fastify 实现。 |
-| `packages/api-client/` | 导出生成类型和 API client 工厂。 | 引入 React、Valtio、Framer Motion、业务状态或 endpoint 定义。 |
-| `apps/web/` | 配置 Vite、SCSS、环境变量，并将共享 Client 接入前端。 | 直接使用浏览器 `fetch`、复制 DTO、臆造 endpoint。 |
-| `apps/mock-server/` | 加载 Contract、映射 operation handler、运行 SQLite 访问和受控数据库命令。 | 用 `app.get()` 绕过 Contract、将 schema 作为第二 API 定义、连接生产数据库。 |
-| `tests/contract/` | 从 Contract 读取 schema，并对真实 Fastify app 的 HTTP 响应做验证。 | 仅单测 handler 而跳过路由与 schema 注册。 |
+| 边界                   | 责任                                                                      | 禁止事项                                                                    |
+| ---------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `api/`                 | 描述 HTTP 路径、operation、请求、响应及错误 schema。                      | 保存前端或 Fastify 实现。                                                   |
+| `packages/api-client/` | 导出生成类型和 API client 工厂。                                          | 引入 React、Valtio、Framer Motion、业务状态或 endpoint 定义。               |
+| `apps/web/`            | 配置 Vite、SCSS、环境变量，并将共享 Client 接入前端。                     | 直接使用浏览器 `fetch`、复制 DTO、臆造 endpoint。                           |
+| `apps/mock-server/`    | 加载 Contract、映射 operation handler、运行 SQLite 访问和受控数据库命令。 | 用 `app.get()` 绕过 Contract、将 schema 作为第二 API 定义、连接生产数据库。 |
+| `tests/contract/`      | 从 Contract 读取 schema，并对真实 Fastify app 的 HTTP 响应做验证。        | 仅单测 handler 而跳过路由与 schema 注册。                                   |
 
 ## 架构与请求流
 
@@ -222,10 +222,10 @@ components:
 
 ### 命令语义
 
-| 命令 | 规范行为 | 数据安全边界 |
-| --- | --- | --- |
-| `pnpm db:migrate` | 创建 `data/` 和 SQLite 文件，并根据 journal 应用未执行的 migration。 | 不删除现有数据库，不接受可变数据库路径。 |
-| `pnpm db:reset` | 只删除 `mock.sqlite`、`mock.sqlite-wal`、`mock.sqlite-shm`，随后执行 `db:migrate`。 | 不删除目录、migration、源码或任何其他工作区文件；不接受可变路径参数。 |
+| 命令              | 规范行为                                                                            | 数据安全边界                                                          |
+| ----------------- | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `pnpm db:migrate` | 创建 `data/` 和 SQLite 文件，并根据 journal 应用未执行的 migration。                | 不删除现有数据库，不接受可变数据库路径。                              |
+| `pnpm db:reset`   | 只删除 `mock.sqlite`、`mock.sqlite-wal`、`mock.sqlite-shm`，随后执行 `db:migrate`。 | 不删除目录、migration、源码或任何其他工作区文件；不接受可变路径参数。 |
 
 `server.ts` 在监听前检查数据库文件是否存在。若不存在，进程停止并提示用户运行 `pnpm db:migrate` 或 `pnpm db:reset`。`app.ts` 保持可通过 `inject()` 测试；由于 `/health` 不读取业务数据，Contract Test 不读取或修改开发数据库。
 
@@ -233,16 +233,16 @@ components:
 
 ### 根命令
 
-| 命令 | 行为 |
-| --- | --- |
-| `pnpm dev` | 并发启动 Vite `:8081` 和 Mock Server `:8080`；不运行 migration/reset。 |
-| `pnpm api:lint` | 以 Redocly 校验 OpenAPI 解析、引用和项目规则。 |
+| 命令                | 行为                                                                             |
+| ------------------- | -------------------------------------------------------------------------------- |
+| `pnpm dev`          | 并发启动 Vite `:8081` 和 Mock Server `:8080`；不运行 migration/reset。           |
+| `pnpm api:lint`     | 以 Redocly 校验 OpenAPI 解析、引用和项目规则。                                   |
 | `pnpm api:generate` | 使用 `openapi-typescript` 更新 `packages/api-client/src/generated/schema.d.ts`。 |
-| `pnpm typecheck` | 对所有 workspace 包执行无输出的 TypeScript 检查。 |
-| `pnpm test` | 运行 Vitest Contract Test。 |
-| `pnpm build` | 构建 Vite 前端并编译运行所需的 TypeScript 工作区代码。 |
-| `pnpm db:migrate` | 执行 Mock Server migration。 |
-| `pnpm db:reset` | 受控重置本地 Mock SQLite 数据库。 |
+| `pnpm typecheck`    | 对所有 workspace 包执行无输出的 TypeScript 检查。                                |
+| `pnpm test`         | 运行 Vitest Contract Test。                                                      |
+| `pnpm build`        | 构建 Vite 前端并编译运行所需的 TypeScript 工作区代码。                           |
+| `pnpm db:migrate`   | 执行 Mock Server migration。                                                     |
+| `pnpm db:reset`     | 受控重置本地 Mock SQLite 数据库。                                                |
 
 新环境的操作顺序：
 
@@ -258,12 +258,12 @@ API 修改的不可变顺序：修改 `api/openapi.yaml` → `api:lint` → `api
 
 ### 依赖归属
 
-| 工作区 | 生产依赖 | 开发/构建依赖 |
-| --- | --- | --- |
-| 根目录 | 无 | TypeScript、Vitest、concurrently、Redocly CLI、openapi-typescript、Ajv。 |
-| `apps/web` | React、React DOM、Valtio、Framer Motion。 | Vite、React 插件、Sass。 |
-| `packages/api-client` | openapi-fetch。 | 无额外运行时生成器。 |
-| `apps/mock-server` | Fastify、fastify-openapi-glue、Drizzle ORM、better-sqlite3。 | drizzle-kit、tsx、相应 TypeScript 类型。 |
+| 工作区                | 生产依赖                                                     | 开发/构建依赖                                                            |
+| --------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| 根目录                | 无                                                           | TypeScript、Vitest、concurrently、Redocly CLI、openapi-typescript、Ajv。 |
+| `apps/web`            | React、React DOM、Valtio、Framer Motion。                    | Vite、React 插件、Sass。                                                 |
+| `packages/api-client` | openapi-fetch。                                              | 无额外运行时生成器。                                                     |
+| `apps/mock-server`    | Fastify、fastify-openapi-glue、Drizzle ORM、better-sqlite3。 | drizzle-kit、tsx、相应 TypeScript 类型。                                 |
 
 根 `package.json` 应声明 `packageManager`，并使用由所选 Fastify 版本支持的 Node LTS 版本。所有精确版本由新增的 `pnpm-lock.yaml` 固定。
 
@@ -296,16 +296,16 @@ API 修改的不可变顺序：修改 `api/openapi.yaml` → `api:lint` → `api
 
 ### 自动验证
 
-| 检查 | 成功条件 |
-| --- | --- |
-| OpenAPI lint | `api/openapi.yaml` 可解析，引用可解析，且满足 Redocly 规则。 |
-| 类型生成 | `schema.d.ts` 从当前 Contract 成功生成，且 TypeScript 消费它。 |
+| 检查          | 成功条件                                                                                                                          |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| OpenAPI lint  | `api/openapi.yaml` 可解析，引用可解析，且满足 Redocly 规则。                                                                      |
+| 类型生成      | `schema.d.ts` 从当前 Contract 成功生成，且 TypeScript 消费它。                                                                    |
 | Contract Test | 真实 Fastify app 成功注册 `/api/health`；`inject()` 返回 200、JSON content type 和符合 `HealthResponse` 的 JSON，且没有额外字段。 |
-| Schema 兼容性 | Fastify app 创建与 route registration 成功；测试以 Draft-07 兼容 Ajv 从 Contract 验证 response。 |
-| 数据库迁移 | `db:migrate` 创建/升级固定 SQLite 文件。 |
-| 数据库重置 | `db:reset` 只重建该 SQLite 文件及其 sidecar 文件。 |
-| 类型与构建 | `pnpm typecheck` 和 `pnpm build` 成功，Vite 可编译 SCSS。 |
-| 开发运行 | `pnpm dev` 使 `8081` 和 `8080` 可用，且前端的开发期 Client 请求通过 Vite 代理到 `/api/health`。 |
+| Schema 兼容性 | Fastify app 创建与 route registration 成功；测试以 Draft-07 兼容 Ajv 从 Contract 验证 response。                                  |
+| 数据库迁移    | `db:migrate` 创建/升级固定 SQLite 文件。                                                                                          |
+| 数据库重置    | `db:reset` 只重建该 SQLite 文件及其 sidecar 文件。                                                                                |
+| 类型与构建    | `pnpm typecheck` 和 `pnpm build` 成功，Vite 可编译 SCSS。                                                                         |
+| 开发运行      | `pnpm dev` 使 `8081` 和 `8080` 可用，且前端的开发期 Client 请求通过 Vite 代理到 `/api/health`。                                   |
 
 ### 失败路径
 
@@ -316,14 +316,14 @@ API 修改的不可变顺序：修改 `api/openapi.yaml` → `api:lint` → `api
 
 ## 风险与缓解
 
-| 风险 | 可能性 | 影响 | 缓解或接受 | 检测 |
-| --- | --- | --- | --- | --- |
-| Contract 与 Mock 实现偏离 | 中 | 高 | OpenAPI-first、Glue 路由注册、生成类型和真实 HTTP Contract Test。 | lint、类型检查与 Contract Test 失败。 |
-| `/api` 前缀被重复或遗漏 | 中 | 高 | 仅在 Glue 注册中设置 `prefix: '/api'`；`servers.url` 仅供客户端使用。 | `inject('/api/health')` 与 Vite 代理验证。 |
-| OpenAPI 3.1 schema 与 Fastify 默认 Ajv 语义不一致 | 中 | 中 | 首版限制 Draft-07 兼容子集；完整 2020-12 支持另行设计。 | Fastify app 注册与 Ajv Contract Test。 |
-| 本地 reset 删除超出预期的数据 | 低 | 高 | 固定文件路径、无路径参数、只删除三个 SQLite 文件。 | reset 测试与实现代码审查。 |
-| 未来 PHP 接管造成前端重写 | 中 | 高 | 前端只依赖共享 Client 和 Contract；环境变量负责 base URL。 | 未来 PHP 实现的独立 Contract Test（不在本 RFC 范围）。 |
-| 首版被业务需求污染 | 中 | 中 | 明确非目标；任何业务资源需从 Contract 开始并单独确认。 | RFC 范围审阅和验收清单。 |
+| 风险                                              | 可能性 | 影响 | 缓解或接受                                                            | 检测                                                   |
+| ------------------------------------------------- | ------ | ---- | --------------------------------------------------------------------- | ------------------------------------------------------ |
+| Contract 与 Mock 实现偏离                         | 中     | 高   | OpenAPI-first、Glue 路由注册、生成类型和真实 HTTP Contract Test。     | lint、类型检查与 Contract Test 失败。                  |
+| `/api` 前缀被重复或遗漏                           | 中     | 高   | 仅在 Glue 注册中设置 `prefix: '/api'`；`servers.url` 仅供客户端使用。 | `inject('/api/health')` 与 Vite 代理验证。             |
+| OpenAPI 3.1 schema 与 Fastify 默认 Ajv 语义不一致 | 中     | 中   | 首版限制 Draft-07 兼容子集；完整 2020-12 支持另行设计。               | Fastify app 注册与 Ajv Contract Test。                 |
+| 本地 reset 删除超出预期的数据                     | 低     | 高   | 固定文件路径、无路径参数、只删除三个 SQLite 文件。                    | reset 测试与实现代码审查。                             |
+| 未来 PHP 接管造成前端重写                         | 中     | 高   | 前端只依赖共享 Client 和 Contract；环境变量负责 base URL。            | 未来 PHP 实现的独立 Contract Test（不在本 RFC 范围）。 |
+| 首版被业务需求污染                                | 中     | 中   | 明确非目标；任何业务资源需从 Contract 开始并单独确认。                | RFC 范围审阅和验收清单。                               |
 
 ## 安全与运行边界
 
@@ -347,12 +347,12 @@ API 修改的不可变顺序：修改 `api/openapi.yaml` → `api:lint` → `api
 
 ## 替代方案与取舍
 
-| 方案 | 优点 | 缺点 | 结论 |
-| --- | --- | --- | --- |
-| 选定：OpenAPI-first workspace | 单一 Contract 驱动 Client 与 Mock Server，符合未来 PHP 接管的边界。 | 初始配置多于单一前端工程。 | 采用。 |
-| 运行时优先，稍后接入 OpenAPI | 初始文件更少。 | 最重要的生成与契约校验链路没有被首版验证，后续更易偏离。 | 不采用。 |
-| Fastify schema 反向生成 OpenAPI | 后端编写路由快。 | Fastify 实现会成为 API 定义，破坏 PHP 与前端共享 Contract 的目标。 | 不采用。 |
-| 手写 fetch 与 DTO | 不需要生成工具。 | 类型、路径和 payload 容易漂移；不满足生成型 API Client 要求。 | 不采用。 |
+| 方案                            | 优点                                                                | 缺点                                                               | 结论     |
+| ------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------ | -------- |
+| 选定：OpenAPI-first workspace   | 单一 Contract 驱动 Client 与 Mock Server，符合未来 PHP 接管的边界。 | 初始配置多于单一前端工程。                                         | 采用。   |
+| 运行时优先，稍后接入 OpenAPI    | 初始文件更少。                                                      | 最重要的生成与契约校验链路没有被首版验证，后续更易偏离。           | 不采用。 |
+| Fastify schema 反向生成 OpenAPI | 后端编写路由快。                                                    | Fastify 实现会成为 API 定义，破坏 PHP 与前端共享 Contract 的目标。 | 不采用。 |
+| 手写 fetch 与 DTO               | 不需要生成工具。                                                    | 类型、路径和 payload 容易漂移；不满足生成型 API Client 要求。      | 不采用。 |
 
 ## 未决问题
 

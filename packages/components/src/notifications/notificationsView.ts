@@ -15,7 +15,8 @@ export type NotificationCategory = 'announcement' | 'personal_update' | 'service
 export type NotificationNecessity = 'optional' | 'necessary'
 export type NotificationHistoryFilter = 'all' | 'unread'
 export type NotificationLifecycle = 'active' | 'expired'
-export type NotificationActionUnavailableReason = 'unsupported' | 'expired' | 'forbidden' | 'state_changed'
+export type NotificationActionUnavailableReason =
+  'unsupported' | 'expired' | 'forbidden' | 'state_changed'
 
 export interface NotificationItemView {
   receiptId: string
@@ -62,10 +63,7 @@ export interface NotificationDetailView {
 
 /** 未读计数的展示状态；计数来源失败时展示「未更新」，绝不画成 0。 */
 export type NotificationCountState =
-  | { kind: 'hidden' }
-  | { kind: 'loading' }
-  | { kind: 'error' }
-  | { kind: 'ready'; count: number }
+  { kind: 'hidden' } | { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; count: number }
 
 export interface NotificationCopy {
   bell: string
@@ -183,7 +181,8 @@ export const notificationCopy: NotificationCopy = {
   cancel: '取消',
   submitting: '正在提交，请稍候。',
   operationFailed: '操作失败，原状态已保留。请重试。',
-  clearedResult: (affected, skipped) => `已清理 ${affected} 条，跳过 ${skipped} 条；新到通知仍保留。`,
+  clearedResult: (affected, skipped) =>
+    `已清理 ${affected} 条，跳过 ${skipped} 条；新到通知仍保留。`,
   readAllResult: '已标记本次选定通知，新到通知仍未读。',
   previewExpired: '预览已过期，请重新预览。',
   cursorExpired: '分页游标已过期，已刷新第一页。',
@@ -216,7 +215,9 @@ export function notificationStateLabel(item: { readAt: number | null; expired: b
   return item.readAt === null ? notificationCopy.stateUnread : notificationCopy.stateRead
 }
 
-export function notificationActionReasonLabel(reason: NotificationActionUnavailableReason | null): string {
+export function notificationActionReasonLabel(
+  reason: NotificationActionUnavailableReason | null,
+): string {
   if (reason === 'unsupported') return notificationCopy.reasonUnsupported
   if (reason === 'expired') return notificationCopy.reasonExpired
   if (reason === 'forbidden') return notificationCopy.reasonForbidden

@@ -1,4 +1,9 @@
-import { prepareStorageUpload, uploadStorageContent, completeStorageUpload, getStoredFile } from './handlers.js'
+import {
+  prepareStorageUpload,
+  uploadStorageContent,
+  completeStorageUpload,
+  getStoredFile,
+} from './handlers.js'
 
 export const operations = {
   prepareStorageUpload,

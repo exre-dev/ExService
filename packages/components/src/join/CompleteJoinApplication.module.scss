@@ -64,22 +64,22 @@
   grid-column: 2;
   grid-row: 1;
 }
-.commitment :global(.ex-item-heading [data-slot="field-label"]) {
+.commitment :global(.ex-item-heading [data-slot='field-label']) {
   margin: 0;
   line-height: 1.5;
 }
-.commitment > [data-slot="field-content"] {
+.commitment > [data-slot='field-content'] {
   display: contents;
 }
 .commitment :global(.ex-item-body) {
   display: contents;
 }
-.commitment [data-slot="checkbox"] {
+.commitment [data-slot='checkbox'] {
   grid-column: 1;
   grid-row: 1;
   margin-top: 0.125rem;
 }
-.commitment [data-slot="field-error"] {
+.commitment [data-slot='field-error'] {
   grid-column: 2;
 }
 .summary section {
@@ -256,7 +256,7 @@
   margin: 0 auto 0.5rem;
   color: var(--exui-text-secondary);
 }
-.dropArea[data-dragging="true"],
+.dropArea[data-dragging='true'],
 .dropArea:focus-within {
   border-color: var(--exui-text-primary);
 }

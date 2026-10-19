@@ -10,9 +10,9 @@ _最后更新：2026-10-11_
 （通知模块引入的标量查询参数；Contract 0.6.0 已删除清理记录入口）。路由 schema 由
 `fastify-openapi-glue` 直接取自 Contract，而 `apps/server/src/app.ts` 的 Ajv 关掉了类型强制；缺少归一化 hook 时会出现：
 
-| 请求 | 状态 |
-| --- | --- |
-| `GET /api/notifications?view=history` | 200 |
+| 请求                                           | 状态                                        |
+| ---------------------------------------------- | ------------------------------------------- |
+| `GET /api/notifications?view=history`          | 200                                         |
 | `GET /api/notifications?view=history&limit=20` | **400** `querystring/limit must be integer` |
 
 客户端恒发 `limit`（`useNotificationsController.ts` 的两个列表入口），因此**通知的 Popup 与历史 Modal 在真实 Server 下全部打不开**，只有走 `/notifications/summary`（无查询参数）的徽标可用。

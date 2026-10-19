@@ -5,8 +5,8 @@ import { createTestAuth, type TestAuth } from '@tests/helpers/auth'
 const fixtures: TestAuth[] = []
 const apps: Array<ReturnType<typeof createApp>> = []
 afterEach(async () => {
-  await Promise.all(apps.splice(0).map(app => app.close()))
-  await Promise.all(fixtures.splice(0).map(fixture => fixture.close()))
+  await Promise.all(apps.splice(0).map((app) => app.close()))
+  await Promise.all(fixtures.splice(0).map((fixture) => fixture.close()))
 })
 
 it('does not expose retired application submission, results, review, or attachment routes', async () => {
@@ -23,7 +23,11 @@ it('does not expose retired application submission, results, review, or attachme
     ['POST', `/admin/join/applications/${id}/approve`, 'approveJoinApplication'],
     ['POST', `/admin/join/applications/${id}/reject`, 'rejectJoinApplication'],
     ['POST', `/admin/join/applications/${id}/invitations`, 'resendJoinInvitation'],
-    ['GET', `/admin/join/applications/${id}/attachments/${id}`, 'downloadJoinApplicationAttachment'],
+    [
+      'GET',
+      `/admin/join/applications/${id}/attachments/${id}`,
+      'downloadJoinApplicationAttachment',
+    ],
   ] as const
   for (const [method, path, operation] of retired) {
     const response = await app.inject({ method, url: `/api${path}` })

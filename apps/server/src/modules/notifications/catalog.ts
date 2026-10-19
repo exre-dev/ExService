@@ -6,10 +6,14 @@
  */
 
 export const NOTIFICATION_SCOPES = ['community', 'personal'] as const
-export type NotificationScope = typeof NOTIFICATION_SCOPES[number]
+export type NotificationScope = (typeof NOTIFICATION_SCOPES)[number]
 
-export const NOTIFICATION_CATEGORIES = ['announcement', 'personal_update', 'service_notice'] as const
-export type NotificationCategory = typeof NOTIFICATION_CATEGORIES[number]
+export const NOTIFICATION_CATEGORIES = [
+  'announcement',
+  'personal_update',
+  'service_notice',
+] as const
+export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number]
 
 export type NotificationNecessity = 'optional' | 'necessary'
 
@@ -18,7 +22,7 @@ export const NOTIFICATION_EVENT_TYPES = [
   'community.announcement.withdrawn',
   'personal.notice.issued',
 ] as const
-export type NotificationEventType = typeof NOTIFICATION_EVENT_TYPES[number]
+export type NotificationEventType = (typeof NOTIFICATION_EVENT_TYPES)[number]
 
 export const EVENT_VERSION = 1
 
@@ -90,7 +94,10 @@ export function necessityFor(category: NotificationCategory): NotificationNecess
 
 export const NECESSARY_CATEGORIES: readonly NotificationCategory[] = [NECESSARY_CATEGORY]
 
-export const OPTIONAL_CATEGORIES: readonly NotificationCategory[] = ['announcement', 'personal_update']
+export const OPTIONAL_CATEGORIES: readonly NotificationCategory[] = [
+  'announcement',
+  'personal_update',
+]
 
 export const DEFAULT_PREFERENCES: Record<NotificationCategory, boolean> = {
   announcement: true,

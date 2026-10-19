@@ -1,123 +1,121 @@
 {
-    "candidate":  "notification-preferences-v1",
-    "captured_at":  "2026-10-11T14:00:13.3668500Z",
-    "source_commit":  "cf6a81ac5b814faac40dd1ccee3f793a42c83b20",
-    "source_branch":  "main",
-    "source_diff_from_head":  [
-
-                              ],
-    "spec_path":  ".notes/notification-preferences/specs/2026-10-11-notification-preferences-design-v1.md",
-    "spec_sha256":  "9ba1756f639afbbc8c2f2a9bfeeb3a13e6607394fb70a4cda98bcbb0ab547224",
-    "approval_source":  "none",
-    "implementation_authorized":  false,
-    "validation":  {
-                       "static_source_review":  "PASS",
-                       "independent_review":  "NOT_EXECUTED",
-                       "automated_tests":  "NOT_EXECUTED",
-                       "browser":  "NOT_EXECUTED",
-                       "deployment":  "NOT_EXECUTED"
-                   },
-    "scan_attachment":  {
-                            "id":  "01a12b00-cc8a-71eb-85f7-23a0bfaa75e5",
-                            "sha256":  "a7a37758c72386a6ba729ade02e2f722e990965fde26a2a9887a2432e22ef80a",
-                            "downloaded_via":  "monica attachment download"
-                        },
-    "sources":  [
-                    {
-                        "path":  "apps/web/src/notifications/useNotificationPreferencesController.ts",
-                        "sha256":  "f2368a4a30010bc700611dacc77e933bef5af7c883c97ebd47395cf3f01d5804",
-                        "lines":  130,
-                        "summary":  "Shared preferences reads, PUT lock, revision, conflict reconciliation and identity acceptance."
-                    },
-                    {
-                        "path":  "apps/web/src/notifications/notificationsConfig.ts",
-                        "sha256":  "7b2214947f6708bf5c6124ed86028408d7343d1d793e1ee0475c3cf0c14759cc",
-                        "lines":  151,
-                        "summary":  "Canonical preferences snapshot, identity reset and independent receipt generations."
-                    },
-                    {
-                        "path":  "packages/components/src/notifications/NotificationPreferencesForm.tsx",
-                        "sha256":  "37b623f27bbdc0afe81573936f527dab143c3ceca3f71e5790f366310df0077b",
-                        "lines":  124,
-                        "summary":  "RHF/Zod, local confirmed values, failed field intent, rollback and retry rendering."
-                    },
-                    {
-                        "path":  "packages/components/src/SettingsPanel.tsx",
-                        "sha256":  "6cf39f1d8edb9bc5f5357b4d8d98ac8da7fe6fe8bbbcdf35ac1775370c0f016b",
-                        "lines":  385,
-                        "summary":  "SettingsNotificationsSlice and always-mounted preferences form with active visibility."
-                    },
-                    {
-                        "path":  "apps/web/src/settings/SettingsExperience.tsx",
-                        "sha256":  "d1aa551fb934eec16a08ebb9c2a36d1d03762eaec98cbea83c532e479cc13263",
-                        "lines":  85,
-                        "summary":  "Page and Modal hosts, per-source loading and StrictMode read marker cleanup."
-                    },
-                    {
-                        "path":  "apps/web/src/api/client.ts",
-                        "sha256":  "7fcb8900e8c9da599ba074c114ef75099c120a5c7c47b3216f9d26eba153224c",
-                        "lines":  28,
-                        "summary":  "Existing generated Client and session-bound shared transport adapter."
-                    },
-                    {
-                        "path":  "apps/web/src/notifications/useNotificationPreferencesController.test.tsx",
-                        "sha256":  "5ba2ac6b3f7c8d558743d5b7439e57325c7f85199b89aaa5e9684373723d2b6e",
-                        "lines":  370,
-                        "summary":  "Controller-only request ownership, concurrency, conflict and identity regressions."
-                    },
-                    {
-                        "path":  "packages/components/src/notifications/NotificationPreferencesForm.test.tsx",
-                        "sha256":  "cfb89cec6b5d1a7b6fc5eb00bda7aa93f4909d2e3aeb92c4b5cfcdcda1f687a2",
-                        "lines":  108,
-                        "summary":  "Form-only toggle, rollback, retry and RHF identity regressions."
-                    },
-                    {
-                        "path":  "apps/web/src/settings/SettingsExperience.test.tsx",
-                        "sha256":  "311dc697a97102279b0d08ef21fb90b587bc34a643c70d2eff7c0a793b498148",
-                        "lines":  154,
-                        "summary":  "Source loading and partition isolation; SettingsPanel mocked."
-                    },
-                    {
-                        "path":  "apps/web/src/settings/SettingsProfileLoading.test.tsx",
-                        "sha256":  "ca7ad1ac90312c98da4a432bed67e8ae24da0c7e8c80fe74a7a31874d9a9651a",
-                        "lines":  63,
-                        "summary":  "Real settings Panel/Modal StrictMode and late profile read regressions."
-                    },
-                    {
-                        "path":  "packages/components/src/index.ts",
-                        "sha256":  "5a800ec06ab1fdbeeb2925e9220db54b9c8b3baf5343d91a09e1c7a86be35054",
-                        "lines":  81,
-                        "summary":  "Shared component and props/type exports affected by interface migration."
-                    },
-                    {
-                        "path":  "api/openapi.yaml",
-                        "sha256":  "85b27be8aab98ee7ae13dd51a44edef21d8c97526ce10dc5079e712111e10d46",
-                        "lines":  387,
-                        "summary":  "Authoritative HTTP Contract root and references."
-                    },
-                    {
-                        "path":  "api/paths/notifications.yaml",
-                        "sha256":  "0ca9db5d219e44734935bd6535d53f2237611bc1b6dc1021fc1a4ff2f1289129",
-                        "lines":  322,
-                        "summary":  "Existing GET and complete-replacement PUT preferences operations."
-                    },
-                    {
-                        "path":  "api/schemas/notifications.yaml",
-                        "sha256":  "fa7b57c76eabd2a2dd65144d01fc649de8b4b727d6ebb8363469d02581c4c58a",
-                        "lines":  245,
-                        "summary":  "Generated-client source: preferences, revision and two required optional boolean categories."
-                    },
-                    {
-                        "path":  "tests/browser/notification-fixture.tsx",
-                        "sha256":  "528128520aa7aecbc786a2892b46be85d18be9988b9aec694a2f2dfb4dfd0e8b",
-                        "lines":  110,
-                        "summary":  "Isolated UI fixture consumer requiring callback migration."
-                    },
-                    {
-                        "path":  "tests/browser/notification-experience.mjs",
-                        "sha256":  "fb1c2a7759bc94a98f558b86e1be75fb54b18ecce80e84c6ff413379ec034bc9",
-                        "lines":  220,
-                        "summary":  "Real Chromium geometry/focus checks with simulated props, not authenticated API acceptance."
-                    }
-                ]
+  "candidate": "notification-preferences-v1",
+  "captured_at": "2026-10-11T14:00:13.3668500Z",
+  "source_commit": "cf6a81ac5b814faac40dd1ccee3f793a42c83b20",
+  "source_branch": "main",
+  "source_diff_from_head": [],
+  "spec_path": ".notes/notification-preferences/specs/2026-10-11-notification-preferences-design-v1.md",
+  "spec_sha256": "9ba1756f639afbbc8c2f2a9bfeeb3a13e6607394fb70a4cda98bcbb0ab547224",
+  "approval_source": "none",
+  "implementation_authorized": false,
+  "validation": {
+    "static_source_review": "PASS",
+    "independent_review": "NOT_EXECUTED",
+    "automated_tests": "NOT_EXECUTED",
+    "browser": "NOT_EXECUTED",
+    "deployment": "NOT_EXECUTED"
+  },
+  "scan_attachment": {
+    "id": "01a12b00-cc8a-71eb-85f7-23a0bfaa75e5",
+    "sha256": "a7a37758c72386a6ba729ade02e2f722e990965fde26a2a9887a2432e22ef80a",
+    "downloaded_via": "monica attachment download"
+  },
+  "sources": [
+    {
+      "path": "apps/web/src/notifications/useNotificationPreferencesController.ts",
+      "sha256": "f2368a4a30010bc700611dacc77e933bef5af7c883c97ebd47395cf3f01d5804",
+      "lines": 130,
+      "summary": "Shared preferences reads, PUT lock, revision, conflict reconciliation and identity acceptance."
+    },
+    {
+      "path": "apps/web/src/notifications/notificationsConfig.ts",
+      "sha256": "7b2214947f6708bf5c6124ed86028408d7343d1d793e1ee0475c3cf0c14759cc",
+      "lines": 151,
+      "summary": "Canonical preferences snapshot, identity reset and independent receipt generations."
+    },
+    {
+      "path": "packages/components/src/notifications/NotificationPreferencesForm.tsx",
+      "sha256": "37b623f27bbdc0afe81573936f527dab143c3ceca3f71e5790f366310df0077b",
+      "lines": 124,
+      "summary": "RHF/Zod, local confirmed values, failed field intent, rollback and retry rendering."
+    },
+    {
+      "path": "packages/components/src/SettingsPanel.tsx",
+      "sha256": "6cf39f1d8edb9bc5f5357b4d8d98ac8da7fe6fe8bbbcdf35ac1775370c0f016b",
+      "lines": 385,
+      "summary": "SettingsNotificationsSlice and always-mounted preferences form with active visibility."
+    },
+    {
+      "path": "apps/web/src/settings/SettingsExperience.tsx",
+      "sha256": "d1aa551fb934eec16a08ebb9c2a36d1d03762eaec98cbea83c532e479cc13263",
+      "lines": 85,
+      "summary": "Page and Modal hosts, per-source loading and StrictMode read marker cleanup."
+    },
+    {
+      "path": "apps/web/src/api/client.ts",
+      "sha256": "7fcb8900e8c9da599ba074c114ef75099c120a5c7c47b3216f9d26eba153224c",
+      "lines": 28,
+      "summary": "Existing generated Client and session-bound shared transport adapter."
+    },
+    {
+      "path": "apps/web/src/notifications/useNotificationPreferencesController.test.tsx",
+      "sha256": "5ba2ac6b3f7c8d558743d5b7439e57325c7f85199b89aaa5e9684373723d2b6e",
+      "lines": 370,
+      "summary": "Controller-only request ownership, concurrency, conflict and identity regressions."
+    },
+    {
+      "path": "packages/components/src/notifications/NotificationPreferencesForm.test.tsx",
+      "sha256": "cfb89cec6b5d1a7b6fc5eb00bda7aa93f4909d2e3aeb92c4b5cfcdcda1f687a2",
+      "lines": 108,
+      "summary": "Form-only toggle, rollback, retry and RHF identity regressions."
+    },
+    {
+      "path": "apps/web/src/settings/SettingsExperience.test.tsx",
+      "sha256": "311dc697a97102279b0d08ef21fb90b587bc34a643c70d2eff7c0a793b498148",
+      "lines": 154,
+      "summary": "Source loading and partition isolation; SettingsPanel mocked."
+    },
+    {
+      "path": "apps/web/src/settings/SettingsProfileLoading.test.tsx",
+      "sha256": "ca7ad1ac90312c98da4a432bed67e8ae24da0c7e8c80fe74a7a31874d9a9651a",
+      "lines": 63,
+      "summary": "Real settings Panel/Modal StrictMode and late profile read regressions."
+    },
+    {
+      "path": "packages/components/src/index.ts",
+      "sha256": "5a800ec06ab1fdbeeb2925e9220db54b9c8b3baf5343d91a09e1c7a86be35054",
+      "lines": 81,
+      "summary": "Shared component and props/type exports affected by interface migration."
+    },
+    {
+      "path": "api/openapi.yaml",
+      "sha256": "85b27be8aab98ee7ae13dd51a44edef21d8c97526ce10dc5079e712111e10d46",
+      "lines": 387,
+      "summary": "Authoritative HTTP Contract root and references."
+    },
+    {
+      "path": "api/paths/notifications.yaml",
+      "sha256": "0ca9db5d219e44734935bd6535d53f2237611bc1b6dc1021fc1a4ff2f1289129",
+      "lines": 322,
+      "summary": "Existing GET and complete-replacement PUT preferences operations."
+    },
+    {
+      "path": "api/schemas/notifications.yaml",
+      "sha256": "fa7b57c76eabd2a2dd65144d01fc649de8b4b727d6ebb8363469d02581c4c58a",
+      "lines": 245,
+      "summary": "Generated-client source: preferences, revision and two required optional boolean categories."
+    },
+    {
+      "path": "tests/browser/notification-fixture.tsx",
+      "sha256": "528128520aa7aecbc786a2892b46be85d18be9988b9aec694a2f2dfb4dfd0e8b",
+      "lines": 110,
+      "summary": "Isolated UI fixture consumer requiring callback migration."
+    },
+    {
+      "path": "tests/browser/notification-experience.mjs",
+      "sha256": "fb1c2a7759bc94a98f558b86e1be75fb54b18ecce80e84c6ff413379ec034bc9",
+      "lines": 220,
+      "summary": "Real Chromium geometry/focus checks with simulated props, not authenticated API acceptance."
+    }
+  ]
 }

@@ -1,0 +1,4 @@
+interface:
+  display_name: 'ExUI'
+  short_description: 'ExUI components, forms, Tokens and visual effects'
+  default_prompt: 'Use $exui to build this interface with ExUI public components, forms, Tokens, glass and shadow rules.'

@@ -27,7 +27,10 @@ vi.mock('@web/src/pages/AuthPage/SsoSuccess', () => ({
 import { App } from '@web/src/App'
 
 describe('auth routes', () => {
-  it.each([['/login', '登录到 Exre'], ['/register', '注册Exre账号']])('renders %s without the site navbar', (path, title) => {
+  it.each([
+    ['/login', '登录到 Exre'],
+    ['/register', '注册Exre账号'],
+  ])('renders %s without the site navbar', (path, title) => {
     const markup = renderToStaticMarkup(
       <MemoryRouter initialEntries={[path]}>
         <App />
@@ -38,21 +41,29 @@ describe('auth routes', () => {
     expect(markup).toContain(title)
     expect(markup).toContain('href="/"')
     expect(markup).toContain('Home')
-    expect(markup).toContain('By signing up, you agree to our Terms, Acceptable Use, and Privacy Policy.')
+    expect(markup).toContain(
+      'By signing up, you agree to our Terms, Acceptable Use, and Privacy Policy.',
+    )
     expect(markup).not.toContain('Page not found')
   })
 
-  it.each([`/login?ssoRequestId=${'a'.repeat(43)}`, '/login?ssoRequestId=invalid'])('hides Home on an SSO entry: %s', (path) => {
-    const markup = renderToStaticMarkup(
-      <MemoryRouter initialEntries={[path]}>
-        <App />
-      </MemoryRouter>,
-    )
+  it.each([`/login?ssoRequestId=${'a'.repeat(43)}`, '/login?ssoRequestId=invalid'])(
+    'hides Home on an SSO entry: %s',
+    (path) => {
+      const markup = renderToStaticMarkup(
+        <MemoryRouter initialEntries={[path]}>
+          <App />
+        </MemoryRouter>,
+      )
 
-    expect(markup).not.toContain('Home</a>')
-  })
+      expect(markup).not.toContain('Home</a>')
+    },
+  )
 
-  it.each([['/sso/success', 'SSO success'], ['/sso/unknown', 'Page not found']])('renders %s without the site navbar', (path, content) => {
+  it.each([
+    ['/sso/success', 'SSO success'],
+    ['/sso/unknown', 'Page not found'],
+  ])('renders %s without the site navbar', (path, content) => {
     const markup = renderToStaticMarkup(
       <MemoryRouter initialEntries={[path]}>
         <App />

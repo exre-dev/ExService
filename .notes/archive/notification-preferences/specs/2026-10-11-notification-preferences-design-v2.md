@@ -8,15 +8,15 @@
 
 修订依据是 Reviewer 评论 `01a12b51-f6dd-759e-874f-0249cb48d8c5` 与 Lead 修订指令 `01a12b5f-6011-766e-b1bb-2ec1cf20e2fe`。逐项对照当前源码和 v1，以下“已修订”只表示文档处置完成；独立复核与行为验证仍待执行。
 
-| 项 | 核对分类 | v2 处置与复核位置 |
-| --- | --- | --- |
-| 1：删 refresh/message 后测试承接 | confirmed，v1 未完整列入必保留表。 | §4 统一接口去留，§9.1 把旧断言映射到字段取得锁清冲突、Form/联动静默成功与无 ExMessage 调用；读重试/无效字段不能清冲突。 |
-| 2：原字段意图/最新快照重基承接 | confirmed，v1 正文规定了行为，但 controller 必保留表未点名。 | §9 controller 行与 §9.1 明确独立 module/controller 必测；联动另证 RHF 校验和接线，不独占策略证据。 |
-| 3：active 可见性与发送资格 | partially confirmed，v1 已说明 controller active，但 Form binding 外的可见性 prop 与接线不充分。 | §4 明示 FormProps 扩展 active；SettingsPanel 提供可见性，SettingsExperience 提供 controller 资格；§8、§9 覆盖三个非通知分类。 |
-| 4：新增状态的 epoch/reset 隔离 | confirmed，v1 缺少具体同步路径。 | §5.1 将登记表、局部失败和 needsCanonicalRead/协调读句柄绑定 syncRuntime；§9.1 规定 StrictMode、卸载、换号和逐用例无私有 reset 的行为检查。 |
-| 5：failure 对象身份稳定性 | confirmed，属于可避免的调用方负担。 | §4 用 failure.id 标量同步 RHF root error，不要求对象/callback 引用稳定；§9.1 分别指定 module 标识寿命与 Form 等价对象重渲染的验证责任。 |
-| 6：单值 kind 与未消费必要类别 | confirmed，UI slice 中没有必要类别呈现。 | 删除单值 kind；message、onRefresh/refresh、necessaryCategories 一致移出 UI seam；Contract/规范响应中的必要类别保留并改由缓存/请求断言证明只读。 |
-| 7：portal 与同名开关查询 | confirmed，按 render container 查询 Modal 会遗漏 portal。 | §9.2 使用 document.body 中唯一设置 dialog 获取 Modal 根，再 within(dialog) 消歧；页面根另存，Modal 开启期间不强行点击被 Dialog 禁用的背景页面。 |
+| 项                               | 核对分类                                                                                         | v2 处置与复核位置                                                                                                                               |
+| -------------------------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1：删 refresh/message 后测试承接 | confirmed，v1 未完整列入必保留表。                                                               | §4 统一接口去留，§9.1 把旧断言映射到字段取得锁清冲突、Form/联动静默成功与无 ExMessage 调用；读重试/无效字段不能清冲突。                         |
+| 2：原字段意图/最新快照重基承接   | confirmed，v1 正文规定了行为，但 controller 必保留表未点名。                                     | §9 controller 行与 §9.1 明确独立 module/controller 必测；联动另证 RHF 校验和接线，不独占策略证据。                                              |
+| 3：active 可见性与发送资格       | partially confirmed，v1 已说明 controller active，但 Form binding 外的可见性 prop 与接线不充分。 | §4 明示 FormProps 扩展 active；SettingsPanel 提供可见性，SettingsExperience 提供 controller 资格；§8、§9 覆盖三个非通知分类。                   |
+| 4：新增状态的 epoch/reset 隔离   | confirmed，v1 缺少具体同步路径。                                                                 | §5.1 将登记表、局部失败和 needsCanonicalRead/协调读句柄绑定 syncRuntime；§9.1 规定 StrictMode、卸载、换号和逐用例无私有 reset 的行为检查。      |
+| 5：failure 对象身份稳定性        | confirmed，属于可避免的调用方负担。                                                              | §4 用 failure.id 标量同步 RHF root error，不要求对象/callback 引用稳定；§9.1 分别指定 module 标识寿命与 Form 等价对象重渲染的验证责任。         |
+| 6：单值 kind 与未消费必要类别    | confirmed，UI slice 中没有必要类别呈现。                                                         | 删除单值 kind；message、onRefresh/refresh、necessaryCategories 一致移出 UI seam；Contract/规范响应中的必要类别保留并改由缓存/请求断言证明只读。 |
+| 7：portal 与同名开关查询         | confirmed，按 render container 查询 Modal 会遗漏 portal。                                        | §9.2 使用 document.body 中唯一设置 dialog 获取 Modal 根，再 within(dialog) 消歧；页面根另存，Modal 开启期间不强行点击被 Dialog 禁用的背景页面。 |
 
 没有新增交互、通用框架、生产代码、测试代码或 .ai 决策。v2 是完整候选，不要求读者把 v1 与补丁拼合。
 
@@ -24,15 +24,15 @@
 
 这是一项内部结构调整。未复现现有功能缺陷，不以修复 bug 为理由改变交互。扫描附件只能支持探索方向，不能代表方案被批准。
 
-| 当前证据 | 当前职责或缺口 |
-| --- | --- |
-| `packages/components/src/notifications/NotificationPreferencesForm.tsx:40` | `confirmed`、`failed`、局部提交 guard 与 `saveField` 共同处理回退和重试；Form 必须理解失败字段与最新另一字段的合并规则。 |
-| `apps/web/src/notifications/useNotificationPreferencesController.ts:76` | `save` 接收整份 draft；共享 runtime 处理 PUT、revision、409 重读和身份接受权，却不知道本次只意图改变哪个字段。 |
-| `packages/components/src/SettingsPanel.tsx:30` | `SettingsNotificationsSlice` 是既有 seam；组件通过 props/callback 接入 Web，不访问 API。 |
-| `packages/components/src/SettingsPanel.tsx:150` | 通知 Form 始终挂载，`active` 只控制可见性。切分类保留局部意图；Modal 关闭时整个设置实例卸载。 |
-| `apps/web/src/settings/SettingsExperience.tsx:22` | 页面和 Modal 各拥有一个 controller，进入对应来源才读取；effect cleanup 清除 entered 标记以支持 StrictMode。 |
-| `packages/components/src/notifications/NotificationPreferencesForm.test.tsx:52`、`apps/web/src/notifications/useNotificationPreferencesController.test.tsx:257` | 两端分别 mock callback 或 Client，已有重要回归；未见真实 Form/controller 共同覆盖失败后另一宿主更新规范值的测试。 |
-| `apps/web/src/settings/SettingsExperience.test.tsx:24` | mock 整个 `SettingsPanel`，能验证分区读取，不能证明真实 Form 与 controller 的保存联动。 |
+| 当前证据                                                                                                                                                        | 当前职责或缺口                                                                                                           |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `packages/components/src/notifications/NotificationPreferencesForm.tsx:40`                                                                                      | `confirmed`、`failed`、局部提交 guard 与 `saveField` 共同处理回退和重试；Form 必须理解失败字段与最新另一字段的合并规则。 |
+| `apps/web/src/notifications/useNotificationPreferencesController.ts:76`                                                                                         | `save` 接收整份 draft；共享 runtime 处理 PUT、revision、409 重读和身份接受权，却不知道本次只意图改变哪个字段。           |
+| `packages/components/src/SettingsPanel.tsx:30`                                                                                                                  | `SettingsNotificationsSlice` 是既有 seam；组件通过 props/callback 接入 Web，不访问 API。                                 |
+| `packages/components/src/SettingsPanel.tsx:150`                                                                                                                 | 通知 Form 始终挂载，`active` 只控制可见性。切分类保留局部意图；Modal 关闭时整个设置实例卸载。                            |
+| `apps/web/src/settings/SettingsExperience.tsx:22`                                                                                                               | 页面和 Modal 各拥有一个 controller，进入对应来源才读取；effect cleanup 清除 entered 标记以支持 StrictMode。              |
+| `packages/components/src/notifications/NotificationPreferencesForm.test.tsx:52`、`apps/web/src/notifications/useNotificationPreferencesController.test.tsx:257` | 两端分别 mock callback 或 Client，已有重要回归；未见真实 Form/controller 共同覆盖失败后另一宿主更新规范值的测试。        |
+| `apps/web/src/settings/SettingsExperience.test.tsx:24`                                                                                                          | mock 整个 `SettingsPanel`，能验证分区读取，不能证明真实 Form 与 controller 的保存联动。                                  |
 
 原 16 份偏好源码摘要未漂移；v2 补录 `packages/components/src/SettingsPanel.test.tsx` 的 slice fixture 与 `apps/web/src/auth/storage.ts` 的同步会话事件证据，共 18 份。完整源码文件摘要与 SHA256 见 `.notes/notification-preferences/specs/2026-10-11-notification-preferences-baseline-v2.json`；摘要用于审查候选的一致性，不充当测试结果。
 
@@ -40,11 +40,11 @@
 
 ## 2. 方案比较与收益
 
-| 方向 | depth / locality | 成本与取舍 |
-| --- | --- | --- |
-| 维持现状 | 已有共享锁与身份保护有 depth；保存行为仍要求同时理解 Form 与 controller。 | 无迁移风险，但新增字段或恢复路径仍要协调两处编排，联动测试缺口仍需补。可作为收益未实现时的回退。 |
-| **深化既有 Web module（推荐）** | 单字段意图、最新规范值与 revision 在同一个保存边界组合；两宿主通过同一 interface 获得 leverage。 | slice 增加明确字段意图与局部失败投影；需迁移测试 callback，并保留宿主寿命。实现文件可以增长，但调用方知识减少。 |
-| 在 UI 包抽出“通用即时保存”或把失败意图全局共享 | 抽 UI helper 仍无法独立掌握 Web revision/身份；全局失败意图让另一宿主获得不属于它的重试。 | 引入新的 shallow module 或改变错误/关闭交互；没有当前需求支持，排除。 |
+| 方向                                           | depth / locality                                                                                 | 成本与取舍                                                                                                      |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| 维持现状                                       | 已有共享锁与身份保护有 depth；保存行为仍要求同时理解 Form 与 controller。                        | 无迁移风险，但新增字段或恢复路径仍要协调两处编排，联动测试缺口仍需补。可作为收益未实现时的回退。                |
+| **深化既有 Web module（推荐）**                | 单字段意图、最新规范值与 revision 在同一个保存边界组合；两宿主通过同一 interface 获得 leverage。 | slice 增加明确字段意图与局部失败投影；需迁移测试 callback，并保留宿主寿命。实现文件可以增长，但调用方知识减少。 |
+| 在 UI 包抽出“通用即时保存”或把失败意图全局共享 | 抽 UI helper 仍无法独立掌握 Web revision/身份；全局失败意图让另一宿主获得不属于它的重试。        | 引入新的 shallow module 或改变错误/关闭交互；没有当前需求支持，排除。                                           |
 
 depth 的验收不以文件变短为标准：删除 Form 的 `confirmed`/`failed` 编排后，单字段重试、规范回退、409 恢复仍由 module 独立完成。locality 的验收是修改这些策略仅需定位偏好 module；Form 的改动应只涉及字段 schema 和展示。保留 RHF 自身的 `isSubmitting` 与实例 guard 不构成另一份 HTTP 写锁。
 
@@ -52,13 +52,13 @@ depth 的验收不以文件变短为标准：删除 Form 的 `confirmed`/`failed
 
 module 仍是 `apps/web/src/notifications/useNotificationPreferencesController.ts` 及其私有 runtime；首版不新增 service factory、通用 store、事件总线或第二份偏好缓存。`notificationsConfig.preferences.snapshot` 仍是规范快照唯一来源，其类型继续从 `@workspace/api-client` 生成 schema 派生。controller 内增加宿主 slot，与现有共享 runtime 协作；不要把 UI 包依赖反向引入 API Client。
 
-| 所有者 | 拥有 | 不向调用方泄漏的实现知识 |
-| --- | --- | --- |
-| Web 偏好 module / 共享身份资源 | 规范快照、读取状态、读接受权、独立 writeVersion、单 PUT run、共享 conflict、是否仍需冲突后规范读取。 | `expectedRevision`、readId、run 身份、409 分类、锁释放和旧 finally 规则。 |
-| Web 偏好 module / 每宿主 slot | 当前身份、存活代次、active 投影、原字段/目标值失败意图、失败标识。 | 失败何时失效、如何构造重试、重试如何采用最新另一字段。 |
-| Form | RHF/Zod、全部字段校验、临时待验证值、`setError`、错误文本与控件呈现、实例级异步回调保护。 | 不保存 confirmed 副本、失败字段或 revision；不处理 HTTP 分类。 |
-| `SettingsExperience` / `SettingsPanel` | 分类、来源读取触发、slice 的透传、Form 可见性。 | 不编排保存和重试，不复制 module 规则。 |
-| 共享 Client adapter | 已有 `api.GET` / `api.PUT`，transport 与会话绑定。 | 无新增 wrapper；两种请求继续 `alert: false`。 |
+| 所有者                                 | 拥有                                                                                                 | 不向调用方泄漏的实现知识                                                  |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Web 偏好 module / 共享身份资源         | 规范快照、读取状态、读接受权、独立 writeVersion、单 PUT run、共享 conflict、是否仍需冲突后规范读取。 | `expectedRevision`、readId、run 身份、409 分类、锁释放和旧 finally 规则。 |
+| Web 偏好 module / 每宿主 slot          | 当前身份、存活代次、active 投影、原字段/目标值失败意图、失败标识。                                   | 失败何时失效、如何构造重试、重试如何采用最新另一字段。                    |
+| Form                                   | RHF/Zod、全部字段校验、临时待验证值、`setError`、错误文本与控件呈现、实例级异步回调保护。            | 不保存 confirmed 副本、失败字段或 revision；不处理 HTTP 分类。            |
+| `SettingsExperience` / `SettingsPanel` | 分类、来源读取触发、slice 的透传、Form 可见性。                                                      | 不编排保存和重试，不复制 module 规则。                                    |
+| 共享 Client adapter                    | 已有 `api.GET` / `api.PUT`，transport 与会话绑定。                                                   | 无新增 wrapper；两种请求继续 `alert: false`。                             |
 
 AuthContext 仅提供现有认证能力；偏好不并入资料缓存，不刷新顶栏资料。偏好 writeVersion 不采用收件已读/清理的 seq，不改它们的 API 或流程。Contract、Server、数据库、生成 Client 均不变。必要服务通知继续固定且无开关。成功采用服务器规范值，无成功 ExMessage；持续错误与保存中仍在现有 Form 展示。
 
@@ -131,15 +131,15 @@ Form 以 `failure?.id` 的标量变化同步 `setError('root.server', 固定文�
 
 宿主 slot 使用 controller 私有 Valtio proxy，hook 订阅其状态；runtime 登记活 slot 以便身份变化和 409 时清空全部失败。卸载时移出登记集合并清空局部意图，避免保留已关闭 Modal 的失败；在途 PUT run 可暂时持有原 slot 引用，但只能结算共享资源，结算后释放。slot 不放进 localStorage，不进入 AuthContext，也不成为第二份规范快照。
 
-| 事件 | 共享资源 | 发起宿主失败意图 |
-| --- | --- | --- |
-| 切设置分类，Form `active=false` | PUT/GET 既有接受权继续；不自动提交。 | 保留，返回通知分类时仍可重试。 |
-| 新字段事件成功获得写锁 | 同步占用唯一 run，禁用所有宿主开关；失效旧读。 | 清除此宿主旧失败，以新字段事件替代；其他宿主失败保留。 |
-| 普通失败且身份仍有效 | 不修改规范快照，释放当前 run；显示确认值。 | 仅原活宿主保存本次字段/目标值；关闭的宿主不建立 failure。 |
-| 另一宿主成功保存或已接受 GET 改变快照 | 全宿主采用新规范值。 | 保留原字段意图；retryValues 的另一字段随规范值投影更新。 |
-| 409 | 共享 conflict=true，进入必须重读阶段；不自动 PUT。 | 全部宿主立即清除，防止任何旧意图跨冲突重发。 |
-| Modal 关闭 / 页面离开导致卸载 | 已发送 PUT 的 run 不释放、不取消；其返回仍能更新同一身份缓存。 | 清除且不转移；重新打开产生新 slot。 |
-| 换号、退出、SESSION_INVALID | epoch 递增，规范快照及共享 run 接受权失效。 | 全部清除；旧 callback 不能写入新身份。 |
+| 事件                                  | 共享资源                                                       | 发起宿主失败意图                                          |
+| ------------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------- |
+| 切设置分类，Form `active=false`       | PUT/GET 既有接受权继续；不自动提交。                           | 保留，返回通知分类时仍可重试。                            |
+| 新字段事件成功获得写锁                | 同步占用唯一 run，禁用所有宿主开关；失效旧读。                 | 清除此宿主旧失败，以新字段事件替代；其他宿主失败保留。    |
+| 普通失败且身份仍有效                  | 不修改规范快照，释放当前 run；显示确认值。                     | 仅原活宿主保存本次字段/目标值；关闭的宿主不建立 failure。 |
+| 另一宿主成功保存或已接受 GET 改变快照 | 全宿主采用新规范值。                                           | 保留原字段意图；retryValues 的另一字段随规范值投影更新。  |
+| 409                                   | 共享 conflict=true，进入必须重读阶段；不自动 PUT。             | 全部宿主立即清除，防止任何旧意图跨冲突重发。              |
+| Modal 关闭 / 页面离开导致卸载         | 已发送 PUT 的 run 不释放、不取消；其返回仍能更新同一身份缓存。 | 清除且不转移；重新打开产生新 slot。                       |
+| 换号、退出、SESSION_INVALID           | epoch 递增，规范快照及共享 run 接受权失效。                    | 全部清除；旧 callback 不能写入新身份。                    |
 
 同一身份最多一个在途偏好 PUT，不排队、不自动合并连点。新账号可以开始自己的 PUT，而旧账号网络请求仍在途；旧请求不得影响新账号逻辑锁。这符合现有身份隔离，不能把物理网络并发误称共享单写锁违规。
 
@@ -210,29 +210,29 @@ module-owned 的冲突/恢复读取不能因普通宿主卸载而被 `discardOwn
 
 保留当前行为断言，允许随 interface 更新 fixture，禁止用删除危险时序用例换取绿灯：
 
-| 测试入口 | 必须保留的含义 |
-| --- | --- |
-| `packages/components/src/notifications/NotificationPreferencesForm.test.tsx` | 两个可选开关；全值 Zod/handleSubmit；仅用户事件提交；同步抑制连点；加载/读失败；规范值 reset；安全 root 错误；成功无“已保存”文本且无成功通知调用；failure.id 错误同步与等价对象重渲染；换号新 RHF；旧回调不影响新提交；inactive 无 Form 内容、不自动写。失败合并策略由 controller 层必测独立承接，联动另外覆盖时序；Form 验 retryValues 经完整校验并调用指定 callback。 |
-| `apps/web/src/notifications/useNotificationPreferencesController.test.tsx` | 多宿主共享锁；latest GET；与收件 seq 独立；PUT 前后迟到读；关闭成功/409/重读失败；读 owner 卸载恢复；SESSION_INVALID；旧账号成功/错误/finally；固定原失败字段意图，在取得锁时用最新规范快照的另一字段与 revision 重基；下一次有效字段意图取得锁时清冲突（读重试/无效命令不清）；完整 PUT body；必要类别在规范缓存保留而不进入 PUT；普通错误安全文案；宿主失败寿命、failure.id/旧 callback、syncRuntime 逐用例隔离与 StrictMode attachment；inactive 拒绝发送。 |
-| `packages/components/src/SettingsPanel.test.tsx` | 更新 slice fixture；general/profile/account 不显示通知开关/错误/加载，也不调用保存；返回通知沿用同一 Form owner。 |
-| `apps/web/src/settings/SettingsExperience.test.tsx` | 分类首次读取、关闭再开重读、通知/资料失败隔离、认证恢复触发；active 分类投影接入 controller，非通知分类不自动 PUT。不得把 mock SettingsPanel 的测试称为保存联动证据。 |
-| `apps/web/src/settings/SettingsProfileLoading.test.tsx` | 真实 Panel/Modal、StrictMode 清理重新挂载和迟到读不回退；补充通知分区相同 lifecycle 证据，不改资料语义。 |
-| `tests/browser/notification-experience.mjs` | 现有 UI fixture 的真实 Chromium 几何/焦点/控件状态；更新 interface adapter。它不证明真实账号/API、移动设备或跨宿主 controller 联动。 |
+| 测试入口                                                                     | 必须保留的含义                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/components/src/notifications/NotificationPreferencesForm.test.tsx` | 两个可选开关；全值 Zod/handleSubmit；仅用户事件提交；同步抑制连点；加载/读失败；规范值 reset；安全 root 错误；成功无“已保存”文本且无成功通知调用；failure.id 错误同步与等价对象重渲染；换号新 RHF；旧回调不影响新提交；inactive 无 Form 内容、不自动写。失败合并策略由 controller 层必测独立承接，联动另外覆盖时序；Form 验 retryValues 经完整校验并调用指定 callback。                                                                                        |
+| `apps/web/src/notifications/useNotificationPreferencesController.test.tsx`   | 多宿主共享锁；latest GET；与收件 seq 独立；PUT 前后迟到读；关闭成功/409/重读失败；读 owner 卸载恢复；SESSION_INVALID；旧账号成功/错误/finally；固定原失败字段意图，在取得锁时用最新规范快照的另一字段与 revision 重基；下一次有效字段意图取得锁时清冲突（读重试/无效命令不清）；完整 PUT body；必要类别在规范缓存保留而不进入 PUT；普通错误安全文案；宿主失败寿命、failure.id/旧 callback、syncRuntime 逐用例隔离与 StrictMode attachment；inactive 拒绝发送。 |
+| `packages/components/src/SettingsPanel.test.tsx`                             | 更新 slice fixture；general/profile/account 不显示通知开关/错误/加载，也不调用保存；返回通知沿用同一 Form owner。                                                                                                                                                                                                                                                                                                                                              |
+| `apps/web/src/settings/SettingsExperience.test.tsx`                          | 分类首次读取、关闭再开重读、通知/资料失败隔离、认证恢复触发；active 分类投影接入 controller，非通知分类不自动 PUT。不得把 mock SettingsPanel 的测试称为保存联动证据。                                                                                                                                                                                                                                                                                          |
+| `apps/web/src/settings/SettingsProfileLoading.test.tsx`                      | 真实 Panel/Modal、StrictMode 清理重新挂载和迟到读不回退；补充通知分区相同 lifecycle 证据，不改资料语义。                                                                                                                                                                                                                                                                                                                                                       |
+| `tests/browser/notification-experience.mjs`                                  | 现有 UI fixture 的真实 Chromium 几何/焦点/控件状态；更新 interface adapter。它不证明真实账号/API、移动设备或跨宿主 controller 联动。                                                                                                                                                                                                                                                                                                                           |
 
 ### 9.1 策略测试与旧断言承接
 
 controller/module 层独立驱动已验证命令和已有 Client mock，承担保存策略本身的必需证据；不能只检查 retryValues 投影而不检查实际 PUT。
 
-| 必须承接的行为 | controller/module 层步骤与断言 | Form / 真实联动的独立职责 |
-| --- | --- | --- |
-| 固定原失败字段 + 最新另一字段/revision | A 的公告意图失败；B 更新个人字段或接受新 GET；使用 A 原失败 callback，故意传入旧 retryValues 的另一字段。断言实际 PUT 原字段目标不变、另一字段和 revision 取取得锁时最新规范快照；两个原字段分别参数化。 | Form 全值校验后调用正确 callback；联动用可见开关与真实 binding 证明重试、rollback、规范更新和 RHF 时序。 |
-| 异步校验期间又接受新规范值 | 保留早先 retry callback，更新规范值后才调用它，验证发送时重基，非原字段 validated 值没有覆盖新规范值。 | 联动控制一次校验/响应时序，观察 Form 不因 props reset 丢失原意图或发送未验证值。 |
-| 删 refresh 后冲突清除 | 409 重读成功后 conflict 保持；读 retry 不清。发起有效字段事件，延迟 PUT 返回，断言取得锁即 conflict=false；inactive/无快照/needsCanonicalRead/旧 callback 被拒绝时不得清 conflict。 | 联动断言新规范值及冲突提示先展示，仅用户新调整后提示消失，不自动 PUT。 |
-| 删 message 后静默成功 | 继续断言共享规范成功与 `alert:false`，不能用“删字段所以通过”替代反馈验证。 | Form 和联动显式断言成功后无“已保存”文本、无成功 alert/status，既有“保存中…”退出；spy 现有 ExMessage 公共反馈入口，确认保存流程无 info/success/loading 等临时通知调用，不 mock 控件或复制通知宿主。 |
-| 必要类别 UI 接口删除 | 保留规范缓存的 necessaryCategories，并断言 PUT body 精确只有 expectedRevision 与 optionalCategories（内含两可选字段），没有必要类别。 | Form 仍仅两个可选开关，无服务通知开关；不新增必要通知区域。 |
-| failure 标识而非对象身份 | 同一失败 id 在其他宿主规范值更新时不变，retryValues 更新；再次真实失败生成新 id，旧失败 callback 不重发。 | 同 id 换 failure 对象重渲染仍保留 root 错误；新 retryValues 不清错误/不自动写；新 id 再次失败能反馈，无错误 effect 循环。 |
-| syncRuntime 与逐用例隔离 | 先制造失败或 409 重读失败；按既有 cleanup/bind(null)/clear 流程，再挂新 token 的 hook，不用私有 reset。新身份无旧 failure/conflict，load 发新 GET、可有效保存；旧 Promise 的成功/错误/401/finally 不改新状态。覆盖无活订阅时 epoch 懒同步。 | 联动重复真实宿主关闭/换号并观察新实例；与 controller 层互不替代。 |
-| StrictMode / attachment | 同 epoch setup-cleanup-setup 后，旧 attachment 命令失效，新 binding 可用；读取重发/迟到结果隔离；离开的 slot 不被迟到失败重新登记。单独断言同身份已发 PUT cleanup 不释放共享锁。 | 真实通知 Panel/Modal 在 StrictMode 可读并可保存；换号重建 RHF，旧 finally 不清新 isSubmitting。 |
+| 必须承接的行为                         | controller/module 层步骤与断言                                                                                                                                                                                                              | Form / 真实联动的独立职责                                                                                                                                                                          |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 固定原失败字段 + 最新另一字段/revision | A 的公告意图失败；B 更新个人字段或接受新 GET；使用 A 原失败 callback，故意传入旧 retryValues 的另一字段。断言实际 PUT 原字段目标不变、另一字段和 revision 取取得锁时最新规范快照；两个原字段分别参数化。                                    | Form 全值校验后调用正确 callback；联动用可见开关与真实 binding 证明重试、rollback、规范更新和 RHF 时序。                                                                                           |
+| 异步校验期间又接受新规范值             | 保留早先 retry callback，更新规范值后才调用它，验证发送时重基，非原字段 validated 值没有覆盖新规范值。                                                                                                                                      | 联动控制一次校验/响应时序，观察 Form 不因 props reset 丢失原意图或发送未验证值。                                                                                                                   |
+| 删 refresh 后冲突清除                  | 409 重读成功后 conflict 保持；读 retry 不清。发起有效字段事件，延迟 PUT 返回，断言取得锁即 conflict=false；inactive/无快照/needsCanonicalRead/旧 callback 被拒绝时不得清 conflict。                                                         | 联动断言新规范值及冲突提示先展示，仅用户新调整后提示消失，不自动 PUT。                                                                                                                             |
+| 删 message 后静默成功                  | 继续断言共享规范成功与 `alert:false`，不能用“删字段所以通过”替代反馈验证。                                                                                                                                                                  | Form 和联动显式断言成功后无“已保存”文本、无成功 alert/status，既有“保存中…”退出；spy 现有 ExMessage 公共反馈入口，确认保存流程无 info/success/loading 等临时通知调用，不 mock 控件或复制通知宿主。 |
+| 必要类别 UI 接口删除                   | 保留规范缓存的 necessaryCategories，并断言 PUT body 精确只有 expectedRevision 与 optionalCategories（内含两可选字段），没有必要类别。                                                                                                       | Form 仍仅两个可选开关，无服务通知开关；不新增必要通知区域。                                                                                                                                        |
+| failure 标识而非对象身份               | 同一失败 id 在其他宿主规范值更新时不变，retryValues 更新；再次真实失败生成新 id，旧失败 callback 不重发。                                                                                                                                   | 同 id 换 failure 对象重渲染仍保留 root 错误；新 retryValues 不清错误/不自动写；新 id 再次失败能反馈，无错误 effect 循环。                                                                          |
+| syncRuntime 与逐用例隔离               | 先制造失败或 409 重读失败；按既有 cleanup/bind(null)/clear 流程，再挂新 token 的 hook，不用私有 reset。新身份无旧 failure/conflict，load 发新 GET、可有效保存；旧 Promise 的成功/错误/401/finally 不改新状态。覆盖无活订阅时 epoch 懒同步。 | 联动重复真实宿主关闭/换号并观察新实例；与 controller 层互不替代。                                                                                                                                  |
+| StrictMode / attachment                | 同 epoch setup-cleanup-setup 后，旧 attachment 命令失效，新 binding 可用；读取重发/迟到结果隔离；离开的 slot 不被迟到失败重新登记。单独断言同身份已发 PUT cleanup 不释放共享锁。                                                            | 真实通知 Panel/Modal 在 StrictMode 可读并可保存；换号重建 RHF，旧 finally 不清新 isSubmitting。                                                                                                    |
 
 旧测试明确迁移：`apps/web/src/notifications/useNotificationPreferencesController.test.tsx:297` 的 refresh 清冲突断言替换为本表“有效字段取得锁清冲突”；同文件第 244 行及 slice.message 的静默断言移到 Form/联动可见结果与 ExMessage spy；第 253 行的 slice.necessaryCategories 断言移到规范缓存/精确 PUT。原 `packages/components/src/notifications/NotificationPreferencesForm.test.tsx:52` 的单字段重试 body 规则必须在 controller 必测中保留，同步新增联动，不能删除后仅保留 callback 调用次数。旧测试名字和接口允许改变，保护的行为不能消失。
 
@@ -244,21 +244,21 @@ controller/module 层独立驱动已验证命令和已有 Client mock，承担�
 
 真实 Dialog 打开可能屏蔽背景页面交互。跨宿主 A 失败→B 更新→A 重试的策略/联动用两个非 Modal 的真实 SettingsExperience 容器驱动；Modal 专项通过先在页面发送 PUT、打开 Modal（应共享 pending）、在 dialog 内操作/关闭，再返回页面操作来验证 portal、关闭结算和共享锁。Modal 打开期间以 DOM 属性检查隐藏背景开关状态，不强行 userEvent 点击被 aria-hidden/inert 的页面；关闭后重新查询页面入口。关闭/重开改变 portal 节点，重新取 dialog，不沿用旧元素引用。
 
-| 联动场景 | 必须观察的结果 |
-| --- | --- |
-| A 普通失败 → B 更新另一字段 → A 重试 | A 回退；B 不获得 A 失败入口；A 重试仅原字段、另一字段和 revision 来自最新规范快照；成功无提示。 |
-| 验证过程中规范快照变化 / 连点 / 过时 retry callback | 最多一个有效 PUT；重试采用取得锁时快照；旧失败标识不能复活；被拒绝不排队。 |
-| A 失败 → A 切 general/profile/account → 返回通知 | 三个非通知分类均无通知 Form 内容、不自动 PUT；失败意图保留，返回通知时仍可重试。 |
-| A 失败 → A 关闭卸载 → 重新打开 | 新宿主无旧重试意图；规范值仍共享；B 局部失败不被清掉。 |
-| A PUT 在途 → 关闭 → B 或重开 A 操作 → 原 PUT 成功/普通失败 | 返回前无第二 PUT；成功全宿主采用规范结果，失败仅原活 slot 出入口；原 slot 已销毁不恢复失败。 |
-| A PUT 409 → 关闭 → reconciliation 成功 | 一次 PUT、一次有效规范 GET；surviving/reopened 宿主显示新值和冲突，无保存重试；用户新调整才再 PUT。 |
-| 409 GET 失败 → 点击读取重试 → 失败/成功 | 旧缓存开关不可写；重试仅 GET，成功后新值/冲突提示，无旧意图；再次明确调整才提交最新 revision。 |
-| 冲突恢复期间其他宿主 load/卸载 | module-owned 读取不被 ordinary owner cleanup 撤销；不能通过缓存 ready 绕过恢复；没有自动 PUT。 |
-| 旧账号 PUT 成功/普通错误/401/409/finally，发生在新账号 PUT 期间 | 新账号 pending 与锁保持，新规范值不回退，不被旧 401 登出；旧 Form finally 不清新 RHF 状态。 |
-| 409 读恢复成功 → 普通 read retry → 有效新字段事件 | 读 retry 不清 conflict；新字段取得锁即清冲突，成功无文本/临时通知；无效事件不清。 |
-| 同 failure id 重建投影 / retry 再次失败 | root 错误不因等价对象或另一字段变化清除；再次失败新 id 显示错误；不自动写。 |
-| 制造失败/needsCanonicalRead → cleanup/bind(null)/新 token → 新挂载 | 与 controller 层同一隔离路径；新宿主无旧失败/冲突，GET/PUT 正常，迟到旧 finally 不影响新锁。 |
-| 收件写代次变化、资料失败、StrictMode、普通读 owner 卸载 | 偏好接受权独立；真实 Form 可见值保持正确；StrictMode 新 attachment 有效且旧命令无效；重新挂载有效读取，不永久 loading。 |
+| 联动场景                                                           | 必须观察的结果                                                                                                          |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| A 普通失败 → B 更新另一字段 → A 重试                               | A 回退；B 不获得 A 失败入口；A 重试仅原字段、另一字段和 revision 来自最新规范快照；成功无提示。                         |
+| 验证过程中规范快照变化 / 连点 / 过时 retry callback                | 最多一个有效 PUT；重试采用取得锁时快照；旧失败标识不能复活；被拒绝不排队。                                              |
+| A 失败 → A 切 general/profile/account → 返回通知                   | 三个非通知分类均无通知 Form 内容、不自动 PUT；失败意图保留，返回通知时仍可重试。                                        |
+| A 失败 → A 关闭卸载 → 重新打开                                     | 新宿主无旧重试意图；规范值仍共享；B 局部失败不被清掉。                                                                  |
+| A PUT 在途 → 关闭 → B 或重开 A 操作 → 原 PUT 成功/普通失败         | 返回前无第二 PUT；成功全宿主采用规范结果，失败仅原活 slot 出入口；原 slot 已销毁不恢复失败。                            |
+| A PUT 409 → 关闭 → reconciliation 成功                             | 一次 PUT、一次有效规范 GET；surviving/reopened 宿主显示新值和冲突，无保存重试；用户新调整才再 PUT。                     |
+| 409 GET 失败 → 点击读取重试 → 失败/成功                            | 旧缓存开关不可写；重试仅 GET，成功后新值/冲突提示，无旧意图；再次明确调整才提交最新 revision。                          |
+| 冲突恢复期间其他宿主 load/卸载                                     | module-owned 读取不被 ordinary owner cleanup 撤销；不能通过缓存 ready 绕过恢复；没有自动 PUT。                          |
+| 旧账号 PUT 成功/普通错误/401/409/finally，发生在新账号 PUT 期间    | 新账号 pending 与锁保持，新规范值不回退，不被旧 401 登出；旧 Form finally 不清新 RHF 状态。                             |
+| 409 读恢复成功 → 普通 read retry → 有效新字段事件                  | 读 retry 不清 conflict；新字段取得锁即清冲突，成功无文本/临时通知；无效事件不清。                                       |
+| 同 failure id 重建投影 / retry 再次失败                            | root 错误不因等价对象或另一字段变化清除；再次失败新 id 显示错误；不自动写。                                             |
+| 制造失败/needsCanonicalRead → cleanup/bind(null)/新 token → 新挂载 | 与 controller 层同一隔离路径；新宿主无旧失败/冲突，GET/PUT 正常，迟到旧 finally 不影响新锁。                            |
+| 收件写代次变化、资料失败、StrictMode、普通读 owner 卸载            | 偏好接受权独立；真实 Form 可见值保持正确；StrictMode 新 attachment 有效且旧命令无效；重新挂载有效读取，不永久 loading。 |
 
 批准后先执行相关 Vitest 文件，再执行工程要求的 `pnpm typecheck`、`pnpm test`、`pnpm build`；无需因内部调整手改/重生成 Contract 类型，但现有 runner 生成/核对行为沿用。完整测试若 Docker 不可用，明确 FAIL/BLOCKED，不回退开发库。实际命令与结果由实现者记录，不在设计轮执行。真实浏览器另验页面与 Modal 的保存、重试、关闭和换号，无“已保存”临时消息；需要故障时使用受控测试环境，不改开发数据制造故障。部署不执行。
 
@@ -276,13 +276,12 @@ controller/module 层独立驱动已验证命令和已有 Client mock，承担�
 
 设计自检：无待填写段落；共享与局部寿命、409 恢复、接口验证和 identity guard 已对照；适用测试列出但未执行。此自检不是独立评审，也不是用户批准。
 
-| 当前证据 | 状态 |
-| --- | --- |
-| 源码/知识/扫描附件核对与设计自检 | PASS（仅文档和静态证据；v1 原件摘要保持不变） |
-| 独立设计评审 | v1 方向 CONDITIONAL PASS 保留；v2 变化复核 NOT_EXECUTED，交 Reviewer |
-| 用户对 v2 设计批准 | NOT_EXECUTED，来源 `none` |
-| 自动测试 / typecheck / build | NOT_EXECUTED，未授权实现 |
-| 真实浏览器 / 部署验收 | NOT_EXECUTED |
+| 当前证据                         | 状态                                                                 |
+| -------------------------------- | -------------------------------------------------------------------- |
+| 源码/知识/扫描附件核对与设计自检 | PASS（仅文档和静态证据；v1 原件摘要保持不变）                        |
+| 独立设计评审                     | v1 方向 CONDITIONAL PASS 保留；v2 变化复核 NOT_EXECUTED，交 Reviewer |
+| 用户对 v2 设计批准               | NOT_EXECUTED，来源 `none`                                            |
+| 自动测试 / typecheck / build     | NOT_EXECUTED，未授权实现                                             |
+| 真实浏览器 / 部署验收            | NOT_EXECUTED                                                         |
 
 下一执行者：独立 Exre Reviewer 审查本候选与 baseline 摘要，重点核对 interface 知识是否减少、失败寿命、409 恢复及联动测试是否可证伪；评审后交 Exre Lead 向用户呈现具体版本。本文与 baseline 未提交；本轮不建立 PR、不修改生产实现、不把候选写入 `.ai/`。人工批准必须在 Issue 保留原始消息/评论来源和批准范围，团队评审不等于批准。
-

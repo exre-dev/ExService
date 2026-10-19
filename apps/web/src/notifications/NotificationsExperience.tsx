@@ -1,8 +1,6 @@
 import { createContext, useContext, type ReactNode } from 'react'
 import { NotificationBell, NotificationHistoryModal } from '@workspace/components'
-import {
-  useNotificationsController,
-} from '@web/src/notifications/useNotificationsController'
+import { useNotificationsController } from '@web/src/notifications/useNotificationsController'
 
 type NotificationsControllerValue = ReturnType<typeof useNotificationsController>
 
@@ -34,36 +32,42 @@ function useNotifications(): NotificationsControllerValue {
 export function NotificationBellSlot() {
   const notifications = useNotifications()
   if (!notifications.authenticated) return null
-  return <NotificationBell
-    bellRef={notifications.bellRef}
-    countState={notifications.countState}
-    status={notifications.unreadStatus}
-    items={notifications.unreadItems}
-    open={notifications.popupOpen}
-    onOpenChange={notifications.setPopupOpen}
-    onViewAll={notifications.onOpenModal}
-    onSelect={receiptId => {
-      notifications.onOpenModal()
-      notifications.onSelect(receiptId)
-    }}
-    onRetry={notifications.onRetryUnread}
-    // 从 Popup 打开 Modal 时不把焦点抢回铃铛：两个交互层不能同时持有焦点。
-    restoreFocusOnClose={!notifications.modalOpen} />
+  return (
+    <NotificationBell
+      bellRef={notifications.bellRef}
+      countState={notifications.countState}
+      status={notifications.unreadStatus}
+      items={notifications.unreadItems}
+      open={notifications.popupOpen}
+      onOpenChange={notifications.setPopupOpen}
+      onViewAll={notifications.onOpenModal}
+      onSelect={(receiptId) => {
+        notifications.onOpenModal()
+        notifications.onSelect(receiptId)
+      }}
+      onRetry={notifications.onRetryUnread}
+      // 从 Popup 打开 Modal 时不把焦点抢回铃铛：两个交互层不能同时持有焦点。
+      restoreFocusOnClose={!notifications.modalOpen}
+    />
+  )
 }
 
 /** 双栏历史 Modal 的挂载点；不新增任何通知页面路由。 */
 export function NotificationHistoryModalSlot() {
   const notifications = useNotifications()
   if (!notifications.authenticated) return null
-  return <NotificationHistoryModal
-    open={notifications.modalOpen}
-    onClose={notifications.onCloseModal}
-    finalFocusRef={notifications.bellRef}
-    selectedId={notifications.selectedId}
-    onSelect={notifications.onSelect}
-    list={notifications.list}
-    detail={notifications.detail}
-    bulk={notifications.bulk}
-    countState={notifications.countState}
-    confirm={notifications.confirm} />
+  return (
+    <NotificationHistoryModal
+      open={notifications.modalOpen}
+      onClose={notifications.onCloseModal}
+      finalFocusRef={notifications.bellRef}
+      selectedId={notifications.selectedId}
+      onSelect={notifications.onSelect}
+      list={notifications.list}
+      detail={notifications.detail}
+      bulk={notifications.bulk}
+      countState={notifications.countState}
+      confirm={notifications.confirm}
+    />
+  )
 }

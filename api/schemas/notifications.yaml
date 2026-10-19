@@ -1,12 +1,12 @@
 NotificationView:
   type: string
-  enum: [ unread, history ]
+  enum: [unread, history]
 NotificationScopeFilter:
   type: string
-  enum: [ all, community, personal ]
+  enum: [all, community, personal]
 NotificationCategory:
   type: string
-  enum: [ announcement, personal_update, service_notice ]
+  enum: [announcement, personal_update, service_notice]
 NotificationCursor:
   type: string
   minLength: 16
@@ -22,18 +22,31 @@ NotificationToken:
 NotificationItem:
   type: object
   additionalProperties: false
-  required: [ receiptId, title, summaryText, scope, category, necessity, sequence, deliveredAt, readAt, expired, stateRevision ]
+  required:
+    [
+      receiptId,
+      title,
+      summaryText,
+      scope,
+      category,
+      necessity,
+      sequence,
+      deliveredAt,
+      readAt,
+      expired,
+      stateRevision,
+    ]
   properties:
     receiptId: { $ref: '../openapi.yaml#/components/schemas/Uuid' }
     title: { type: string, minLength: 1, maxLength: 240 }
     summaryText: { type: string, minLength: 0, maxLength: 320 }
-    scope: { type: string, enum: [ community, personal ] }
+    scope: { type: string, enum: [community, personal] }
     category: { $ref: '../openapi.yaml#/components/schemas/NotificationCategory' }
-    necessity: { type: string, enum: [ optional, necessary ] }
+    necessity: { type: string, enum: [optional, necessary] }
     sequence: { type: integer, minimum: 1, maximum: 9007199254740991 }
     deliveredAt: { $ref: '../openapi.yaml#/components/schemas/SafeTimestamp' }
     readAt:
-      type: [ integer, 'null' ]
+      type: [integer, 'null']
       minimum: 0
       maximum: 9007199254740991
     expired: { type: boolean }
@@ -41,14 +54,14 @@ NotificationItem:
 NotificationList:
   type: object
   additionalProperties: false
-  required: [ items, nextCursor, unreadCount, upperSequence, readThroughToken, serverTime ]
+  required: [items, nextCursor, unreadCount, upperSequence, readThroughToken, serverTime]
   properties:
     items:
       type: array
       maxItems: 50
       items: { $ref: '../openapi.yaml#/components/schemas/NotificationItem' }
     nextCursor:
-      type: [ string, 'null' ]
+      type: [string, 'null']
       minLength: 16
       maxLength: 512
       pattern: '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$'
@@ -59,7 +72,7 @@ NotificationList:
 NotificationSummary:
   type: object
   additionalProperties: false
-  required: [ unreadCount, stateVersion, upperSequence, readThroughToken, serverTime ]
+  required: [unreadCount, stateVersion, upperSequence, readThroughToken, serverTime]
   properties:
     unreadCount: { type: integer, minimum: 0, maximum: 9007199254740991 }
     stateVersion: { type: integer, minimum: 0, maximum: 9007199254740991 }
@@ -69,7 +82,7 @@ NotificationSummary:
 NotificationContent:
   type: object
   additionalProperties: false
-  required: [ format, schemaVersion, policyVersion, html, text ]
+  required: [format, schemaVersion, policyVersion, html, text]
   properties:
     format: { type: string, const: html }
     schemaVersion: { type: integer, const: 1 }
@@ -85,46 +98,66 @@ NotificationContent:
 NotificationAction:
   type: object
   additionalProperties: false
-  required: [ actionId, kind, label, emphasis, enabled, unavailableReason, navigationTarget ]
+  required: [actionId, kind, label, emphasis, enabled, unavailableReason, navigationTarget]
   properties:
     actionId: { type: string, minLength: 1, maxLength: 64, pattern: '^[a-z0-9._-]+$' }
-    kind: { type: string, enum: [ navigate, command ] }
+    kind: { type: string, enum: [navigate, command] }
     label: { type: string, minLength: 1, maxLength: 64 }
-    emphasis: { type: string, enum: [ primary, secondary ] }
+    emphasis: { type: string, enum: [primary, secondary] }
     enabled: { type: boolean }
     unavailableReason:
       oneOf:
         - type: 'null'
         - type: string
-          enum: [ unsupported, expired, forbidden, state_changed ]
+          enum: [unsupported, expired, forbidden, state_changed]
     navigationTarget:
-      type: [ object, 'null' ]
+      type: [object, 'null']
       additionalProperties: false
-      required: [ kind, path ]
+      required: [kind, path]
       properties:
         kind: { type: string, const: internal }
         path: { type: string, minLength: 1, maxLength: 240, pattern: '^/' }
 NotificationDetail:
   type: object
   additionalProperties: false
-  required: [ receiptId, title, scope, category, necessity, sequence, deliveredAt, readAt, clearedAt, lifecycle, stateRevision, clearRevision, contentAvailable, content, contentFallbackText, actions, actionsAvailable, serverTime ]
+  required:
+    [
+      receiptId,
+      title,
+      scope,
+      category,
+      necessity,
+      sequence,
+      deliveredAt,
+      readAt,
+      clearedAt,
+      lifecycle,
+      stateRevision,
+      clearRevision,
+      contentAvailable,
+      content,
+      contentFallbackText,
+      actions,
+      actionsAvailable,
+      serverTime,
+    ]
   properties:
     receiptId: { $ref: '../openapi.yaml#/components/schemas/Uuid' }
     title: { type: string, minLength: 1, maxLength: 240 }
-    scope: { type: string, enum: [ community, personal ] }
+    scope: { type: string, enum: [community, personal] }
     category: { $ref: '../openapi.yaml#/components/schemas/NotificationCategory' }
-    necessity: { type: string, enum: [ optional, necessary ] }
+    necessity: { type: string, enum: [optional, necessary] }
     sequence: { type: integer, minimum: 1, maximum: 9007199254740991 }
     deliveredAt: { $ref: '../openapi.yaml#/components/schemas/SafeTimestamp' }
     readAt:
-      type: [ integer, 'null' ]
+      type: [integer, 'null']
       minimum: 0
       maximum: 9007199254740991
     clearedAt:
-      type: [ integer, 'null' ]
+      type: [integer, 'null']
       minimum: 0
       maximum: 9007199254740991
-    lifecycle: { type: string, enum: [ active, expired ] }
+    lifecycle: { type: string, enum: [active, expired] }
     stateRevision: { type: integer, minimum: 0, maximum: 9007199254740991 }
     clearRevision: { type: integer, minimum: 0, maximum: 9007199254740991 }
     contentAvailable: { type: boolean }
@@ -134,7 +167,7 @@ NotificationDetail:
         - $ref: '../openapi.yaml#/components/schemas/NotificationContent'
         - type: 'null'
     contentFallbackText:
-      type: [ string, 'null' ]
+      type: [string, 'null']
       minLength: 1
     actions:
       type: array
@@ -145,7 +178,7 @@ NotificationDetail:
 NotificationState:
   type: object
   additionalProperties: false
-  required: [ receiptId, read, stateRevision, unreadCount, serverTime ]
+  required: [receiptId, read, stateRevision, unreadCount, serverTime]
   properties:
     receiptId: { $ref: '../openapi.yaml#/components/schemas/Uuid' }
     read: { type: boolean }
@@ -155,21 +188,21 @@ NotificationState:
 NotificationStateUpdateRequest:
   type: object
   additionalProperties: false
-  required: [ read, expectedRevision ]
+  required: [read, expectedRevision]
   properties:
     read: { type: boolean }
     expectedRevision: { type: integer, minimum: 0, maximum: 9007199254740991 }
 NotificationReadAllRequest:
   type: object
   additionalProperties: false
-  required: [ requestId, readThroughToken ]
+  required: [requestId, readThroughToken]
   properties:
     requestId: { $ref: '../openapi.yaml#/components/schemas/Uuid' }
     readThroughToken: { $ref: '../openapi.yaml#/components/schemas/NotificationToken' }
 NotificationReadAllResult:
   type: object
   additionalProperties: false
-  required: [ requestId, affectedCount, watermarkSequence, unreadCount, replayed, serverTime ]
+  required: [requestId, affectedCount, watermarkSequence, unreadCount, replayed, serverTime]
   properties:
     requestId: { $ref: '../openapi.yaml#/components/schemas/Uuid' }
     affectedCount: { type: integer, minimum: 0, maximum: 9007199254740991 }
@@ -184,7 +217,7 @@ NotificationClearPreviewRequest:
 NotificationClearPreview:
   type: object
   additionalProperties: false
-  required: [ batchId, itemCount, upperSequence, clearSnapshotToken, expiresAt, serverTime ]
+  required: [batchId, itemCount, upperSequence, clearSnapshotToken, expiresAt, serverTime]
   properties:
     batchId: { $ref: '../openapi.yaml#/components/schemas/Uuid' }
     itemCount: { type: integer, minimum: 0, maximum: 9007199254740991 }
@@ -195,14 +228,14 @@ NotificationClearPreview:
 NotificationClearAllRequest:
   type: object
   additionalProperties: false
-  required: [ requestId, clearSnapshotToken ]
+  required: [requestId, clearSnapshotToken]
   properties:
     requestId: { $ref: '../openapi.yaml#/components/schemas/Uuid' }
     clearSnapshotToken: { $ref: '../openapi.yaml#/components/schemas/NotificationToken' }
 NotificationClearResult:
   type: object
   additionalProperties: false
-  required: [ requestId, batchId, affectedCount, skippedCount, unreadCount, replayed, serverTime ]
+  required: [requestId, batchId, affectedCount, skippedCount, unreadCount, replayed, serverTime]
   properties:
     requestId: { $ref: '../openapi.yaml#/components/schemas/Uuid' }
     batchId: { $ref: '../openapi.yaml#/components/schemas/Uuid' }
@@ -214,13 +247,13 @@ NotificationClearResult:
 NotificationPreferences:
   type: object
   additionalProperties: false
-  required: [ revision, optionalCategories, necessaryCategories, serverTime ]
+  required: [revision, optionalCategories, necessaryCategories, serverTime]
   properties:
     revision: { type: integer, minimum: 0, maximum: 9007199254740991 }
     optionalCategories:
       type: object
       additionalProperties: false
-      required: [ announcement, personal_update ]
+      required: [announcement, personal_update]
       properties:
         announcement: { type: boolean }
         personal_update: { type: boolean }
@@ -233,13 +266,13 @@ NotificationPreferences:
 NotificationPreferencesUpdateRequest:
   type: object
   additionalProperties: false
-  required: [ expectedRevision, optionalCategories ]
+  required: [expectedRevision, optionalCategories]
   properties:
     expectedRevision: { type: integer, minimum: 0, maximum: 9007199254740991 }
     optionalCategories:
       type: object
       additionalProperties: false
-      required: [ announcement, personal_update ]
+      required: [announcement, personal_update]
       properties:
         announcement: { type: boolean }
         personal_update: { type: boolean }

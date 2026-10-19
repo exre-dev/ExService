@@ -1,9 +1,13 @@
 /** Observer failures belong to the host's global error channel, never content issues. */
 export function invokeContentObserver(callback: () => void): void {
-  try { callback() }
-  catch (error) {
+  try {
+    callback()
+  } catch (error) {
     if (typeof globalThis.reportError === 'function') globalThis.reportError(error)
-    else queueMicrotask(() => { throw error })
+    else
+      queueMicrotask(() => {
+        throw error
+      })
   }
 }
 
@@ -20,7 +24,10 @@ export class ContentNotifications {
   reserve(): (callbacks: (() => void)[]) => void {
     const batch: { callbacks?: (() => void)[] } = {}
     this.pending.push(batch)
-    return callbacks => { batch.callbacks = callbacks; this.deliver() }
+    return (callbacks) => {
+      batch.callbacks = callbacks
+      this.deliver()
+    }
   }
 
   private deliver(): void {
@@ -31,6 +38,8 @@ export class ContentNotifications {
         const batch = this.pending.shift()!
         for (const callback of batch.callbacks!) invokeContentObserver(callback)
       }
-    } finally { this.delivering = false }
+    } finally {
+      this.delivering = false
+    }
   }
 }

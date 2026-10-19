@@ -6,8 +6,8 @@ const fixtures: TestAuth[] = []
 const apps: Array<ReturnType<typeof createApp>> = []
 
 afterEach(async () => {
-  await Promise.all(apps.splice(0).map(app => app.close()))
-  await Promise.all(fixtures.splice(0).map(fixture => fixture.close()))
+  await Promise.all(apps.splice(0).map((app) => app.close()))
+  await Promise.all(fixtures.splice(0).map((fixture) => fixture.close()))
 })
 
 it('keeps invitation IP budgets separate behind a trusted loopback proxy over actual HTTP', async () => {
@@ -16,11 +16,16 @@ it('keeps invitation IP budgets separate behind a trusted loopback proxy over ac
   const app = createApp({ ...fixture, trustProxy: ['loopback'] })
   apps.push(app)
   const origin = await app.listen({ host: '127.0.0.1', port: 0 })
-  const check = (forwarded: string) => fetch(`${origin}/api/auth/invitations/check`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-forwarded-for': forwarded, connection: 'close' },
-    body: JSON.stringify({ email: 'missing@example.com' }),
-  })
+  const check = (forwarded: string) =>
+    fetch(`${origin}/api/auth/invitations/check`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-forwarded-for': forwarded,
+        connection: 'close',
+      },
+      body: JSON.stringify({ email: 'missing@example.com' }),
+    })
 
   for (let count = 0; count < 60; count++) {
     const response = await check('203.0.113.10')
@@ -44,7 +49,9 @@ it('ignores changing forwarded IPs from a direct non-loopback peer when proxy tr
   apps.push(app)
   for (let count = 0; count < 61; count++) {
     const response = await app.inject({
-      method: 'POST', url: '/api/auth/invitations/check', remoteAddress: '198.51.100.15',
+      method: 'POST',
+      url: '/api/auth/invitations/check',
+      remoteAddress: '198.51.100.15',
       headers: { 'x-forwarded-for': `203.0.113.${count + 1}` },
       payload: { email: 'missing@example.com' },
     })

@@ -9,7 +9,8 @@ const plugin: FastifyPluginAsync = async (app) => {
 }
 
 export default fp(plugin, {
-  name: 'api-storage', fastify: '5.x',
-  dependencies: ["business-storage","business-auth","api-auth"],
-  decorators: { fastify: ["storageServices","authServices"], request: ["authSession"] },
+  name: 'api-storage',
+  fastify: '5.x',
+  dependencies: ['business-storage', 'business-auth', 'api-auth'],
+  decorators: { fastify: ['storageServices', 'authServices'], request: ['authSession'] },
 })

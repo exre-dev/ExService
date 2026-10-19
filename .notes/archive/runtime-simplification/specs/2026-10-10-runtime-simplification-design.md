@@ -14,15 +14,15 @@ Docker 仅为本地开发和隔离自动测试提供后台依赖。Website 和 O
 
 ## 运行结构
 
-| 组件 | 本地开发 | 服务器 |
-| --- | --- | --- |
-| Website 前端 | Vite 热更新 | Nginx 提供 Build 后的静态文件 |
-| Website 后端 | Node watch | PM2 单实例运行编译入口 |
-| Outline | 独立 Yarn 前后端 watch | PM2 单实例运行编译入口，含 SSR、静态资源、协作和 worker |
-| PostgreSQL | 一个 PostgreSQL 18 容器 | 原生安装或已有 PostgreSQL 服务 |
-| Redis | 一个 Redis 容器 | 原生安装或已有 Redis 服务 |
-| Hydra | 一个 Hydra 容器 | 原生 Hydra 二进制，由 PM2 管理 |
-| 对外入口 | 当前同源开发代理 | 原生 Nginx：静态前端、`/api`、`/docs` 和 Hydra public |
+| 组件         | 本地开发                | 服务器                                                  |
+| ------------ | ----------------------- | ------------------------------------------------------- |
+| Website 前端 | Vite 热更新             | Nginx 提供 Build 后的静态文件                           |
+| Website 后端 | Node watch              | PM2 单实例运行编译入口                                  |
+| Outline      | 独立 Yarn 前后端 watch  | PM2 单实例运行编译入口，含 SSR、静态资源、协作和 worker |
+| PostgreSQL   | 一个 PostgreSQL 18 容器 | 原生安装或已有 PostgreSQL 服务                          |
+| Redis        | 一个 Redis 容器         | 原生安装或已有 Redis 服务                               |
+| Hydra        | 一个 Hydra 容器         | 原生 Hydra 二进制，由 PM2 管理                          |
+| 对外入口     | 当前同源开发代理        | 原生 Nginx：静态前端、`/api`、`/docs` 和 Hydra public   |
 
 本地只保留一份根 `compose.yaml`，服务为 PostgreSQL、Redis、Hydra。默认 PostgreSQL `5432`、Redis `6379`、Hydra public `4444`、admin `4445`；端口冲突明确失败，不自动递增或选用备用端口。Docker 只绑定回环地址。
 
@@ -46,18 +46,18 @@ Website 与 Outline 的应用端口继续显式配置；默认 Website 公共入
 
 ## 命令与日常流程
 
-| 命令 | 职责 |
-| --- | --- |
-| `pnpm service:start` / `pnpm service:stop` | 启停本地三个依赖；不删除持久卷，不隐式准备数据库或身份 |
-| `pnpm service:status` / `pnpm service:logs` | 查询真实状态、追踪依赖日志；退出日志查看不停止服务 |
-| `pnpm dev` | 检查真实依赖与准备状态，watch 运行 Website、Outline；Ctrl+C 只结束应用 |
-| `pnpm test` / `pnpm test:watch` | 一次或持续运行自动化验证；与开发预览和 Build 分开 |
-| `pnpm build` | 构建 Website 前端、后端、SDK 和 Outline 前后端及静态资源 |
-| `pnpm start` / `pnpm stop` | 通过 PM2 启停服务器应用；不启停数据库或删除数据 |
-| `pnpm logs` | 按应用追踪日志 |
-| `pnpm db:migrate` | 显式迁移已有 Website `exre` |
-| `pnpm infra init` / `pnpm infra migrate` | 显式准备或迁移 Outline/Hydra；不创建 Website 数据库 |
-| `pnpm infra bootstrap --admin-user-id <UUID>` | 核验用户明确选择的已有 active Website 账号，准备文档管理员与 client |
+| 命令                                          | 职责                                                                   |
+| --------------------------------------------- | ---------------------------------------------------------------------- |
+| `pnpm service:start` / `pnpm service:stop`    | 启停本地三个依赖；不删除持久卷，不隐式准备数据库或身份                 |
+| `pnpm service:status` / `pnpm service:logs`   | 查询真实状态、追踪依赖日志；退出日志查看不停止服务                     |
+| `pnpm dev`                                    | 检查真实依赖与准备状态，watch 运行 Website、Outline；Ctrl+C 只结束应用 |
+| `pnpm test` / `pnpm test:watch`               | 一次或持续运行自动化验证；与开发预览和 Build 分开                      |
+| `pnpm build`                                  | 构建 Website 前端、后端、SDK 和 Outline 前后端及静态资源               |
+| `pnpm start` / `pnpm stop`                    | 通过 PM2 启停服务器应用；不启停数据库或删除数据                        |
+| `pnpm logs`                                   | 按应用追踪日志                                                         |
+| `pnpm db:migrate`                             | 显式迁移已有 Website `exre`                                            |
+| `pnpm infra init` / `pnpm infra migrate`      | 显式准备或迁移 Outline/Hydra；不创建 Website 数据库                    |
+| `pnpm infra bootstrap --admin-user-id <UUID>` | 核验用户明确选择的已有 active Website 账号，准备文档管理员与 client    |
 
 已有环境日常只需 `service:start`、`dev`；服务器完成首次准备后只需更新环境设置并 `start`。普通启动只验证当前配置、数据库结构、身份 marker 和 client，不创建账号、授予管理员、迁移或 reset。初始化、迁移、管理员和密码维护保持显式，但不再要求额外 configure 才能读取一次普通设置变化。
 

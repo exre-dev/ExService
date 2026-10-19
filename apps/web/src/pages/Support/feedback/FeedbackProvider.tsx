@@ -1,17 +1,33 @@
-import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  lazy,
+  Suspense,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useLocation } from 'react-router'
 import { ExMessage } from '@exre/exui'
 import { readToken, sessionScopeRevision, subscribeSessionChanges } from '../../../auth/storage'
 import type { FeedbackArea } from './flow'
 
-const FeedbackModal = lazy(() => import('./FeedbackModal').then(module => ({ default: module.FeedbackModal })))
+const FeedbackModal = lazy(() =>
+  import('./FeedbackModal').then((module) => ({ default: module.FeedbackModal })),
+)
 const FeedbackContext = createContext<{
   openFeedback: (area: FeedbackArea, trigger?: HTMLElement) => void
   claimSubmission: () => (() => void) | null
 } | null>(null)
 
 function currentToken(): string | null {
-  try { return readToken(window.localStorage) } catch { return null }
+  try {
+    return readToken(window.localStorage)
+  } catch {
+    return null
+  }
 }
 
 /** Keep opened feedback forms alive across route changes, including their in-flight commands. */
@@ -24,18 +40,24 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   const triggers = useRef<Partial<Record<FeedbackArea, HTMLElement>>>({})
   const location = useLocation()
 
-  useEffect(() => { setOpenArea(null) }, [location.key])
-  useEffect(() => subscribeSessionChanges(() => {
-    const nextToken = currentToken()
-    const nextScope = sessionScopeRevision()
-    if (nextToken === sessionToken.current && nextScope === sessionScope.current) return
-    sessionToken.current = nextToken
-    sessionScope.current = nextScope
-    running.current = null
+  useEffect(() => {
     setOpenArea(null)
-    setAreas([])
-    triggers.current = {}
-  }), [])
+  }, [location.key])
+  useEffect(
+    () =>
+      subscribeSessionChanges(() => {
+        const nextToken = currentToken()
+        const nextScope = sessionScopeRevision()
+        if (nextToken === sessionToken.current && nextScope === sessionScope.current) return
+        sessionToken.current = nextToken
+        sessionScope.current = nextScope
+        running.current = null
+        setOpenArea(null)
+        setAreas([])
+        triggers.current = {}
+      }),
+    [],
+  )
 
   const openFeedback = useCallback((area: FeedbackArea, trigger?: HTMLElement) => {
     if (running.current) {
@@ -43,24 +65,36 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
       return
     }
     if (trigger) triggers.current[area] = trigger
-    setAreas(current => current.includes(area) ? current : [...current, area])
+    setAreas((current) => (current.includes(area) ? current : [...current, area]))
     setOpenArea(area)
   }, [])
   const claimSubmission = useCallback(() => {
     if (running.current) return null
     const command = Symbol()
     running.current = command
-    return () => { if (running.current === command) running.current = null }
+    return () => {
+      if (running.current === command) running.current = null
+    }
   }, [])
 
-  return <FeedbackContext value={{ openFeedback, claimSubmission }}>
-    {children}
-    <Suspense fallback={null}>
-      {areas.map(area => <FeedbackModal key={`${sessionScope.current}:${area}`} area={area} open={openArea === area}
-        onOpenChange={next => setOpenArea(current => next ? area : current === area ? null : current)}
-        returnFocus={triggers.current[area]} />)}
-    </Suspense>
-  </FeedbackContext>
+  return (
+    <FeedbackContext value={{ openFeedback, claimSubmission }}>
+      {children}
+      <Suspense fallback={null}>
+        {areas.map((area) => (
+          <FeedbackModal
+            key={`${sessionScope.current}:${area}`}
+            area={area}
+            open={openArea === area}
+            onOpenChange={(next) =>
+              setOpenArea((current) => (next ? area : current === area ? null : current))
+            }
+            returnFocus={triggers.current[area]}
+          />
+        ))}
+      </Suspense>
+    </FeedbackContext>
+  )
 }
 
 export function useFeedback() {

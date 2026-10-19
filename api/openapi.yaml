@@ -384,7 +384,6 @@ components:
     ErrorEnvelope:
       $ref: ./schemas/common.yaml#/ErrorEnvelope
 
-
     FeedbackRequestForm:
       $ref: ./schemas/support.yaml#/FeedbackRequestForm
     FeedbackArea:

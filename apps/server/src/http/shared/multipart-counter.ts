@@ -42,13 +42,19 @@ export class MultipartWireCounter extends Transform {
     this.firstBoundary = Buffer.from(`--${boundary}`)
   }
 
-  override _transform(chunk: Buffer, _encoding: BufferEncoding, callback: (error?: Error | null, data?: Buffer) => void): void {
+  override _transform(
+    chunk: Buffer,
+    _encoding: BufferEncoding,
+    callback: (error?: Error | null, data?: Buffer) => void,
+  ): void {
     try {
       this.receivedEncodedLength += chunk.length
       if (this.receivedEncodedLength > this.limits.wireBytes) throw this.errors.tooLarge()
       this.scan(chunk)
       callback(null, chunk)
-    } catch (error) { callback(error as Error) }
+    } catch (error) {
+      callback(error as Error)
+    }
   }
 
   /**
@@ -71,46 +77,79 @@ export class MultipartWireCounter extends Transform {
   private scan(chunk: Buffer): void {
     this.pending = Buffer.concat([this.pending, chunk])
     for (;;) {
-      if (this.phase === 'done') { this.pending = Buffer.alloc(0); return }
+      if (this.phase === 'done') {
+        this.pending = Buffer.alloc(0)
+        return
+      }
       if (this.phase === 'preamble') {
         const index = this.pending.indexOf(this.firstBoundary)
-        if (index < 0) { this.pending = this.pending.subarray(Math.max(0, this.pending.length - this.firstBoundary.length)); return }
-        this.pending = this.pending.subarray(index + this.firstBoundary.length); this.phase = 'suffix'
+        if (index < 0) {
+          this.pending = this.pending.subarray(
+            Math.max(0, this.pending.length - this.firstBoundary.length),
+          )
+          return
+        }
+        this.pending = this.pending.subarray(index + this.firstBoundary.length)
+        this.phase = 'suffix'
       } else if (this.phase === 'suffix') {
         if (this.pending.length < 2) return
-        if (this.pending.subarray(0, 2).equals(Buffer.from('--'))) { this.phase = 'done'; continue }
+        if (this.pending.subarray(0, 2).equals(Buffer.from('--'))) {
+          this.phase = 'done'
+          continue
+        }
         if (!this.pending.subarray(0, 2).equals(Buffer.from('\r\n'))) throw this.errors.malformed()
-        this.pending = this.pending.subarray(2); this.phase = 'headers'
+        this.pending = this.pending.subarray(2)
+        this.phase = 'headers'
       } else if (this.phase === 'headers') {
         const end = this.pending.indexOf('\r\n\r\n')
-        if ((end < 0 ? this.pending.length : end + 4) > this.limits.headerBytes) throw this.errors.tooLarge()
+        if ((end < 0 ? this.pending.length : end + 4) > this.limits.headerBytes)
+          throw this.errors.tooLarge()
         if (end < 0) return
         const lines = this.pending.subarray(0, end).toString('latin1').split('\r\n')
         if (lines.length > this.limits.headerPairs) throw this.errors.tooLarge()
-        if (lines.some(line => !/^[!#$%&'*+.^_`|~0-9A-Za-z-]+:/.test(line))) throw this.errors.malformed()
-        this.pending = this.pending.subarray(end + 4); this.phase = 'body'
+        if (lines.some((line) => !/^[!#$%&'*+.^_`|~0-9A-Za-z-]+:/.test(line)))
+          throw this.errors.malformed()
+        this.pending = this.pending.subarray(end + 4)
+        this.phase = 'body'
       } else {
         const index = this.pending.indexOf(this.boundary)
-        if (index < 0) { this.pending = this.pending.subarray(Math.max(0, this.pending.length - this.boundary.length - 2)); return }
-        // 只有分隔符后缀才算数；同样的字节可能出现在文件内容里。
-        const suffix = this.pending.subarray(index + this.boundary.length, index + this.boundary.length + 2)
-        if (suffix.length < 2) { this.pending = this.pending.subarray(index); return }
-        if (!suffix.equals(Buffer.from('--')) && !suffix.equals(Buffer.from('\r\n'))) {
-          this.pending = this.pending.subarray(index + 2); continue
+        if (index < 0) {
+          this.pending = this.pending.subarray(
+            Math.max(0, this.pending.length - this.boundary.length - 2),
+          )
+          return
         }
-        this.pending = this.pending.subarray(index + this.boundary.length); this.phase = 'suffix'
+        // 只有分隔符后缀才算数；同样的字节可能出现在文件内容里。
+        const suffix = this.pending.subarray(
+          index + this.boundary.length,
+          index + this.boundary.length + 2,
+        )
+        if (suffix.length < 2) {
+          this.pending = this.pending.subarray(index)
+          return
+        }
+        if (!suffix.equals(Buffer.from('--')) && !suffix.equals(Buffer.from('\r\n'))) {
+          this.pending = this.pending.subarray(index + 2)
+          continue
+        }
+        this.pending = this.pending.subarray(index + this.boundary.length)
+        this.phase = 'suffix'
       }
     }
   }
 }
 
 /** 非 multipart 请求直接 415；boundary 缺失或非法属于坏请求。 */
-export function multipartBoundary(contentType: string | undefined, errors: MultipartWireErrors): string {
+export function multipartBoundary(
+  contentType: string | undefined,
+  errors: MultipartWireErrors,
+): string {
   if (typeof contentType !== 'string' || !/^multipart\/form-data(?:\s*;|$)/i.test(contentType)) {
     throw errors.unsupportedMediaType()
   }
   const match = /(?:^|;)\s*boundary=(?:"([^"\r\n]+)"|([^;\s]+))/i.exec(contentType)
   const boundary = match?.[1] ?? match?.[2]
-  if (boundary === undefined || boundary.length > 200 || /[\r\n]/.test(boundary)) throw errors.malformed()
+  if (boundary === undefined || boundary.length > 200 || /[\r\n]/.test(boundary))
+    throw errors.malformed()
   return boundary
 }

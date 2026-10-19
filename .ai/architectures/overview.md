@@ -23,15 +23,15 @@ api/openapi.yaml + api/paths/ + api/schemas/
 
 ## 模块边界
 
-| 路径 | 责任 |
-| --- | --- |
-| `api/` | 唯一 HTTP Contract 的源文件与统一生成的 JSON。 |
-| `packages/sdk/` | Contract 生成类型、Browser/Node 单例 HTTP 请求与上传；边界见 `.ai/architectures/sdk/client-boundaries.md`。 |
-| `packages/components/` | 基于 ExUI 的应用级共享 UI。 |
-| `packages/common/` | 按模块子入口提供共享纯逻辑，包含反馈内容与 Node 身份配置、绑定投影；消费规则见 `.agents/rules/package-common.md`。 |
-| `apps/web/` | Vite/React 前端、路由、主题和 SDK 接入。 |
-| `apps/server/` | `modules/` 公共能力、`domains/` 具体流程、统一 HTTP/Glue 入口与受控 PostgreSQL 访问。 |
-| `tests/contract/` | 对真实 Fastify app 的 HTTP 行为与原始 handler 输出做验证。 |
+| 路径                   | 责任                                                                                                               |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `api/`                 | 唯一 HTTP Contract 的源文件与统一生成的 JSON。                                                                     |
+| `packages/sdk/`        | Contract 生成类型、Browser/Node 单例 HTTP 请求与上传；边界见 `.ai/architectures/sdk/client-boundaries.md`。        |
+| `packages/components/` | 基于 ExUI 的应用级共享 UI。                                                                                        |
+| `packages/common/`     | 按模块子入口提供共享纯逻辑，包含反馈内容与 Node 身份配置、绑定投影；消费规则见 `.agents/rules/package-common.md`。 |
+| `apps/web/`            | Vite/React 前端、路由、主题和 SDK 接入。                                                                           |
+| `apps/server/`         | `modules/` 公共能力、`domains/` 具体流程、统一 HTTP/Glue 入口与受控 PostgreSQL 访问。                              |
+| `tests/contract/`      | 对真实 Fastify app 的 HTTP 行为与原始 handler 输出做验证。                                                         |
 
 ## 依赖与构建
 

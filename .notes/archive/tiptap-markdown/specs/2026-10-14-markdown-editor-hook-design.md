@@ -24,34 +24,34 @@
 
 ## 当前实现证据
 
-| 来源 | 已核对行为与设计影响 |
-| --- | --- |
-| `packages/components/src/tiptap/extensions/index.ts` | 内部完整插件工厂按 editing、viewing、conversion 建立实例，包含样式、Details、Mention、Admonition 等；不能直接作为纯 Markdown 预设。 |
-| `packages/components/src/tiptap/conversion/index.ts` | 官方 MarkdownManager 与隔离 Marked 负责转换，现有导出通过受控 HTML 保持完整 JSON 语义；新预设需要独立转换策略。 |
-| `packages/components/src/tiptap/conversion/validate.ts` | 在官方 schema 读取前验证未知字段、节点和属性；现有部分规则绑定完整预设，例如 H1–H4 与 textAlign，不能不加修改直接套用。 |
-| `packages/components/src/tiptap/lifecycle.ts` | 已有事务门禁、粘贴接入、替换和异步协调器，但绑定完整预设与上传、Mention；新 Hook 不整体复用这套业务组合。 |
-| `packages/components/src/tiptap/emoji-trigger.ts`、`EmojiPickerPanel.tsx` | 触发位置随事务映射，选择插入 Unicode 文本；选择器使用 ExUI Popover 与现有 emoji-picker-react。 |
-| `packages/components/src/tiptap/TiptapEditor.tsx`、`components.test.tsx` | 已有 useEditor、独立初始化、显式替换和 StrictMode 归属保护，是生命周期设计参考。 |
-| `packages/components/package.json`、`packages/components/src/index.ts` | 包使用源码入口；Tiptap 相关依赖锁定为 3.32.0；当前已公开 createMarkdownExtensions、useMarkdownEditor、MarkdownEmojiPicker 和正文样式类，尚无双 Preset 与统一 Hook。 |
-| `packages/components/src/tiptap/markdown/useMarkdownEditor.ts`、`types.ts` | 当前独立 Hook 已管理原生 Editor、GFM runtime 和 Emoji；尚无 slash、placeholder 配置。现有 emoji 动态更新行为需按本次固定配置决定调整。 |
-| `packages/components/src/tiptap/types.ts`、`TiptapEditor.tsx`、`TiptapViewer.tsx` | 当前共享组件固定使用完整预设，Editor 默认挂载工具栏；新增 preset 接入与去除内置工具栏都是本次明确的行为变更。 |
-| `.ai/knowledge/components/tiptap-content-boundaries.md` | 已记录完整预设的转换、预算、浏览器和异步边界；新设计不能改变其现有语义。 |
-| `vitest.config.ts`、`scripts/runtime/tests.mjs` | 共享组件测试属于 Website Vitest 范围；根测试还包含其他模块和 Outline。当前不存在根 `TESTING.md`。 |
+| 来源                                                                              | 已核对行为与设计影响                                                                                                                                                |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/components/src/tiptap/extensions/index.ts`                              | 内部完整插件工厂按 editing、viewing、conversion 建立实例，包含样式、Details、Mention、Admonition 等；不能直接作为纯 Markdown 预设。                                 |
+| `packages/components/src/tiptap/conversion/index.ts`                              | 官方 MarkdownManager 与隔离 Marked 负责转换，现有导出通过受控 HTML 保持完整 JSON 语义；新预设需要独立转换策略。                                                     |
+| `packages/components/src/tiptap/conversion/validate.ts`                           | 在官方 schema 读取前验证未知字段、节点和属性；现有部分规则绑定完整预设，例如 H1–H4 与 textAlign，不能不加修改直接套用。                                             |
+| `packages/components/src/tiptap/lifecycle.ts`                                     | 已有事务门禁、粘贴接入、替换和异步协调器，但绑定完整预设与上传、Mention；新 Hook 不整体复用这套业务组合。                                                           |
+| `packages/components/src/tiptap/emoji-trigger.ts`、`EmojiPickerPanel.tsx`         | 触发位置随事务映射，选择插入 Unicode 文本；选择器使用 ExUI Popover 与现有 emoji-picker-react。                                                                      |
+| `packages/components/src/tiptap/TiptapEditor.tsx`、`components.test.tsx`          | 已有 useEditor、独立初始化、显式替换和 StrictMode 归属保护，是生命周期设计参考。                                                                                    |
+| `packages/components/package.json`、`packages/components/src/index.ts`            | 包使用源码入口；Tiptap 相关依赖锁定为 3.32.0；当前已公开 createMarkdownExtensions、useMarkdownEditor、MarkdownEmojiPicker 和正文样式类，尚无双 Preset 与统一 Hook。 |
+| `packages/components/src/tiptap/markdown/useMarkdownEditor.ts`、`types.ts`        | 当前独立 Hook 已管理原生 Editor、GFM runtime 和 Emoji；尚无 slash、placeholder 配置。现有 emoji 动态更新行为需按本次固定配置决定调整。                              |
+| `packages/components/src/tiptap/types.ts`、`TiptapEditor.tsx`、`TiptapViewer.tsx` | 当前共享组件固定使用完整预设，Editor 默认挂载工具栏；新增 preset 接入与去除内置工具栏都是本次明确的行为变更。                                                       |
+| `.ai/knowledge/components/tiptap-content-boundaries.md`                           | 已记录完整预设的转换、预算、浏览器和异步边界；新设计不能改变其现有语义。                                                                                            |
+| `vitest.config.ts`、`scripts/runtime/tests.mjs`                                   | 共享组件测试属于 Website Vitest 范围；根测试还包含其他模块和 Outline。当前不存在根 `TESTING.md`。                                                                   |
 
 官方 [React 接入文档](https://tiptap.dev/docs/editor/getting-started/install/react)展示 `useEditor` 与 `EditorContent` 的组合。官方 [Markdown 文档](https://tiptap.dev/docs/editor/markdown)说明双向转换允许 HTML，并限制表格单元格内容。纯语法范围以 [GFM 规范](https://github.github.com/gfm/)为依据；本预设主动排除该规范中的原始 HTML，不宣称完整复制 GitHub 产品功能。
 
 ## 架构与责任
 
-| 层 | 责任 | 依赖与边界 |
-| --- | --- | --- |
-| 插件预设 | GFM 节点、Marks、编辑辅助及内容限制。 | 使用官方 Tiptap 扩展；每次工厂调用返回新实例，不引入 React 状态或业务 API。 |
-| 校验与转换 | 验证输入、转换纯 Markdown、规范化和比较语义。 | 复用安全 URL、预算和隔离 parser 等基础能力；不调用完整预设的 HTML 回退。 |
-| 粘贴适配 | 将 HTML clipboard 降级为受限内容，再一次性插入。 | 清理与降级属于显式输入规则，不作为 JSON 导入或导出的隐式有损模式。 |
-| Preset Hook | 返回固定的预设描述，不创建 Editor。 | 初始化快照保持稳定；不缓存任何 Editor 的可变扩展或交互状态。 |
-| 统一 Editor Hook | 创建和销毁 Editor、读取最新回调、公开统一内容方法，返回 interactions。 | 内部调用 useEditor；按 preset.kind 静态选择既有两套 runtime，不为包装层再创建第二个 Editor。 |
-| 共享 Editor / Viewer | Editor 挂载正文、交互和诊断；Viewer 挂载对应 schema 的只读正文。 | 不自动挂载工具栏；Viewer 不安装编辑交互、历史或 placeholder。 |
-| Emoji 组件 | 呈现受控选择器与焦点交互。 | 使用现有 ExUI 和 Emoji 资源，按需加载；不向文档增加 Emoji 节点。 |
-| 调用方 | 选择共享组件，或挂载 EditorContent 与 interactions，组装工具栏、表单与提交。 | 初始内容与整篇替换走验证入口；Editor 用于显示和格式命令。 |
+| 层                   | 责任                                                                         | 依赖与边界                                                                                   |
+| -------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| 插件预设             | GFM 节点、Marks、编辑辅助及内容限制。                                        | 使用官方 Tiptap 扩展；每次工厂调用返回新实例，不引入 React 状态或业务 API。                  |
+| 校验与转换           | 验证输入、转换纯 Markdown、规范化和比较语义。                                | 复用安全 URL、预算和隔离 parser 等基础能力；不调用完整预设的 HTML 回退。                     |
+| 粘贴适配             | 将 HTML clipboard 降级为受限内容，再一次性插入。                             | 清理与降级属于显式输入规则，不作为 JSON 导入或导出的隐式有损模式。                           |
+| Preset Hook          | 返回固定的预设描述，不创建 Editor。                                          | 初始化快照保持稳定；不缓存任何 Editor 的可变扩展或交互状态。                                 |
+| 统一 Editor Hook     | 创建和销毁 Editor、读取最新回调、公开统一内容方法，返回 interactions。       | 内部调用 useEditor；按 preset.kind 静态选择既有两套 runtime，不为包装层再创建第二个 Editor。 |
+| 共享 Editor / Viewer | Editor 挂载正文、交互和诊断；Viewer 挂载对应 schema 的只读正文。             | 不自动挂载工具栏；Viewer 不安装编辑交互、历史或 placeholder。                                |
+| Emoji 组件           | 呈现受控选择器与焦点交互。                                                   | 使用现有 ExUI 和 Emoji 资源，按需加载；不向文档增加 Emoji 节点。                             |
+| 调用方               | 选择共享组件，或挂载 EditorContent 与 interactions，组装工具栏、表单与提交。 | 初始内容与整篇替换走验证入口；Editor 用于显示和格式命令。                                    |
 
 GFM 核心继续放在 `packages/components/src/tiptap/markdown/`；双 Preset 和统一 Hook 放在 `packages/components/src/tiptap/`。保留独立转换与 runtime，提炼必要的 React 接线和 Emoji/Slash 展示能力；完整预设的转换规则不变，工具栏改为消费方显式组装。公开名称从 `packages/components/src/index.ts` 导出，继续使用 `@workspace/components`。
 
@@ -59,16 +59,16 @@ GFM 核心继续放在 `packages/components/src/tiptap/markdown/`；双 Preset �
 
 ## 内容范围
 
-| 内容 | 规则 |
-| --- | --- |
-| 基础结构 | Document、Text、Paragraph、H1–H6、Blockquote、HorizontalRule、HardBreak。 |
-| 行内格式 | Bold、Italic、Strike、Code、Link；无 Underline、Highlight、TextStyle、字体、字号、颜色、背景色或段落对齐。 |
-| 列表 | 无序列表、有序列表和嵌套列表，支持任务列表与勾选状态。 |
-| 代码 | 行内代码、围栏代码块及可选语言；保留代码文本，包括 HTML 字面量、换行和 Emoji。 |
-| 图片 | 使用行内图片以表达 Markdown 段落、列表和表格内的图片；只持久化 src、alt、title，不保留尺寸、缩放属性或布局 NodeView。 |
-| 表格 | 矩形表格，首行全为表头，其余为普通单元格；每格一个段落，允许可表达的行内内容。允许 GFM 列级 left、center、right 对齐，各列的单元格对齐一致。无跨度、列宽、嵌套块或多段内容。 |
-| 自动链接 | 按 GFM 规则解析和规范化 URL、邮箱；安全协议策略可能拒绝不安全或本预设不支持的地址。 |
-| Emoji | 普通 Unicode 文本，保留变体选择符、肤色修饰符和 ZWJ 序列；不支持自定义图片 Emoji、shortcode 转换或 Mention 身份。 |
+| 内容     | 规则                                                                                                                                                                         |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 基础结构 | Document、Text、Paragraph、H1–H6、Blockquote、HorizontalRule、HardBreak。                                                                                                    |
+| 行内格式 | Bold、Italic、Strike、Code、Link；无 Underline、Highlight、TextStyle、字体、字号、颜色、背景色或段落对齐。                                                                   |
+| 列表     | 无序列表、有序列表和嵌套列表，支持任务列表与勾选状态。                                                                                                                       |
+| 代码     | 行内代码、围栏代码块及可选语言；保留代码文本，包括 HTML 字面量、换行和 Emoji。                                                                                               |
+| 图片     | 使用行内图片以表达 Markdown 段落、列表和表格内的图片；只持久化 src、alt、title，不保留尺寸、缩放属性或布局 NodeView。                                                        |
+| 表格     | 矩形表格，首行全为表头，其余为普通单元格；每格一个段落，允许可表达的行内内容。允许 GFM 列级 left、center、right 对齐，各列的单元格对齐一致。无跨度、列宽、嵌套块或多段内容。 |
+| 自动链接 | 按 GFM 规则解析和规范化 URL、邮箱；安全协议策略可能拒绝不安全或本预设不支持的地址。                                                                                          |
+| Emoji    | 普通 Unicode 文本，保留变体选择符、肤色修饰符和 ZWJ 序列；不支持自定义图片 Emoji、shortcode 转换或 Mention 身份。                                                            |
 
 不登记 Details、Mention、Admonition、Collaboration、DragHandle、完整 Slash 菜单或完整表格控制 NodeView。Markdown 的 Slash 仅提供本预设可表达的命令，不继承完整富文本菜单。编辑辅助保留必要历史、光标与末尾可编辑段落；这些辅助 DOM 和状态不写入 Markdown。
 
@@ -80,12 +80,12 @@ GFM 插件集必须明确禁用 StarterKit 已包含的非目标扩展，例如 
 
 `useMarkdownPreset(options)` 与 `useTiptapPreset(options)` 返回稳定的 TiptapPreset 描述。每次 Hook 挂载只读取一次配置；后续传入不同对象、改变配置字段或传入另一个 Preset 都不更新已有 Editor/Viewer。需要改变配置时由调用方显式卸载重建，旧正文若需保留必须先通过所属预设导出，再通过新预设验证导入；不进行隐式跨预设转换。
 
-| 配置 | 规则 |
-| --- | --- |
+| 配置                                      | 规则                                                                                                                                                                                                                |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `placeholder?: string / callback / false` | 两个 Preset 均支持。字符串覆盖默认文案；callback 接收 editor、node、pos、hasAnchor 并返回文字；false 关闭 decoration。默认与覆盖均只用于可编辑的空顶层 paragraph，不进入 JSON/Markdown/Viewer。精确联合类型见 RFC。 |
-| `slash?: boolean` | 两个 Preset 缺省 true；Markdown 仅显示 GFM 支持的命令，false 不安装触发和菜单。 |
-| `emoji?: boolean` | 两个 Preset 缺省 true；false 不安装 `$` 触发和选择器，普通 Unicode Emoji 输入与粘贴仍然有效。 |
-| `policy?: TiptapContentPolicy` | 仅完整 Preset 可配置，保留现有内容策略；Markdown 不开放 Data URL 模式。 |
+| `slash?: boolean`                         | 两个 Preset 缺省 true；Markdown 仅显示 GFM 支持的命令，false 不安装触发和菜单。                                                                                                                                     |
+| `emoji?: boolean`                         | 两个 Preset 缺省 true；false 不安装 `$` 触发和选择器，普通 Unicode Emoji 输入与粘贴仍然有效。                                                                                                                       |
+| `policy?: TiptapContentPolicy`            | 仅完整 Preset 可配置，保留现有内容策略；Markdown 不开放 Data URL 模式。                                                                                                                                             |
 
 默认 placeholder 为通用输入提示，按已开启的命令追加 `/`、`$` 提示；完整预设仅在调用方提供 resolveMentions 时提示 `@`。自定义文案或回调结果直接使用，不额外拼接命令说明。回调固定初始化时的函数引用，不承诺冻结外部可变闭包，不增加动态 decoration 更新协议。
 
@@ -95,25 +95,25 @@ Preset 不持有可变插件数组。两个 Editor 或 Editor 与 Viewer 可以�
 
 `useTiptapEditor(options)` 的 options：
 
-| 字段 | 语义 |
-| --- | --- |
-| `preset: TiptapPreset` | 初始化读取一次，决定 schema、转换、内容门禁和交互。 |
-| `initialContent?: TiptapInput` | 缺省安全空文档；只在初始化读取一次，JSON 与 Markdown 均按所属预设验证。 |
+| 字段                                      | 语义                                                                                           |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `preset: TiptapPreset`                    | 初始化读取一次，决定 schema、转换、内容门禁和交互。                                            |
+| `initialContent?: TiptapInput`            | 缺省安全空文档；只在初始化读取一次，JSON 与 Markdown 均按所属预设验证。                        |
 | `ariaLabel: string`、`editable?: boolean` | 正文语义与交互状态，editable 缺省 true。它们是运行状态，不属于 Preset 配置，保留既有更新行为。 |
-| `onChange?`、`onError?`、`onNotice?` | 读取最新回调。正文变化通知已接受的 JSON 快照，不因选区变化或普通重渲染触发。 |
-| `uploadImage?`、`resolveMentions?` | 保留完整预设既有回调接线；不为 Markdown 开放上传、Mention 或业务 API。 |
+| `onChange?`、`onError?`、`onNotice?`      | 读取最新回调。正文变化通知已接受的 JSON 快照，不因选区变化或普通重渲染触发。                   |
+| `uploadImage?`、`resolveMentions?`        | 保留完整预设既有回调接线；不为 Markdown 开放上传、Mention 或业务 API。                         |
 
 Hook 返回：
 
-| 字段 | 语义 |
-| --- | --- |
-| `editor` | 原生 Editor 或 null，用于 EditorContent、选区与格式命令。 |
-| `interactions` | ReactNode；挂载一次，承载该实例的 Slash、Emoji 及完整预设已有的上下文交互，不包含顶部工具栏。无可显示交互时为空。 |
-| `issues` | 当前固定错误诊断，供自行布局的调用方呈现。 |
-| `readJSON()` | 验证并返回所属 schema 下的 JSON 快照。 |
-| `exportMarkdown()` | 返回 TiptapResult<string>；Markdown 预设导出纯 GFM，完整预设保留既有受控 HTML 转换规则。 |
-| `replaceContent(input)` | 返回 TiptapResult<JSONContent>；显式验证并原子替换整篇正文。 |
-| `focus()` | 聚焦仍有效的 Editor；与既有 handle 保持一致。 |
+| 字段                    | 语义                                                                                                              |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `editor`                | 原生 Editor 或 null，用于 EditorContent、选区与格式命令。                                                         |
+| `interactions`          | ReactNode；挂载一次，承载该实例的 Slash、Emoji 及完整预设已有的上下文交互，不包含顶部工具栏。无可显示交互时为空。 |
+| `issues`                | 当前固定错误诊断，供自行布局的调用方呈现。                                                                        |
+| `readJSON()`            | 验证并返回所属 schema 下的 JSON 快照。                                                                            |
+| `exportMarkdown()`      | 返回 TiptapResult<string>；Markdown 预设导出纯 GFM，完整预设保留既有受控 HTML 转换规则。                          |
+| `replaceContent(input)` | 返回 TiptapResult<JSONContent>；显式验证并原子替换整篇正文。                                                      |
+| `focus()`               | 聚焦仍有效的 Editor；与既有 handle 保持一致。                                                                     |
 
 readJSON/exportMarkdown/replaceContent 函数引用保持稳定，未准备或已卸载时返回 not-ready；focus 无有效实例时不操作。initialContent 导入失败使用安全空文档承载错误，不修改调用方原文；锁存初始错误并阻止导出误交空文档，必须通过成功 replaceContent 显式恢复。初始化不调用 onChange，错误在已挂载的 effect 阶段通知。
 
@@ -128,29 +128,61 @@ TiptapEditor 增加 preset 参数并复用统一 Hook；挂载正文样式、int
 ```tsx
 import { EditorContent } from '@tiptap/react'
 import {
-  TiptapEditor, TiptapViewer, tiptapContentClassName,
-  useMarkdownPreset, useTiptapPreset, useTiptapEditor,
+  TiptapEditor,
+  TiptapViewer,
+  tiptapContentClassName,
+  useMarkdownPreset,
+  useTiptapPreset,
+  useTiptapEditor,
 } from '@workspace/components'
 
 function QuickEditor() {
   const preset = useMarkdownPreset({ placeholder: '请输入正文', slash: true, emoji: true })
-  return <TiptapEditor preset={preset} initialContent={{ format: 'markdown', content: '# Hello' }} ariaLabel="正文" />
+  return (
+    <TiptapEditor
+      preset={preset}
+      initialContent={{ format: 'markdown', content: '# Hello' }}
+      ariaLabel="正文"
+    />
+  )
 }
 
 function CustomEditor() {
   const preset = useTiptapPreset({ placeholder: '开始编辑' })
   const { editor, interactions, issues } = useTiptapEditor({ preset, ariaLabel: '正文' })
-  return <div>
-    <button type="button" disabled={!editor} onClick={() => editor?.chain().focus().toggleBold().run()}>加粗</button>
-    <div className={tiptapContentClassName}><EditorContent editor={editor} /></div>
-    {interactions}
-    {issues.length > 0 && <div role="alert">{issues.map((issue, index) => <p key={index}>{issue.message}</p>)}</div>}
-  </div>
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={!editor}
+        onClick={() => editor?.chain().focus().toggleBold().run()}
+      >
+        加粗
+      </button>
+      <div className={tiptapContentClassName}>
+        <EditorContent editor={editor} />
+      </div>
+      {interactions}
+      {issues.length > 0 && (
+        <div role="alert">
+          {issues.map((issue, index) => (
+            <p key={index}>{issue.message}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function MarkdownPreview({ source }: { source: string }) {
   const preset = useMarkdownPreset()
-  return <TiptapViewer preset={preset} content={{ format: 'markdown', content: source }} ariaLabel="正文预览" />
+  return (
+    <TiptapViewer
+      preset={preset}
+      content={{ format: 'markdown', content: source }}
+      ariaLabel="正文预览"
+    />
+  )
 }
 ```
 
@@ -183,16 +215,16 @@ Editor 的内部 JSON 是当前可编辑表示；外部输入与提交以 Markdo
 
 HTML 粘贴与明确外部 HTML drop 使用专属清理和降级流程；编辑器内部移动沿用原生行为，并通过最终事务门禁。普通 text/plain 粘贴保持文字语义，不根据正文猜测为整篇 Markdown；Markdown 导入使用 replaceContent，兼容路径可用 setMarkdown。
 
-| 输入 | 降级规则 |
-| --- | --- |
-| 支持的文字格式和结构 | 保留粗体、斜体、删除线、链接、标题、列表、代码、引用和简单表格。 |
-| 颜色、字号、下划线、样式 span | 去掉格式包装，按原文顺序保留正文。 |
-| Details 和提示容器等不支持的包装 | 提取可见标题与正文，按原有顺序转成支持的块。 |
-| 普通图片 | 仅保留合规 src、alt、title，移除尺寸和其他属性；无合规地址时保留非空 alt 作为文本。 |
-| 不兼容表格 | 每个原始行转为独立段落，原始单元格按 DOM 顺序以 Tab 分隔；单元格内块边界转换为文本换行。不展开合并跨度，不复制文字，不臆造表头；嵌套表格递归提取原有文字。 |
-| 危险属性与地址 | 不执行事件，不保留事件属性；危险链接解除包装并保留文字。 |
-| script、style 和可执行或资源性嵌入 | 丢弃这类节点及其内容，不将脚本源码或样式作为正文。 |
-| clipboard 文件或外部文件 drop | 本期无上传能力，不隐式插入 blob 或 data URL；通过固定诊断交还调用方处理。 |
+| 输入                               | 降级规则                                                                                                                                                   |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 支持的文字格式和结构               | 保留粗体、斜体、删除线、链接、标题、列表、代码、引用和简单表格。                                                                                           |
+| 颜色、字号、下划线、样式 span      | 去掉格式包装，按原文顺序保留正文。                                                                                                                         |
+| Details 和提示容器等不支持的包装   | 提取可见标题与正文，按原有顺序转成支持的块。                                                                                                               |
+| 普通图片                           | 仅保留合规 src、alt、title，移除尺寸和其他属性；无合规地址时保留非空 alt 作为文本。                                                                        |
+| 不兼容表格                         | 每个原始行转为独立段落，原始单元格按 DOM 顺序以 Tab 分隔；单元格内块边界转换为文本换行。不展开合并跨度，不复制文字，不臆造表头；嵌套表格递归提取原有文字。 |
+| 危险属性与地址                     | 不执行事件，不保留事件属性；危险链接解除包装并保留文字。                                                                                                   |
+| script、style 和可执行或资源性嵌入 | 丢弃这类节点及其内容，不将脚本源码或样式作为正文。                                                                                                         |
+| clipboard 文件或外部文件 drop      | 本期无上传能力，不隐式插入 blob 或 data URL；通过固定诊断交还调用方处理。                                                                                  |
 
 表格文本降级时，普通单元格的段内可见文字、Emoji 和顺序保留，但其富文本 Marks 不保留；该行为发送降级 notice。无法安全处理 HTML 且存在 text/plain 时回退纯文本并通知；无纯文本或输入超过预算时拒绝并保持原选区及正文。
 

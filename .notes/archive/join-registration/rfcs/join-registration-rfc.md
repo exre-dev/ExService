@@ -66,16 +66,16 @@ flowchart LR
 
 建议文件归属：
 
-| 位置 | 职责 |
-| --- | --- |
-| `packages/components/src/join/` | 分步申请、确认提交、申请列表、详情 Dialog 与 Tabs；只接收值和回调 |
-| `packages/components/src/auth/` | 邮箱输入、六位验证码、名字密码完善和 Modal；保留登录及其验证码占位步骤 |
-| `apps/web/src/join/`、`apps/web/src/pages/JoinPage/` | 申请流程、生成 Client 调用、页面说明 |
-| `apps/web/src/invitations/` | Modal/页面共用流程、资格检查、URL 解析、短期凭证与完成后的登录切换 |
-| `apps/web/src/pages/JoinReviewPage/` | 临时列表、详情载入、审核和重发状态 |
-| `apps/mock-server/src/join/` | JoinService：申请提交、查询及审核事务 |
-| `apps/mock-server/src/invitations/` | InvitationService：只读资格检查、签发、验证码、完善凭证、建号、清理和邮件适配器 |
-| `apps/mock-server/src/handlers/join.ts` | 新 operation 的薄 handler，不定义第二套 schema |
+| 位置                                                 | 职责                                                                            |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `packages/components/src/join/`                      | 分步申请、确认提交、申请列表、详情 Dialog 与 Tabs；只接收值和回调               |
+| `packages/components/src/auth/`                      | 邮箱输入、六位验证码、名字密码完善和 Modal；保留登录及其验证码占位步骤          |
+| `apps/web/src/join/`、`apps/web/src/pages/JoinPage/` | 申请流程、生成 Client 调用、页面说明                                            |
+| `apps/web/src/invitations/`                          | Modal/页面共用流程、资格检查、URL 解析、短期凭证与完成后的登录切换              |
+| `apps/web/src/pages/JoinReviewPage/`                 | 临时列表、详情载入、审核和重发状态                                              |
+| `apps/mock-server/src/join/`                         | JoinService：申请提交、查询及审核事务                                           |
+| `apps/mock-server/src/invitations/`                  | InvitationService：只读资格检查、签发、验证码、完善凭证、建号、清理和邮件适配器 |
+| `apps/mock-server/src/handlers/join.ts`              | 新 operation 的薄 handler，不定义第二套 schema                                  |
 
 JoinService 与 InvitationService 共享同一 SQLite 连接；签发时使用同步的事务内部操作，不在 SQLite 事务中等待邮件或密码哈希。`apps/mock-server/src/server.ts` 构造一个 `ScryptPasswordHasher`，注入 AuthService 和 InvitationService，维持同一实例的两项并发、16 项等待队列预算。
 
@@ -87,18 +87,18 @@ AuthService 保留登录、会话和 SSO；移除旧注册方法、投递依赖�
 
 ### 5.1 Operation 表
 
-| Method / 路径 | operationId | 请求 | 成功 |
-| --- | --- | --- | --- |
-| POST `/join/applications` | `submitJoinApplication` | 邮箱、名字、QQ | 202 `JoinApplicationReceived` |
-| GET `/admin/join/applications` | `listJoinApplications` | 列表 query | 200 `JoinApplicationList` |
-| GET `/admin/join/applications/{applicationId}` | `getJoinApplication` | UUID 路径参数 | 200 `JoinApplicationDetail` |
-| POST `/admin/join/applications/{applicationId}/approve` | `approveJoinApplication` | 空对象 `{}` | 200 `JoinApplicationDetail` |
-| POST `/admin/join/applications/{applicationId}/reject` | `rejectJoinApplication` | 空对象 `{}` | 200 `JoinApplicationDetail` |
-| POST `/admin/join/applications/{applicationId}/invitations` | `resendJoinInvitation` | 空对象 `{}` | 200 `JoinApplicationDetail` |
-| POST `/auth/invitations/check` | `checkInvitationEligibility` | 邮箱 | 200 `InvitationEligibility` |
-| POST `/auth/invitations/code` | `requestInvitationCode` | 邮箱 | 202 `InvitationCodeAccepted` |
-| POST `/auth/invitations/verify` | `verifyInvitationCode` | 邮箱、6 位码 | 200 `InvitationVerified` |
-| POST `/auth/invitations/complete` | `completeInvitationRegistration` | 完善凭证、名字、密码 | 200 `InvitationRegistrationCompleted` |
+| Method / 路径                                               | operationId                      | 请求                 | 成功                                  |
+| ----------------------------------------------------------- | -------------------------------- | -------------------- | ------------------------------------- |
+| POST `/join/applications`                                   | `submitJoinApplication`          | 邮箱、名字、QQ       | 202 `JoinApplicationReceived`         |
+| GET `/admin/join/applications`                              | `listJoinApplications`           | 列表 query           | 200 `JoinApplicationList`             |
+| GET `/admin/join/applications/{applicationId}`              | `getJoinApplication`             | UUID 路径参数        | 200 `JoinApplicationDetail`           |
+| POST `/admin/join/applications/{applicationId}/approve`     | `approveJoinApplication`         | 空对象 `{}`          | 200 `JoinApplicationDetail`           |
+| POST `/admin/join/applications/{applicationId}/reject`      | `rejectJoinApplication`          | 空对象 `{}`          | 200 `JoinApplicationDetail`           |
+| POST `/admin/join/applications/{applicationId}/invitations` | `resendJoinInvitation`           | 空对象 `{}`          | 200 `JoinApplicationDetail`           |
+| POST `/auth/invitations/check`                              | `checkInvitationEligibility`     | 邮箱                 | 200 `InvitationEligibility`           |
+| POST `/auth/invitations/code`                               | `requestInvitationCode`          | 邮箱                 | 202 `InvitationCodeAccepted`          |
+| POST `/auth/invitations/verify`                             | `verifyInvitationCode`           | 邮箱、6 位码         | 200 `InvitationVerified`              |
+| POST `/auth/invitations/complete`                           | `completeInvitationRegistration` | 完善凭证、名字、密码 | 200 `InvitationRegistrationCompleted` |
 
 这十个新 operation 本期均为 `security: []`。既有受保护的本人资料、退出和 SSO 会话确认保留 Bearer security。资格检查采用 POST 携带邮箱，避免将查询邮箱放入 URL；它是只读查询，不承担发码或完善授权。此表仍是提议契约，实施时须先写入 `api/openapi.yaml` 并重新生成 Client。
 
@@ -106,18 +106,18 @@ AuthService 保留登录、会话和 SSO；移除旧注册方法、投递依赖�
 
 字段名继续采用 `email`、`nickname`、`qq`、`password`。复用当前 Email、Nickname、Password、VerificationCode、OpaqueIdentifier、SafeTimestamp；新增 UUID schema 与当前用户 UUID v4 规则相同。
 
-| Schema | 必须字段及形状 |
-| --- | --- |
-| `JoinApplicationRequest` | `email: Email`、`nickname: Nickname`、`qq: string`，QQ 匹配 1–20 位数字 |
-| `JoinApplicationReceived` | `status: const received` |
-| `InvitationEligibilityRequest` | `email: Email` |
-| `InvitationEligibility` | `status: const eligible`、`email: Email`、`serverTime: SafeTimestamp`、`resendAvailableAt: SafeTimestamp` |
-| `InvitationCodeRequest` | `email: Email` |
-| `InvitationCodeAccepted` | `status: const accepted`、`serverTime: SafeTimestamp`、`resendAvailableAt: SafeTimestamp` |
-| `InvitationVerifyRequest` | `email: Email`、`code: VerificationCode` |
-| `InvitationVerified` | `status: const verified`、`completionToken: OpaqueIdentifier`、`email: Email`、`nickname: Nickname`、`serverTime: SafeTimestamp`、`completionExpiresAt: SafeTimestamp` |
-| `InvitationCompleteRequest` | `completionToken: OpaqueIdentifier`、`nickname: Nickname`、`password: Password`；不接受 email、QQ、头像或验证码 |
-| `InvitationRegistrationCompleted` | `status: const registered`、`email: Email` |
+| Schema                            | 必须字段及形状                                                                                                                                                         |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `JoinApplicationRequest`          | `email: Email`、`nickname: Nickname`、`qq: string`，QQ 匹配 1–20 位数字                                                                                                |
+| `JoinApplicationReceived`         | `status: const received`                                                                                                                                               |
+| `InvitationEligibilityRequest`    | `email: Email`                                                                                                                                                         |
+| `InvitationEligibility`           | `status: const eligible`、`email: Email`、`serverTime: SafeTimestamp`、`resendAvailableAt: SafeTimestamp`                                                              |
+| `InvitationCodeRequest`           | `email: Email`                                                                                                                                                         |
+| `InvitationCodeAccepted`          | `status: const accepted`、`serverTime: SafeTimestamp`、`resendAvailableAt: SafeTimestamp`                                                                              |
+| `InvitationVerifyRequest`         | `email: Email`、`code: VerificationCode`                                                                                                                               |
+| `InvitationVerified`              | `status: const verified`、`completionToken: OpaqueIdentifier`、`email: Email`、`nickname: Nickname`、`serverTime: SafeTimestamp`、`completionExpiresAt: SafeTimestamp` |
+| `InvitationCompleteRequest`       | `completionToken: OpaqueIdentifier`、`nickname: Nickname`、`password: Password`；不接受 email、QQ、头像或验证码                                                        |
+| `InvitationRegistrationCompleted` | `status: const registered`、`email: Email`                                                                                                                             |
 
 `JoinApplicationSummary` 的全部字段必有：`id`、`email`、`nickname`、`qq`、`status`（pending/approved/rejected）、`createdAt`、`reviewedAt`（时间或 null）、`reviewedByUserId`（UUID 或 null）、`invitationStatus`（active/expired/completed 或 null）、`deliveryStatus`（pending/sent/failed 或 null）。本期 `reviewedByUserId` 固定为 null，客户端不能填写它。
 
@@ -135,21 +135,21 @@ AuthService 保留登录、会话和 SSO；移除旧注册方法、投递依赖�
 
 全部使用既有 ErrorEnvelope 和 `apps/mock-server/src/errors.ts` 统一构造；在 `apps/mock-server/src/auth/errors.ts` 扩展现有 AuthError 的 code 与固定文案表，使当前错误链解析可以识别新错误，不引入无法被现有 handler 识别的错误类。HTTP 请求或异常日志不得记录 password、code、completionToken 或 HMAC。
 
-| 情况 | HTTP / code | 行为 |
-| --- | --- | --- |
-| schema 不合法 | 400 / BAD_REQUEST | 既有 Contract 校验错误 |
-| 审核申请不存在 | 404 / JOIN_APPLICATION_NOT_FOUND | 固定提示申请不存在 |
-| 资格检查没有该邮箱的申请 | 404 / INVITATION_APPLICATION_NOT_FOUND | 固定“未找到该邮箱的申请，请先申请加入”；前端 `ExMessage.error` 提示并留在 email |
-| 资格检查存在申请但不符合注册条件 | 409 / INVITATION_NOT_ELIGIBLE | 固定“该邮箱暂不符合注册条件，请确认申请已通过且邀请仍有效”；留在 email，不细分待审、拒绝、过期或已有账号 |
-| 审核状态冲突 | 409 / JOIN_STATE_CONFLICT | 刷新详情，展示当前结果 |
-| 已有账号影响审核或凭证完成 | 409 / EMAIL_IN_USE | 只有审核或有效完善凭证持有方可得到此结果 |
-| 管理员重发不足 60 秒 | 429 / CODE_RESEND_TOO_SOON | Retry-After 为剩余秒数 |
-| 无资格、码错误、码过期或码已消费 | 400 / INVITATION_CODE_INVALID | 统一“验证码无效或已过期，请重新获取”；不区分审批情况 |
-| 错误窗口锁定 | 429 / INVITATION_CODE_LOCKED | Retry-After 为窗口剩余秒数 |
-| 无效、过期或被替换的完善凭证 | 401 / COMPLETION_GRANT_INVALID | 提示重新获取验证码；不得清理当前本站登录 token |
-| 密码资源队列已满 | 503 / AUTH_BUSY | 复用当前资源预算及 Retry-After |
-| 请求频率过高 | 429 / JOIN_RATE_LIMITED | Retry-After 为限流窗口剩余秒数 |
-| 非预期错误 | 500 / INTERNAL_ERROR | 统一安全文案，不回显原异常 |
+| 情况                             | HTTP / code                            | 行为                                                                                                     |
+| -------------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| schema 不合法                    | 400 / BAD_REQUEST                      | 既有 Contract 校验错误                                                                                   |
+| 审核申请不存在                   | 404 / JOIN_APPLICATION_NOT_FOUND       | 固定提示申请不存在                                                                                       |
+| 资格检查没有该邮箱的申请         | 404 / INVITATION_APPLICATION_NOT_FOUND | 固定“未找到该邮箱的申请，请先申请加入”；前端 `ExMessage.error` 提示并留在 email                          |
+| 资格检查存在申请但不符合注册条件 | 409 / INVITATION_NOT_ELIGIBLE          | 固定“该邮箱暂不符合注册条件，请确认申请已通过且邀请仍有效”；留在 email，不细分待审、拒绝、过期或已有账号 |
+| 审核状态冲突                     | 409 / JOIN_STATE_CONFLICT              | 刷新详情，展示当前结果                                                                                   |
+| 已有账号影响审核或凭证完成       | 409 / EMAIL_IN_USE                     | 只有审核或有效完善凭证持有方可得到此结果                                                                 |
+| 管理员重发不足 60 秒             | 429 / CODE_RESEND_TOO_SOON             | Retry-After 为剩余秒数                                                                                   |
+| 无资格、码错误、码过期或码已消费 | 400 / INVITATION_CODE_INVALID          | 统一“验证码无效或已过期，请重新获取”；不区分审批情况                                                     |
+| 错误窗口锁定                     | 429 / INVITATION_CODE_LOCKED           | Retry-After 为窗口剩余秒数                                                                               |
+| 无效、过期或被替换的完善凭证     | 401 / COMPLETION_GRANT_INVALID         | 提示重新获取验证码；不得清理当前本站登录 token                                                           |
+| 密码资源队列已满                 | 503 / AUTH_BUSY                        | 复用当前资源预算及 Retry-After                                                                           |
+| 请求频率过高                     | 429 / JOIN_RATE_LIMITED                | Retry-After 为限流窗口剩余秒数                                                                           |
+| 非预期错误                       | 500 / INTERNAL_ERROR                   | 统一安全文案，不回显原异常                                                                               |
 
 匿名发码的无资格、冷却或投递失败都返回 202；真实异常如数据库不可用仍返回 500。审核动作成功但邮件投递失败返回 200，并在详情中明确 `deliveryStatus: failed`，避免把已提交审批误当作未审批。
 
@@ -161,14 +161,14 @@ AuthService 保留登录、会话和 SSO；移除旧注册方法、投递依赖�
 
 ### 6.1 `join_applications`
 
-| 列 | 约束 |
-| --- | --- |
-| id | UUID v4，主键 |
-| email / nickname / qq | 规范化后的非空文本；QQ 保留前导零 |
-| status | pending、approved、rejected，非空 |
-| created_at | 非空安全毫秒时间 |
-| reviewed_at | 待审核为 null，审核后非空 |
-| reviewed_by_user_id | 可空 FK 到 auth_users；本期始终 null |
+| 列                    | 约束                                 |
+| --------------------- | ------------------------------------ |
+| id                    | UUID v4，主键                        |
+| email / nickname / qq | 规范化后的非空文本；QQ 保留前导零    |
+| status                | pending、approved、rejected，非空    |
+| created_at            | 非空安全毫秒时间                     |
+| reviewed_at           | 待审核为 null，审核后非空            |
+| reviewed_by_user_id   | 可空 FK 到 auth_users；本期始终 null |
 
 唯一部分索引：email WHERE status IN ('pending','approved')，使同邮箱仅有一个未拒绝的申请；拒绝历史不阻止重新申请。另有 status/created_at/id 的列表索引。CHECK 固定状态及 reviewed_at 与审核状态的对应关系。
 
@@ -176,15 +176,15 @@ AuthService 保留登录、会话和 SSO；移除旧注册方法、投递依赖�
 
 ### 6.2 `join_invitations`
 
-| 列 | 约束 |
-| --- | --- |
-| id / application_id | UUID 主键；非空 FK 到 join_applications |
-| status | active、expired、completed，非空 |
-| issued_at / expires_at | 非空；expires_at = issued_at + 7 天 |
-| code_version | 从 1 开始，每次签发新码递增 |
-| code_digest / code_expires_at | HMAC 摘要与时间，可空；消费或到期后清除 |
-| completion_token_hash / completion_expires_at | SHA-256 摘要与时间，可空；token hash 唯一 |
-| completed_user_id / completed_at | 可空 FK 到 auth_users 与时间；completed 时必须非空 |
+| 列                                            | 约束                                               |
+| --------------------------------------------- | -------------------------------------------------- |
+| id / application_id                           | UUID 主键；非空 FK 到 join_applications            |
+| status                                        | active、expired、completed，非空                   |
+| issued_at / expires_at                        | 非空；expires_at = issued_at + 7 天                |
+| code_version                                  | 从 1 开始，每次签发新码递增                        |
+| code_digest / code_expires_at                 | HMAC 摘要与时间，可空；消费或到期后清除            |
+| completion_token_hash / completion_expires_at | SHA-256 摘要与时间，可空；token hash 唯一          |
+| completed_user_id / completed_at              | 可空 FK 到 auth_users 与时间；completed 时必须非空 |
 
 唯一部分索引：application_id WHERE status = 'active'；另有 application_id/issued_at/id 和 expires_at 索引。过期更新后才能为同申请签发下一条 active 邀请。任何资格判断都比较服务端时间，不能只信已保存的 active 标签。
 
@@ -275,14 +275,14 @@ auth_users、资料列、auth_sessions、auth_sso_requests、community_groups �
 
 入口和请求顺序：
 
-| 入口 | 首步与后续行为 |
-| --- | --- |
-| NavBar/移动端注册、无参数 `/register` | 仅邮箱输入；点击“继续”触发 check，成功后显示空 code 表单 |
-| 单个合法 email，无 code | email 表单预填邮箱，等待“继续”；不自动请求或发码 |
-| 单个合法 email + 六位 code | 捕获并清除 URL code，自动 check；成功后自动 verify，同一链只执行一次 |
-| 自动 check 失败 | 保留邮箱、丢弃捕获的 code，留在 email，不调用 verify |
-| check 成功、自动 verify 失败 | 留在 code，清空该次数字码，展示验证错误并允许重发/重试 |
-| 缺邮箱、格式非法或重复参数 | 清除所有 code，进入 email，显示入口错误，不请求 check/verify |
+| 入口                                  | 首步与后续行为                                                       |
+| ------------------------------------- | -------------------------------------------------------------------- |
+| NavBar/移动端注册、无参数 `/register` | 仅邮箱输入；点击“继续”触发 check，成功后显示空 code 表单             |
+| 单个合法 email，无 code               | email 表单预填邮箱，等待“继续”；不自动请求或发码                     |
+| 单个合法 email + 六位 code            | 捕获并清除 URL code，自动 check；成功后自动 verify，同一链只执行一次 |
+| 自动 check 失败                       | 保留邮箱、丢弃捕获的 code，留在 email，不调用 verify                 |
+| check 成功、自动 verify 失败          | 留在 code，清空该次数字码，展示验证错误并允许重发/重试               |
+| 缺邮箱、格式非法或重复参数            | 清除所有 code，进入 email，显示入口错误，不请求 check/verify         |
 
 数字码不写 location.state、日志或存储。普通合法 URL email 可保留用于导航上下文。
 
@@ -328,19 +328,19 @@ profile 页仅有 nickname、password 输入，邮箱是只读文字；不包含
 
 ## 10. 验证计划
 
-| 层次 | 必须覆盖 |
-| --- | --- |
-| Contract HTTP 与原始 handler | 十个新 operation、固定字段、no-store、额外字段拒绝、覆盖双向一致、旧四路径 404 |
-| 只读资格检查 | 无申请 404、存在但待审/拒绝/过期/完成/已有账号统一 409；批准且有效 200；码过期/消费/投递失败不阻止重发入口；响应无资料/凭证；对全部新流程表快照前后相等且无邮件调用；check 成功后资格失效仍被 verify/complete 拒绝 |
-| 申请/审核服务 | 去重不覆盖、拒绝后重申、相同决定幂等、相反决定冲突、无身份可测试审核、原审核人 null |
-| 码与时钟 | 前导零、替换旧码、10 分钟/7 天边界、60 秒冷却、跨重发失败累计、锁定窗口结束、失败计数提交 |
-| 完善事务 | 只在完成时建号、QQ 带入、头像为空、异步哈希期间失效、邮箱竞争、两个完成请求唯一建号、幂等不改密码 |
-| 投递 | 成功/失败/超时、审批不回滚、冷却不撤销、迟到结果、重启 pending 恢复、不在响应/数据库泄漏明文 |
-| 迁移 | 新库全 journal、既有库账号会话SSO组保留、旧表移除、约束和 foreign_key_check、结构不足时启动失败 |
-| UI 行为 | 三步申请、确认回退、Join 独立页、NavBar/移动端注册保留、Modal/页面共用三个注册输入状态；email 仅预填、check 不发码、失败不推进、六位自动校验后才挂载 profile、URL check→verify 去重与清码、重发锁定与刷新 |
-| 注册通知与关闭 | ExMessage 404/409/网络固定文案、字段错误与表单重试、旧邮箱/关闭后迟到响应不通知、不推进、StrictMode 不重复通知、成功切换登录/导航各只执行一次、Modal 焦点恢复 |
-| 审核 UI | 列表分页/过滤、Dialog 两 Tab、关闭焦点与列表位置、请求代次、投递失败展示、窄屏动作可见 |
-| 回归 | 普通登录、存储异常、会话恢复/退出、SSO、本人资料和头像现有行为 |
+| 层次                         | 必须覆盖                                                                                                                                                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Contract HTTP 与原始 handler | 十个新 operation、固定字段、no-store、额外字段拒绝、覆盖双向一致、旧四路径 404                                                                                                                                     |
+| 只读资格检查                 | 无申请 404、存在但待审/拒绝/过期/完成/已有账号统一 409；批准且有效 200；码过期/消费/投递失败不阻止重发入口；响应无资料/凭证；对全部新流程表快照前后相等且无邮件调用；check 成功后资格失效仍被 verify/complete 拒绝 |
+| 申请/审核服务                | 去重不覆盖、拒绝后重申、相同决定幂等、相反决定冲突、无身份可测试审核、原审核人 null                                                                                                                                |
+| 码与时钟                     | 前导零、替换旧码、10 分钟/7 天边界、60 秒冷却、跨重发失败累计、锁定窗口结束、失败计数提交                                                                                                                          |
+| 完善事务                     | 只在完成时建号、QQ 带入、头像为空、异步哈希期间失效、邮箱竞争、两个完成请求唯一建号、幂等不改密码                                                                                                                  |
+| 投递                         | 成功/失败/超时、审批不回滚、冷却不撤销、迟到结果、重启 pending 恢复、不在响应/数据库泄漏明文                                                                                                                       |
+| 迁移                         | 新库全 journal、既有库账号会话SSO组保留、旧表移除、约束和 foreign_key_check、结构不足时启动失败                                                                                                                    |
+| UI 行为                      | 三步申请、确认回退、Join 独立页、NavBar/移动端注册保留、Modal/页面共用三个注册输入状态；email 仅预填、check 不发码、失败不推进、六位自动校验后才挂载 profile、URL check→verify 去重与清码、重发锁定与刷新          |
+| 注册通知与关闭               | ExMessage 404/409/网络固定文案、字段错误与表单重试、旧邮箱/关闭后迟到响应不通知、不推进、StrictMode 不重复通知、成功切换登录/导航各只执行一次、Modal 焦点恢复                                                      |
+| 审核 UI                      | 列表分页/过滤、Dialog 两 Tab、关闭焦点与列表位置、请求代次、投递失败展示、窄屏动作可见                                                                                                                             |
+| 回归                         | 普通登录、存储异常、会话恢复/退出、SSO、本人资料和头像现有行为                                                                                                                                                     |
 
 `tests/helpers/auth.ts` 扩展新服务、时钟、随机源和邮件捕获；为登录/资料回归添加仅测试模块可用的用户夹具，不保留 AuthService 的旧注册方法作为测试后门。新业务测试完整经过申请、审核、验证、完善流程，认证回归可通过夹具初始化用户以避免重复测试所有申请步骤。
 
@@ -348,18 +348,18 @@ profile 页仅有 nickname、password 输入，邮箱是只读文字；不包含
 
 ## 11. 风险与选择
 
-| 风险 | 处理与检测 |
-| --- | --- |
-| 临时审核无鉴权 | 用户明确选择本地测试流程；维持回环监听，不把它作为生产权限实现；Contract Test 明确记录公开行为 |
-| 邮箱检查透露最小存在性/资格 | 本次明确要求无申请报错并确认仅获批可继续；返回固定 404/409/200，不给申请资料或细分不合格原因，复用 IP 限流及 no-store；检查结果不能替代数字码验证与完善凭证 |
-| 检查后业务状态变化 | verify 与 complete 独立复查时间、申请、邀请及账号；前端响应绑定邮箱和流程代次，不依赖 check 授予资格 |
-| 数字码在 URL | 读取即清除，在 `apps/web/index.html` 的脚本与资源前声明 no-referrer，不添加分析采集；未来入口访问日志须去除 code；仍接受邮件和原始入口请求持有码这一产品选择 |
-| 邮件检查工具自动打开一次性链接 | 本期 Mock 没有真实邮件工具；未来正式邮件接入必须验证此风险，不能将后台预览访问自动执行 JS 的情况当作本地已通过 |
-| 邮件事务与 SQLite 不可共同提交 | 先提交资格、记录尝试，再投递；失败可新码重试，具体尝试结果独立 |
-| 消费码后响应丢失 | 页面提示重发；避免保存明文完善 token 来恢复消费结果 |
-| 多标签旧凭证 | 新验证替换旧凭证，旧表单明确失效；事务复查防止双建号 |
-| 迁移不可逆材料删除 | 停止写入后备份，切换单元完整验证；数据恢复与应用回退分开 |
-| 后续更多申请字段 | 按字段/步骤模块扩展并显式修改 Contract；不提前接受任意 JSON 字段 |
+| 风险                           | 处理与检测                                                                                                                                                   |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 临时审核无鉴权                 | 用户明确选择本地测试流程；维持回环监听，不把它作为生产权限实现；Contract Test 明确记录公开行为                                                               |
+| 邮箱检查透露最小存在性/资格    | 本次明确要求无申请报错并确认仅获批可继续；返回固定 404/409/200，不给申请资料或细分不合格原因，复用 IP 限流及 no-store；检查结果不能替代数字码验证与完善凭证  |
+| 检查后业务状态变化             | verify 与 complete 独立复查时间、申请、邀请及账号；前端响应绑定邮箱和流程代次，不依赖 check 授予资格                                                         |
+| 数字码在 URL                   | 读取即清除，在 `apps/web/index.html` 的脚本与资源前声明 no-referrer，不添加分析采集；未来入口访问日志须去除 code；仍接受邮件和原始入口请求持有码这一产品选择 |
+| 邮件检查工具自动打开一次性链接 | 本期 Mock 没有真实邮件工具；未来正式邮件接入必须验证此风险，不能将后台预览访问自动执行 JS 的情况当作本地已通过                                               |
+| 邮件事务与 SQLite 不可共同提交 | 先提交资格、记录尝试，再投递；失败可新码重试，具体尝试结果独立                                                                                               |
+| 消费码后响应丢失               | 页面提示重发；避免保存明文完善 token 来恢复消费结果                                                                                                          |
+| 多标签旧凭证                   | 新验证替换旧凭证，旧表单明确失效；事务复查防止双建号                                                                                                         |
+| 迁移不可逆材料删除             | 停止写入后备份，切换单元完整验证；数据恢复与应用回退分开                                                                                                     |
+| 后续更多申请字段               | 按字段/步骤模块扩展并显式修改 Contract；不提前接受任意 JSON 字段                                                                                             |
 
 选择独立申请/邀请职责，避免混合旧“先保存密码后验码”的注册尝试；代价是新增数据表与一次公共契约切换。选择同邮件和 URL 六位码是用户确认的交互，并不构成双因素验证。选择临时公开审核是最新用户修订，不引入假权限标志或临时管理员账号。
 

@@ -1,16 +1,16 @@
-import { useState } from "react";
-import { Button } from "@exre/exui";
-import { ArrowUpRight } from "lucide-react";
-import { HalftoneDots } from "@paper-design/shaders-react";
-import { communityDestinations, communityLinks } from "@web/src/join/community";
-import { getJoinHeroImages } from "@web/src/join/hero-images";
-import styles from "@web/src/pages/JoinPage/Rifling-911/JoinPage.module.scss";
+import { useState } from 'react'
+import { Button } from '@exre/exui'
+import { ArrowUpRight } from 'lucide-react'
+import { HalftoneDots } from '@paper-design/shaders-react'
+import { communityDestinations, communityLinks } from '@web/src/join/community'
+import { getJoinHeroImages } from '@web/src/join/hero-images'
+import styles from '@web/src/pages/JoinPage/Rifling-911/JoinPage.module.scss'
 
-const heroImages = getJoinHeroImages("rifling-911");
+const heroImages = getJoinHeroImages('rifling-911')
 
 export function JoinPage() {
-  const [heroIndex, setHeroIndex] = useState(0);
-  const heroImage = heroImages[heroIndex];
+  const [heroIndex, setHeroIndex] = useState(0)
+  const heroImage = heroImages[heroIndex]
   const artwork = heroImage && (
     <HalftoneDots
       key={heroImage}
@@ -31,7 +31,7 @@ export function JoinPage() {
       grainSize={0.5}
       fit="cover"
     />
-  );
+  )
   return (
     <main className={styles.page}>
       <header className={styles.hero}>
@@ -41,9 +41,7 @@ export function JoinPage() {
               type="button"
               className={styles.heroArtwork}
               aria-label={`切换背景图片，当前第 ${heroIndex + 1} 张，共 ${heroImages.length} 张`}
-              onClick={() =>
-                setHeroIndex((index) => (index + 1) % heroImages.length)
-              }
+              onClick={() => setHeroIndex((index) => (index + 1) % heroImages.length)}
             >
               {artwork}
             </button>
@@ -87,9 +85,7 @@ export function JoinPage() {
         </section>
         <section className={styles.section} aria-labelledby="join-requirements">
           <h2 id="join-requirements">申请须知</h2>
-          <p>
-            加入前请阅读社区置顶指引，确认理解社区规则。具体安排请联系社区工作人员。
-          </p>
+          <p>加入前请阅读社区置顶指引，确认理解社区规则。具体安排请联系社区工作人员。</p>
           <ul className={styles.requirements}>
             <li>
               <span aria-hidden="true">01</span>
@@ -120,16 +116,12 @@ export function JoinPage() {
               </div>
             </li>
           </ul>
-          <p className={styles.finePrint}>
-            具体加入安排以社区通知为准。
-          </p>
+          <p className={styles.finePrint}>具体加入安排以社区通知为准。</p>
         </section>
         <section className={styles.contact} aria-labelledby="join-contact">
           <div>
             <h2 id="join-contact">保持联系。</h2>
-            <p>
-              请留意社区置顶指引与通知，通过社区工作人员了解面试或邀请安排。
-            </p>
+            <p>请留意社区置顶指引与通知，通过社区工作人员了解面试或邀请安排。</p>
           </div>
           {communityLinks.length > 0 && (
             <div className={styles.links}>
@@ -145,5 +137,5 @@ export function JoinPage() {
         </section>
       </div>
     </main>
-  );
+  )
 }

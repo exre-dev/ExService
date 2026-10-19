@@ -61,10 +61,10 @@ export class ScryptPasswordHasher implements PasswordHasher {
     return this.gate.run(async () => {
       const parts = encodedHash.split('$')
       if (
-        parts.length !== 5
-        || parts[0] !== 'scrypt'
-        || parts[1] !== 'v1'
-        || parts[2] !== `N=${SCRYPT_N},r=${SCRYPT_R},p=${SCRYPT_P}`
+        parts.length !== 5 ||
+        parts[0] !== 'scrypt' ||
+        parts[1] !== 'v1' ||
+        parts[2] !== `N=${SCRYPT_N},r=${SCRYPT_R},p=${SCRYPT_P}`
       ) {
         return false
       }
@@ -89,18 +89,24 @@ export class ScryptPasswordHasher implements PasswordHasher {
 
 async function derive(password: string, salt: Buffer): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    scrypt(password, salt, SCRYPT_KEY_LENGTH, {
-      N: SCRYPT_N,
-      r: SCRYPT_R,
-      p: SCRYPT_P,
-      maxmem: SCRYPT_MAXMEM,
-    }, (error, derivedKey) => {
-      if (error !== null) {
-        reject(error)
-        return
-      }
-      resolve(Buffer.from(derivedKey))
-    })
+    scrypt(
+      password,
+      salt,
+      SCRYPT_KEY_LENGTH,
+      {
+        N: SCRYPT_N,
+        r: SCRYPT_R,
+        p: SCRYPT_P,
+        maxmem: SCRYPT_MAXMEM,
+      },
+      (error, derivedKey) => {
+        if (error !== null) {
+          reject(error)
+          return
+        }
+        resolve(Buffer.from(derivedKey))
+      },
+    )
   })
 }
 

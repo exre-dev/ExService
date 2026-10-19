@@ -37,17 +37,17 @@
 
 ### 文档动作
 
-| 动作 | 判定 |
-| --- | --- |
-| 读已发布文档 | 文档与集合均有效，且公共可见或 actor 为管理员/有集合 Read 以上权限 |
-| 读草稿 | 作者且仍有目标集编辑权，或该集编辑者/管理员；匿名和普通 Read 成员均不可见 |
-| 评论 | 有效 Website 关联会话、可读、活动文档与可变工作区；不要求编辑权 |
-| 在集合中新建/编辑/发布 | 管理员或该集显式 ReadWrite；父级也必须属于该集且满足现有结构约束 |
-| 无集合草稿 | 本集成中禁止创建，包括通过复制、导入、MCP 间接创建；UI 先选择可编辑集合 |
-| 复制 | 可读源文档且可在目标集新建；取消仅检查团队 createDocument 的旧限制 |
-| 移动 | 可编辑源文档且可在目标集新建；跨集移动整个子树均应用目标权限 |
-| 删除/归档/取消发布 | 管理员或该集编辑者，同时保留 Outline 现有对象状态约束 |
-| 新建集合、公开/撤销公开、改授权 | 仅文档管理员 |
+| 动作                            | 判定                                                                      |
+| ------------------------------- | ------------------------------------------------------------------------- |
+| 读已发布文档                    | 文档与集合均有效，且公共可见或 actor 为管理员/有集合 Read 以上权限        |
+| 读草稿                          | 作者且仍有目标集编辑权，或该集编辑者/管理员；匿名和普通 Read 成员均不可见 |
+| 评论                            | 有效 Website 关联会话、可读、活动文档与可变工作区；不要求编辑权           |
+| 在集合中新建/编辑/发布          | 管理员或该集显式 ReadWrite；父级也必须属于该集且满足现有结构约束          |
+| 无集合草稿                      | 本集成中禁止创建，包括通过复制、导入、MCP 间接创建；UI 先选择可编辑集合   |
+| 复制                            | 可读源文档且可在目标集新建；取消仅检查团队 createDocument 的旧限制        |
+| 移动                            | 可编辑源文档且可在目标集新建；跨集移动整个子树均应用目标权限              |
+| 删除/归档/取消发布              | 管理员或该集编辑者，同时保留 Outline 现有对象状态约束                     |
+| 新建集合、公开/撤销公开、改授权 | 仅文档管理员                                                              |
 
 普通 Viewer 的全局角色不再阻止已获集合 ReadWrite 的合法编辑；所有需要“有任何可编辑集合”的全局 UI 用真实集合能力判断。反过来，作者身份不能在集合授权被撤销后继续写草稿。
 
@@ -75,12 +75,12 @@
 
 拟新增以下 Outline 自有 Koa RPC（实际外部前缀 `/docs/api/`）。在 `apps/outline/server/routes/api/public/` 使用既有 validate/pagination/presenter 约定；这是 Outline 的 schema，不复制进 Website OpenAPI 或 Website API Client。
 
-| POST operation | 请求 | 响应 data |
-| --- | --- | --- |
-| `public.collections.list` | `{offset?:integer,limit?:integer}` | `[{id,name,description,url}]` |
-| `public.documents.list` | `{collectionId:UUID,offset?:integer,limit?:integer}` | `[{id,title,url,parentDocumentId:UUID或null,updatedAt:ISO日期}]` |
-| `public.documents.info` | `{id:string}`，支持已验证 slug/id 解析 | `{id,collectionId,title,content,url,updatedAt}`；content 采用现有文档 AST JSON schema |
-| `public.documents.search` | `{query:string,collectionId?:UUID,offset?:integer,limit?:integer}` | `[{id,collectionId,title,url,excerpt}]` |
+| POST operation            | 请求                                                               | 响应 data                                                                             |
+| ------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `public.collections.list` | `{offset?:integer,limit?:integer}`                                 | `[{id,name,description,url}]`                                                         |
+| `public.documents.list`   | `{collectionId:UUID,offset?:integer,limit?:integer}`               | `[{id,title,url,parentDocumentId:UUID或null,updatedAt:ISO日期}]`                      |
+| `public.documents.info`   | `{id:string}`，支持已验证 slug/id 解析                             | `{id,collectionId,title,content,url,updatedAt}`；content 采用现有文档 AST JSON schema |
+| `public.documents.search` | `{query:string,collectionId?:UUID,offset?:integer,limit?:integer}` | `[{id,collectionId,title,url,excerpt}]`                                               |
 
 统一响应 `{data,pagination}`，列表 pagination 为 `{offset,limit,hasMore}`，info 为 `{data}`。offset 默认 0，limit 默认 20、最大 100；query trim 后 1–200 字符。拒绝未知字段。不返回整个内部 Document/Collection 实体、作者邮箱、成员关系、私有链接预览、草稿计数或不经过过滤的总数。
 

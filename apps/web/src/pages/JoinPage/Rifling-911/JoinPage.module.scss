@@ -22,15 +22,11 @@
     color: var(--exui-text-primary);
   }
   &::after {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: linear-gradient(
-      to top,
-      var(--exui-surface-overlay),
-      transparent 85%
-    );
+    background: linear-gradient(to top, var(--exui-surface-overlay), transparent 85%);
   }
 }
 .heroArtwork {
@@ -261,29 +257,29 @@
     border: 0;
     border-radius: 0;
   }
-  [data-slot="accordion-item"] {
+  [data-slot='accordion-item'] {
     border-color: var(--exui-border-divider);
     background: transparent;
   }
   h3 {
     margin: 0;
   }
-  [data-slot="accordion-trigger"] {
+  [data-slot='accordion-trigger'] {
     padding: 1.25rem 0;
     font-size: 1rem;
     font-weight: var(--exui-font-weight-medium);
   }
-  [data-slot="accordion-trigger"]:focus-visible {
+  [data-slot='accordion-trigger']:focus-visible {
     outline: 2px solid var(--exui-border-focused);
     outline-offset: -2px;
   }
-  [data-slot="accordion-content"] {
+  [data-slot='accordion-content'] {
     padding-inline: 0;
     overflow: hidden;
-    &[data-state="open"] {
+    &[data-state='open'] {
       animation: faqOpen 220ms ease-out;
     }
-    &[data-state="closed"] {
+    &[data-state='closed'] {
       animation: faqClose 220ms ease-in;
     }
     > div {
@@ -425,7 +421,7 @@
   .heroArtwork canvas {
     animation: none;
   }
-  .faq [data-slot="accordion-content"][data-state] {
+  .faq [data-slot='accordion-content'][data-state] {
     animation: none;
   }
 }

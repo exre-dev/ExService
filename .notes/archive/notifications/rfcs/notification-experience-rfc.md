@@ -14,15 +14,15 @@
 
 ## 2. 核对的系统事实
 
-| 边界 | 当前依据 |
-| --- | --- |
-| HTTP | `api/openapi.yaml` 是唯一 Contract，当前 `info.version` 为 `0.5.0`；实际路由具有 `/api` 前缀。 |
-| Server | `apps/server/src/app.ts` 的 `serviceHandlers` 显式登记 operation；通知 service/repository 位于 `apps/server/src/modules/notifications/`。 |
-| Web | `apps/web/src/notifications/useNotificationsController.ts` 持有请求与交互；`notificationsConfig.ts` 有身份/写代次、unread/history 切片及恢复批次状态。 |
-| UI | `packages/components/src/notifications/` 接收值与回调，不访问 API；`NotificationsExperience.tsx` 把控制器接到铃铛和历史 Modal。 |
-| ExUI | 已安装 `@exre/exui` 0.8.0，公开 Modal 和 Tabs。Modal 的主体默认 `overflow:auto`，手机全屏使用小于 768px 的断点。 |
-| 存储 | receipts 清理状态、clear batches/items 与 mutations 同属独立 PostgreSQL `exre`；历史物理 schema 允许恢复字段与状态。 |
-| 验证 | `tests/contract/notifications.test.ts` 检查真实 HTTP 和原始 handler 返回值；`tests/notifications/service.test.ts` 使用隔离数据库验证服务行为。根目录未发现 `TESTING.md`。 |
+| 边界   | 当前依据                                                                                                                                                                  |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HTTP   | `api/openapi.yaml` 是唯一 Contract，当前 `info.version` 为 `0.5.0`；实际路由具有 `/api` 前缀。                                                                            |
+| Server | `apps/server/src/app.ts` 的 `serviceHandlers` 显式登记 operation；通知 service/repository 位于 `apps/server/src/modules/notifications/`。                                 |
+| Web    | `apps/web/src/notifications/useNotificationsController.ts` 持有请求与交互；`notificationsConfig.ts` 有身份/写代次、unread/history 切片及恢复批次状态。                    |
+| UI     | `packages/components/src/notifications/` 接收值与回调，不访问 API；`NotificationsExperience.tsx` 把控制器接到铃铛和历史 Modal。                                           |
+| ExUI   | 已安装 `@exre/exui` 0.8.0，公开 Modal 和 Tabs。Modal 的主体默认 `overflow:auto`，手机全屏使用小于 768px 的断点。                                                          |
+| 存储   | receipts 清理状态、clear batches/items 与 mutations 同属独立 PostgreSQL `exre`；历史物理 schema 允许恢复字段与状态。                                                      |
+| 验证   | `tests/contract/notifications.test.ts` 检查真实 HTTP 和原始 handler 返回值；`tests/notifications/service.test.ts` 使用隔离数据库验证服务行为。根目录未发现 `TESTING.md`。 |
 
 批准的旧范围中 Popup 仍是最多 5 条的未读预览，自动分页只用于完整历史 Modal。设计引用的历史通知 spec 在当前 checkout 未找到，本 RFC 以现有源码和当前批准 spec 为依据。
 
@@ -32,9 +32,9 @@
 
 删除：
 
-| 方法与 Contract 路径 | operationId |
-| --- | --- |
-| `GET /notifications/clear-batches` | `listNotificationClearBatches` |
+| 方法与 Contract 路径                                  | operationId                     |
+| ----------------------------------------------------- | ------------------------------- |
+| `GET /notifications/clear-batches`                    | `listNotificationClearBatches`  |
 | `POST /notifications/clear-batches/{batchId}/restore` | `restoreNotificationClearBatch` |
 
 同时删除 `NotificationClearBatchItem`、`NotificationClearBatchList`、`NotificationRestoreRequest`、`NotificationRestoreResult`，并清除它们的引用。更新保留的 clear-preview/clear-all summary 和 description，去除可恢复承诺。
@@ -64,13 +64,13 @@ Contract 修改后运行 `pnpm api:lint` 和 `pnpm api:generate`；生成的 `pa
 
 以下是拟议的视图接口变化，留在 `packages/components`，不导入生成 DTO 或 API Client：
 
-| 接口 | 调整 |
-| --- | --- |
-| `NotificationHistoryModalProps` | 删除 records；增加 `countState: NotificationCountState`，把全局计数明确传入 Modal。保留 open/onClose/selectedId/onSelect/list/detail/confirm/finalFocusRef。 |
-| `NotificationListSlice` | 保留现有筛选、items、status、hasMore、nextPageStatus 和回调；增加 `canAutoLoad: boolean`、`resetVersion: number`。onLoadMore 只负责有效游标续页；新增 onRetryPage 专门从第一页恢复失败分页。 |
-| `NotificationBulkSlice` | pending 收窄为 read-all/clear/null；增加 preparing: read-all/clear/null 和 error: string/null；保留 onReadAll/onClearAll。删除 message、lastClearedBatchId、onUndoClear。 |
-| `NotificationConfirmSlice` | 沿用 kind/count/pending/expired/onCancel/onSubmit；增加 error: string/null，在确认界面显示持续提交错误。 |
-| `NotificationRecordsSlice`、`NotificationClearBatchView` | 删除，包括 `packages/components/src/index.ts` 的导出。 |
+| 接口                                                     | 调整                                                                                                                                                                                         |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NotificationHistoryModalProps`                          | 删除 records；增加 `countState: NotificationCountState`，把全局计数明确传入 Modal。保留 open/onClose/selectedId/onSelect/list/detail/confirm/finalFocusRef。                                 |
+| `NotificationListSlice`                                  | 保留现有筛选、items、status、hasMore、nextPageStatus 和回调；增加 `canAutoLoad: boolean`、`resetVersion: number`。onLoadMore 只负责有效游标续页；新增 onRetryPage 专门从第一页恢复失败分页。 |
+| `NotificationBulkSlice`                                  | pending 收窄为 read-all/clear/null；增加 preparing: read-all/clear/null 和 error: string/null；保留 onReadAll/onClearAll。删除 message、lastClearedBatchId、onUndoClear。                    |
+| `NotificationConfirmSlice`                               | 沿用 kind/count/pending/expired/onCancel/onSubmit；增加 error: string/null，在确认界面显示持续提交错误。                                                                                     |
+| `NotificationRecordsSlice`、`NotificationClearBatchView` | 删除，包括 `packages/components/src/index.ts` 的导出。                                                                                                                                       |
 
 `canAutoLoad` 由控制器结合第一页状态、nextCursor、在途保护、批量/确认状态推导；组件再与 open 和列表实际可见性合取。`resetVersion` 在已接受的第一页替换完成时递增，使组件明确何时恢复到列表顶部；它不是数据库状态版本。
 
@@ -113,12 +113,12 @@ onRetryPage 使用新列表代次、cursor=null 和 keepItems=true；请求中�
 
 按钮动作依据 countState，表格中的可靠计数必须来自已接受的全局读取：
 
-| 状态 | 显示与执行 |
-| --- | --- |
-| ready 且 count > 0 | “已读全部”；点击启动 read-all 准备。 |
-| ready 且 count = 0 | “清理全部”；历史已可靠确认为空时禁用，否则服务端 preview 裁决。 |
-| 没有可靠计数的 idle/loading | 禁用的“加载中…”。 |
-| error 或准备/提交进行中 | 禁用；已有计数可用于保留原标签，但不能推断为零执行清理。 |
+| 状态                        | 显示与执行                                                      |
+| --------------------------- | --------------------------------------------------------------- |
+| ready 且 count > 0          | “已读全部”；点击启动 read-all 准备。                            |
+| ready 且 count = 0          | “清理全部”；历史已可靠确认为空时禁用，否则服务端 preview 裁决。 |
+| 没有可靠计数的 idle/loading | 禁用的“加载中…”。                                               |
+| error 或准备/提交进行中     | 禁用；已有计数可用于保留原标签，但不能推断为零执行清理。        |
 
 空的 unread Tab 不能禁用全局清理；仅本次有效的 history 第一页为空且无 nextCursor，或零项 preview，才证明全局可清理历史为空。
 
@@ -174,17 +174,17 @@ Website 与 Server 属于同一单实例开发交付，完整变更验证后一�
 
 ## 10. 验证矩阵
 
-| 层 | 关键用例与落点 |
-| --- | --- |
-| Component | `NotificationBell.test.tsx`：zero badge 不存在、正数及 loading/error 状态、Popup footer 消失、铃铛仍可用。 |
-| Component | `NotificationHistoryModal.test.tsx`：Tab 可访问性与筛选回调、只有一个批量按钮、全局未读不依赖当前 items、空 unread 可清理历史、空态结构与恢复 UI 消失。 |
-| Component | observer mock 验证到底触发、连续短页、没有 cursor 停止、手机正文暂停、失败只允许显式重读。DOM 测试不声称几何验收。 |
-| Controller | `useNotificationsController.test.tsx`：同时 observer 回调仅一次请求、第一页覆盖保护、Popup/Modal unread 刷新去重、切 Tab/关 Modal/账号变化迟到响应失效、恢复失败保留旧列表。 |
-| Controller | summary 为未知/失败时禁用；准备重复点击去重；read-all 重试 token 与 requestId 不变；轮询不改确认意图；零项清理不提交；新到通知不扩大范围。 |
-| Contract | `tests/contract/notifications.test.ts` 删除恢复 validator/调用，验证删除 operation 与登记；真实 HTTP 不返回批次数据/不能恢复，保留所有剩余 operation 的 HTTP schema 和原始返回值校验。 |
-| Service | `tests/notifications/service.test.ts` 删除恢复业务测试，保留精确清理、有效 preview 独立、过期 preview 回收、本人授权、并发幂等和新到项保留。需恢复才能构造的 revision 变化测试改为隔离数据库 fixture 改变 clear revision，不恢复生产方法。 |
-| Service | 跨 kind 幂等测试改为 read_through/clear，并添加历史 restore mutation 行占用同一 requestId 的冲突用例；读取兼容不能导致命令重复执行。 |
-| Browser | 在 `tests/browser/` 新增通知体验几何验证，桌面、390px、767px、768px；空态中心、单行工具、Modal 满屏、两栏独立滚动、焦点往返、跨断点保留选择、light/dark 与 reduced-motion。 |
+| 层         | 关键用例与落点                                                                                                                                                                                                                             |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Component  | `NotificationBell.test.tsx`：zero badge 不存在、正数及 loading/error 状态、Popup footer 消失、铃铛仍可用。                                                                                                                                 |
+| Component  | `NotificationHistoryModal.test.tsx`：Tab 可访问性与筛选回调、只有一个批量按钮、全局未读不依赖当前 items、空 unread 可清理历史、空态结构与恢复 UI 消失。                                                                                    |
+| Component  | observer mock 验证到底触发、连续短页、没有 cursor 停止、手机正文暂停、失败只允许显式重读。DOM 测试不声称几何验收。                                                                                                                         |
+| Controller | `useNotificationsController.test.tsx`：同时 observer 回调仅一次请求、第一页覆盖保护、Popup/Modal unread 刷新去重、切 Tab/关 Modal/账号变化迟到响应失效、恢复失败保留旧列表。                                                               |
+| Controller | summary 为未知/失败时禁用；准备重复点击去重；read-all 重试 token 与 requestId 不变；轮询不改确认意图；零项清理不提交；新到通知不扩大范围。                                                                                                 |
+| Contract   | `tests/contract/notifications.test.ts` 删除恢复 validator/调用，验证删除 operation 与登记；真实 HTTP 不返回批次数据/不能恢复，保留所有剩余 operation 的 HTTP schema 和原始返回值校验。                                                     |
+| Service    | `tests/notifications/service.test.ts` 删除恢复业务测试，保留精确清理、有效 preview 独立、过期 preview 回收、本人授权、并发幂等和新到项保留。需恢复才能构造的 revision 变化测试改为隔离数据库 fixture 改变 clear revision，不恢复生产方法。 |
+| Service    | 跨 kind 幂等测试改为 read_through/clear，并添加历史 restore mutation 行占用同一 requestId 的冲突用例；读取兼容不能导致命令重复执行。                                                                                                       |
+| Browser    | 在 `tests/browser/` 新增通知体验几何验证，桌面、390px、767px、768px；空态中心、单行工具、Modal 满屏、两栏独立滚动、焦点往返、跨断点保留选择、light/dark 与 reduced-motion。                                                                |
 
 自动门禁顺序：`pnpm api:lint`、`pnpm api:generate`、`pnpm typecheck`、`pnpm test`、`pnpm build`。先执行范围匹配测试，再执行必需完整门禁；DB 测试只用 PostgreSQL Testcontainers，Docker 不可用明确失败。
 
@@ -192,14 +192,14 @@ Website 与 Server 属于同一单实例开发交付，完整变更验证后一�
 
 ## 11. 风险、回退与完成条件
 
-| 风险 | 对策与检测 |
-| --- | --- |
-| 迟到第一页抹掉分页，重复回调发送多次请求 | 每 view 代次与同步在途 guard；用可控 Promise 的 controller 测试验证响应乱序。 |
-| 已读重试换 token 导致同 requestId 不同 body | 固定批量意图；轮询期间重试测试比较完整提交 body。 |
-| ExUI 默认主体滚动造成第三条滚动条或空态偏位 | 当前实例约束高度链，真实浏览器坐标和滚动容器验证。 |
-| 删除恢复时误删快照、批次或历史允许值 | 保留表/锁序/历史读取类型；contract/service 与既有 schema 测试检查。 |
-| 动态路径接管删除的 GET 被误判为未删除 | 检查 Contract 与 serviceHandlers 双向集合、无数据响应和无恢复状态变化，不仅看 404。 |
-| Server/Web 不同步 | 本地完整验证后同时重建/启用；不留下保留接口或半升级流程。 |
+| 风险                                        | 对策与检测                                                                          |
+| ------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 迟到第一页抹掉分页，重复回调发送多次请求    | 每 view 代次与同步在途 guard；用可控 Promise 的 controller 测试验证响应乱序。       |
+| 已读重试换 token 导致同 requestId 不同 body | 固定批量意图；轮询期间重试测试比较完整提交 body。                                   |
+| ExUI 默认主体滚动造成第三条滚动条或空态偏位 | 当前实例约束高度链，真实浏览器坐标和滚动容器验证。                                  |
+| 删除恢复时误删快照、批次或历史允许值        | 保留表/锁序/历史读取类型；contract/service 与既有 schema 测试检查。                 |
+| 动态路径接管删除的 GET 被误判为未删除       | 检查 Contract 与 serviceHandlers 双向集合、无数据响应和无恢复状态变化，不仅看 404。 |
+| Server/Web 不同步                           | 本地完整验证后同时重建/启用；不留下保留接口或半升级流程。                           |
 
 本阶段不部署。若后续本地启用出现错误，停止升级后的应用，修复或回退同一组 Contract/生成 Client/Server/Web 变更。无 schema migration，因此不需要数据还原。清理过的 receipts 仍然是 cleared，不因代码回退而主动复原；回退旧版本会重新暴露旧恢复能力，因此属于功能回退，需要明确标识，不能宣称符合本 RFC。
 

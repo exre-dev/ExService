@@ -32,10 +32,16 @@
 - [ ] 写配置行为测试，先证明旧实现无法在无 Outline 配置下启用空客户端身份服务：
 
 ```ts
-const config = parseIdentityConfig({ IDENTITY_ENABLED: 'true', IDENTITY_MODE: 'local',
-  SERVER_PUBLIC_WEB_BASE_URL: 'http://127.0.0.1:8080', HYDRA_PUBLIC_URL: 'http://127.0.0.1:4444/',
-  HYDRA_ADMIN_URL: 'http://127.0.0.1:4445/', IDENTITY_FLOW_KEY: 'a'.repeat(64),
-  IDENTITY_BOOTSTRAP_KEY: 'b'.repeat(64), IDENTITY_CLIENTS_JSON: '[]' })
+const config = parseIdentityConfig({
+  IDENTITY_ENABLED: 'true',
+  IDENTITY_MODE: 'local',
+  SERVER_PUBLIC_WEB_BASE_URL: 'http://127.0.0.1:8080',
+  HYDRA_PUBLIC_URL: 'http://127.0.0.1:4444/',
+  HYDRA_ADMIN_URL: 'http://127.0.0.1:4445/',
+  IDENTITY_FLOW_KEY: 'a'.repeat(64),
+  IDENTITY_BOOTSTRAP_KEY: 'b'.repeat(64),
+  IDENTITY_CLIENTS_JSON: '[]',
+})
 expect(config).toMatchObject({ enabled: true, approvedClients: {} })
 ```
 

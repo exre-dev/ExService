@@ -37,11 +37,11 @@
 
 比较过的替代方向：
 
-| 方向 | 取舍 |
-| --- | --- |
+| 方向                                                      | 取舍                                           |
+| --------------------------------------------------------- | ---------------------------------------------- |
 | 沿用现有 API，精简恢复链路，替换 Modal 与列表交互（采用） | 符合全部已确认需求，复用授权、幂等和快照行为。 |
-| 只隐藏恢复 UI，保留恢复 API 与 Server 实现 | 会留下用户明确不需要的能力，不采用。 |
-| 重建通知页面、移动端 Sheet 或分页协议 | 增加独立入口与状态同步成本，当前需求不需要。 |
+| 只隐藏恢复 UI，保留恢复 API 与 Server 实现                | 会留下用户明确不需要的能力，不采用。           |
+| 重建通知页面、移动端 Sheet 或分页协议                     | 增加独立入口与状态同步成本，当前需求不需要。   |
 
 ## 3. Popup 与历史入口
 
@@ -126,9 +126,9 @@ Tab 使用可访问的 tablist、tab 和 tabpanel 语义，支持键盘操作。
 
 删除以下 HTTP 能力及对应 `serviceHandlers` 登记：
 
-| 方法与 Contract 路径 | operationId |
-| --- | --- |
-| `GET /notifications/clear-batches` | `listNotificationClearBatches` |
+| 方法与 Contract 路径                                  | operationId                     |
+| ----------------------------------------------------- | ------------------------------- |
+| `GET /notifications/clear-batches`                    | `listNotificationClearBatches`  |
 | `POST /notifications/clear-batches/{batchId}/restore` | `restoreNotificationClearBatch` |
 
 删除仅供这些 operation 使用的批次列表/恢复 schema、handler、service、repository 方法、类型、前端状态、恢复意图和组件 props/export；清理实际仍使用的 `NotificationClearResult` 等 schema 不能误删。相应测试改为验证删除后的路由不再提供恢复能力，保留清理/幂等/授权测试。

@@ -6,7 +6,8 @@ const plugin: FastifyPluginAsync = async (app) => {
 }
 
 export default fp(plugin, {
-  name: 'api-join', fastify: '5.x',
-  dependencies: ["business-join","api-auth"],
-  decorators: { fastify: ["invitationServices"], request: ["authSession"] },
+  name: 'api-join',
+  fastify: '5.x',
+  dependencies: ['business-join', 'api-auth'],
+  decorators: { fastify: ['invitationServices'], request: ['authSession'] },
 })

@@ -8,33 +8,59 @@ import { ExAxiosError } from '@workspace/sdk'
 
 const get = vi.hoisted(() => vi.fn())
 const invalidateSession = vi.hoisted(() => vi.fn())
-vi.mock('@workspace/sdk', async importOriginal => ({ ...await importOriginal<object>(),
+vi.mock('@workspace/sdk', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   instance: (config: { method?: string }) => {
     const handlers = { GET: get }
     return handlers[(config.method ?? 'GET') as keyof typeof handlers](config)
   },
 }))
-vi.mock('@web/src/auth/AuthContext', () => ({ useAuth: () => ({
-  state: { status: 'authenticated' }, openModal: vi.fn(), invalidateSession,
-  refreshProfile: vi.fn(), retrySession: vi.fn(), logout: vi.fn(),
-}) }))
+vi.mock('@web/src/auth/AuthContext', () => ({
+  useAuth: () => ({
+    state: { status: 'authenticated' },
+    openModal: vi.fn(),
+    invalidateSession,
+    refreshProfile: vi.fn(),
+    retrySession: vi.fn(),
+    logout: vi.fn(),
+  }),
+}))
 vi.mock('@exre/exui', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@exre/exui')>()),
   useTheme: () => ({ theme: 'system', setTheme: vi.fn() }),
 }))
 vi.mock('@workspace/components', () => ({
-  SettingsPanel: ({ profileStatus, profileError, onRetry }: {
-    profileStatus: string; profileError: string | null; onRetry: () => void
-  }) => <div>{profileStatus === 'error' ? <><p role="alert">{profileError}</p>
-    <button onClick={onRetry}>重试读取资料</button></> :
-    profileStatus === 'ready' ? <p>设置资料</p> : <p>正在读取个人资料</p>}</div>,
+  SettingsPanel: ({
+    profileStatus,
+    profileError,
+    onRetry,
+  }: {
+    profileStatus: string
+    profileError: string | null
+    onRetry: () => void
+  }) => (
+    <div>
+      {profileStatus === 'error' ? (
+        <>
+          <p role="alert">{profileError}</p>
+          <button onClick={onRetry}>重试读取资料</button>
+        </>
+      ) : profileStatus === 'ready' ? (
+        <p>设置资料</p>
+      ) : (
+        <p>正在读取个人资料</p>
+      )}
+    </div>
+  ),
 }))
 
 import { ProfilePage } from '@web/src/pages/ProfilePage'
 
-beforeEach(() => invalidateSession.mockImplementation((token: string) => {
-  removeMatchingToken(window.localStorage, token)
-}))
+beforeEach(() =>
+  invalidateSession.mockImplementation((token: string) => {
+    removeMatchingToken(window.localStorage, token)
+  }),
+)
 
 afterEach(() => {
   cleanup()
@@ -47,10 +73,17 @@ afterEach(() => {
 describe('ProfilePage loading errors', () => {
   it('ends loading after a temporary failure and retries successfully', async () => {
     writeToken(window.localStorage, 'old-token')
-    get.mockRejectedValueOnce(new ExAxiosError('http', 'INTERNAL_ERROR', '暂时无法读取', { status: 500 }))
+    get
+      .mockRejectedValueOnce(
+        new ExAxiosError('http', 'INTERNAL_ERROR', '暂时无法读取', { status: 500 }),
+      )
       .mockResolvedValueOnce({
-        id: 'user', email: 'person@example.com', nickname: 'Person',
-        qq: null, fivemId: null, avatarUrl: null,
+        id: 'user',
+        email: 'person@example.com',
+        nickname: 'Person',
+        qq: null,
+        fivemId: null,
+        avatarUrl: null,
       })
     render(<ProfilePage />)
     expect(await screen.findByRole('alert')).toHaveProperty('textContent', '暂时无法读取')
@@ -62,7 +95,9 @@ describe('ProfilePage loading errors', () => {
 
   it('reports an invalid session to the shared auth state', async () => {
     writeToken(window.localStorage, 'expired-token')
-    get.mockRejectedValue(new ExAxiosError('http', 'SESSION_INVALID', '会话已失效', { status: 401 }))
+    get.mockRejectedValue(
+      new ExAxiosError('http', 'SESSION_INVALID', '会话已失效', { status: 401 }),
+    )
     render(<ProfilePage />)
     await waitFor(() => expect(invalidateSession).toHaveBeenCalledWith('expired-token'))
   })

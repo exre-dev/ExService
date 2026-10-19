@@ -16,6 +16,14 @@ Website 使用独立 PostgreSQL `exre`；Hydra 提供 OIDC 协议并使用独立
 
 终端提示自动使用颜色；设置 `NO_COLOR=1` 可关闭。重定向输出和保存的日志保持纯文本；`pnpm dev --verbose` 显示完整日志时间。
 
+## 只启动前端预览
+
+安装依赖并执行一次 `pnpm --filter @workspace/sdk build` 生成 SDK 产物后，运行 `pnpm dev:web`，在 `http://127.0.0.1:8090/` 预览并使用热更新。该入口不要求 Docker、数据库或 Hydra 就绪；Ctrl+C 结束预览。端口被占用时会退出，可用 `pnpm dev:web --port 8091` 指定其他端口。
+
+在根 `.env.local` 中设置 `VITE_API_BASE_URL=https://your-service.example/api`，浏览器即可直接请求该服务。进程变量优先；未设置或为空时使用 `/api`，通过 Vite 代理到 `LOCAL_API_PORT` 指定的本地服务，缺省为 `8082`。服务不可用时沿用页面现有错误状态。
+
+远端 Website 服务须通过 `SERVER_CORS_ALLOWED_ORIGINS` 放行预览 origin（默认 `http://127.0.0.1:8090`）。地址包含 API 路径；此配置只放公开地址。Web 在首个请求前通过 SDK 的 `setBaseUrl` 配置 API root，并按该 root 恢复会话；SDK 不自行读取 Vite 环境变量。完整 `pnpm dev` 和 `pnpm build` 继续使用同源 `/api`。
+
 ## 首次准备检查单
 
 仅全新环境执行；已有环境跳过已经完成的项。
@@ -34,21 +42,31 @@ Website 使用独立 PostgreSQL `exre`；Hydra 提供 OIDC 协议并使用独立
 
 ## 常用命令
 
-| 目的 | 命令 |
-| --- | --- |
-| 启动/停止后台依赖 | `pnpm service:start` / `pnpm service:stop` |
-| 查看状态/日志 | `pnpm service:status` / `pnpm service:logs [postgres\|hydra]` |
-| 开发监听 | `pnpm dev` |
-| Website 显式迁移 | `pnpm db:migrate` |
-| Hydra 显式迁移 | `pnpm infra migrate` |
-| 显式登记身份客户端 | `pnpm infra clients` |
-| 自动测试/监听测试 | `pnpm test` / `pnpm test:watch` |
-| 构建 | `pnpm build` |
+| 目的                | 命令                                                                        |
+| ------------------- | --------------------------------------------------------------------------- |
+| 启动/停止后台依赖   | `pnpm service:start` / `pnpm service:stop`                                  |
+| 查看状态/日志       | `pnpm service:status` / `pnpm service:logs [postgres\|hydra]`               |
+| 开发监听            | `pnpm dev`                                                                  |
+| 仅前端热更新预览    | `pnpm dev:web`                                                              |
+| Website 显式迁移    | `pnpm db:migrate`                                                           |
+| Hydra 显式迁移      | `pnpm infra migrate`                                                        |
+| 显式登记身份客户端  | `pnpm infra clients`                                                        |
+| 轻量测试/监听测试   | `pnpm test` / `pnpm test:watch`                                             |
+| 完整测试（CI）      | `pnpm test:full`                                                            |
+| 构建                | `pnpm build`                                                                |
 | Contract 与类型检查 | `pnpm api:lint` / `pnpm api:generate` / `pnpm api:check` / `pnpm typecheck` |
 
-首次本地测试前先执行 `pnpm exec playwright install chromium`，准备默认测试使用的 Browser SDK Chromium 夹具；Linux 需要系统依赖时使用 `pnpm exec playwright install --with-deps chromium`。日常 runtime 不自动安装浏览器。
+开发阶段可按需做定向 test，本地提交不自动运行整仓测试或整套检查；代码变更提 PR 前集中使用轻量测试，CI 保持完整测试。轻量测试不要求 Docker 或安装 Chromium。完整测试保留数据库、真实 Browser SDK、编译打包和进程清理夹具；首次本地运行 `pnpm test:full` 前准备 Docker 并执行 `pnpm exec playwright install chromium`。Linux 需要系统依赖时使用 `pnpm exec playwright install --with-deps chromium`。测试规则、用例归类和页面浏览器验收策略统一见 `TESTING.md`。
 
 测试使用临时数据库，不连接开发库；Build 不连接数据库或启动 Docker。自动测试、本机生命周期、浏览器和部署验收分别报告。
+
+## 提交前格式化
+
+`pnpm install --frozen-lockfile` 会通过 `prepare` 安装当前工作树的 Git Hook；已有依赖时可运行 `pnpm prepare`。Codex 的 `$commit`、CodeBuddy、Claude 和手动 `git commit` 都使用同一提交流程。
+
+提交前由 Husky 调用 lint-staged，只对暂存文件执行 Prettier，格式化结果自动进入本次提交。部分暂存文件的未暂存改动会保留。格式化失败时提交中止，修复错误后重新暂存并提交。
+
+格式规则位于 `.prettierrc.json`，生成文件和输出目录由 `.prettierignore` 排除。手动处理单个文件可执行 `pnpm exec prettier --write <文件路径>`；`pnpm format` 和 `pnpm format:check` 分别格式化、检查全仓库，范围与提交前检查不同。Hook 的隔离验证命令为 `pnpm test:formatting`，安装边界见 `.ai/knowledge/tooling/pre-commit-formatting.md`。
 
 ## 工程入口
 

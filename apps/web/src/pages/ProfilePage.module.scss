@@ -7,7 +7,9 @@
   background: var(--exui-surface-background);
 }
 
-.message { padding: 2rem; }
+.message {
+  padding: 2rem;
+}
 
 .visuallyHidden {
   position: absolute;
@@ -20,6 +22,11 @@
 .heading {
   margin-bottom: 2rem;
 
-  h1 { margin: 0 0 0.5rem; }
-  p { margin: 0; color: var(--exui-text-secondary); }
+  h1 {
+    margin: 0 0 0.5rem;
+  }
+  p {
+    margin: 0;
+    color: var(--exui-text-secondary);
+  }
 }

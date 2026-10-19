@@ -16,8 +16,15 @@ import identityPlugin from '@server/src/modules/identity/plugin'
 import authApi from '@server/src/modules/auth/api/plugin'
 import profileApi from '@server/src/modules/profile/api/plugin'
 import { mergeOperations } from '@server/src/http/service-handlers'
-import { readContract, listOperations, assertOperationCoverage } from '@server/src/contract/document'
-import { formatBusinessPluginError, BusinessPluginLoadError } from '@server/src/business-plugin-errors'
+import {
+  readContract,
+  listOperations,
+  assertOperationCoverage,
+} from '@server/src/contract/document'
+import {
+  formatBusinessPluginError,
+  BusinessPluginLoadError,
+} from '@server/src/business-plugin-errors'
 import { unavailableSupport } from '@tests/helpers/support'
 
 const require = createRequire(new URL('../../apps/server/package.json', import.meta.url))
@@ -26,9 +33,15 @@ const fp = require('fastify-plugin')
 const apps: ReturnType<typeof createApp>[] = []
 const directories: string[] = []
 const database: AppDatabase = {
-  async query() { throw new Error('boot tests must not query a database') },
-  async transaction(run) { return run(database) },
-  async close() { throw new Error('plugins must not close injected resources') },
+  async query() {
+    throw new Error('boot tests must not query a database')
+  },
+  async transaction(run) {
+    return run(database)
+  },
+  async close() {
+    throw new Error('plugins must not close injected resources')
+  },
 }
 
 function fixture() {
@@ -37,20 +50,26 @@ function fixture() {
   return {
     ...createAuthServices({ db: database, codeHmacKey: Buffer.alloc(32, 7) }),
     profileServices: new ProfileService(database, directory, 'http://localhost:8080/api/avatars'),
-    storageServices: createStorageModule({ config: parseStorageConfig({}, { dataRoot: directory }) }),
+    storageServices: createStorageModule({
+      config: parseStorageConfig({}, { dataRoot: directory }),
+    }),
     notifications: createNotificationModule({ db: database, tokenKey: Buffer.alloc(32, 3) }),
-    ...unavailableSupport(database, new ProfileService(database, directory, 'http://localhost:8080/api/avatars')),
+    ...unavailableSupport(
+      database,
+      new ProfileService(database, directory, 'http://localhost:8080/api/avatars'),
+    ),
   }
 }
 
 afterEach(async () => {
-  await Promise.all(apps.splice(0).map(app => app.close().catch(() => {})))
-  directories.splice(0).forEach(path => rmSync(path, { recursive: true, force: true }))
+  await Promise.all(apps.splice(0).map((app) => app.close().catch(() => {})))
+  directories.splice(0).forEach((path) => rmSync(path, { recursive: true, force: true }))
 })
 
 describe('explicit plugin dependencies', () => {
   it('makes injected business services available after boot without owning their resources', async () => {
-    const services = fixture(), app = createApp(services)
+    const services = fixture(),
+      app = createApp(services)
     apps.push(app)
     await app.ready()
     expect(app.authServices).toBe(services.authServices)
@@ -65,27 +84,33 @@ describe('explicit plugin dependencies', () => {
   })
 
   it('rejects identity when its auth business dependency is absent', async () => {
-    const app = Fastify(); apps.push(app)
+    const app = Fastify()
+    apps.push(app)
     app.register(identityPlugin, {})
     await expect(app.ready()).rejects.toThrow()
   })
 
   it('rejects reversed business registration order', async () => {
-    const app = Fastify(), services = fixture(); apps.push(app)
+    const app = Fastify(),
+      services = fixture()
+    apps.push(app)
     app.register(identityPlugin, {})
     app.register(authPlugin, { authServices: services.authServices })
     await expect(app.ready()).rejects.toThrow()
   })
 
   it('rejects a named dependency which does not provide its decorator', async () => {
-    const app = Fastify(); apps.push(app)
+    const app = Fastify()
+    apps.push(app)
     app.register(fp(async () => {}, { name: 'business-auth' }))
     app.register(identityPlugin, {})
     await expect(app.ready()).rejects.toThrow()
   })
 
   it('rejects API registration without the auth request field owner', async () => {
-    const app = Fastify(), services = fixture(); apps.push(app)
+    const app = Fastify(),
+      services = fixture()
+    apps.push(app)
     app.register(authPlugin, { authServices: services.authServices })
     app.register(profilePlugin, { profileServices: services.profileServices })
     app.register(profileApi)
@@ -93,23 +118,34 @@ describe('explicit plugin dependencies', () => {
   })
 
   it('shares the auth request field with sibling API plugins in their scope', async () => {
-    const app = Fastify(), services = fixture(); apps.push(app)
+    const app = Fastify(),
+      services = fixture()
+    apps.push(app)
     app.register(authPlugin, { authServices: services.authServices })
     app.register(profilePlugin, { profileServices: services.profileServices })
-    app.register(fp(async (scope: ReturnType<typeof createApp>) => {
-      await scope.register(authApi)
-      await scope.register(profileApi)
-      expect(scope.hasRequestDecorator('authSession')).toBe(true)
-    }, { name: 'test-api', encapsulate: true }))
+    app.register(
+      fp(
+        async (scope: ReturnType<typeof createApp>) => {
+          await scope.register(authApi)
+          await scope.register(profileApi)
+          expect(scope.hasRequestDecorator('authSession')).toBe(true)
+        },
+        { name: 'test-api', encapsulate: true },
+      ),
+    )
     await app.ready()
     expect(app.hasRequestDecorator('authSession')).toBe(false)
   })
 })
 
 it('isolates normalization and identity fields from root routes', async () => {
-  const app = createApp(fixture()); apps.push(app)
-  app.post('/root-probe', async request => ({ body: request.body,
-    authField: 'authSession' in request, identityField: 'identityClientId' in request }))
+  const app = createApp(fixture())
+  apps.push(app)
+  app.post('/root-probe', async (request) => ({
+    body: request.body,
+    authField: 'authSession' in request,
+    identityField: 'identityClientId' in request,
+  }))
   await app.ready()
   expect(app.hasRequestDecorator('authSession')).toBe(false)
   const body = { email: ' Mixed@EXAMPLE.COM ', nickname: ' Name ' }
@@ -118,10 +154,12 @@ it('isolates normalization and identity fields from root routes', async () => {
 })
 
 it('keeps the complete Contract route inventory, including implicit HEAD', async () => {
-  const app = createApp(fixture()); apps.push(app)
+  const app = createApp(fixture())
+  apps.push(app)
   const routes: { method: string; url: string }[] = []
-  app.addHook('onRoute', route => {
-    for (const method of Array.isArray(route.method) ? route.method : [route.method]) routes.push({ method, url: route.url })
+  app.addHook('onRoute', (route) => {
+    for (const method of Array.isArray(route.method) ? route.method : [route.method])
+      routes.push({ method, url: route.url })
   })
   await app.ready()
   const declared = listOperations(readContract())
@@ -132,26 +170,47 @@ it('keeps the complete Contract route inventory, including implicit HEAD', async
     if (method === 'get') result.push({ method: 'HEAD', url })
     return result
   })
-  expect(routes.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))))
-    .toEqual(expected.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))))
+  expect(routes.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))).toEqual(
+    expected.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+  )
 })
 
 it('rejects duplicate, missing and surplus operation handlers before Glue boot', () => {
-  expect(() => mergeOperations({ getHealth: serviceHandlers.getHealth }, { getHealth: serviceHandlers.getHealth })).toThrow()
+  expect(() =>
+    mergeOperations(
+      { getHealth: serviceHandlers.getHealth },
+      { getHealth: serviceHandlers.getHealth },
+    ),
+  ).toThrow()
   const contract = readContract()
   expect(() => assertOperationCoverage(contract, {})).toThrow()
   expect(() => assertOperationCoverage(contract, { ...serviceHandlers, extra: () => {} })).toThrow()
   expect(() => assertOperationCoverage(contract, serviceHandlers)).not.toThrow()
 })
 
-it.each(['authServices', 'profileServices', 'storageServices', 'notifications', 'joinServices', 'invitationServices'] as const)(
-  'rejects absent required %s with its safe diagnostic', async field => {
-    const services = fixture(), app = createApp({ ...services, [field]: undefined } as unknown as Parameters<typeof createApp>[0])
-    apps.push(app)
-    let error: unknown
-    try { await app.ready() } catch (failure) { error = failure }
-    expect(error).toBeInstanceOf(BusinessPluginLoadError)
-    expect(error).toMatchObject({ code: 'BUSINESS_PLUGIN_BOOT_FAILED', context: { missingServiceFields: [field] } })
-    expect(formatBusinessPluginError(error as BusinessPluginLoadError)).toContain(field)
-  },
-)
+it.each([
+  'authServices',
+  'profileServices',
+  'storageServices',
+  'notifications',
+  'joinServices',
+  'invitationServices',
+] as const)('rejects absent required %s with its safe diagnostic', async (field) => {
+  const services = fixture(),
+    app = createApp({ ...services, [field]: undefined } as unknown as Parameters<
+      typeof createApp
+    >[0])
+  apps.push(app)
+  let error: unknown
+  try {
+    await app.ready()
+  } catch (failure) {
+    error = failure
+  }
+  expect(error).toBeInstanceOf(BusinessPluginLoadError)
+  expect(error).toMatchObject({
+    code: 'BUSINESS_PLUGIN_BOOT_FAILED',
+    context: { missingServiceFields: [field] },
+  })
+  expect(formatBusinessPluginError(error as BusinessPluginLoadError)).toContain(field)
+})

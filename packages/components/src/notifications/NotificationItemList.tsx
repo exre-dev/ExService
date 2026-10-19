@@ -31,7 +31,12 @@ export interface NotificationItemListProps {
  * - 选中项通过 `aria-current` 表达，供屏幕阅读器与样式共用。
  */
 export function NotificationItemList({
-  items, selectedId, onSelect, empty, limit, id,
+  items,
+  selectedId,
+  onSelect,
+  empty,
+  limit,
+  id,
 }: NotificationItemListProps) {
   const visible = limit === undefined ? items : items.slice(0, limit)
 
@@ -39,32 +44,43 @@ export function NotificationItemList({
     return <div className={styles.emptySlot}>{empty ?? null}</div>
   }
 
-  return <ItemGroup id={id} className={styles.group} aria-label="通知条目">
-    {visible.map(item => {
-      const unread = isNotificationUnread(item)
-      const selected = item.receiptId === selectedId
-      return <Item key={item.receiptId} role="listitem"
-        className={`${styles.item}${unread ? ` ${styles.unread}` : ''}${selected ? ` ${styles.selected}` : ''}`}>
-        <ItemContent className={styles.content}>
-          <button type="button" className={styles.titleButton}
-            data-notification-select={item.receiptId}
-            aria-current={selected ? 'true' : undefined}
-            onClick={() => onSelect(item.receiptId)}>
-            <span className={styles.title}>{item.title}</span>
-          </button>
-          {item.summaryText.length > 0 &&
-            <ItemDescription className={styles.summary}>{item.summaryText}</ItemDescription>}
-          <div className={styles.meta}>
-            <span className={styles.tag}>{notificationCategoryLabel(item.category)}</span>
-            <span className={unread ? styles.unreadState : styles.state}>
-              {notificationStateLabel(item)}
-            </span>
-            <time className={styles.time} dateTime={new Date(item.deliveredAt).toISOString()}>
-              {formatNotificationTime(item.deliveredAt)}
-            </time>
-          </div>
-        </ItemContent>
-      </Item>
-    })}
-  </ItemGroup>
+  return (
+    <ItemGroup id={id} className={styles.group} aria-label="通知条目">
+      {visible.map((item) => {
+        const unread = isNotificationUnread(item)
+        const selected = item.receiptId === selectedId
+        return (
+          <Item
+            key={item.receiptId}
+            role="listitem"
+            className={`${styles.item}${unread ? ` ${styles.unread}` : ''}${selected ? ` ${styles.selected}` : ''}`}
+          >
+            <ItemContent className={styles.content}>
+              <button
+                type="button"
+                className={styles.titleButton}
+                data-notification-select={item.receiptId}
+                aria-current={selected ? 'true' : undefined}
+                onClick={() => onSelect(item.receiptId)}
+              >
+                <span className={styles.title}>{item.title}</span>
+              </button>
+              {item.summaryText.length > 0 && (
+                <ItemDescription className={styles.summary}>{item.summaryText}</ItemDescription>
+              )}
+              <div className={styles.meta}>
+                <span className={styles.tag}>{notificationCategoryLabel(item.category)}</span>
+                <span className={unread ? styles.unreadState : styles.state}>
+                  {notificationStateLabel(item)}
+                </span>
+                <time className={styles.time} dateTime={new Date(item.deliveredAt).toISOString()}>
+                  {formatNotificationTime(item.deliveredAt)}
+                </time>
+              </div>
+            </ItemContent>
+          </Item>
+        )
+      })}
+    </ItemGroup>
+  )
 }

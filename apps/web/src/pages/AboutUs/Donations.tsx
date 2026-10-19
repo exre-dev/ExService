@@ -1,60 +1,48 @@
-import type { MouseEvent, ReactNode } from "react";
-import { Button } from "@exre/exui";
-import { ArrowDown, ArrowUpRight } from "lucide-react";
-import { ContentImage } from "@workspace/components";
-import { aboutImage } from "../../content/about/registry";
-import type { AboutPage } from "../../content/about/types";
-import { AboutImageBackground } from "./AboutImageBackground";
-import styles from "./Donations.module.scss";
+import type { MouseEvent, ReactNode } from 'react'
+import { Button } from '@exre/exui'
+import { ArrowDown, ArrowUpRight } from 'lucide-react'
+import { ContentImage } from '@workspace/components'
+import { aboutImage } from '../../content/about/registry'
+import type { AboutPage } from '../../content/about/types'
+import { AboutImageBackground } from './AboutImageBackground'
+import styles from './Donations.module.scss'
 
 export function Donations({
   page,
   children,
 }: {
-  page: Extract<AboutPage, { kind: "donations" }>;
-  children?: ReactNode;
+  page: Extract<AboutPage, { kind: 'donations' }>
+  children?: ReactNode
 }) {
   function explore(event: MouseEvent<HTMLAnchorElement>, id: string) {
-    if (
-      event.button !== 0 ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.shiftKey ||
-      event.altKey
-    )
-      return;
-    const target = document.getElementById(id);
-    if (!target) return;
-    event.preventDefault();
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+      return
+    const target = document.getElementById(id)
+    if (!target) return
+    event.preventDefault()
     const instant =
-      event.detail === 0 ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      event.detail === 0 || window.matchMedia('(prefers-reduced-motion: reduce)').matches
     target.scrollIntoView({
-      block: "start",
-      behavior: instant ? "instant" : "smooth",
-    });
-    target.focus({ preventScroll: true });
+      block: 'start',
+      behavior: instant ? 'instant' : 'smooth',
+    })
+    target.focus({ preventScroll: true })
   }
   return (
     <div className={styles.donations}>
       <header className={styles.hero}>
         <AboutImageBackground />
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>{page.eyebrow ?? "SUPPORT EXRE"}</p>
+          <p className={styles.eyebrow}>{page.eyebrow ?? 'SUPPORT EXRE'}</p>
           <h1 tabIndex={-1}>
             让热爱，
             <br />
             继续发生。
           </h1>
-          <div className={styles.intro}>
-            {children ?? <p>{page.description}</p>}
-          </div>
+          <div className={styles.intro}>{children ?? <p>{page.description}</p>}</div>
           <div className={styles.actions}>
             <Button asChild variant="secondary" className={styles.primaryEntry}>
-              <a
-                href="#donation-channels"
-                onClick={(event) => explore(event, "donation-channels")}
-              >
+              <a href="#donation-channels" onClick={(event) => explore(event, 'donation-channels')}>
                 了解捐赠方式
                 <ArrowUpRight aria-hidden="true" />
               </a>
@@ -62,7 +50,7 @@ export function Donations({
             <a
               className={styles.donorEntry}
               href="#donation-donors"
-              onClick={(event) => explore(event, "donation-donors")}
+              onClick={(event) => explore(event, 'donation-donors')}
             >
               认识支持我们的人
               <ArrowDown aria-hidden="true" />
@@ -94,11 +82,7 @@ export function Donations({
         ) : (
           <div className={styles.channels}>
             {page.channels.map((channel) => (
-              <article
-                key={channel.id}
-                className={styles.channel}
-                aria-label={channel.name}
-              >
+              <article key={channel.id} className={styles.channel} aria-label={channel.name}>
                 <div className={styles.channelCopy}>
                   <h3>{channel.name}</h3>
                   {channel.description && (
@@ -167,5 +151,5 @@ export function Donations({
         </p>
       </section>
     </div>
-  );
+  )
 }

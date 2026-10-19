@@ -3,8 +3,8 @@
 - 状态：设计已接受；页面与访问边界已实现，反馈提交按六类 v2 方案实现，外部验收单独核对。
 - 模块：`support-center`。
 - 日期：2026-10-12。
-- 设计依据：`.notes/support-center/specs/2026-10-12-support-center-design.md`。
-- 技术细化：`.notes/support-center/rfcs/support-center-rfc.md`，当前为 RFC 草案。
+- 设计依据：`.notes/archive/support-center/specs/2026-10-12-support-center-design.md`。
+- 技术细化：`.notes/archive/support-center/rfcs/support-center-rfc.md`，当前为 RFC 草案。
 
 ## 背景
 
@@ -15,7 +15,7 @@
 ## 决策
 
 - 支持首页及其常见错误列表、详情只向登录确认的用户开放。桌面和移动导航同步控制入口；复用 Website 真实会话状态，登录恢复中、匿名或认证不可用时不挂载支持内容及第三方视图。
-- 首页「反馈与建议」提供「功能和需求」与「投诉和建议」两张可点击卡片，不显示“即将开放”标签。前者在统一 ExUI Modal 中选择六类反馈并填写普通文本表单，独立 Bug 卡片已移除；后者仍为预留弹窗，不新增管理后台。六类方案见 `.notes/support-center/specs/2026-10-15-support-feedback-redesign-design.md` 与 `.notes/support-center/rfcs/support-feedback-redesign-rfc.md`。
+- 首页「反馈与建议」提供「功能和需求」与「投诉和建议」两张可点击卡片，不显示“即将开放”标签。前者在统一 ExUI Modal 中选择六类反馈并填写普通文本表单，独立 Bug 卡片已移除；后者仍为预留弹窗，不新增管理后台。六类方案见 `.notes/archive/support-center/specs/2026-10-15-support-feedback-redesign-design.md` 与 `.notes/archive/support-center/rfcs/support-feedback-redesign-rfc.md`。
 - 反馈卡片保留 3D 图标与说明，标题右侧常驻小箭头，不重复“开始反馈”文案。鼠标悬停使用 160ms 的底色、边框、箭头颜色过渡及约 3px 的箭头右移；键盘聚焦即时显示边框，减少动态效果时取消位移并缩短颜色过渡。
 - 常见错误由仓库 MDX 维护，复用通用内容编译与加载能力。首页展示编辑精选案例，可就地展开简短说明、进入同条目的完整详情，也可查看更多；不把精选解释为未经统计的热度排名。
 - 联系人展示具体成员的姓名、职责、头像与已确认的联系方式。资料缺失使用真实空态，不发布预览人物或虚构响应承诺。

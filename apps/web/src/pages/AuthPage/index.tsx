@@ -10,19 +10,24 @@ export function AuthPage({ mode }: { mode: 'login' }) {
   const location = useLocation()
   const values = searchParams.getAll('ssoRequestId')
   const hasSsoParameter = searchParams.has('ssoRequestId')
-  const ssoRequestId = values.length === 1 && /^[A-Za-z0-9_-]{43}$/.test(values[0] ?? '')
-    ? values[0]
-    : undefined
+  const ssoRequestId =
+    values.length === 1 && /^[A-Za-z0-9_-]{43}$/.test(values[0] ?? '') ? values[0] : undefined
   const invalidSso = hasSsoParameter && ssoRequestId === undefined
   const initialEmail = (location.state as { email?: unknown } | null)?.email
-  const legal = <p className={styles.legal}>By signing up, you agree to our Terms, Acceptable Use, and Privacy Policy.</p>
+  const legal = (
+    <p className={styles.legal}>
+      By signing up, you agree to our Terms, Acceptable Use, and Privacy Policy.
+    </p>
+  )
 
   return (
     <main className={styles.page} data-page="auth">
       <AuthBackdrop />
       {!hasSsoParameter && (
         <Button asChild variant="ghost" className={styles.homeLink}>
-          <Link to="/"><ArrowLeftIcon aria-hidden="true" /> Home</Link>
+          <Link to="/">
+            <ArrowLeftIcon aria-hidden="true" /> Home
+          </Link>
         </Button>
       )}
       <Card glass className={styles.panel} data-auth-mode={mode}>

@@ -1,4 +1,9 @@
-import { checkInvitationEligibility, requestInvitationCode, verifyInvitationCode, completeInvitationRegistration } from './handlers.js'
+import {
+  checkInvitationEligibility,
+  requestInvitationCode,
+  verifyInvitationCode,
+  completeInvitationRegistration,
+} from './handlers.js'
 
 export const operations = {
   checkInvitationEligibility,

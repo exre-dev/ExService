@@ -1,3 +1,12 @@
-.prompt { width: min(calc(100% - 3rem), 44rem); margin: 5rem auto; color: var(--exui-text-primary); }
-.prompt h1 { font-size: clamp(2rem, 5vw, 3rem); }
-.prompt p { color: var(--exui-text-secondary); margin-block: 1.5rem; }
+.prompt {
+  width: min(calc(100% - 3rem), 44rem);
+  margin: 5rem auto;
+  color: var(--exui-text-primary);
+}
+.prompt h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+.prompt p {
+  color: var(--exui-text-secondary);
+  margin-block: 1.5rem;
+}

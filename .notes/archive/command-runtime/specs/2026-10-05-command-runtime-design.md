@@ -18,18 +18,18 @@
 
 ## 2. 当前实现证据
 
-| 来源 | 当前行为与设计影响 |
-| --- | --- |
-| `package.json` | `dev` 调用 local supervisor；`build` 只构建 SDK、Website Web 和 Server；根目录公开多个 integration 与手工账号工具别名。 |
-| `scripts/docs-integration/local-dev.mjs` | `runLocal` 会启动 PostgreSQL、Redis、Hydra，并监督 Website Server/Web、Outline；需要拆开依赖与应用生命周期。 |
-| `scripts/docs-integration/local-config.mjs` | Website 从 `apps/server/.env.local` 和进程环境取配置，文档密钥来自 `.local/docs-integration/local-dev/secrets.env`，端口与目标存于 `config.json`。 |
-| `compose.local-dev.yaml` | 独立 local 项目已有 PostgreSQL、Redis、Hydra，文档 PostgreSQL 不包含 Website `exre`。 |
-| `infra/docs-integration/postgres/init-local.sh` | 明确只准备 `outline`、`hydra`，拒绝目标含 `exre`，不能把已有文档卷直接改成混合业务库。 |
-| `apps/server/src/cli/sso-create.ts`、`apps/server/src/cli/sso-inspect.ts` | 手工创建、检查 Website SSO 请求的工具，不负责 Hydra client 注册。 |
-| `apps/server/src/cli/auth-account.ts` | 启停账号的维护工具，已有共享实现；禁用会话语义必须保留。 |
-| `apps/server/tsconfig.json`、`apps/server/src/app.ts` | Server 是编译后的 Node 程序，运行需要依赖与 `api/openapi.yaml`，不是只上传 JS 的静态服务。 |
-| `Dockerfile`、`apps/outline/Dockerfile.integration` | 已有镜像基础，Outline 镜像含旧 8090 构建配置；需区分构建参数、运行参数和 public origin。 |
-| `.ai/architectures/docs-integration/integration-boundaries.md` | 现有准备状态、稳定密钥、资源归属、旧会话撤销目标和停止恢复约束不得因入口精简丢失。 |
+| 来源                                                                      | 当前行为与设计影响                                                                                                                                 |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `package.json`                                                            | `dev` 调用 local supervisor；`build` 只构建 SDK、Website Web 和 Server；根目录公开多个 integration 与手工账号工具别名。                            |
+| `scripts/docs-integration/local-dev.mjs`                                  | `runLocal` 会启动 PostgreSQL、Redis、Hydra，并监督 Website Server/Web、Outline；需要拆开依赖与应用生命周期。                                       |
+| `scripts/docs-integration/local-config.mjs`                               | Website 从 `apps/server/.env.local` 和进程环境取配置，文档密钥来自 `.local/docs-integration/local-dev/secrets.env`，端口与目标存于 `config.json`。 |
+| `compose.local-dev.yaml`                                                  | 独立 local 项目已有 PostgreSQL、Redis、Hydra，文档 PostgreSQL 不包含 Website `exre`。                                                              |
+| `infra/docs-integration/postgres/init-local.sh`                           | 明确只准备 `outline`、`hydra`，拒绝目标含 `exre`，不能把已有文档卷直接改成混合业务库。                                                             |
+| `apps/server/src/cli/sso-create.ts`、`apps/server/src/cli/sso-inspect.ts` | 手工创建、检查 Website SSO 请求的工具，不负责 Hydra client 注册。                                                                                  |
+| `apps/server/src/cli/auth-account.ts`                                     | 启停账号的维护工具，已有共享实现；禁用会话语义必须保留。                                                                                           |
+| `apps/server/tsconfig.json`、`apps/server/src/app.ts`                     | Server 是编译后的 Node 程序，运行需要依赖与 `api/openapi.yaml`，不是只上传 JS 的静态服务。                                                         |
+| `Dockerfile`、`apps/outline/Dockerfile.integration`                       | 已有镜像基础，Outline 镜像含旧 8090 构建配置；需区分构建参数、运行参数和 public origin。                                                           |
+| `.ai/architectures/docs-integration/integration-boundaries.md`            | 现有准备状态、稳定密钥、资源归属、旧会话撤销目标和停止恢复约束不得因入口精简丢失。                                                                 |
 
 ## 3. 方案选择
 
@@ -41,24 +41,24 @@
 
 ## 4. 根命令契约
 
-| 命令 | 行为 |
-| --- | --- |
-| `pnpm start` | 读取并验证根配置，启动已准备、归属已验证的 PostgreSQL、Redis、Hydra，等待就绪后退出；不启动 Website/Outline/Web，不运行迁移或 bootstrap。 |
-| `pnpm dev` | 只读核对依赖已运行与应用准备状态，启动 Website Server、Website Vite/公共入口和 Outline 开发服务；依赖缺失时提示 `pnpm start`。 |
-| `pnpm build` | 构建 SDK、Website 静态前端、Website Server 和定制 Outline 完整产物；不启动 Docker、连接业务数据库、迁移或初始化账号。 |
-| `pnpm stop` | 核对受管依赖归属并停止本项目依赖容器，不删除容器卷或文件数据；开发应用仍由其终端 Ctrl+C 停止，应用运行中拒绝停止依赖。 |
-| `pnpm infra <action>` | 运行显式维护动作，默认唯一 local 开发拓扑，日常流程不再选择旧 dev/full mode。 |
+| 命令                  | 行为                                                                                                                                      |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm start`          | 读取并验证根配置，启动已准备、归属已验证的 PostgreSQL、Redis、Hydra，等待就绪后退出；不启动 Website/Outline/Web，不运行迁移或 bootstrap。 |
+| `pnpm dev`            | 只读核对依赖已运行与应用准备状态，启动 Website Server、Website Vite/公共入口和 Outline 开发服务；依赖缺失时提示 `pnpm start`。            |
+| `pnpm build`          | 构建 SDK、Website 静态前端、Website Server 和定制 Outline 完整产物；不启动 Docker、连接业务数据库、迁移或初始化账号。                     |
+| `pnpm stop`           | 核对受管依赖归属并停止本项目依赖容器，不删除容器卷或文件数据；开发应用仍由其终端 Ctrl+C 停止，应用运行中拒绝停止依赖。                    |
+| `pnpm infra <action>` | 运行显式维护动作，默认唯一 local 开发拓扑，日常流程不再选择旧 dev/full mode。                                                             |
 
 `infra` 动作：
 
-| 动作 | 明确职责 |
-| --- | --- |
-| `configure` | 校验配置、工具与原 Website 数据源，保存无明文秘密的目标/准备元数据；缺配置拒绝，不覆写已有秘密。 |
-| `configure --import-existing` | 一次性从已有 Website/local 配置导入根 `.env.local`；同名冲突拒绝并只报告键名，保留所有原文件。 |
-| `init` | 显式准备文档基础资源，启动准备所需依赖并执行 Outline/Hydra 迁移，完成后保留依赖供日常使用；不创建 Website 数据库或账号。 |
-| `migrate` | 显式升级已核验的 Outline/Hydra schema；Website 仍由 `pnpm db:migrate` 处理。 |
-| `bootstrap --admin-user-id <UUID>` | 校验指定已有启用 Website 账号并初始化文档身份与管理员；缺 UUID 拒绝，重复运行不恢复后续被撤销的管理员权限。 |
-| `test` | 运行现有 Outline 专项测试入口，和 Website 的 `pnpm test` 分离。 |
+| 动作                               | 明确职责                                                                                                                 |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `configure`                        | 校验配置、工具与原 Website 数据源，保存无明文秘密的目标/准备元数据；缺配置拒绝，不覆写已有秘密。                         |
+| `configure --import-existing`      | 一次性从已有 Website/local 配置导入根 `.env.local`；同名冲突拒绝并只报告键名，保留所有原文件。                           |
+| `init`                             | 显式准备文档基础资源，启动准备所需依赖并执行 Outline/Hydra 迁移，完成后保留依赖供日常使用；不创建 Website 数据库或账号。 |
+| `migrate`                          | 显式升级已核验的 Outline/Hydra schema；Website 仍由 `pnpm db:migrate` 处理。                                             |
+| `bootstrap --admin-user-id <UUID>` | 校验指定已有启用 Website 账号并初始化文档身份与管理员；缺 UUID 拒绝，重复运行不恢复后续被撤销的管理员权限。              |
+| `test`                             | 运行现有 Outline 专项测试入口，和 Website 的 `pnpm test` 分离。                                                          |
 
 根目录继续保留 `api:lint`、`api:generate`、`typecheck`、`test`、`db:migrate`、`db:reset`。删除 `dev:outline`、四个 SSO/账号根别名及全部 `integration:*` 根别名。单应用开发通过工作区或 Outline 自己的命令完成。
 

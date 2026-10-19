@@ -11,10 +11,12 @@ export const markdownContentAdapter: ContentAdapter = {
   serialize: serializeMarkdownContent,
 }
 
-export function createTiptapContentAdapter(policy: () => TiptapContentPolicy | undefined): ContentAdapter {
+export function createTiptapContentAdapter(
+  policy: () => TiptapContentPolicy | undefined,
+): ContentAdapter {
   return {
-    parse: input => parseTiptapContent(input, policy()),
+    parse: (input) => parseTiptapContent(input, policy()),
     validate: (content, schema) => validateTiptapJSON(content, schema, policy()),
-    serialize: content => serializeTiptapMarkdown(content, policy()),
+    serialize: (content) => serializeTiptapMarkdown(content, policy()),
   }
 }

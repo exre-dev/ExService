@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
-import { Button, Spinner } from '@exre/exui'
+import { Button } from '@exre/exui'
+import { PageAsyncBoundary } from '@web/src/routes/PageAsyncBoundary'
 import { CircleAlert, CircleCheck, Info } from 'lucide-react'
 import { instance, ExAxiosError } from '@workspace/sdk'
 import { readToken, removeMatchingToken, subscribeSessionChanges } from '@web/src/auth/storage'
@@ -28,11 +29,20 @@ export function SignedOutPage() {
       setResult('signed-out')
     }
     if (token === null) {
-      try { finishSignedOut() } catch { setResult('unavailable') }
+      try {
+        finishSignedOut()
+      } catch {
+        setResult('unavailable')
+      }
       return
     }
     try {
-      await instance({ url: '/auth/me', method: 'GET', headers: { Authorization: `Bearer ${token}` }, alert: false })
+      await instance({
+        url: '/auth/me',
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+        alert: false,
+      })
       if (generation.current !== current) return
       if (readToken(window.localStorage) !== token) {
         setResult('unavailable')
@@ -43,10 +53,15 @@ export function SignedOutPage() {
       if (generation.current !== current) return
       if (error instanceof ExAxiosError && error.code === 'SESSION_INVALID') {
         try {
-          if (readToken(window.localStorage) !== token) { setResult('unavailable'); return }
+          if (readToken(window.localStorage) !== token) {
+            setResult('unavailable')
+            return
+          }
           removeMatchingToken(window.localStorage, token)
           finishSignedOut()
-        } catch { setResult('unavailable') }
+        } catch {
+          setResult('unavailable')
+        }
       } else {
         setResult('unavailable')
       }
@@ -55,18 +70,64 @@ export function SignedOutPage() {
 
   useEffect(() => {
     void check()
-    const unsubscribe = subscribeSessionChanges(() => { void check() })
-    return () => { generation.current += 1; unsubscribe() }
+    const unsubscribe = subscribeSessionChanges(() => {
+      void check()
+    })
+    return () => {
+      generation.current += 1
+      unsubscribe()
+    }
   }, [check])
 
-  return <main>
-    <h1>退出登录确认</h1>
-    <section className={styles.status} role={result === 'unavailable' ? 'alert' : 'status'} aria-busy={result === 'checking' ? true : undefined}>
-      {result === 'checking' ? <Spinner aria-hidden="true" className={styles.spinner} /> : result === 'unavailable' ? <CircleAlert aria-hidden="true" /> : result === 'signed-out' ? <CircleCheck aria-hidden="true" /> : <Info aria-hidden="true" />}
-      <h2>{result === 'checking' ? '正在确认登录状态' : result === 'signed-out' ? '已退出登录' : result === 'active' ? '网站会话仍有效' : '暂时无法确认登录状态'}</h2>
-      <p>{result === 'checking' ? '正在核验当前浏览器会话，请稍候。' : result === 'signed-out' ? '当前浏览器已退出登录。' : result === 'active' ? '当前浏览器有有效的网站登录会话。' : '暂时无法确认登录状态，请稍后重试。'}</p>
-      {result === 'unavailable' && <Button type="button" onClick={() => void check()}>重试</Button>}
-    </section>
-    <Link to="/">返回网站首页</Link>
-  </main>
+  return (
+    <main>
+      {result !== 'checking' && <h1>退出登录确认</h1>}
+      {result === 'checking' && (
+        <PageAsyncBoundary
+          loading
+          as="div"
+          pageLayout="standalone"
+          loadingTitle="正在确认登录状态"
+          loadingDescription="正在核验当前浏览器会话，请稍候。"
+        />
+      )}
+      <section
+        className={result === 'checking' ? undefined : styles.status}
+        role={result === 'unavailable' ? 'alert' : 'status'}
+        aria-label="退出登录结果"
+      >
+        {result !== 'checking' && (
+          <>
+            {result === 'unavailable' ? (
+              <CircleAlert aria-hidden="true" />
+            ) : result === 'signed-out' ? (
+              <CircleCheck aria-hidden="true" />
+            ) : (
+              <Info aria-hidden="true" />
+            )}
+            <h2>
+              {result === 'signed-out'
+                ? '已退出登录'
+                : result === 'active'
+                  ? '网站会话仍有效'
+                  : '暂时无法确认登录状态'}
+            </h2>
+            <p>
+              {result === 'signed-out'
+                ? '当前浏览器已退出登录。'
+                : result === 'active'
+                  ? '当前浏览器有有效的网站登录会话。'
+                  : '暂时无法确认登录状态，请稍后重试。'}
+            </p>
+            {result === 'unavailable' && (
+              <Button type="button" onClick={() => void check()}>
+                重试
+              </Button>
+            )}
+          </>
+        )}
+      </section>
+      {result !== 'checking' && <Link to="/">返回网站首页</Link>}
+    </main>
+  )
 }

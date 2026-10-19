@@ -67,18 +67,38 @@ function subscribeToScroll(onChange: () => void) {
 const isScrolled = () => window.scrollY > 0
 const serverIsScrolled = () => false
 
-export function SiteHeader({ auth, mobileMenuButtonRef, glassAtTop = false, notifications }: SiteHeaderProps) {
+export function SiteHeader({
+  auth,
+  mobileMenuButtonRef,
+  glassAtTop = false,
+  notifications,
+}: SiteHeaderProps) {
   const scrolled = useSyncExternalStore(subscribeToScroll, isScrolled, serverIsScrolled)
   const location = useLocation()
   const navigate = useNavigate()
-  const aboutActive = location.pathname === '/about' || location.pathname === '/aboutus' || location.pathname.startsWith('/aboutus/')
-  const visibleItems = NAV_ITEMS.filter(({ to }) => to !== '/support' || auth.state.status === 'authenticated')
-  const supportActive = auth.state.status === 'authenticated' && (location.pathname === '/support' || location.pathname.startsWith('/support/'))
-  const selectedNavigation = supportActive ? '/support' : aboutActive ? '/aboutus' : [...visibleItems, ...COMMUNITY_ITEMS].some(({ to }) => to === location.pathname)
-    ? location.pathname : ''
+  const aboutActive =
+    location.pathname === '/about' ||
+    location.pathname === '/aboutus' ||
+    location.pathname.startsWith('/aboutus/')
+  const visibleItems = NAV_ITEMS.filter(
+    ({ to }) => to !== '/support' || auth.state.status === 'authenticated',
+  )
+  const supportActive =
+    auth.state.status === 'authenticated' &&
+    (location.pathname === '/support' || location.pathname.startsWith('/support/'))
+  const selectedNavigation = supportActive
+    ? '/support'
+    : aboutActive
+      ? '/aboutus'
+      : [...visibleItems, ...COMMUNITY_ITEMS].some(({ to }) => to === location.pathname)
+        ? location.pathname
+        : ''
 
   return (
-    <header className={`${styles.header}${scrolled || glassAtTop ? ' ex-glass' : ''}`} data-site-header>
+    <header
+      className={`${styles.header}${scrolled || glassAtTop ? ' ex-glass' : ''}`}
+      data-site-header
+    >
       <div className={styles.inner}>
         <div className={styles.start}>
           <Logo />
@@ -92,14 +112,26 @@ export function SiteHeader({ auth, mobileMenuButtonRef, glassAtTop = false, noti
               <NavigationMenuItem>
                 <NavigationMenuTrigger>Communities</NavigationMenuTrigger>
                 <NavigationMenuContent className={styles.dropdownMenu}>
-                  {COMMUNITY_ITEMS.map(({ to, label }) =>
-                    <NavigationMenuLink asChild key={to}><Link to={to}>{label}</Link></NavigationMenuLink>)}
+                  {COMMUNITY_ITEMS.map(({ to, label }) => (
+                    <NavigationMenuLink asChild key={to}>
+                      <Link to={to}>{label}</Link>
+                    </NavigationMenuLink>
+                  ))}
                 </NavigationMenuContent>
               </NavigationMenuItem>
               {visibleItems.map(({ to, label }) => (
                 <NavigationMenuItem key={to}>
                   <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                    <Link to={to} aria-current={(to === '/aboutus' && aboutActive) || (to === '/support' && supportActive) ? 'page' : undefined}>{label}</Link>
+                    <Link
+                      to={to}
+                      aria-current={
+                        (to === '/aboutus' && aboutActive) || (to === '/support' && supportActive)
+                          ? 'page'
+                          : undefined
+                      }
+                    >
+                      {label}
+                    </Link>
                   </NavigationMenuLink>
                 </NavigationMenuItem>
               ))}
@@ -108,17 +140,24 @@ export function SiteHeader({ auth, mobileMenuButtonRef, glassAtTop = false, noti
         </div>
 
         <div className={styles.end}>
-          {notifications !== undefined &&
-            <span className={styles.notificationsSlot}>{notifications}</span>}
+          {notifications !== undefined && (
+            <span className={styles.notificationsSlot}>{notifications}</span>
+          )}
           {/* `display: contents`：桌面上 account 区直接参与 `.end` 的 flex 布局，
               窄屏时整块隐藏，由 `.mobileAccount` 的 Select 接管。 */}
-          <span className={styles.desktopAuth}><AuthArea {...auth} /></span>
+          <span className={styles.desktopAuth}>
+            <AuthArea {...auth} />
+          </span>
         </div>
 
         <div className={styles.mobileNav}>
-          <SelectField value={selectedNavigation} onValueChange={(value) => {
-            if ([...visibleItems, ...COMMUNITY_ITEMS].some(({ to }) => to === value)) navigate(value)
-          }}>
+          <SelectField
+            value={selectedNavigation}
+            onValueChange={(value) => {
+              if ([...visibleItems, ...COMMUNITY_ITEMS].some(({ to }) => to === value))
+                navigate(value)
+            }}
+          >
             <SelectTrigger className={styles.mobileNavTrigger} aria-label="打开导航菜单">
               <Menu aria-hidden="true" />
               <SelectValue placeholder="导航菜单" />
@@ -126,13 +165,19 @@ export function SiteHeader({ auth, mobileMenuButtonRef, glassAtTop = false, noti
             <SelectContent position="popper" align="end">
               <SelectGroup>
                 <SelectLabel>Communities</SelectLabel>
-                {COMMUNITY_ITEMS.map(({ to, label }) =>
-                  <SelectItem key={to} value={to}>{label}</SelectItem>)}
+                {COMMUNITY_ITEMS.map(({ to, label }) => (
+                  <SelectItem key={to} value={to}>
+                    {label}
+                  </SelectItem>
+                ))}
               </SelectGroup>
               <SelectGroup>
                 <SelectLabel>导航</SelectLabel>
-                {visibleItems.map(({ to, label }) =>
-                  <SelectItem key={to} value={to}>{label}</SelectItem>)}
+                {visibleItems.map(({ to, label }) => (
+                  <SelectItem key={to} value={to}>
+                    {label}
+                  </SelectItem>
+                ))}
               </SelectGroup>
             </SelectContent>
           </SelectField>
@@ -146,7 +191,10 @@ export function SiteHeader({ auth, mobileMenuButtonRef, glassAtTop = false, noti
   )
 }
 
-function MobileAccountSelect({ auth, triggerRef }: {
+function MobileAccountSelect({
+  auth,
+  triggerRef,
+}: {
   auth: AuthAreaProps
   triggerRef?: Ref<HTMLSpanElement>
 }) {
@@ -163,32 +211,49 @@ function MobileAccountSelect({ auth, triggerRef }: {
     else if (value === 'logout') auth.onLogout()
   }
 
-  return <SelectField value="" onValueChange={selectAccountItem}>
-    <span ref={triggerRef}>
-      <SelectTrigger className={`${styles.mobileAccountTrigger} ${auth.state.status === 'authenticated'
-        ? styles.mobileAvatarTrigger : ''}`} aria-label="用户菜单">
-        {auth.state.status === 'authenticated' ? <Avatar size="sm" className={styles.mobileAvatar}>
-          {auth.state.avatarUrl && <AvatarImage src={auth.state.avatarUrl} alt="" />}
-          <AvatarFallback>{auth.state.initial}</AvatarFallback>
-        </Avatar> : <UserRound aria-hidden="true" />}
-        <SelectValue placeholder="用户菜单" />
-      </SelectTrigger>
-    </span>
-    <SelectContent position="popper" align="end">
-      <SelectGroup>
-        <SelectLabel>{auth.state.status === 'authenticated' ? auth.state.nickname : '账号'}</SelectLabel>
-        {auth.state.status === 'anonymous' && <>
-          <SelectItem value="login">登录</SelectItem>
-          <SelectItem value="register">注册</SelectItem>
-        </>}
-        {auth.state.status === 'authenticated' && <>
-          <SelectItem value="profile">个人资料</SelectItem>
-          <SelectItem value="settings">设置</SelectItem>
-          <SelectItem value="logout">退出登录</SelectItem>
-        </>}
-        {auth.state.status === 'unavailable' &&
-          <SelectItem value="retry">重试登录状态</SelectItem>}
-      </SelectGroup>
-    </SelectContent>
-  </SelectField>
+  return (
+    <SelectField value="" onValueChange={selectAccountItem}>
+      <span ref={triggerRef}>
+        <SelectTrigger
+          className={`${styles.mobileAccountTrigger} ${
+            auth.state.status === 'authenticated' ? styles.mobileAvatarTrigger : ''
+          }`}
+          aria-label="用户菜单"
+        >
+          {auth.state.status === 'authenticated' ? (
+            <Avatar size="sm" className={styles.mobileAvatar}>
+              {auth.state.avatarUrl && <AvatarImage src={auth.state.avatarUrl} alt="" />}
+              <AvatarFallback>{auth.state.initial}</AvatarFallback>
+            </Avatar>
+          ) : (
+            <UserRound aria-hidden="true" />
+          )}
+          <SelectValue placeholder="用户菜单" />
+        </SelectTrigger>
+      </span>
+      <SelectContent position="popper" align="end">
+        <SelectGroup>
+          <SelectLabel>
+            {auth.state.status === 'authenticated' ? auth.state.nickname : '账号'}
+          </SelectLabel>
+          {auth.state.status === 'anonymous' && (
+            <>
+              <SelectItem value="login">登录</SelectItem>
+              <SelectItem value="register">注册</SelectItem>
+            </>
+          )}
+          {auth.state.status === 'authenticated' && (
+            <>
+              <SelectItem value="profile">个人资料</SelectItem>
+              <SelectItem value="settings">设置</SelectItem>
+              <SelectItem value="logout">退出登录</SelectItem>
+            </>
+          )}
+          {auth.state.status === 'unavailable' && (
+            <SelectItem value="retry">重试登录状态</SelectItem>
+          )}
+        </SelectGroup>
+      </SelectContent>
+    </SelectField>
+  )
 }

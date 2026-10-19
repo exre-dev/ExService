@@ -28,20 +28,20 @@
 
 ## 已核对的实现基础
 
-| 现有代码 | 已观察行为与约束 |
-| --- | --- |
-| `apps/outline/app/routes/index.tsx` | 集成匿名根路径使用公共目录，登录根路径重定向 `/home`；匿名文档和搜索进入公共场景。 |
-| `apps/outline/app/components/Layout.tsx` | 布局依赖 UI 状态，支持注入侧栏；不要求当前用户或团队。 |
-| `apps/outline/app/components/Sidebar/Sidebar.tsx` | 侧栏容器读取可选用户，支持关闭账号菜单，已有折叠、宽度调整和移动端行为。 |
-| `apps/outline/app/components/Sidebar/components/SidebarBrand.tsx` | 品牌组件不要求身份，Logo 使用既有 Website 地址配置。 |
-| `apps/outline/app/components/Sidebar/App.tsx` | 工作区侧栏要求用户与团队，会加载受保护集合和草稿；不能直接匿名挂载。 |
-| `apps/outline/app/components/AuthenticatedLayout.tsx` | 包含工作区身份、快捷键及个人功能，适合作为登录层，不适合作为匿名入口。 |
-| `apps/outline/app/scenes/Shared/index.tsx` | 原分享场景已经使用共用 Layout，但围绕单个 Share 组织导航与上下文。 |
-| `apps/outline/app/scenes/Document/components/PublicOnlyGate.tsx` | 登录用户只有公开阅读权时先进入安全公共正文，避免挂载完整工作区文档场景。 |
-| `apps/outline/server/routes/api/public/index.ts` | 四个公共只读 RPC 返回公开投影并设置 no-store。 |
-| `apps/outline/server/commands/publicAccess.ts` | 数据库先按公开状态过滤，再分页；文档的 parentDocumentId 已提升到最近可公开祖先。 |
-| `apps/outline/app/stores/AuthStore.ts` | 集成退出先调用 auth.delete，再清理本地状态，跳转固定 Website 退出确认页。 |
-| `apps/web/src/pages/IdentityPage/SignedOutPage.tsx` | 重新核验 Website token，仅删除仍匹配的无效 token；有新有效会话或核验失败时不宣称退出成功。 |
+| 现有代码                                                          | 已观察行为与约束                                                                           |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `apps/outline/app/routes/index.tsx`                               | 集成匿名根路径使用公共目录，登录根路径重定向 `/home`；匿名文档和搜索进入公共场景。         |
+| `apps/outline/app/components/Layout.tsx`                          | 布局依赖 UI 状态，支持注入侧栏；不要求当前用户或团队。                                     |
+| `apps/outline/app/components/Sidebar/Sidebar.tsx`                 | 侧栏容器读取可选用户，支持关闭账号菜单，已有折叠、宽度调整和移动端行为。                   |
+| `apps/outline/app/components/Sidebar/components/SidebarBrand.tsx` | 品牌组件不要求身份，Logo 使用既有 Website 地址配置。                                       |
+| `apps/outline/app/components/Sidebar/App.tsx`                     | 工作区侧栏要求用户与团队，会加载受保护集合和草稿；不能直接匿名挂载。                       |
+| `apps/outline/app/components/AuthenticatedLayout.tsx`             | 包含工作区身份、快捷键及个人功能，适合作为登录层，不适合作为匿名入口。                     |
+| `apps/outline/app/scenes/Shared/index.tsx`                        | 原分享场景已经使用共用 Layout，但围绕单个 Share 组织导航与上下文。                         |
+| `apps/outline/app/scenes/Document/components/PublicOnlyGate.tsx`  | 登录用户只有公开阅读权时先进入安全公共正文，避免挂载完整工作区文档场景。                   |
+| `apps/outline/server/routes/api/public/index.ts`                  | 四个公共只读 RPC 返回公开投影并设置 no-store。                                             |
+| `apps/outline/server/commands/publicAccess.ts`                    | 数据库先按公开状态过滤，再分页；文档的 parentDocumentId 已提升到最近可公开祖先。           |
+| `apps/outline/app/stores/AuthStore.ts`                            | 集成退出先调用 auth.delete，再清理本地状态，跳转固定 Website 退出确认页。                  |
+| `apps/web/src/pages/IdentityPage/SignedOutPage.tsx`               | 重新核验 Website token，仅删除仍匹配的无效 token；有新有效会话或核验失败时不宣称退出成功。 |
 
 ## 界面与组件边界
 
@@ -75,12 +75,12 @@
 
 沿用以下真实 Outline RPC，不复制进 Website OpenAPI 或生成 Client：
 
-| RPC | 用途 |
-| --- | --- |
-| `public.collections.list` | 公开集合目录，按既有 offset/limit/hasMore 分页。 |
-| `public.documents.list` | 指定公开集合的文档及可公开父节点关系。 |
-| `public.documents.info` | 公开正文及所属集合，用于深链接激活和公开状态复核。 |
-| `public.documents.search` | 公开文档检索。 |
+| RPC                       | 用途                                               |
+| ------------------------- | -------------------------------------------------- |
+| `public.collections.list` | 公开集合目录，按既有 offset/limit/hasMore 分页。   |
+| `public.documents.list`   | 指定公开集合的文档及可公开父节点关系。             |
+| `public.documents.info`   | 公开正文及所属集合，用于深链接激活和公开状态复核。 |
+| `public.documents.search` | 公开文档检索。                                     |
 
 集合目录支持继续加载，不能把首页最多 100 条当作全部集合。文档树按集合展开加载，读完该集合所有分页再构建完整父子关系；加载过程中显示进度，失败允许重试，不把尚未加载的父节点误判为不存在。客户端以公开条目的 title、id 做稳定排序，不声称与内部人工排序完全相同。
 
@@ -130,18 +130,18 @@ Outline 发起退出需要恢复阅读路径；Website 发起的既有退出行�
 
 ## 验收条件
 
-| 编号 | 场景与可观察结果 |
-| --- | --- |
-| U01 | 全新匿名浏览器进入 `/docs/`，显示 Outline 布局、公开总览、侧栏树与登录入口。 |
-| U02 | 无公开集合、空集合、接口失败分别显示正确状态；侧栏始终可用。 |
-| U03 | 多集合及超过 100 篇文档可完整加载，层级跨页不丢失；深链接激活正确文档与可见祖先。 |
-| U04 | 匿名请求与浏览器网络中不存在草稿、成员、通知、个人收藏等受保护副请求；私有标题和数量不可见。 |
-| U05 | 匿名文档具有原阅读排版、只读正文、附件、目录与移动端侧栏；搜索使用公共权限。 |
-| U06 | 文档中登录后仍在原地址，登录读者可评论，编辑者仅对授权集合获得写操作；publicOnly 不挂载内部副请求。 |
-| U07 | 公开文档退出成功后回到该文档，私有文档回到公开总览；退出失败、身份失联和后来建立的新会话分别正确处理。 |
-| U08 | 身份变化后迟到请求不能恢复旧私有数据；登录失败不循环跳转，公开阅读保持可用。 |
-| U09 | 恶意返回路径回退总览；匿名草稿/私有/撤销文档仍统一不可见；公开 SSR、canonical、sitemap 和附件规则无回归。 |
-| U10 | 非集成 Outline 路由、登录工作区个人功能及原协作能力维持既有行为。 |
+| 编号 | 场景与可观察结果                                                                                          |
+| ---- | --------------------------------------------------------------------------------------------------------- |
+| U01  | 全新匿名浏览器进入 `/docs/`，显示 Outline 布局、公开总览、侧栏树与登录入口。                              |
+| U02  | 无公开集合、空集合、接口失败分别显示正确状态；侧栏始终可用。                                              |
+| U03  | 多集合及超过 100 篇文档可完整加载，层级跨页不丢失；深链接激活正确文档与可见祖先。                         |
+| U04  | 匿名请求与浏览器网络中不存在草稿、成员、通知、个人收藏等受保护副请求；私有标题和数量不可见。              |
+| U05  | 匿名文档具有原阅读排版、只读正文、附件、目录与移动端侧栏；搜索使用公共权限。                              |
+| U06  | 文档中登录后仍在原地址，登录读者可评论，编辑者仅对授权集合获得写操作；publicOnly 不挂载内部副请求。       |
+| U07  | 公开文档退出成功后回到该文档，私有文档回到公开总览；退出失败、身份失联和后来建立的新会话分别正确处理。    |
+| U08  | 身份变化后迟到请求不能恢复旧私有数据；登录失败不循环跳转，公开阅读保持可用。                              |
+| U09  | 恶意返回路径回退总览；匿名草稿/私有/撤销文档仍统一不可见；公开 SSR、canonical、sitemap 和附件规则无回归。 |
+| U10  | 非集成 Outline 路由、登录工作区个人功能及原协作能力维持既有行为。                                         |
 
 组件/路由测试覆盖匿名树、分页、能力展示、身份切换及请求代次；真实 Koa 测试复用公共授权负向用例。Website 增补退出返回和新会话保护测试。修改区域按各仓库惯例做 typecheck、lint 与必要构建；若实施涉及 Website API 变更，必须另按 Contract-first 流程处理，不能借本规格绕过。
 

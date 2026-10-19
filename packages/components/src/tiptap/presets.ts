@@ -1,12 +1,24 @@
 import { useState } from 'react'
-import type { FullTiptapPreset, MarkdownPreset, MarkdownPresetOptions, TiptapPreset, TiptapPresetOptions } from './types'
+import type {
+  FullTiptapPreset,
+  MarkdownPreset,
+  MarkdownPresetOptions,
+  TiptapPreset,
+  TiptapPresetOptions,
+} from './types'
 
 /** Copy at both boundaries: callers may construct a descriptor without the hooks. */
 export function snapshotPreset(preset: TiptapPreset): TiptapPreset {
   const options = { ...preset.options }
   if (preset.kind === 'tiptap') {
     const policy = preset.options.policy
-    return Object.freeze({ kind: 'tiptap', options: Object.freeze({ ...options, ...(policy ? { policy: Object.freeze({ ...policy }) } : {}) }) })
+    return Object.freeze({
+      kind: 'tiptap',
+      options: Object.freeze({
+        ...options,
+        ...(policy ? { policy: Object.freeze({ ...policy }) } : {}),
+      }),
+    })
   }
   return Object.freeze({ kind: 'markdown', options: Object.freeze(options) })
 }

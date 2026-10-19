@@ -21,16 +21,32 @@ export async function startApplication(options: ApplicationStartOptions): Promis
   let cleanupPromise: Promise<void> | undefined
   const report = () => {
     // Logging callbacks cannot replace the startup error or interrupt cleanup.
-    try { options.reportCleanupFailure?.(APPLICATION_CLEANUP_FAILED) } catch { /* fixed diagnostic only */ }
+    try {
+      options.reportCleanupFailure?.(APPLICATION_CLEANUP_FAILED)
+    } catch {
+      /* fixed diagnostic only */
+    }
   }
   const cleanup = () => {
     // Schedule after assignment, so a reentrant stop sees the same promise.
     cleanupPromise ??= Promise.resolve().then(async () => {
       for (const stop of stops.reverse()) {
-        try { stop() } catch { report() }
+        try {
+          stop()
+        } catch {
+          report()
+        }
       }
-      try { await options.drainSupport?.() } catch { report() }
-      try { await options.database.close() } catch { report() }
+      try {
+        await options.drainSupport?.()
+      } catch {
+        report()
+      }
+      try {
+        await options.database.close()
+      } catch {
+        report()
+      }
     })
     return cleanupPromise
   }
@@ -44,8 +60,13 @@ export async function startApplication(options: ApplicationStartOptions): Promis
     if (options.startOutbox) stops.push(options.startOutbox())
     return app
   } catch (error) {
-    try { await app?.close() } catch { report() }
-    finally { await cleanup() }
+    try {
+      await app?.close()
+    } catch {
+      report()
+    } finally {
+      await cleanup()
+    }
     throw error
   }
 }

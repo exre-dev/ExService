@@ -3,13 +3,26 @@ const action = process.argv[2]
 if (action === 'lock') {
   const { acquireLock } = await import('../../scripts/runtime/ownership.mjs')
   try {
-    const lock = acquireLock({ mode: process.argv[4], fingerprint: 'race-fixture', directory: process.argv[3] })
+    const lock = acquireLock({
+      mode: process.argv[4],
+      fingerprint: 'race-fixture',
+      directory: process.argv[3],
+    })
     console.log('LOCK_ACQUIRED')
-    setTimeout(() => { lock.release(); process.exit(0) }, 8000)
-  } catch (error) { console.log(error.code); process.exit(2) }
+    setTimeout(() => {
+      lock.release()
+      process.exit(0)
+    }, 8000)
+  } catch (error) {
+    console.log(error.code)
+    process.exit(2)
+  }
 }
 if (action === 'descendant' || action === 'descendant-exit' || action === 'descendant-port') {
-  const child = spawn(process.execPath, [process.argv[1], 'wait'], { stdio: 'ignore', windowsHide: true })
+  const child = spawn(process.execPath, [process.argv[1], 'wait'], {
+    stdio: 'ignore',
+    windowsHide: true,
+  })
   console.log(`DESCENDANT:${child.pid}`)
 }
 if (action === 'descendant-port') {

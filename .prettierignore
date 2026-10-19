@@ -1,0 +1,20 @@
+# Generated artifacts have their own generators.
+api/generated/
+packages/sdk/src/generated/
+packages/components/src/tiptap/fonts/maple-mono-cn/font.scss
+packages/components/src/tiptap/fonts/maple-mono-cn/manifest.json
+apps/server/drizzle/meta/
+pnpm-lock.yaml
+
+# Build, test, local tooling, and vendored output.
+**/dist/
+**/coverage/
+**/node_modules/
+.local/
+.codegraph/
+.codegraphy/
+.playwright-cli/
+playwright-report/
+test-results/
+output/
+vendor/

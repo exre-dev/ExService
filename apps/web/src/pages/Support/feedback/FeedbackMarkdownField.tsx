@@ -1,6 +1,11 @@
 import { useEffect, useRef, type RefCallback } from 'react'
 import { EditorContent } from '@tiptap/react'
-import { serializeMarkdownContent, tiptapContentClassName, useMarkdownPreset, useTiptapEditor } from '@workspace/components'
+import {
+  serializeMarkdownContent,
+  tiptapContentClassName,
+  useMarkdownPreset,
+  useTiptapEditor,
+} from '@workspace/components'
 import styles from './FeedbackMarkdownField.module.scss'
 
 interface Props {
@@ -22,24 +27,47 @@ interface Props {
 const conversionError = '当前内容无法转换为 Markdown，请调整正文。'
 
 export function FeedbackMarkdownField(props: Props) {
-  return props.contentFormat === 'markdown' ? <MarkdownEditorField {...props} /> : <LegacyFeedbackField {...props} />
+  return props.contentFormat === 'markdown' ? (
+    <MarkdownEditorField {...props} />
+  ) : (
+    <LegacyFeedbackField {...props} />
+  )
 }
 
 /** Historical text must remain readable even when it exceeds the editor's node budget. */
 function LegacyFeedbackField(props: Props) {
-  const current = useRef(props); current.current = props
-  useEffect(() => { current.current.onValidationChange(null) }, [props.value])
-  return <div className={styles.field} data-readonly>
-    <div id={props.id} role="textbox" aria-label={props.label} aria-multiline="true" aria-readonly="true"
-      aria-required={props.required} aria-invalid={props.invalid} aria-describedby={props.describedBy}
-      contentEditable={false} tabIndex={0} ref={props.inputRef} onBlur={props.onBlur}
-      className={`${styles.content} ${styles.legacy} ${props.primary ? styles.primary : ''}`}>{props.value}</div>
-  </div>
+  const current = useRef(props)
+  current.current = props
+  useEffect(() => {
+    current.current.onValidationChange(null)
+  }, [props.value])
+  return (
+    <div className={styles.field} data-readonly>
+      <div
+        id={props.id}
+        role="textbox"
+        aria-label={props.label}
+        aria-multiline="true"
+        aria-readonly="true"
+        aria-required={props.required}
+        aria-invalid={props.invalid}
+        aria-describedby={props.describedBy}
+        contentEditable={false}
+        tabIndex={0}
+        ref={props.inputRef}
+        onBlur={props.onBlur}
+        className={`${styles.content} ${styles.legacy} ${props.primary ? styles.primary : ''}`}
+      >
+        {props.value}
+      </div>
+    </div>
+  )
 }
 
 /** RHF owns the Markdown value; the Editor owns the live document and selection. */
 function MarkdownEditorField(props: Props) {
-  const current = useRef(props); current.current = props
+  const current = useRef(props)
+  current.current = props
   const accepted = useRef({ value: props.value, format: props.contentFormat })
   const replacing = useRef(false)
   const preset = useMarkdownPreset({ placeholder: props.placeholder, pasteMarkdown: true })
@@ -51,7 +79,10 @@ function MarkdownEditorField(props: Props) {
     onChange(content) {
       if (replacing.current) return
       const result = serializeMarkdownContent(content)
-      if (!result.ok) { current.current.onValidationChange(conversionError); return }
+      if (!result.ok) {
+        current.current.onValidationChange(conversionError)
+        return
+      }
       accepted.current = { value: result.value, format: current.current.contentFormat }
       current.current.onChange(result.value)
       current.current.onValidationChange(null)
@@ -64,7 +95,10 @@ function MarkdownEditorField(props: Props) {
       replacing.current = true
       const result = replaceContent({ format: 'markdown', content: props.value })
       replacing.current = false
-      if (!result.ok) { current.current.onValidationChange(conversionError); return }
+      if (!result.ok) {
+        current.current.onValidationChange(conversionError)
+        return
+      }
       accepted.current = { value: props.value, format: props.contentFormat }
     }
     const result = exportMarkdown()
@@ -72,21 +106,55 @@ function MarkdownEditorField(props: Props) {
   }, [editor, props.value, props.contentFormat, replaceContent, exportMarkdown])
   useEffect(() => {
     if (!editor) return
-    editor.setOptions({ editorProps: { attributes: {
-      id: props.id, role: 'textbox', 'aria-multiline': 'true', 'aria-label': props.label,
-      'aria-required': String(!!props.required), 'aria-invalid': String(!!props.invalid),
-      'aria-readonly': String(!!props.disabled), ...(props.describedBy ? { 'aria-describedby': props.describedBy } : {}),
-    } } })
+    editor.setOptions({
+      editorProps: {
+        attributes: {
+          id: props.id,
+          role: 'textbox',
+          'aria-multiline': 'true',
+          'aria-label': props.label,
+          'aria-required': String(!!props.required),
+          'aria-invalid': String(!!props.invalid),
+          'aria-readonly': String(!!props.disabled),
+          ...(props.describedBy ? { 'aria-describedby': props.describedBy } : {}),
+        },
+      },
+    })
     props.inputRef?.(editor.view.dom)
-    return () => { props.inputRef?.(null) }
-  }, [editor, props.id, props.label, props.required, props.invalid, props.disabled, props.describedBy, props.inputRef])
+    return () => {
+      props.inputRef?.(null)
+    }
+  }, [
+    editor,
+    props.id,
+    props.label,
+    props.required,
+    props.invalid,
+    props.disabled,
+    props.describedBy,
+    props.inputRef,
+  ])
 
-  return <div className={styles.field} data-invalid={props.invalid || undefined} data-readonly={props.disabled || undefined}
-    onBlur={props.onBlur}>
-    <div className={`${tiptapContentClassName} ${styles.content} ${props.primary ? styles.primary : ''}`}>
-      <EditorContent editor={editor} />
+  return (
+    <div
+      className={styles.field}
+      data-invalid={props.invalid || undefined}
+      data-readonly={props.disabled || undefined}
+      onBlur={props.onBlur}
+    >
+      <div
+        className={`${tiptapContentClassName} ${styles.content} ${props.primary ? styles.primary : ''}`}
+      >
+        <EditorContent editor={editor} />
+      </div>
+      {interactions}
+      {issues.length > 0 && (
+        <div role="alert" className={styles.error}>
+          {issues.map((issue, index) => (
+            <p key={index}>{issue.message}</p>
+          ))}
+        </div>
+      )}
     </div>
-    {interactions}
-    {issues.length > 0 && <div role="alert" className={styles.error}>{issues.map((issue, index) => <p key={index}>{issue.message}</p>)}</div>}
-  </div>
+  )
 }

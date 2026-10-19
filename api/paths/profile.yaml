@@ -4,7 +4,7 @@
     summary: Read the authenticated user
     security:
       - bearerAuth: []
-    tags: [ authentication ]
+    tags: [authentication]
     responses:
       '200':
         description: Authenticated user
@@ -26,7 +26,7 @@
     summary: Update the authenticated user's profile
     security:
       - bearerAuth: []
-    tags: [ authentication ]
+    tags: [authentication]
     requestBody:
       required: true
       content:
@@ -57,7 +57,7 @@
     summary: Upload and replace the authenticated user's avatar
     security:
       - bearerAuth: []
-    tags: [ authentication ]
+    tags: [authentication]
     requestBody:
       required: true
       content:
@@ -89,7 +89,7 @@
     operationId: getAvatarImage
     summary: Read a currently referenced public avatar image
     security: []
-    tags: [ authentication ]
+    tags: [authentication]
     parameters:
       - name: avatarId
         in: path

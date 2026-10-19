@@ -1,40 +1,29 @@
-import { useRef, useState } from "react";
-import { Link } from "react-router";
-import {
-  Button,
-  ExMessage,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@exre/exui";
-import { ArrowRight, ArrowUpRight, Copy, ChevronDown } from "lucide-react";
-import { supportImage, supportRegistry } from "../../content/support/registry";
-import type {
-  ClickUpConfig,
-  ContactEntry,
-  ErrorEntry,
-} from "../../content/support/types";
-import { useSupportFocus } from "./useSupportFocus";
-import styles from "./Support.module.scss";
-import { useFeedback } from './feedback/FeedbackProvider';
+import { useRef, useState } from 'react'
+import { Link } from 'react-router'
+import { Button, ExMessage, Tabs, TabsList, TabsTrigger, TabsContent } from '@exre/exui'
+import { ArrowRight, ArrowUpRight, Copy, ChevronDown } from 'lucide-react'
+import { supportImage, supportRegistry } from '../../content/support/registry'
+import type { ClickUpConfig, ContactEntry, ErrorEntry } from '../../content/support/types'
+import { useSupportFocus } from './useSupportFocus'
+import styles from './Support.module.scss'
+import { useFeedback } from './feedback/FeedbackProvider'
 
 const feedback = [
   {
-    title: "功能和需求",
-    description: "报告问题，提出功能、资源、文档或活动需求。",
-    icon: "Discovery",
-    area: "development" as const,
+    title: '功能和需求',
+    description: '报告问题，提出功能、资源、文档或活动需求。',
+    icon: 'Discovery',
+    area: 'development' as const,
   },
   {
-    title: "投诉和建议",
-    description: "反馈你遇到的不当行为或不满意的体验。",
-    icon: "Message",
-    area: "community" as const,
+    title: '投诉和建议',
+    description: '反馈你遇到的不当行为或不满意的体验。',
+    icon: 'Message',
+    area: 'community' as const,
   },
-];
+]
 export function FeedbackEntries() {
-  const { openFeedback } = useFeedback();
+  const { openFeedback } = useFeedback()
   return (
     <section className={styles.section} aria-labelledby="feedback-title">
       <div className={styles.sectionHeading}>
@@ -56,19 +45,25 @@ export function FeedbackEntries() {
               <ArrowRight className={styles.feedbackArrow} aria-hidden="true" />
             </h3>
             <p id={`feedback-${item.icon}-description`}>{item.description}</p>
-            <button type="button" className={styles.feedbackTrigger} aria-labelledby={`feedback-${item.icon}-title`} aria-describedby={`feedback-${item.icon}-description`} onClick={event => openFeedback(item.area, event.currentTarget)} />
+            <button
+              type="button"
+              className={styles.feedbackTrigger}
+              aria-labelledby={`feedback-${item.icon}-title`}
+              aria-describedby={`feedback-${item.icon}-description`}
+              onClick={(event) => openFeedback(item.area, event.currentTarget)}
+            />
           </article>
         ))}
       </div>
     </section>
-  );
+  )
 }
 export function FeaturedErrors({
   errors,
   hasErrors,
 }: {
-  errors: ErrorEntry[];
-  hasErrors: boolean;
+  errors: ErrorEntry[]
+  hasErrors: boolean
 }) {
   return (
     <section aria-labelledby="solutions-title" className={styles.solutions}>
@@ -82,9 +77,7 @@ export function FeaturedErrors({
           loading="lazy"
         />
         <h3 id="solutions-title">先试试这些办法。</h3>
-        <p className={styles.description}>
-          我们整理了常见问题与排查步骤，也许答案就在这里。
-        </p>
+        <p className={styles.description}>我们整理了常见问题与排查步骤，也许答案就在这里。</p>
       </div>
       <div className={styles.errorPanel}>
         {errors.length ? (
@@ -105,9 +98,7 @@ export function FeaturedErrors({
           ))
         ) : (
           <p className={styles.empty}>
-            {hasErrors
-              ? "精选案例整理中，可查看全部常见错误。"
-              : "常见错误内容整理中"}
+            {hasErrors ? '精选案例整理中，可查看全部常见错误。' : '常见错误内容整理中'}
           </p>
         )}
         <Link className={styles.moreLink} to="/support/errors">
@@ -116,11 +107,11 @@ export function FeaturedErrors({
         </Link>
       </div>
     </section>
-  );
+  )
 }
 function ContactAvatar({ contact }: { contact: ContactEntry }) {
-  const image = contact.avatar ? supportImage(contact.avatar) : undefined;
-  const [failedSrc, setFailedSrc] = useState<string>();
+  const image = contact.avatar ? supportImage(contact.avatar) : undefined
+  const [failedSrc, setFailedSrc] = useState<string>()
   return (
     <div className={styles.avatar}>
       {image?.src && image.src !== failedSrc ? (
@@ -136,14 +127,14 @@ function ContactAvatar({ contact }: { contact: ContactEntry }) {
         <span aria-hidden="true">{Array.from(contact.name)[0]}</span>
       )}
     </div>
-  );
+  )
 }
 async function copyQQ(contact: ContactEntry) {
   try {
-    await navigator.clipboard.writeText(contact.qq!);
-    ExMessage.info("QQ 已复制");
+    await navigator.clipboard.writeText(contact.qq!)
+    ExMessage.info('QQ 已复制')
   } catch {
-    ExMessage.error("复制失败，请手动选择并复制 QQ 号码");
+    ExMessage.error('复制失败，请手动选择并复制 QQ 号码')
   }
 }
 export function ContactCards({ contacts }: { contacts: ContactEntry[] }) {
@@ -170,24 +161,21 @@ export function ContactCards({ contacts }: { contacts: ContactEntry[] }) {
                   {contact.qq && (
                     <div className={styles.qq}>
                       <span>
-                        QQ{" "}
-                        <span className={styles.selectable}>{contact.qq}</span>
+                        QQ <span className={styles.selectable}>{contact.qq}</span>
                       </span>
                       <Button
                         variant="ghost"
                         size="icon"
                         aria-label={`复制${contact.name}的 QQ`}
                         onClick={() => {
-                          void copyQQ(contact);
+                          void copyQQ(contact)
                         }}
                       >
                         <Copy aria-hidden="true" />
                       </Button>
                     </div>
                   )}
-                  {contact.email && (
-                    <a href={`mailto:${contact.email}`}>{contact.email}</a>
-                  )}
+                  {contact.email && <a href={`mailto:${contact.email}`}>{contact.email}</a>}
                 </div>
               )}
             </article>
@@ -197,7 +185,7 @@ export function ContactCards({ contacts }: { contacts: ContactEntry[] }) {
         <p className={styles.empty}>联系人资料整理中</p>
       )}
     </section>
-  );
+  )
 }
 export function ClickUpPanel({ config }: { config: ClickUpConfig | null }) {
   return (
@@ -216,7 +204,7 @@ export function ClickUpPanel({ config }: { config: ClickUpConfig | null }) {
               </TabsList>
             </div>
           </div>
-          {(["game", "community", "requestBucket"] as const).map((view) => (
+          {(['game', 'community', 'requestBucket'] as const).map((view) => (
             <TabsContent key={view} value={view} className={styles.viewPanel}>
               <div className={styles.embedShell}>
                 <iframe
@@ -225,7 +213,7 @@ export function ClickUpPanel({ config }: { config: ClickUpConfig | null }) {
                   title={config[view].title}
                   loading="lazy"
                   referrerPolicy="no-referrer"
-                  height={view === "requestBucket" ? 700 : undefined}
+                  height={view === 'requestBucket' ? 700 : undefined}
                 />
               </div>
               <div className={styles.embedFallback}>
@@ -233,8 +221,8 @@ export function ClickUpPanel({ config }: { config: ClickUpConfig | null }) {
                   尚未进入开发跟踪的已提交需求，可在「需求桶」Tab 中查看。
                   <br />
                   {config[view].publicUrl
-                    ? "若面板无法显示，可在新标签页打开 ClickUp。"
-                    : "若面板无法显示，请稍后重试。"}
+                    ? '若面板无法显示，可在新标签页打开 ClickUp。'
+                    : '若面板无法显示，请稍后重试。'}
                 </p>
                 {config[view].publicUrl && (
                   <a
@@ -257,17 +245,17 @@ export function ClickUpPanel({ config }: { config: ClickUpConfig | null }) {
         </div>
       )}
     </section>
-  );
+  )
 }
 export function SupportHome() {
-  const root = useRef<HTMLElement>(null);
-  useSupportFocus(root);
+  const root = useRef<HTMLElement>(null)
+  useSupportFocus(root)
   const featured = supportRegistry.featured
     .map((slug) => supportRegistry.errors.find((error) => error.slug === slug)!)
-    .filter(Boolean);
+    .filter(Boolean)
   const contacts = [...supportRegistry.contacts].sort(
     (a, b) => a.order - b.order || a.id.localeCompare(b.id),
-  );
+  )
   return (
     <main ref={root} className={styles.support}>
       <section className={styles.hero} aria-labelledby="support-title">
@@ -289,14 +277,11 @@ export function SupportHome() {
           <h2 id="help-title">找到答案，也找到我们。</h2>
         </div>
         <div className={styles.helpPanel}>
-          <FeaturedErrors
-            errors={featured}
-            hasErrors={supportRegistry.errors.length > 0}
-          />
+          <FeaturedErrors errors={featured} hasErrors={supportRegistry.errors.length > 0} />
           <ContactCards contacts={contacts} />
         </div>
       </section>
       <ClickUpPanel config={supportRegistry.clickup} />
     </main>
-  );
+  )
 }

@@ -14,11 +14,23 @@ function renderHeader(state: AuthAreaProps['state'], glassAtTop = false) {
   const onLogin = vi.fn()
   const onProfile = vi.fn()
   const onSettings = vi.fn()
-  render(<MemoryRouter initialEntries={['/']}>
-    <SiteHeader glassAtTop={glassAtTop} auth={{ state, onLogin, onRegister: vi.fn(), onRetry: vi.fn(),
-      onLogout: vi.fn(), onProfile, onSettings }} />
-    <LocationPath />
-  </MemoryRouter>)
+  render(
+    <MemoryRouter initialEntries={['/']}>
+      <SiteHeader
+        glassAtTop={glassAtTop}
+        auth={{
+          state,
+          onLogin,
+          onRegister: vi.fn(),
+          onRetry: vi.fn(),
+          onLogout: vi.fn(),
+          onProfile,
+          onSettings,
+        }}
+      />
+      <LocationPath />
+    </MemoryRouter>,
+  )
   return { onLogin, onProfile, onSettings }
 }
 
@@ -29,18 +41,45 @@ afterEach(() => {
   else Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
 })
 
-const supportIdentity: AuthAreaProps['state'] = { status: 'authenticated', nickname: 'Tester', initial: 'T', avatarUrl: null }
-function supportHeader(state: AuthAreaProps['state']) {
-  return <MemoryRouter initialEntries={['/support/errors/example']}><SiteHeader auth={{ state, onLogin: vi.fn(), onRegister: vi.fn(), onRetry: vi.fn(), onLogout: vi.fn(), onProfile: vi.fn(), onSettings: vi.fn() }} /><LocationPath /></MemoryRouter>
+const supportIdentity: AuthAreaProps['state'] = {
+  status: 'authenticated',
+  nickname: 'Tester',
+  initial: 'T',
+  avatarUrl: null,
 }
-it.each([{ status: 'anonymous' }, { status: 'loading' }, { status: 'unavailable', message: 'Unavailable' }] as AuthAreaProps['state'][])('hides Support until the session is confirmed: $status', async state => {
-  render(supportHeader(state))
-  expect(screen.queryByRole('link', { name: 'Support' })).toBeNull()
-  Element.prototype.scrollIntoView = vi.fn()
-  screen.getByRole('combobox', { name: '打开导航菜单' }).focus()
-  await userEvent.keyboard('[Space]')
-  expect(screen.queryByRole('option', { name: 'Support' })).toBeNull()
-})
+function supportHeader(state: AuthAreaProps['state']) {
+  return (
+    <MemoryRouter initialEntries={['/support/errors/example']}>
+      <SiteHeader
+        auth={{
+          state,
+          onLogin: vi.fn(),
+          onRegister: vi.fn(),
+          onRetry: vi.fn(),
+          onLogout: vi.fn(),
+          onProfile: vi.fn(),
+          onSettings: vi.fn(),
+        }}
+      />
+      <LocationPath />
+    </MemoryRouter>
+  )
+}
+it.each([
+  { status: 'anonymous' },
+  { status: 'loading' },
+  { status: 'unavailable', message: 'Unavailable' },
+] as AuthAreaProps['state'][])(
+  'hides Support until the session is confirmed: $status',
+  async (state) => {
+    render(supportHeader(state))
+    expect(screen.queryByRole('link', { name: 'Support' })).toBeNull()
+    Element.prototype.scrollIntoView = vi.fn()
+    screen.getByRole('combobox', { name: '打开导航菜单' }).focus()
+    await userEvent.keyboard('[Space]')
+    expect(screen.queryByRole('option', { name: 'Support' })).toBeNull()
+  },
+)
 it('uses Support for desktop and mobile descendant routes and removes it after logout', async () => {
   const view = render(supportHeader(supportIdentity))
   expect(screen.getByRole('link', { name: 'Support' }).getAttribute('aria-current')).toBe('page')
@@ -54,12 +93,40 @@ it('uses Support for desktop and mobile descendant routes and removes it after l
   expect(screen.queryByRole('link', { name: 'Support' })).toBeNull()
 })
 it('does not classify similarly prefixed paths as Support descendants', () => {
-  render(<MemoryRouter initialEntries={['/support-other']}><SiteHeader auth={{ state: supportIdentity, onLogin: vi.fn(), onRegister: vi.fn(), onRetry: vi.fn(), onLogout: vi.fn(), onProfile: vi.fn(), onSettings: vi.fn() }} /></MemoryRouter>)
+  render(
+    <MemoryRouter initialEntries={['/support-other']}>
+      <SiteHeader
+        auth={{
+          state: supportIdentity,
+          onLogin: vi.fn(),
+          onRegister: vi.fn(),
+          onRetry: vi.fn(),
+          onLogout: vi.fn(),
+          onProfile: vi.fn(),
+          onSettings: vi.fn(),
+        }}
+      />
+    </MemoryRouter>,
+  )
   expect(screen.getByRole('link', { name: 'Support' }).getAttribute('aria-current')).toBeNull()
 })
 
 it('keeps About active on a detail page and uses the canonical mobile target', () => {
-  render(<MemoryRouter initialEntries={['/aboutus/communities/example-community']}><SiteHeader auth={{ state: { status: 'anonymous' }, onLogin: vi.fn(), onRegister: vi.fn(), onRetry: vi.fn(), onLogout: vi.fn(), onProfile: vi.fn(), onSettings: vi.fn() }} /></MemoryRouter>)
+  render(
+    <MemoryRouter initialEntries={['/aboutus/communities/example-community']}>
+      <SiteHeader
+        auth={{
+          state: { status: 'anonymous' },
+          onLogin: vi.fn(),
+          onRegister: vi.fn(),
+          onRetry: vi.fn(),
+          onLogout: vi.fn(),
+          onProfile: vi.fn(),
+          onSettings: vi.fn(),
+        }}
+      />
+    </MemoryRouter>,
+  )
   expect(screen.getByRole('link', { name: 'About Us' }).getAttribute('href')).toBe('/aboutus')
   expect(screen.getByRole('link', { name: 'About Us' }).getAttribute('aria-current')).toBe('page')
   expect(screen.getByRole('combobox', { name: '打开导航菜单' }).textContent).toContain('About Us')
@@ -77,7 +144,9 @@ it('uses glass after scrolling and clears it when returning to the top', () => {
     vi.stubGlobal('scrollY', 0)
     fireEvent.scroll(window)
     expect(header.classList.contains('ex-glass')).toBe(false)
-  } finally { vi.unstubAllGlobals() }
+  } finally {
+    vi.unstubAllGlobals()
+  }
 })
 
 it('uses glass immediately when mounted on an already scrolled page', () => {
@@ -85,7 +154,9 @@ it('uses glass immediately when mounted on an already scrolled page', () => {
   try {
     renderHeader({ status: 'anonymous' })
     expect(screen.getByRole('banner').classList.contains('ex-glass')).toBe(true)
-  } finally { vi.unstubAllGlobals() }
+  } finally {
+    vi.unstubAllGlobals()
+  }
 })
 
 it('keeps glass at the top when the page requests it', () => {
@@ -99,7 +170,9 @@ it('keeps glass at the top when the page requests it', () => {
     vi.stubGlobal('scrollY', 0)
     fireEvent.scroll(window)
     expect(header.classList.contains('ex-glass')).toBe(true)
-  } finally { vi.unstubAllGlobals() }
+  } finally {
+    vi.unstubAllGlobals()
+  }
 })
 
 describe('SiteHeader Communities menu', () => {
@@ -107,8 +180,12 @@ describe('SiteHeader Communities menu', () => {
     renderHeader({ status: 'anonymous' })
 
     await userEvent.hover(screen.getByRole('button', { name: 'Communities' }))
-    expect((await screen.findByRole('link', { name: 'Rifling 911' })).getAttribute('href')).toBe('/communities/rifling-911')
-    expect(screen.getByRole('link', { name: 'CAEP' }).getAttribute('href')).toBe('/communities/caep')
+    expect((await screen.findByRole('link', { name: 'Rifling 911' })).getAttribute('href')).toBe(
+      '/communities/rifling-911',
+    )
+    expect(screen.getByRole('link', { name: 'CAEP' }).getAttribute('href')).toBe(
+      '/communities/caep',
+    )
 
     await userEvent.click(screen.getByRole('link', { name: 'Rifling 911' }))
     expect(screen.getByTestId('path').textContent).toBe('/communities/rifling-911')
@@ -197,8 +274,12 @@ describe('SiteHeader mobile navigation', () => {
     const originalScrollIntoView = Element.prototype.scrollIntoView
     Element.prototype.scrollIntoView = vi.fn()
     try {
-      const { onProfile, onSettings } = renderHeader({ status: 'authenticated',
-        nickname: 'Alice', initial: 'A', avatarUrl: '/avatar.png' })
+      const { onProfile, onSettings } = renderHeader({
+        status: 'authenticated',
+        nickname: 'Alice',
+        initial: 'A',
+        avatarUrl: '/avatar.png',
+      })
       const trigger = screen.getByRole('combobox', { name: '用户菜单' })
       expect(trigger.querySelector('[data-slot="avatar"]')).toBeTruthy()
       trigger.focus()

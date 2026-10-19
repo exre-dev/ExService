@@ -54,14 +54,14 @@ Autoload 负责同一批业务插件的依赖排序。预检只检查声明和�
 
 加载器向业务插件传递一个仅包含以下服务字段的浅层只读快照。不会把 `identityKeys`、logger、CORS、代理或整个运行配置传给所有业务插件。快照保留服务对象身份，不冻结或复制服务实例。
 
-| 业务入口 | 插件 options 中使用的具名字段 | 提供的 decorator |
-| --- | --- | --- |
-| auth | `authServices` | `authServices` |
-| profile | `profileServices` | `profileServices` |
-| identity | 可选的 `oidcServices` | `oidcServices` |
-| storage | `storageServices` | `storageServices` |
-| notifications | `notifications` | `notifications` |
-| join | `joinServices`、`invitationServices` | `joinServices`、`invitationServices` |
+| 业务入口      | 插件 options 中使用的具名字段        | 提供的 decorator                     |
+| ------------- | ------------------------------------ | ------------------------------------ |
+| auth          | `authServices`                       | `authServices`                       |
+| profile       | `profileServices`                    | `profileServices`                    |
+| identity      | 可选的 `oidcServices`                | `oidcServices`                       |
+| storage       | `storageServices`                    | `storageServices`                    |
+| notifications | `notifications`                      | `notifications`                      |
+| join          | `joinServices`、`invitationServices` | `joinServices`、`invitationServices` |
 
 各业务插件 options 接口只声明自身需要的具名字段，不导入 `CreateAppOptions` 或应用服务总接口，不依赖全局字符串服务字典。入口读取的必需服务缺失时拒绝 boot，使用固定诊断及字段名，不输出对象或配置值。identity 的 `oidcServices` 保持可选；关闭 OIDC 时仍创建值为 `undefined` 的 decorator，与现有行为一致。
 
@@ -127,31 +127,31 @@ Server 的独立 build 和根 build 都须在编译前清理固定的 `apps/serv
 
 ## 备选方案
 
-| 方案 | 收益 | 代价与本轮决策 |
-| --- | --- | --- |
-| 继续显式注册 | 当前类型及顺序直观，无目录扫描 | 未来每个公共模块都修改中央 import/register 清单；用户已确认减少该维护点 |
-| 限定业务入口的 Autoload | 新业务入口自行加入，保留 Fastify 插件生态和 HTTP 边界 | 需要有限预检、具名参数和干净构建产物；本轮采用 |
-| 构建时生成静态注册 | 可保留静态 import，并扩展到有类型的 handler 汇总 | 引入生成、校验与开发监听流程；当前仅业务插件不需要该工具链 |
+| 方案                    | 收益                                                  | 代价与本轮决策                                                          |
+| ----------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------- |
+| 继续显式注册            | 当前类型及顺序直观，无目录扫描                        | 未来每个公共模块都修改中央 import/register 清单；用户已确认减少该维护点 |
+| 限定业务入口的 Autoload | 新业务入口自行加入，保留 Fastify 插件生态和 HTTP 边界 | 需要有限预检、具名参数和干净构建产物；本轮采用                          |
+| 构建时生成静态注册      | 可保留静态 import，并扩展到有类型的 handler 汇总      | 引入生成、校验与开发监听流程；当前仅业务插件不需要该工具链              |
 
 ## 验收与实施顺序
 
 先同步业务参数接口、加载入口和源码 boot 测试，再接入 Autoload 依赖与干净构建，最后检查编译后的真实 boot。落在同一逻辑改动中，不能先交付扫描而缺少 dist 清理。
 
-| 验收 | 需要的证据 |
-| --- | --- |
-| 自动发现 | 在测试拥有的根目录增加合法业务插件，无中央名称清单即可提供新 decorator；无入口目录及含 package.json 的无入口目录安全跳过；扫描根目录自身含 package.json 明确拒绝 |
-| 精确筛选 | 在被排除的 service、测试和 API 文件中放置 import 哨兵，boot 不触发；同时存在 ts/js 入口明确失败 |
-| 依赖与名称 | 文件顺序与依赖顺序相反仍可启动；跨批合法依赖成功；同名、缺失、循环、公共到具体业务依赖均失败 |
-| 元信息与参数 | 普通函数、封装业务入口失败；具名导出/default 属性两处的跳过和自动配置均受检查；必需注入缺失失败，OIDC 未启用行为保持 |
-| 多实例与所有权 | 两个 app 使用各自服务对象；关闭 app 不关闭外部注入资源；预检失败不执行插件初始化 |
-| API 隔离 | 复用 `tests/server-plugins/boot.test.ts` 的 root-probe、request 字段、路由集合和原始 handlers 断言 |
-| 类型 | 更新 `tests/server-types/types.fixture.ts`，验证具名参数、必需服务错误类型及完整 Fastify 声明图 |
-| 删除和重命名 | 在测试工作区先构建插件再删除/重命名源码，重建后旧产物消失，编译 app 不加载旧模块 |
-| 构建清理边界 | 同级 data/环境哨兵保留；symlink/junction dist 明确拒绝；清理失败不进入编译 |
-| 三种执行环境 | 工程实际 Vitest、开发 `--import tsx` 和不带 TS loader 的编译 JS boot，均使用同一候选集合与参数契约 |
-| 实际启动诊断 | 带秘密哨兵的 import/注册异常不会回显；重复名和缺依赖分类到达启动输出，不变成数据库提示 |
-| runtime 失败清理 | ready 与 listen 失败不启动 worker；第二个 worker 启动失败时停止第一个并关闭 listener；close hook 与 catch 合计只关闭一次数据库；清理步骤异常不遮盖原始启动分类 |
-| 现有行为 | 类型检查、相关插件及 Contract 测试通过；必要的全量测试和 build 最终退出成功 |
+| 验收             | 需要的证据                                                                                                                                                       |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 自动发现         | 在测试拥有的根目录增加合法业务插件，无中央名称清单即可提供新 decorator；无入口目录及含 package.json 的无入口目录安全跳过；扫描根目录自身含 package.json 明确拒绝 |
+| 精确筛选         | 在被排除的 service、测试和 API 文件中放置 import 哨兵，boot 不触发；同时存在 ts/js 入口明确失败                                                                  |
+| 依赖与名称       | 文件顺序与依赖顺序相反仍可启动；跨批合法依赖成功；同名、缺失、循环、公共到具体业务依赖均失败                                                                     |
+| 元信息与参数     | 普通函数、封装业务入口失败；具名导出/default 属性两处的跳过和自动配置均受检查；必需注入缺失失败，OIDC 未启用行为保持                                             |
+| 多实例与所有权   | 两个 app 使用各自服务对象；关闭 app 不关闭外部注入资源；预检失败不执行插件初始化                                                                                 |
+| API 隔离         | 复用 `tests/server-plugins/boot.test.ts` 的 root-probe、request 字段、路由集合和原始 handlers 断言                                                               |
+| 类型             | 更新 `tests/server-types/types.fixture.ts`，验证具名参数、必需服务错误类型及完整 Fastify 声明图                                                                  |
+| 删除和重命名     | 在测试工作区先构建插件再删除/重命名源码，重建后旧产物消失，编译 app 不加载旧模块                                                                                 |
+| 构建清理边界     | 同级 data/环境哨兵保留；symlink/junction dist 明确拒绝；清理失败不进入编译                                                                                       |
+| 三种执行环境     | 工程实际 Vitest、开发 `--import tsx` 和不带 TS loader 的编译 JS boot，均使用同一候选集合与参数契约                                                               |
+| 实际启动诊断     | 带秘密哨兵的 import/注册异常不会回显；重复名和缺依赖分类到达启动输出，不变成数据库提示                                                                           |
+| runtime 失败清理 | ready 与 listen 失败不启动 worker；第二个 worker 启动失败时停止第一个并关闭 listener；close hook 与 catch 合计只关闭一次数据库；清理步骤异常不遮盖原始启动分类   |
+| 现有行为         | 类型检查、相关插件及 Contract 测试通过；必要的全量测试和 build 最终退出成功                                                                                      |
 
 直接向 Fastify 乱序 register 的旧失败测试保留，证明 Fastify 本身不替调用者排序；新增经过 Autoload 的乱序成功测试，证明本轮新增的排序能力。不要将这两种路径混为同一预期。
 

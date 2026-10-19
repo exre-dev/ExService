@@ -8,10 +8,16 @@ export declare const FIELD_DEFINITIONS: readonly [
   Readonly<{ id: typeof FIELD_IDS.department; type: 'drop_down' }>,
   Readonly<{ id: typeof FIELD_IDS.largeFile; type: 'text' }>,
 ]
-export declare function parseSupportField(input: unknown, id: string, expectedType: 'drop_down' | 'text'): {
+export declare function parseSupportField(
+  input: unknown,
+  id: string,
+  expectedType: 'drop_down' | 'text',
+): {
   id: string
   name: string
   type: 'drop_down' | 'text'
   required: boolean
-  type_config: { options: Array<{ id: string; name: string; color: string | null; orderindex: number }> }
+  type_config: {
+    options: Array<{ id: string; name: string; color: string | null; orderindex: number }>
+  }
 }

@@ -1,8 +1,16 @@
 import { createHash, randomUUID } from 'node:crypto'
 import type { SqlExecutor } from '@server/src/db/client.js'
 import { NotificationError } from './errors.js'
-import { catalogEntry, MAX_DIRECTED_AUDIENCE, MAX_EVENT_BYTES, MAX_TEXT_CODE_POINTS, RECOMMENDED_MAX_AUDIENCE,
-  MAX_TITLE_CODE_POINTS, EVENT_VERSION, type NotificationEventType } from './catalog.js'
+import {
+  catalogEntry,
+  MAX_DIRECTED_AUDIENCE,
+  MAX_EVENT_BYTES,
+  MAX_TEXT_CODE_POINTS,
+  RECOMMENDED_MAX_AUDIENCE,
+  MAX_TITLE_CODE_POINTS,
+  EVENT_VERSION,
+  type NotificationEventType,
+} from './catalog.js'
 import { assertSafeNotificationHtml, deriveSummary } from './html/sanitize.js'
 import { parseStoredActions } from './actions.js'
 import type { NotificationRepository } from './repository.js'
@@ -84,7 +92,10 @@ export class NotificationProducer {
    *
    * `requireAdmin` 为真时核对发布者当前的 admin 成员关系；个人通知不需要 admin。
    */
-  async publish(input: PublishInput, options: { requireAdmin?: boolean } = {}): Promise<PublishResult> {
+  async publish(
+    input: PublishInput,
+    options: { requireAdmin?: boolean } = {},
+  ): Promise<PublishResult> {
     const entry = catalogEntry(input.eventType, EVENT_VERSION)
     if (entry === undefined) throw new NotificationError('NOTIFICATION_UNSUPPORTED')
     if (!entry.createsReceipt) throw new NotificationError('NOTIFICATION_UNSUPPORTED')
@@ -92,18 +103,24 @@ export class NotificationProducer {
     const now = this.deps.now()
     const title = normalizeTitle(input.content.title)
     const safe = assertSafeNotificationHtml(input.content.html)
-    if (Array.from(safe.text).length > MAX_TEXT_CODE_POINTS) throw new NotificationError('CONTENT_TOO_LARGE')
+    if (Array.from(safe.text).length > MAX_TEXT_CODE_POINTS)
+      throw new NotificationError('CONTENT_TOO_LARGE')
     parseStoredActions(input.content.actionsJson)
 
     const eventId = this.deps.createId?.() ?? randomUUID()
     const contentId = this.deps.createId?.() ?? randomUUID()
     const availableAt = input.content.availableAt ?? now
     const expiresAt = input.content.expiresAt
-    if (expiresAt !== null && expiresAt <= availableAt) throw new NotificationError('CONTENT_UNSAFE')
+    if (expiresAt !== null && expiresAt <= availableAt)
+      throw new NotificationError('CONTENT_UNSAFE')
 
     const data = JSON.stringify({ contentId })
-    if (Buffer.byteLength(data, 'utf8') + Buffer.byteLength(safe.html, 'utf8') +
-        Buffer.byteLength(title, 'utf8') > MAX_EVENT_BYTES) {
+    if (
+      Buffer.byteLength(data, 'utf8') +
+        Buffer.byteLength(safe.html, 'utf8') +
+        Buffer.byteLength(title, 'utf8') >
+      MAX_EVENT_BYTES
+    ) {
       throw new NotificationError('CONTENT_TOO_LARGE')
     }
 
@@ -120,7 +137,7 @@ export class NotificationProducer {
       audience: input.audience,
     })
 
-    return await this.deps.repository.db.transaction(async tx => {
+    return await this.deps.repository.db.transaction(async (tx) => {
       const existing = await this.deps.repository.findEventByDedupeKey(input.dedupeKey, tx)
       if (existing !== undefined) {
         if (existing.digest !== digest) throw new NotificationError('NOTIFICATION_EVENT_CONFLICT')
@@ -134,7 +151,10 @@ export class NotificationProducer {
       }
 
       if (options.requireAdmin === true) {
-        if (input.actorUserId === null || !(await this.deps.repository.isAdminUser(input.actorUserId, tx))) {
+        if (
+          input.actorUserId === null ||
+          !(await this.deps.repository.isAdminUser(input.actorUserId, tx))
+        ) {
           throw new NotificationError('NOTIFICATION_PUBLISH_FORBIDDEN')
         }
       }
@@ -142,56 +162,68 @@ export class NotificationProducer {
       const userIds = await resolveAudience(this.deps.repository, input.audience, tx)
       if (userIds.length === 0) throw new NotificationError('NOTIFICATION_AUDIENCE_INVALID')
 
-      await this.deps.repository.insertContent({
-        content_id: contentId,
-        title,
-        format: 'html',
-        schema_version: 1,
-        policy_version: 'notification-html-v1',
-        html: safe.html,
-        text: safe.text,
-        summary_text: deriveSummary(safe.text),
-        content_revision: 1,
-        template_id: input.content.templateId,
-        template_version: input.content.templateVersion,
-        source_revision: input.content.sourceRevision,
-        scope: entry.scope,
-        category: entry.category,
-        necessity: entry.necessity,
-        actions_json: input.content.actionsJson,
-        available_at: availableAt,
-        expires_at: expiresAt,
-        withdrawn_at: null,
-        actor_user_id: input.actorUserId,
-        created_at: now,
-      }, tx)
+      await this.deps.repository.insertContent(
+        {
+          content_id: contentId,
+          title,
+          format: 'html',
+          schema_version: 1,
+          policy_version: 'notification-html-v1',
+          html: safe.html,
+          text: safe.text,
+          summary_text: deriveSummary(safe.text),
+          content_revision: 1,
+          template_id: input.content.templateId,
+          template_version: input.content.templateVersion,
+          source_revision: input.content.sourceRevision,
+          scope: entry.scope,
+          category: entry.category,
+          necessity: entry.necessity,
+          actions_json: input.content.actionsJson,
+          available_at: availableAt,
+          expires_at: expiresAt,
+          withdrawn_at: null,
+          actor_user_id: input.actorUserId,
+          created_at: now,
+        },
+        tx,
+      )
 
-      await this.deps.repository.insertEvent({
-        event_id: eventId,
-        event_type: input.eventType,
-        event_version: EVENT_VERSION,
-        occurred_at: now,
-        source_type: input.sourceType,
-        source_id: input.sourceId,
-        source_revision: input.content.sourceRevision,
-        scope: entry.scope,
-        dedupe_key: input.dedupeKey,
-        digest,
-        actor_user_id: input.actorUserId,
-        data_json: data,
-        content_id: contentId,
-        projection_status: 'pending',
-        projection_attempts: 0,
-        projection_lease_owner: null,
-        projection_lease_expires_at: null,
-        projection_next_attempt_at: now,
-        projection_completed_at: null,
-        projection_error_code: null,
-      }, tx)
+      await this.deps.repository.insertEvent(
+        {
+          event_id: eventId,
+          event_type: input.eventType,
+          event_version: EVENT_VERSION,
+          occurred_at: now,
+          source_type: input.sourceType,
+          source_id: input.sourceId,
+          source_revision: input.content.sourceRevision,
+          scope: entry.scope,
+          dedupe_key: input.dedupeKey,
+          digest,
+          actor_user_id: input.actorUserId,
+          data_json: data,
+          content_id: contentId,
+          projection_status: 'pending',
+          projection_attempts: 0,
+          projection_lease_owner: null,
+          projection_lease_expires_at: null,
+          projection_next_attempt_at: now,
+          projection_completed_at: null,
+          projection_error_code: null,
+        },
+        tx,
+      )
 
       await this.deps.repository.insertRecipients(eventId, userIds, tx)
 
-      return { eventId, contentId, dedupeKey: input.dedupeKey, audienceCount: userIds.length, replayed: false }
+      return {
+        eventId,
+        contentId,
+        dedupeKey: input.dedupeKey,
+        audienceCount: userIds.length,
+        replayed: false,
+      }
     })
   }
 
@@ -201,57 +233,71 @@ export class NotificationProducer {
    * `requireAdmin` 与 `publish` 对称：撤回同样会让已投递的通知从所有收件人处消失，
    * 授权要求不能比发布更松。N1 两者都还没有 HTTP 入口，但对称性必须从一开始就成立。
    */
-  async withdraw(input: WithdrawInput,
-    options: { requireAdmin?: boolean } = {}): Promise<{ eventId: string; replayed: boolean }> {
+  async withdraw(
+    input: WithdrawInput,
+    options: { requireAdmin?: boolean } = {},
+  ): Promise<{ eventId: string; replayed: boolean }> {
     const entry = catalogEntry('community.announcement.withdrawn', EVENT_VERSION)
     if (entry === undefined) throw new NotificationError('NOTIFICATION_UNSUPPORTED')
     const now = this.deps.now()
     const eventId = this.deps.createId?.() ?? randomUUID()
     const data = JSON.stringify({ contentId: input.contentId, withdrawnAt: now })
-    const digest = normalizeDigest({ eventType: 'community.announcement.withdrawn', contentId: input.contentId })
+    const digest = normalizeDigest({
+      eventType: 'community.announcement.withdrawn',
+      contentId: input.contentId,
+    })
 
-    return await this.deps.repository.db.transaction(async tx => {
+    return await this.deps.repository.db.transaction(async (tx) => {
       const existing = await this.deps.repository.findEventByDedupeKey(input.dedupeKey, tx)
       if (existing !== undefined) {
         if (existing.digest !== digest) throw new NotificationError('NOTIFICATION_EVENT_CONFLICT')
         return { eventId: existing.event_id, replayed: true }
       }
       if (options.requireAdmin === true) {
-        if (input.actorUserId === null || !(await this.deps.repository.isAdminUser(input.actorUserId, tx))) {
+        if (
+          input.actorUserId === null ||
+          !(await this.deps.repository.isAdminUser(input.actorUserId, tx))
+        ) {
           throw new NotificationError('NOTIFICATION_PUBLISH_FORBIDDEN')
         }
       }
       const updated = await this.deps.repository.withdrawContent(input.contentId, now, tx)
       if (updated !== 1) throw new NotificationError('NOTIFICATION_NOT_FOUND')
-      await this.deps.repository.insertEvent({
-        event_id: eventId,
-        event_type: 'community.announcement.withdrawn',
-        event_version: EVENT_VERSION,
-        occurred_at: now,
-        source_type: input.sourceType,
-        source_id: input.sourceId,
-        source_revision: 1,
-        scope: entry.scope,
-        dedupe_key: input.dedupeKey,
-        digest,
-        actor_user_id: input.actorUserId,
-        data_json: data,
-        content_id: input.contentId,
-        projection_status: 'completed',
-        projection_attempts: 0,
-        projection_lease_owner: null,
-        projection_lease_expires_at: null,
-        projection_next_attempt_at: now,
-        projection_completed_at: now,
-        projection_error_code: null,
-      }, tx)
+      await this.deps.repository.insertEvent(
+        {
+          event_id: eventId,
+          event_type: 'community.announcement.withdrawn',
+          event_version: EVENT_VERSION,
+          occurred_at: now,
+          source_type: input.sourceType,
+          source_id: input.sourceId,
+          source_revision: 1,
+          scope: entry.scope,
+          dedupe_key: input.dedupeKey,
+          digest,
+          actor_user_id: input.actorUserId,
+          data_json: data,
+          content_id: input.contentId,
+          projection_status: 'completed',
+          projection_attempts: 0,
+          projection_lease_owner: null,
+          projection_lease_expires_at: null,
+          projection_next_attempt_at: now,
+          projection_completed_at: now,
+          projection_error_code: null,
+        },
+        tx,
+      )
       return { eventId, replayed: false }
     })
   }
 }
 
-async function resolveAudience(repository: NotificationRepository,
-  audience: PublishInput['audience'], tx: SqlExecutor): Promise<string[]> {
+async function resolveAudience(
+  repository: NotificationRepository,
+  audience: PublishInput['audience'],
+  tx: SqlExecutor,
+): Promise<string[]> {
   if (audience.kind === 'users') {
     const unique = [...new Set(audience.userIds)]
     if (unique.length === 0 || unique.length > MAX_DIRECTED_AUDIENCE) {
@@ -259,15 +305,22 @@ async function resolveAudience(repository: NotificationRepository,
     }
     const existing = await repository.usersExist(unique, tx)
     // 未知或停用账号整体拒绝并零提交，不静默缩小受众。
-    if (existing.size !== unique.length) throw new NotificationError('NOTIFICATION_AUDIENCE_INVALID')
+    if (existing.size !== unique.length)
+      throw new NotificationError('NOTIFICATION_AUDIENCE_INVALID')
     return unique.sort()
   }
   return repository.activeUserIds(RECOMMENDED_MAX_AUDIENCE, tx)
 }
 
-async function countRecipients(repository: NotificationRepository, eventId: string, tx: SqlExecutor): Promise<number> {
+async function countRecipients(
+  repository: NotificationRepository,
+  eventId: string,
+  tx: SqlExecutor,
+): Promise<number> {
   const result = await tx.query<{ count: string }>(
-    'SELECT count(*)::text AS count FROM notification_event_recipients WHERE event_id = $1', [eventId])
+    'SELECT count(*)::text AS count FROM notification_event_recipients WHERE event_id = $1',
+    [eventId],
+  )
   return Number(result.rows[0]?.count ?? 0)
 }
 
@@ -279,6 +332,8 @@ export function normalizeDigest(value: unknown): string {
 function stableStringify(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null'
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`
-  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : 1))
+  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+    a < b ? -1 : 1,
+  )
   return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`).join(',')}}`
 }

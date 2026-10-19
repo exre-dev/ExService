@@ -3,7 +3,7 @@
     operationId: getHealth
     summary: Read server liveness
     security: []
-    tags: [ system ]
+    tags: [system]
     responses:
       '200':
         description: Server is running

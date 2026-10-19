@@ -6,7 +6,11 @@ import { compileComponentSchema } from '@tests/helpers/contract'
 import { createApp } from '@workspace/server'
 import { createTestAuth, type TestAuth } from '@tests/helpers/auth'
 import { multipartBody, type TestPart } from '@tests/helpers/multipart'
-import { createAppWithStorage, fileStorageFixture, type StorageTestFixture } from '@tests/helpers/storage'
+import {
+  createAppWithStorage,
+  fileStorageFixture,
+  type StorageTestFixture,
+} from '@tests/helpers/storage'
 import type { StorageServices } from '@server/src/modules/storage/factory'
 
 /**
@@ -24,25 +28,44 @@ const fixtures: TestAuth[] = []
 const apps: FastifyInstance[] = []
 const storages: StorageTestFixture[] = []
 afterEach(async () => {
-  await Promise.all(apps.splice(0).map(app => app.close()))
-  await Promise.all(fixtures.splice(0).map(fixture => fixture.close()))
+  await Promise.all(apps.splice(0).map((app) => app.close()))
+  await Promise.all(fixtures.splice(0).map((fixture) => fixture.close()))
   for (const storage of storages.splice(0)) storage.cleanup()
 })
 
 interface Connection {
   req: ClientRequest
-  result: Promise<{ status: number; headers: Record<string, string | string[] | undefined>; body: string }>
+  result: Promise<{
+    status: number
+    headers: Record<string, string | string[] | undefined>
+    body: string
+  }>
   /** 连接被中断前收到的原始字节；用于断言没有把 JSON 追加到半截字节后面。 */
   partial: () => Buffer
 }
 
-function client(port: number, path: string, method = 'POST', headers: Record<string, string> = {}): Connection {
+function client(
+  port: number,
+  path: string,
+  method = 'POST',
+  headers: Record<string, string> = {},
+): Connection {
   const chunks: Buffer[] = []
   let req!: ClientRequest
-  const result = new Promise<{ status: number; headers: Record<string, string | string[] | undefined>; body: string }>((resolve, reject) => {
-    req = httpRequest({ host: '127.0.0.1', port, path, method, headers, agent: false }, res => {
-      res.on('data', chunk => chunks.push(chunk as Buffer))
-      res.on('end', () => resolve({ status: res.statusCode!, headers: res.headers, body: Buffer.concat(chunks).toString() }))
+  const result = new Promise<{
+    status: number
+    headers: Record<string, string | string[] | undefined>
+    body: string
+  }>((resolve, reject) => {
+    req = httpRequest({ host: '127.0.0.1', port, path, method, headers, agent: false }, (res) => {
+      res.on('data', (chunk) => chunks.push(chunk as Buffer))
+      res.on('end', () =>
+        resolve({
+          status: res.statusCode!,
+          headers: res.headers,
+          body: Buffer.concat(chunks).toString(),
+        }),
+      )
       res.on('error', reject)
     })
     req.on('error', reject)
@@ -53,10 +76,14 @@ function client(port: number, path: string, method = 'POST', headers: Record<str
 }
 
 /** 覆盖某 operation 的 route config 限额，并暴露该活动对象与恢复 deadline 的入口。 */
-function overrideConfig(app: FastifyInstance, key: 'storageUpload', overrides: Record<string, number>) {
+function overrideConfig(
+  app: FastifyInstance,
+  key: 'storageUpload',
+  overrides: Record<string, number>,
+) {
   let limits: Record<string, number> | undefined
   let originalDeadline: number | undefined
-  app.addHook('onRoute', route => {
+  app.addHook('onRoute', (route) => {
     const config = (route.config ?? {}) as Record<string, Record<string, number> | undefined>
     const found = config[key]
     if (found === undefined) return
@@ -71,7 +98,8 @@ function overrideConfig(app: FastifyInstance, key: 'storageUpload', overrides: R
       return limits
     },
     restoreDeadline: () => {
-      if (limits === undefined || originalDeadline === undefined) throw new Error(`${key} route was not registered`)
+      if (limits === undefined || originalDeadline === undefined)
+        throw new Error(`${key} route was not registered`)
       limits.deadlineMs = originalDeadline
     },
   }
@@ -81,51 +109,87 @@ function textPart(name: string, value: string): TestPart {
   return { name, contentType: 'text/plain', bytes: Buffer.from(value, 'utf8') }
 }
 function dataPart(bytes: Uint8Array): TestPart {
-  return { name: 'data', filename: 'upload.bin', contentType: 'application/octet-stream', bytes: Buffer.from(bytes) }
+  return {
+    name: 'data',
+    filename: 'upload.bin',
+    contentType: 'application/octet-stream',
+    bytes: Buffer.from(bytes),
+  }
 }
 
-async function storageSetup(options: {
-  overrides?: Record<string, number>
-  maxBytes?: string
-  origins?: ReadonlySet<string>
-  logger?: { stream: Writable; level: string }
-} = {}) {
+async function storageSetup(
+  options: {
+    overrides?: Record<string, number>
+    maxBytes?: string
+    origins?: ReadonlySet<string>
+    logger?: { stream: Writable; level: string }
+  } = {},
+) {
   const f = await createTestAuth()
   fixtures.push(f)
-  const storage = fileStorageFixture(options.maxBytes === undefined ? undefined : { STORAGE_MAX_BYTES: options.maxBytes })
+  const storage = fileStorageFixture(
+    options.maxBytes === undefined ? undefined : { STORAGE_MAX_BYTES: options.maxBytes },
+  )
   storages.push(storage)
-  const app = options.origins === undefined && options.logger === undefined
-    ? createAppWithStorage(f, storage.storage)
-    : createApp({
-      authServices: f.authServices, profileServices: f.profileServices, joinServices: f.joinServices,
-      invitationServices: f.invitationServices, storageServices: storage.storage, notifications: f.notifications, clickupServices: f.clickupServices, supportServices: f.supportServices,
-      corsAllowedOrigins: options.origins, logger: options.logger,
-    })
+  const app =
+    options.origins === undefined && options.logger === undefined
+      ? createAppWithStorage(f, storage.storage)
+      : createApp({
+          authServices: f.authServices,
+          profileServices: f.profileServices,
+          joinServices: f.joinServices,
+          invitationServices: f.invitationServices,
+          storageServices: storage.storage,
+          notifications: f.notifications,
+          clickupServices: f.clickupServices,
+          supportServices: f.supportServices,
+          corsAllowedOrigins: options.origins,
+          logger: options.logger,
+        })
   apps.push(app)
-  const config = options.overrides === undefined
-    ? { limits: () => { throw new Error('storageUpload overrides were not requested') }, restoreDeadline: () => undefined }
-    : overrideConfig(app, 'storageUpload', options.overrides)
+  const config =
+    options.overrides === undefined
+      ? {
+          limits: () => {
+            throw new Error('storageUpload overrides were not requested')
+          },
+          restoreDeadline: () => undefined,
+        }
+      : overrideConfig(app, 'storageUpload', options.overrides)
   // 存储槽位屏障用于核对连接中断后的容量释放。
   let observed = 0
   const waiters: Array<{ count: number; resolve: () => void }> = []
-  app.addHook('preValidation', async request => {
+  app.addHook('preValidation', async (request) => {
     if (request.url !== '/api/storage/uploads') return
     observed++
-    for (const waiter of waiters.filter(waiter => waiter.count <= observed)) waiter.resolve()
+    for (const waiter of waiters.filter((waiter) => waiter.count <= observed)) waiter.resolve()
   })
-  await f.seedUser({ email: 'lifecycle@example.com', nickname: 'Lifecycle', password: 'valid password' })
-  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'lifecycle@example.com', password: 'valid password' } })
+  await f.seedUser({
+    email: 'lifecycle@example.com',
+    nickname: 'Lifecycle',
+    password: 'valid password',
+  })
+  const login = await app.inject({
+    method: 'POST',
+    url: '/api/auth/login',
+    payload: { email: 'lifecycle@example.com', password: 'valid password' },
+  })
   expect(login.statusCode).toBe(200)
   await app.listen({ host: '127.0.0.1', port: 0 })
   const address = app.server.address()
   if (address === null || typeof address === 'string') throw new Error('No socket address')
   return {
-    f, app, port: address.port, services: storage.storage,
-    limits: config.limits, restoreDeadline: config.restoreDeadline,
+    f,
+    app,
+    port: address.port,
+    services: storage.storage,
+    limits: config.limits,
+    restoreDeadline: config.restoreDeadline,
     token: (login.json() as { token: string }).token,
-    entered: (count: number) => observed >= count
-      ? Promise.resolve()
-      : new Promise<void>(resolve => waiters.push({ count, resolve })),
+    entered: (count: number) =>
+      observed >= count
+        ? Promise.resolve()
+        : new Promise<void>((resolve) => waiters.push({ count, resolve })),
   }
 }
 
@@ -144,7 +208,9 @@ it('takeover keeps the exact contract envelope, content type and safe headers on
   const connection = holdStorage(port, token)
   const response = await connection.result
   expect(response.status).toBe(408)
-  const body = JSON.parse(response.body) as { error: { code: string; message: string; requestId: string } }
+  const body = JSON.parse(response.body) as {
+    error: { code: string; message: string; requestId: string }
+  }
   expect(body.error.code).toBe('STORAGE_TIMEOUT')
   // 序列化前的 envelope 与序列化后的真实响应都精确符合 Contract。
   expect(Object.keys(body)).toEqual(['error'])
@@ -161,15 +227,26 @@ it('takeover keeps the exact contract envelope, content type and safe headers on
 
 it('keeps CORS and Vary headers through the takeover response', async () => {
   const lines: string[] = []
-  const stream = new Writable({ write(chunk, _encoding, done) { lines.push(String(chunk)); done() } })
+  const stream = new Writable({
+    write(chunk, _encoding, done) {
+      lines.push(String(chunk))
+      done()
+    },
+  })
   const origin = 'http://127.0.0.1:9999'
-  const { port, token } = await storageSetup({ overrides: { deadlineMs: 150 }, origins: new Set([origin]), logger: { stream, level: 'warn' } })
+  const { port, token } = await storageSetup({
+    overrides: { deadlineMs: 150 },
+    origins: new Set([origin]),
+    logger: { stream, level: 'warn' },
+  })
   const connection = client(port, '/api/storage/uploads', 'POST', {
     'content-type': 'multipart/form-data; boundary=lifecycle-boundary',
     authorization: `Bearer ${token}`,
     origin,
   })
-  connection.req.write('--lifecycle-boundary\r\nContent-Disposition: form-data; name="key"\r\n\r\nstall')
+  connection.req.write(
+    '--lifecycle-boundary\r\nContent-Disposition: form-data; name="key"\r\n\r\nstall',
+  )
   const response = await connection.result
   expect(response.status).toBe(408)
   // 接管不走 onSend，因此 foundation 在 onRequest 设置的 CORS 头必须靠 getHeaders() 透传。
@@ -178,10 +255,19 @@ it('keeps CORS and Vary headers through the takeover response', async () => {
   expect(String(response.headers['vary'])).toContain('Origin')
   expect(response.headers['content-type']).toBe('application/json; charset=utf-8')
   // 迟到 rejection 已被消费：日志里只有安全分类，没有原始异常文本。
-  const entries = lines.map(line => JSON.parse(line) as Record<string, unknown>)
-  expect(entries.some(entry => entry.code === 'STORAGE_TIMEOUT' && entry.statusCode === 408)).toBe(true)
+  const entries = lines.map((line) => JSON.parse(line) as Record<string, unknown>)
+  expect(
+    entries.some((entry) => entry.code === 'STORAGE_TIMEOUT' && entry.statusCode === 408),
+  ).toBe(true)
   const text = lines.join('\n')
-  for (const leak of ['premature close', 'PrematureClose', 'Stream destroyed', 'unexpected end of form', 'ERR_STREAM_PREMATURE_CLOSE', ' at ']) {
+  for (const leak of [
+    'premature close',
+    'PrematureClose',
+    'Stream destroyed',
+    'unexpected end of form',
+    'ERR_STREAM_PREMATURE_CLOSE',
+    ' at ',
+  ]) {
     expect(text, leak).not.toContain(leak)
   }
   lines.length = 0
@@ -193,10 +279,16 @@ it('accepts a real chunked storage upload of exactly the wire budget and stores 
   // 让 wire 预算恰好等于这份真实 multipart 的长度；+1 变体只把开销减一。
   const overhead = body.payload.length - maxBytes
   expect(overhead).toBeGreaterThan(1)
-  const { port, app, token, limits } = await storageSetup({ overrides: { wireOverheadBytes: overhead, deadlineMs: 400 }, maxBytes: String(maxBytes) })
+  const { port, app, token, limits } = await storageSetup({
+    overrides: { wireOverheadBytes: overhead, deadlineMs: 400 },
+    maxBytes: String(maxBytes),
+  })
 
   // chunked（不设 Content-Length）：wire 恰好等于预算时 counter 放行。
-  const exact = client(port, '/api/storage/uploads', 'POST', { ...body.headers, authorization: `Bearer ${token}` })
+  const exact = client(port, '/api/storage/uploads', 'POST', {
+    ...body.headers,
+    authorization: `Bearer ${token}`,
+  })
   exact.req.write(body.payload)
   exact.req.end()
   const accepted = await exact.result
@@ -208,12 +300,17 @@ it('accepts a real chunked storage upload of exactly the wire budget and stores 
 
   // 同一份真实 multipart，预算少一个字节：这次由 counter 拦下。
   limits().wireOverheadBytes = overhead - 1
-  const over = client(port, '/api/storage/uploads', 'POST', { ...body.headers, authorization: `Bearer ${token}` })
+  const over = client(port, '/api/storage/uploads', 'POST', {
+    ...body.headers,
+    authorization: `Bearer ${token}`,
+  })
   over.req.write(body.payload)
   over.req.end()
   const rejected = await over.result
   expect(rejected.status, rejected.body).toBe(413)
-  expect((JSON.parse(rejected.body) as { error: { code: string } }).error.code).toBe('STORAGE_TOO_LARGE')
+  expect((JSON.parse(rejected.body) as { error: { code: string } }).error.code).toBe(
+    'STORAGE_TOO_LARGE',
+  )
   expect(rejected.headers['content-type']).toBe('application/json; charset=utf-8')
 }, 60000)
 
@@ -225,10 +322,18 @@ it('rejects unauthenticated storage headers before receiving a body and still ac
   anonymous.req.flushHeaders()
   const rejected = await anonymous.result
   expect(rejected.status).toBe(401)
-  expect((JSON.parse(rejected.body) as { error: { code: string } }).error.code).toBe('SESSION_INVALID')
+  expect((JSON.parse(rejected.body) as { error: { code: string } }).error.code).toBe(
+    'SESSION_INVALID',
+  )
 
-  const { payload, headers } = multipartBody([textPart('key', 'admission.bin'), dataPart(new Uint8Array([1, 2]))])
-  const accepted = client(port, '/api/storage/uploads', 'POST', { ...headers, authorization: `Bearer ${token}` })
+  const { payload, headers } = multipartBody([
+    textPart('key', 'admission.bin'),
+    dataPart(new Uint8Array([1, 2])),
+  ])
+  const accepted = client(port, '/api/storage/uploads', 'POST', {
+    ...headers,
+    authorization: `Bearer ${token}`,
+  })
   accepted.req.end(payload)
   expect((await accepted.result).status).toBe(200)
   const stored = await app.inject({ method: 'GET', url: '/api/storage/files?key=admission.bin' })

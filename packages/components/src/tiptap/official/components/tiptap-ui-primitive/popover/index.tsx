@@ -1,1 +1,1 @@
-export { Popover, PopoverContent, PopoverTrigger } from "../../../primitives"
+export { Popover, PopoverContent, PopoverTrigger } from '../../../primitives'

@@ -21,7 +21,10 @@ for (const file of javascriptFiles(distRoot)) {
   const edits = []
   function rewrite(literal) {
     if (!literal || !ts.isStringLiteral(literal)) return
-    if (/^@(web|server|api-client|components|tests)(?:\/|$)/.test(literal.text) && !literal.text.startsWith(aliasPrefix)) {
+    if (
+      /^@(web|server|api-client|components|tests)(?:\/|$)/.test(literal.text) &&
+      !literal.text.startsWith(aliasPrefix)
+    ) {
       throw new Error(`Unsupported source alias in ${file}: ${literal.text}`)
     }
     if (!literal.text.startsWith(aliasPrefix)) return
@@ -35,12 +38,17 @@ for (const file of javascriptFiles(distRoot)) {
   }
   function visit(node) {
     if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) rewrite(node.moduleSpecifier)
-    else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) rewrite(node.arguments[0])
+    else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword)
+      rewrite(node.arguments[0])
     ts.forEachChild(node, visit)
   }
   visit(ast)
-  const output = edits.sort((a, b) => b.start - a.start)
-    .reduce((text, { start, end, specifier }) => `${text.slice(0, start)}${specifier}${text.slice(end)}`, source)
+  const output = edits
+    .sort((a, b) => b.start - a.start)
+    .reduce(
+      (text, { start, end, specifier }) => `${text.slice(0, start)}${specifier}${text.slice(end)}`,
+      source,
+    )
   if (output.includes(aliasPrefix)) throw new Error(`Unrewritten server alias in ${file}`)
   if (output !== source) writeFileSync(file, output, 'utf8')
 }

@@ -56,7 +56,8 @@ export function createSummaryScheduler(clock: PollingClock = { now: () => Date.n
      */
     allowRefresh(): boolean {
       const now = clock.now()
-      if (lastRefreshAt !== null && now - lastRefreshAt < SUMMARY_POLLING.refreshThrottle) return false
+      if (lastRefreshAt !== null && now - lastRefreshAt < SUMMARY_POLLING.refreshThrottle)
+        return false
       lastRefreshAt = now
       return true
     },

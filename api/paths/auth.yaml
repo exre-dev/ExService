@@ -4,7 +4,7 @@
     summary: Reserve an image captcha challenge for authentication
     description: The Server returns a placeholder PNG during development and does not validate captcha submissions yet.
     security: []
-    tags: [ authentication ]
+    tags: [authentication]
     responses:
       '200':
         description: Image challenge placeholder
@@ -24,7 +24,7 @@
     operationId: login
     summary: Create a local session
     security: []
-    tags: [ authentication ]
+    tags: [authentication]
     requestBody:
       required: true
       content:
@@ -57,7 +57,7 @@
     summary: Revoke the current local session
     security:
       - bearerAuth: []
-    tags: [ authentication ]
+    tags: [authentication]
     responses:
       '200':
         description: Session revoked
@@ -79,7 +79,7 @@
     operationId: inspectSsoRequest
     summary: Inspect a local SSO request
     security: []
-    tags: [ authentication ]
+    tags: [authentication]
     requestBody:
       required: true
       content:
@@ -111,7 +111,7 @@
     operationId: loginForSso
     summary: Complete an SSO request with credentials
     security: []
-    tags: [ authentication ]
+    tags: [authentication]
     requestBody:
       required: true
       content:
@@ -150,7 +150,7 @@
     summary: Complete an SSO request with the current session
     security:
       - bearerAuth: []
-    tags: [ authentication ]
+    tags: [authentication]
     requestBody:
       required: true
       content:

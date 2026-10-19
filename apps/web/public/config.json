@@ -7,8 +7,18 @@
     {
       "id": "member-01",
       "name": "Raven James",
-      "avatar": { "src": "/images/team/memoji-james.png", "alt": "Raven James 的 Memoji 头像", "width": 512, "height": 512 },
-      "portrait": { "src": "/images/team/memoji-james.png", "alt": "Raven James 的 Memoji 人物形象", "width": 512, "height": 512 },
+      "avatar": {
+        "src": "/images/team/memoji-james.png",
+        "alt": "Raven James 的 Memoji 头像",
+        "width": 512,
+        "height": 512
+      },
+      "portrait": {
+        "src": "/images/team/memoji-james.png",
+        "alt": "Raven James 的 Memoji 人物形象",
+        "width": 512,
+        "height": 512
+      },
       "role": "游戏功能开发, 策划",
       "bio": "成员资料占位。真实姓名、照片与参与工作将在本人确认后补充。",
       "strengths": [
@@ -23,8 +33,18 @@
     {
       "id": "member-02",
       "name": "Kang",
-      "avatar": { "src": "/images/team/memoji-kang.png", "alt": "Kang 的 Memoji 头像", "width": 512, "height": 512 },
-      "portrait": { "src": "/images/team/memoji-kang.png", "alt": "Kang 的 Memoji 人物形象", "width": 512, "height": 512 },
+      "avatar": {
+        "src": "/images/team/memoji-kang.png",
+        "alt": "Kang 的 Memoji 头像",
+        "width": 512,
+        "height": 512
+      },
+      "portrait": {
+        "src": "/images/team/memoji-kang.png",
+        "alt": "Kang 的 Memoji 人物形象",
+        "width": 512,
+        "height": 512
+      },
       "role": "运维, 后台服务",
       "bio": "成员资料占位。真实姓名、照片与参与工作将在本人确认后补充。",
       "strengths": [
@@ -39,8 +59,18 @@
     {
       "id": "member-03",
       "name": "Charli",
-      "avatar": { "src": "/images/team/memoji-charli.png", "alt": "Charli 的 Memoji 头像", "width": 512, "height": 512 },
-      "portrait": { "src": "/images/team/memoji-charli.png", "alt": "Charli 的 Memoji 人物形象", "width": 512, "height": 512 },
+      "avatar": {
+        "src": "/images/team/memoji-charli.png",
+        "alt": "Charli 的 Memoji 头像",
+        "width": 512,
+        "height": 512
+      },
+      "portrait": {
+        "src": "/images/team/memoji-charli.png",
+        "alt": "Charli 的 Memoji 人物形象",
+        "width": 512,
+        "height": 512
+      },
       "role": "项目经理, 社区功能开发",
       "bio": "成员资料占位。真实姓名、照片与参与工作将在本人确认后补充。",
       "strengths": [

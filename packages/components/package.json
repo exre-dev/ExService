@@ -46,7 +46,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@exre/exui": "^0.8.0",
+    "@exre/exui": "^1.0.0",
     "@hookform/resolvers": "^5.9.1",
     "@tiptap/core": "3.32.0",
     "@tiptap/extension-collaboration": "3.32.0",
@@ -68,7 +68,8 @@
     "@tiptap/starter-kit": "3.32.0",
     "@tiptap/suggestion": "3.32.0",
     "@tiptap/y-tiptap": "3.0.7",
-    "emoji-picker-react": "5.0.0",
+    "emojibase": "17.0.0",
+    "emojibase-data": "17.0.0",
     "lucide-react": "^1.47.0",
     "marked": "17.0.1",
     "parse5": "8.0.1",

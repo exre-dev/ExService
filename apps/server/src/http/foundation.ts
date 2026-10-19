@@ -5,9 +5,15 @@ import { OPENAPI_PATH } from '../contract/document.js'
 import { registerErrorHandlers } from '../errors.js'
 import { registerHttpFoundation } from './cors.js'
 
-export interface HttpFoundationPluginOptions { origins: ReadonlySet<string>; contractPath?: string }
+export interface HttpFoundationPluginOptions {
+  origins: ReadonlySet<string>
+  contractPath?: string
+}
 const plugin: FastifyPluginAsync<HttpFoundationPluginOptions> = async (app, options) => {
-  registerHttpFoundation(app, { origins: options.origins, contractPath: options.contractPath ?? OPENAPI_PATH })
+  registerHttpFoundation(app, {
+    origins: options.origins,
+    contractPath: options.contractPath ?? OPENAPI_PATH,
+  })
   registerErrorHandlers(app)
   await app.register(multipart)
 }

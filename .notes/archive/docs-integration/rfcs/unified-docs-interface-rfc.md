@@ -18,21 +18,21 @@
 
 ## 2. 当前实现与需要改变的边界
 
-| 当前位置 | 事实及设计约束 |
-| --- | --- |
-| `apps/outline/app/routes/index.tsx` | 匿名根路径进入 WebsitePublic，登录进入 `/home`；文档、搜索按身份分流。 |
-| `apps/outline/app/scenes/WebsitePublic.tsx` | 公共目录、搜索、只读正文、评论及身份探测集中在一个独立 PublicShell 中。 |
-| `apps/outline/app/components/Layout.tsx` | 使用 UI store 与可选侧栏，适合公共和工作区共用。 |
-| `apps/outline/app/components/Sidebar/Sidebar.tsx` | 用户可选，已有折叠、移动端抽屉、宽度调整；账号菜单可以关闭。 |
-| `apps/outline/app/components/Sidebar/components/SidebarBrand.tsx` | 无强制身份依赖，使用既有 Website Logo 链接。 |
-| `apps/outline/app/components/Sidebar/App.tsx` | 强制读取当前用户和团队，并加载集合、草稿和个人功能，不能在访客状态挂载。 |
-| `apps/outline/app/components/Sidebar/components/DocumentRow.tsx` | 已提供导航行、展开、可选编辑及拖拽插槽，可作为共用行基础。 |
-| `apps/outline/app/scenes/Document/components/Document.tsx` | 完整场景绑定 Document model、保存、历史及内部副请求，readOnly 本身不足以使其成为公共 DTO 阅读器。 |
-| `apps/outline/app/scenes/Document/components/Contents.tsx` | 已有目录交互，但部分参数来自 Document model，需要提取呈现输入。 |
-| `apps/outline/app/scenes/Document/components/PublicOnlyGate.tsx` | 在挂载完整文档场景前判断 member/publicOnly，可继续承接授权分流。 |
-| `apps/outline/server/commands/publicAccess.ts` | 公共列表先过滤再分页，父节点关系已提升到最近公开祖先。 |
-| `apps/outline/app/stores/AuthStore.ts` | 撤销成功后跳转固定 `/identity/signed-out`，清理缓存失败仍清除身份。 |
-| `apps/web/src/pages/IdentityPage/SignedOutPage.tsx` | 仅删除已核验无效且仍匹配的 token，有较新会话或无法核验时保留状态。 |
+| 当前位置                                                          | 事实及设计约束                                                                                    |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `apps/outline/app/routes/index.tsx`                               | 匿名根路径进入 WebsitePublic，登录进入 `/home`；文档、搜索按身份分流。                            |
+| `apps/outline/app/scenes/WebsitePublic.tsx`                       | 公共目录、搜索、只读正文、评论及身份探测集中在一个独立 PublicShell 中。                           |
+| `apps/outline/app/components/Layout.tsx`                          | 使用 UI store 与可选侧栏，适合公共和工作区共用。                                                  |
+| `apps/outline/app/components/Sidebar/Sidebar.tsx`                 | 用户可选，已有折叠、移动端抽屉、宽度调整；账号菜单可以关闭。                                      |
+| `apps/outline/app/components/Sidebar/components/SidebarBrand.tsx` | 无强制身份依赖，使用既有 Website Logo 链接。                                                      |
+| `apps/outline/app/components/Sidebar/App.tsx`                     | 强制读取当前用户和团队，并加载集合、草稿和个人功能，不能在访客状态挂载。                          |
+| `apps/outline/app/components/Sidebar/components/DocumentRow.tsx`  | 已提供导航行、展开、可选编辑及拖拽插槽，可作为共用行基础。                                        |
+| `apps/outline/app/scenes/Document/components/Document.tsx`        | 完整场景绑定 Document model、保存、历史及内部副请求，readOnly 本身不足以使其成为公共 DTO 阅读器。 |
+| `apps/outline/app/scenes/Document/components/Contents.tsx`        | 已有目录交互，但部分参数来自 Document model，需要提取呈现输入。                                   |
+| `apps/outline/app/scenes/Document/components/PublicOnlyGate.tsx`  | 在挂载完整文档场景前判断 member/publicOnly，可继续承接授权分流。                                  |
+| `apps/outline/server/commands/publicAccess.ts`                    | 公共列表先过滤再分页，父节点关系已提升到最近公开祖先。                                            |
+| `apps/outline/app/stores/AuthStore.ts`                            | 撤销成功后跳转固定 `/identity/signed-out`，清理缓存失败仍清除身份。                               |
+| `apps/web/src/pages/IdentityPage/SignedOutPage.tsx`               | 仅删除已核验无效且仍匹配的 token，有较新会话或无法核验时保留状态。                                |
 
 这次改动需要拆出数据读取与呈现边界，不能只去掉 Authenticated 守卫或给现有公共页面仿制侧栏。
 
@@ -73,17 +73,17 @@ WebsitePublic 改为公共路由的数据与内容组合入口，移除独立 Pu
 
 ```ts
 interface DocsNavigationItem {
-  id: string;
-  kind: "collection" | "document";
-  label: string;
-  to: string;
-  children: readonly DocsNavigationItem[];
+  id: string
+  kind: 'collection' | 'document'
+  label: string
+  to: string
+  children: readonly DocsNavigationItem[]
 }
 interface DocsNavigationView {
-  items: readonly DocsNavigationItem[];
-  activeCollectionId?: string;
-  activeDocumentId?: string;
-  expandedIds: ReadonlySet<string>;
+  items: readonly DocsNavigationItem[]
+  activeCollectionId?: string
+  activeDocumentId?: string
+  expandedIds: ReadonlySet<string>
 }
 ```
 
@@ -119,12 +119,12 @@ PublicOnlyGate 继续在完整文档场景前分流；publicOnly 分支使用新
 
 实际外部地址为 `/docs/api/<RPC>`，Outline Client 使用既有 base path：
 
-| RPC | 请求字段 | 返回投影 |
-| --- | --- | --- |
-| `public.collections.list` | offset、limit | data: PublicCollection[]；pagination: offset/limit/hasMore |
-| `public.documents.list` | collectionId、offset、limit | data: PublicDocument[]；含 parentDocumentId |
-| `public.documents.info` | id，UUID 或已有合法 slug | data: PublicDocumentInfo |
-| `public.documents.search` | query、可选 collectionId、offset、limit | data: PublicDocumentSearchResult[]；同类 pagination |
+| RPC                       | 请求字段                                | 返回投影                                                   |
+| ------------------------- | --------------------------------------- | ---------------------------------------------------------- |
+| `public.collections.list` | offset、limit                           | data: PublicCollection[]；pagination: offset/limit/hasMore |
+| `public.documents.list`   | collectionId、offset、limit             | data: PublicDocument[]；含 parentDocumentId                |
+| `public.documents.info`   | id，UUID 或已有合法 slug                | data: PublicDocumentInfo                                   |
+| `public.documents.search` | query、可选 collectionId、offset、limit | data: PublicDocumentSearchResult[]；同类 pagination        |
 
 继续遵守 `apps/outline/server/routes/api/public/schema.ts` 的严格字段及 limit 最大 100。RPC 沿用 Outline Client；Website 页面只经 `@workspace/api-client` 核验身份，不请求 Outline 文档 API。
 
@@ -146,13 +146,13 @@ offset 按接口返回的 offset 加本页条目数量前进，条目以 id 去�
 
 ### 5.1 路由矩阵
 
-| 对外路径 | 访客 | 登录 |
-| --- | --- | --- |
-| `/docs/` | 公开集合总览 | 原工作区 `/home`，除明确的阅读恢复流程外 |
-| `/docs/public/collection/:collectionId` | 公开集合及其文档 | 同一公开场景，不强行转换为成员集合路由 |
-| `/docs/doc/<slug>` | 公共 resolver + 共用阅读框架 | PublicOnlyGate 决定公共阅读或原授权文档场景 |
-| `/docs/search?q=...` | 公共搜索 | 原授权搜索，重新查询当前可读范围 |
-| `/docs/collection/<slug>` 及编辑/管理路径 | 原受保护入口规则 | 原授权场景 |
+| 对外路径                                  | 访客                         | 登录                                        |
+| ----------------------------------------- | ---------------------------- | ------------------------------------------- |
+| `/docs/`                                  | 公开集合总览                 | 原工作区 `/home`，除明确的阅读恢复流程外    |
+| `/docs/public/collection/:collectionId`   | 公开集合及其文档             | 同一公开场景，不强行转换为成员集合路由      |
+| `/docs/doc/<slug>`                        | 公共 resolver + 共用阅读框架 | PublicOnlyGate 决定公共阅读或原授权文档场景 |
+| `/docs/search?q=...`                      | 公共搜索                     | 原授权搜索，重新查询当前可读范围            |
+| `/docs/collection/<slug>` 及编辑/管理路径 | 原受保护入口规则             | 原授权场景                                  |
 
 共用身份边界从 WebsitePublic 移出探测与自动接入逻辑，继续使用 WebsiteSessionProbe 和 websiteOidcAttempt。新布局不能在每个 sidebar/body 中分别启动探测；每次导航最多一个自动接入流程，保留当前一秒探测与十分钟失败重试限制。
 
@@ -228,15 +228,15 @@ Website SignedOutPage 对有且有效的 docsReturnTo 执行现有 token 核验�
 
 源规格 U01–U10 是验收基线。测试应断言实际可见行为和请求边界，而非组件名称或内部字段。以下都是实施阶段待执行项，本 RFC 没有宣称测试通过。
 
-| 测试落点 | 关键用例 |
-| --- | --- |
-| PublicDocsStore 与公共导航组件测试 | 0/1/多集合、超过 100 文档、多页父子、缺失父节点/环保护、折叠停止、失败重试、分页无进展、深链接目标在后续集合页。 |
-| 共用布局/正文组件与路由测试 | 匿名无用户/团队仍挂载、工作区插槽受身份保护、公共正文无保存/成员/通知/历史请求、publicOnly 评论、移动侧栏及键盘。 |
-| 身份恢复测试 | 自动 OIDC 单次与失败抑制、登录返回文档/集合/搜索、query 保留、旧代次请求不恢复私有内容、docsResume 优先于 `/home`。 |
-| 两端 reading-return helper 测试 | 外域、双斜杠、控制字符、编码穿越、反斜杠、new/edit/history/auth/logout、额外路径段、错误 UUID、未知查询、重复参数、超长输入及合法 slug。 |
-| AuthStore/Logout 测试 | 公共预检成功/404/失联、撤销失败、固定 auth.delete 响应验证、缓存清理失败、新会话、直接 `/logout`，无私有 slug 返回提示。 |
-| SignedOutPage 测试 | 无提示维持原行为；signed-out 返回继续路由；active/unavailable 不自动跳；迟到核验不清理或覆盖较新会话。 |
-| 真实 Koa 现有公共访问测试 | 私有/草稿/撤销、父节点投影、附件、SSR/canonical/sitemap/no-store 和失效 Cookie 下公共阅读无回归。 |
+| 测试落点                           | 关键用例                                                                                                                                 |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| PublicDocsStore 与公共导航组件测试 | 0/1/多集合、超过 100 文档、多页父子、缺失父节点/环保护、折叠停止、失败重试、分页无进展、深链接目标在后续集合页。                         |
+| 共用布局/正文组件与路由测试        | 匿名无用户/团队仍挂载、工作区插槽受身份保护、公共正文无保存/成员/通知/历史请求、publicOnly 评论、移动侧栏及键盘。                        |
+| 身份恢复测试                       | 自动 OIDC 单次与失败抑制、登录返回文档/集合/搜索、query 保留、旧代次请求不恢复私有内容、docsResume 优先于 `/home`。                      |
+| 两端 reading-return helper 测试    | 外域、双斜杠、控制字符、编码穿越、反斜杠、new/edit/history/auth/logout、额外路径段、错误 UUID、未知查询、重复参数、超长输入及合法 slug。 |
+| AuthStore/Logout 测试              | 公共预检成功/404/失联、撤销失败、固定 auth.delete 响应验证、缓存清理失败、新会话、直接 `/logout`，无私有 slug 返回提示。                 |
+| SignedOutPage 测试                 | 无提示维持原行为；signed-out 返回继续路由；active/unavailable 不自动跳；迟到核验不清理或覆盖较新会话。                                   |
+| 真实 Koa 现有公共访问测试          | 私有/草稿/撤销、父节点投影、附件、SSR/canonical/sitemap/no-store 和失效 Cookie 下公共阅读无回归。                                        |
 
 Outline app/shared 测试在子模块目录通过 Corepack/Yarn 执行，对应 vitest app、shared-node/shared-jsdom project；TypeScript 使用其现有 tsc 配置，lint 使用其现有 oxlint 入口，构建使用原 vite/build-server 入口。实施时读取最新 package.json，避免把不存在的 typecheck script 写成执行结果；Windows 环境显式设置 TZ，不依赖 POSIX 环境赋值语法。
 
@@ -248,16 +248,16 @@ Outline app/shared 测试在子模块目录通过 Corepack/Yarn 执行，对应 
 
 ## 9. 风险、发布与回退
 
-| 风险 | 影响 | 缓解与检测 |
-| --- | --- | --- |
-| 强制身份依赖进入共用组件 | 匿名崩溃或触发受保护请求 | 无 User/Team 测试与浏览器网络记录；保留身份专属层。 |
-| 从完整 Document 场景复制副作用 | 匿名读取内部信息或历史 | 用纯阅读框架及公共 DTO adapter，mock/网络断言副请求缺席。 |
-| 新旧布局 provider 重复 | 双侧栏、分屏/目录/portal 错乱 | 唯一布局 owner，组件与真实编辑回归验收。 |
-| 页面身份改变后迟到响应 | 私有内容重新出现 | store/route 代次与卸载顺序，延迟响应测试。 |
-| 退出后的文档已变为私有 | 深链接 SSR 404 阻止恢复 | 总览继续流程内先作匿名复核，再最终导航。 |
-| 返回路径扩大重定向面 | 外域或动作路由重放 | 两端精确白名单、同组测试向量、返回提示不参与授权。 |
-| 新登录与迟到退出确认并发 | 清理或覆盖后来会话 | signed-out 核验代次与跳转前 token 匹配，active 不自动返回。 |
-| 多页树成本及并发变更 | 长等待或暂时缺少条目 | 仅展开集合逐页加载、可取消/重试、明确接受现有 offset 快照限制。 |
+| 风险                           | 影响                          | 缓解与检测                                                      |
+| ------------------------------ | ----------------------------- | --------------------------------------------------------------- |
+| 强制身份依赖进入共用组件       | 匿名崩溃或触发受保护请求      | 无 User/Team 测试与浏览器网络记录；保留身份专属层。             |
+| 从完整 Document 场景复制副作用 | 匿名读取内部信息或历史        | 用纯阅读框架及公共 DTO adapter，mock/网络断言副请求缺席。       |
+| 新旧布局 provider 重复         | 双侧栏、分屏/目录/portal 错乱 | 唯一布局 owner，组件与真实编辑回归验收。                        |
+| 页面身份改变后迟到响应         | 私有内容重新出现              | store/route 代次与卸载顺序，延迟响应测试。                      |
+| 退出后的文档已变为私有         | 深链接 SSR 404 阻止恢复       | 总览继续流程内先作匿名复核，再最终导航。                        |
+| 返回路径扩大重定向面           | 外域或动作路由重放            | 两端精确白名单、同组测试向量、返回提示不参与授权。              |
+| 新登录与迟到退出确认并发       | 清理或覆盖后来会话            | signed-out 核验代次与跳转前 token 匹配，active 不自动返回。     |
+| 多页树成本及并发变更           | 长等待或暂时缺少条目          | 仅展开集合逐页加载、可取消/重试、明确接受现有 offset 快照限制。 |
 
 本地验证通过后再更新父仓库的 Outline 子模块引用；只有明确授权才提交或发布。无 schema/migration/数据搬移，不重置 Website、Outline、账号、卷或附件。发现越权副请求、旧私有数据重现、退出新会话被清理或非集成回归时停止交付并修复。
 

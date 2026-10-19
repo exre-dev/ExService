@@ -4,11 +4,11 @@
 
 ## 设计候选与审查
 
-| 方向 | 设计文件 | 设计者 / 独立审查者 | 候选 | 设计审查 |
-| --- | --- | --- | --- | --- |
-| Hydra 错误契约 | `.notes/runtime-architecture/hydra/design.md` | `hydra_designer` / `hydra_reviewer` | v1 | APPROVED，无阻断 |
-| 整份身份配置 | `.notes/runtime-architecture/identity/design.md` | `identity_designer` / `identity_reviewer` | v1.1（兼容澄清） | APPROVED，无阻断；原 v1 已获用户确认 |
-| 容器 proof | `.notes/runtime-architecture/proof/design.md` | `proof_designer` / `proof_reviewer` | v1 | APPROVED，无阻断 |
+| 方向           | 设计文件                                         | 设计者 / 独立审查者                       | 候选             | 设计审查                             |
+| -------------- | ------------------------------------------------ | ----------------------------------------- | ---------------- | ------------------------------------ |
+| Hydra 错误契约 | `.notes/runtime-architecture/hydra/design.md`    | `hydra_designer` / `hydra_reviewer`       | v1               | APPROVED，无阻断                     |
+| 整份身份配置   | `.notes/runtime-architecture/identity/design.md` | `identity_designer` / `identity_reviewer` | v1.1（兼容澄清） | APPROVED，无阻断；原 v1 已获用户确认 |
+| 容器 proof     | `.notes/runtime-architecture/proof/design.md`    | `proof_designer` / `proof_reviewer`       | v1               | APPROVED，无阻断                     |
 
 用户确认时的 v1 SHA-256：
 
@@ -27,12 +27,12 @@
 
 在架构确认待答复期间，又按目标顺序执行完整修改前基线，四个命令均退出 0：
 
-| 命令 | 基线结果 | 临时目录中的完整日志 |
-| --- | --- | --- |
-| `pnpm api:check` | PASS；3 条 schema composition 警告，生成结果一致。 | `exwebsite-runtime-architecture-api-baseline.log` |
-| `pnpm typecheck` | PASS；含 SDK 构建、workspace 和专项类型检查。 | `exwebsite-runtime-architecture-typecheck-baseline.log` |
-| `pnpm test` | PASS；Website 组 285.8 秒、runtime 组 128.1 秒，均成功退出。 | `exwebsite-runtime-architecture-test-baseline.log` |
-| `pnpm build` | PASS；Contract、SDK、Web、Server 全部完成。 | `exwebsite-runtime-architecture-build-baseline.log` |
+| 命令             | 基线结果                                                     | 临时目录中的完整日志                                    |
+| ---------------- | ------------------------------------------------------------ | ------------------------------------------------------- |
+| `pnpm api:check` | PASS；3 条 schema composition 警告，生成结果一致。           | `exwebsite-runtime-architecture-api-baseline.log`       |
+| `pnpm typecheck` | PASS；含 SDK 构建、workspace 和专项类型检查。                | `exwebsite-runtime-architecture-typecheck-baseline.log` |
+| `pnpm test`      | PASS；Website 组 285.8 秒、runtime 组 128.1 秒，均成功退出。 | `exwebsite-runtime-architecture-test-baseline.log`      |
+| `pnpm build`     | PASS；Contract、SDK、Web、Server 全部完成。                  | `exwebsite-runtime-architecture-build-baseline.log`     |
 
 该轮测试仅在进程内将已安装的 Python 3.11 放到 PATH 前部，避免 WindowsApps Python 别名；未改项目配置。测试/构建另有既有 Vite 原生配置加载警告、Web chunk 体积警告及测试 validator 警告，命令未因警告失败。源码在执行前没有本次实现改动；执行后仍须保持 tracked source diff 为空。
 
@@ -44,25 +44,25 @@
 
 共享工作树的代码、文档和 Git 索引写入串行，建议 Hydra → 身份配置 → proof；同一时刻只向一位作者开放写入：
 
-| 作者 | 实现与主要测试归属 |
-| --- | --- |
-| `hydra_developer` | `scripts/runtime/hydra-client.mjs`、`scripts/runtime/applications.mjs`、`scripts/runtime/hydra-client.test.mjs`、`tests/runtime/native-health.test.ts`；协调后修改 `scripts/runtime/settings.test.mjs`；如必要，局部调整 `scripts/runtime/output.mjs`。 |
+| 作者                 | 实现与主要测试归属                                                                                                                                                                                                                                                                           |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hydra_developer`    | `scripts/runtime/hydra-client.mjs`、`scripts/runtime/applications.mjs`、`scripts/runtime/hydra-client.test.mjs`、`tests/runtime/native-health.test.ts`；协调后修改 `scripts/runtime/settings.test.mjs`；如必要，局部调整 `scripts/runtime/output.mjs`。                                      |
 | `identity_developer` | `packages/common/src/node/identity-config/index.mjs`、`packages/common/src/node/identity-config/index.d.mts`、`apps/server/src/modules/identity/config.ts`、`scripts/runtime/settings.mjs` 及设计列出的 Common/Server/runtime 行为测试；接续修改共享的 `scripts/runtime/settings.test.mjs`。 |
-| `proof_developer` | 新建 `scripts/runtime/container-proof.mjs`，迁移 `scripts/runtime/services.mjs`、`scripts/runtime/retire-outline.mjs` 及两端测试；最后接续修改 `scripts/runtime/settings.test.mjs`。 |
+| `proof_developer`    | 新建 `scripts/runtime/container-proof.mjs`，迁移 `scripts/runtime/services.mjs`、`scripts/runtime/retire-outline.mjs` 及两端测试；最后接续修改 `scripts/runtime/settings.test.mjs`。                                                                                                         |
 
 Hydra Reviewer 的实施建议：真实 HTTP 夹具直接经过 `verifyRuntimeHydraClient()` 和默认校验器，覆盖完整生产者到适配器路径；token 5xx 的兼容分类不能声称已确定秘密错误。身份 Reviewer 的实施建议：保留 local origin 冲突的 `IDENTITY_MODE`、runtime 身份密钥原诊断码，并固定空与非空客户端 receipt v2 字节。
 
 ## 完成门槛
 
-| 要求 | 当前状态与完成证据 |
-| --- | --- |
-| 三份设计独立审查及用户确认 | PASS；三份候选 v1 均 APPROVED、无阻断，哈希已核对；2026-10-16 用户回复“同意”。 |
-| 三个独立开发者实施 | 三项实现 v1 均完成，已停止写入。 |
-| 三项独立代码审查、原作者修复与复审 | 三方向 v1 均获各自原 Reviewer APPROVED，无遗留问题。 |
-| 各方向行为验收 | PASS；方向定向自动测试、原 Reviewer 独立复跑和最终完整测试均通过。 |
-| `pnpm api:check` → `pnpm typecheck` → `pnpm test` → `pnpm build` | 实现后四项全部 PASS、exit 0，严格顺序执行，日志和细节见 `.notes/runtime-architecture/verification.md`。 |
-| 稳定 `.ai/` 知识 | PASS；已使用 `codebase-documenter` 更新两份现有边界文档，用户已授权，整合 Reviewer 确认事实与源码/测试一致，无结构变化。 |
-| 最终报告与 Goal 完成审计 | 审计 PASS，无缺失必需项；证据、剩余兼容限制与验收边界见 `.notes/runtime-architecture/verification.md`。 |
+| 要求                                                             | 当前状态与完成证据                                                                                                       |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 三份设计独立审查及用户确认                                       | PASS；三份候选 v1 均 APPROVED、无阻断，哈希已核对；2026-10-16 用户回复“同意”。                                           |
+| 三个独立开发者实施                                               | 三项实现 v1 均完成，已停止写入。                                                                                         |
+| 三项独立代码审查、原作者修复与复审                               | 三方向 v1 均获各自原 Reviewer APPROVED，无遗留问题。                                                                     |
+| 各方向行为验收                                                   | PASS；方向定向自动测试、原 Reviewer 独立复跑和最终完整测试均通过。                                                       |
+| `pnpm api:check` → `pnpm typecheck` → `pnpm test` → `pnpm build` | 实现后四项全部 PASS、exit 0，严格顺序执行，日志和细节见 `.notes/runtime-architecture/verification.md`。                  |
+| 稳定 `.ai/` 知识                                                 | PASS；已使用 `codebase-documenter` 更新两份现有边界文档，用户已授权，整合 Reviewer 确认事实与源码/测试一致，无结构变化。 |
+| 最终报告与 Goal 完成审计                                         | 审计 PASS，无缺失必需项；证据、剩余兼容限制与验收边界见 `.notes/runtime-architecture/verification.md`。                  |
 
 本任务不执行真实退役 apply，不修改现有配置、数据库、客户端登记、容器、卷、存储、头像或归属记录；自动数据库测试只使用隔离 Testcontainers。不提交、不推送、不创建 PR、不部署。浏览器、真实资源维护和部署验收均未执行。
 

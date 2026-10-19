@@ -5,7 +5,7 @@
     description: 'Keyset pagination over the personal sequence, newest first. `view=unread` applies the unread predicate (uncleared, unread, not expired); `view=history` returns every uncleared receipt including read and expired ones. Neither view includes cleared, withdrawn or unauthorized content, and no view writes state. Filters never change the global unread count, which always comes from `GET /notifications/summary`. The cursor is signed and bound to the user, view, filters and an upper sequence bound, so a later page may return fewer rows when authorization or lifecycle changes; the caller deduplicates by `receiptId`.'
     security:
       - bearerAuth: []
-    tags: [ notifications ]
+    tags: [notifications]
     parameters:
       - name: view
         in: query
@@ -66,7 +66,7 @@
     description: 'Counts the unread predicate over the whole personal history, never the current filter or a loaded page only. Pending projection, cleared, expired, withdrawn and unauthorized receipts are excluded. `stateVersion` is a hint that personal state changed; it is not a cache key for the count because expiry and withdrawal do not always bump it.'
     security:
       - bearerAuth: []
-    tags: [ notifications ]
+    tags: [notifications]
     responses:
       '200':
         description: 'Global unread count and a fresh read-through token.'
@@ -90,12 +90,12 @@
     description: 'Read-only. Returns the canonical safe HTML body only when the content schema and policy are still renderable; otherwise `content` is null and the plain-text fallback carries the safe text. A receipt that is no longer visible returns a neutral 404 without leaking the title. Reading does not mark the notification read.'
     security:
       - bearerAuth: []
-    tags: [ notifications ]
+    tags: [notifications]
     parameters:
       - name: notificationId
         in: path
         required: true
-        description: 'The caller''s own receipt id.'
+        description: "The caller's own receipt id."
         schema:
           $ref: '../openapi.yaml#/components/schemas/Uuid'
     responses:
@@ -123,12 +123,12 @@
     description: 'Only the read flag is writable; there is no archive, no arbitrary resource and no body update. `expectedRevision` is the receipt state revision returned by the list or detail call. A stale revision returns 409 without changing state, a no-op does not increment the revision, and a failed write leaves the notification unread.'
     security:
       - bearerAuth: []
-    tags: [ notifications ]
+    tags: [notifications]
     parameters:
       - name: notificationId
         in: path
         required: true
-        description: 'The caller''s own receipt id.'
+        description: "The caller's own receipt id."
         schema:
           $ref: '../openapi.yaml#/components/schemas/Uuid'
     requestBody:
@@ -163,10 +163,10 @@
   post:
     operationId: markNotificationsReadThrough
     summary: Mark every currently unread notification read, up to a signed bound
-    description: 'Global in scope and independent of any list filter. Only receipts that satisfy the unread predicate at execution time and sit at or below `readThroughToken`''s bound are changed; newly arrived or late-projected receipts with a larger sequence stay unread. Cleared, expired and already-read receipts are not rewritten. `requestId` is the idempotency key: replaying it returns the original terminal result without writing state again, and reusing it with a different body returns 409.'
+    description: "Global in scope and independent of any list filter. Only receipts that satisfy the unread predicate at execution time and sit at or below `readThroughToken`'s bound are changed; newly arrived or late-projected receipts with a larger sequence stay unread. Cleared, expired and already-read receipts are not rewritten. `requestId` is the idempotency key: replaying it returns the original terminal result without writing state again, and reusing it with a different body returns 409."
     security:
       - bearerAuth: []
-    tags: [ notifications ]
+    tags: [notifications]
     requestBody:
       required: true
       content:
@@ -199,10 +199,10 @@
   post:
     operationId: previewNotificationClear
     summary: Preview a non-restorable clear of the whole personal history
-    description: 'Snapshots every uncleared receipt the caller could see at preview time, regardless of the current filter or of which pages were loaded, and records the exact receipt set with each receipt''s clear revision. Clearing cannot be restored, and later arrivals are preserved. The body is closed and empty. The returned token is bound to the caller and expires in 10 minutes; a preview that was never submitted stops being executable when it expires and never stores a body.'
+    description: "Snapshots every uncleared receipt the caller could see at preview time, regardless of the current filter or of which pages were loaded, and records the exact receipt set with each receipt's clear revision. Clearing cannot be restored, and later arrivals are preserved. The body is closed and empty. The returned token is bound to the caller and expires in 10 minutes; a preview that was never submitted stops being executable when it expires and never stores a body."
     security:
       - bearerAuth: []
-    tags: [ notifications ]
+    tags: [notifications]
     requestBody:
       required: true
       content:
@@ -234,7 +234,7 @@
     description: 'Applies the snapshot recorded by `previewNotificationClear`. Only receipts that still belong to the caller, are still visible, are still uncleared and still carry the previewed clear revision are cleared; a receipt whose clear revision changed or that was cleared from another device is skipped rather than overwritten. Clearing cannot be restored, and later arrivals are preserved. Clearing sets the personal clear state only: it never writes `readAt`, never deletes the source content, event or business record, and never emits a business event or webhook. The result is idempotent per `requestId`.'
     security:
       - bearerAuth: []
-    tags: [ notifications ]
+    tags: [notifications]
     requestBody:
       required: true
       content:
@@ -270,10 +270,10 @@
     description: 'Returns the effective preferences, including defaults for a user with no stored row. Necessary notices are fixed by the catalog and cannot be switched off, so they are reported as explanation only and are never writable. Preferences are independent of `GET /auth/me`.'
     security:
       - bearerAuth: []
-    tags: [ notifications ]
+    tags: [notifications]
     responses:
       '200':
-        description: 'The caller''s effective notification preferences.'
+        description: "The caller's effective notification preferences."
         headers:
           X-Request-Id:
             $ref: '../openapi.yaml#/components/headers/RequestId'
@@ -293,7 +293,7 @@
     description: 'A complete replacement of the optional categories, not a patch. `expectedRevision` must match the stored revision; a stale revision returns 409 and the caller re-reads before retrying. Turning a category off stops future optional projection of that category and never deletes already-delivered history; turning it back on does not re-deliver suppressed events.'
     security:
       - bearerAuth: []
-    tags: [ notifications ]
+    tags: [notifications]
     requestBody:
       required: true
       content:

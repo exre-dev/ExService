@@ -22,15 +22,29 @@ const communityConfig = JSON.parse(
 const SERVER_ORIGIN = `http://127.0.0.1:${process.env.INTEGRATION_SERVER_PORT ?? '8080'}`
 const INTEGRATION_WEB_PORT = Number(process.env.INTEGRATION_WEB_PORT ?? '8081')
 const publicOrigin = process.env.SERVER_PUBLIC_WEB_BASE_URL
-  ? new URL(process.env.SERVER_PUBLIC_WEB_BASE_URL) : undefined
+  ? new URL(process.env.SERVER_PUBLIC_WEB_BASE_URL)
+  : undefined
 
 export default defineConfig({
-  plugins: [proxyBoundaryPlugin(publicOrigin?.origin), teamConfigPlugin(resolve(repositoryRoot, 'apps/web')), contentPlugin(contentDefinitions),
-    ...fumadocsMdx({ macro: false, index: false, updateViteConfig: false }), react(), ...(process.env.WEBSITE_DEV_ENTRY_PORT
-    ? [devEntryPlugin(Number(process.env.WEBSITE_DEV_ENTRY_PORT))] : [])],
+  // Root runtime adapters provide the public environment explicitly.
+  envDir: false,
+  plugins: [
+    proxyBoundaryPlugin(publicOrigin?.origin),
+    teamConfigPlugin(resolve(repositoryRoot, 'apps/web')),
+    contentPlugin(contentDefinitions),
+    ...fumadocsMdx({ macro: false, index: false, updateViteConfig: false }),
+    react(),
+    ...(process.env.WEBSITE_DEV_ENTRY_PORT
+      ? [devEntryPlugin(Number(process.env.WEBSITE_DEV_ENTRY_PORT))]
+      : []),
+  ],
   define: {
-    'import.meta.env.VITE_COMMUNITY_QQ_URL': JSON.stringify(communityConfig.community?.['rifling911-qqUrl'] ?? ''),
-    'import.meta.env.VITE_COMMUNITY_KOOK_URL': JSON.stringify(communityConfig.community?.['rifling911-kookUrl'] ?? ''),
+    'import.meta.env.VITE_COMMUNITY_QQ_URL': JSON.stringify(
+      communityConfig.community?.['rifling911-qqUrl'] ?? '',
+    ),
+    'import.meta.env.VITE_COMMUNITY_KOOK_URL': JSON.stringify(
+      communityConfig.community?.['rifling911-kookUrl'] ?? '',
+    ),
   },
   resolve: {
     dedupe: ['react', 'react-dom', '@exre/exui'],
@@ -47,15 +61,22 @@ export default defineConfig({
     port: INTEGRATION_WEB_PORT,
     strictPort: true,
     hmr: publicOrigin
-      ? { protocol: publicOrigin.protocol === 'https:' ? 'wss' : 'ws', host: publicOrigin.hostname, clientPort: Number(publicOrigin.port || (publicOrigin.protocol === 'https:' ? 443 : 80)) }
+      ? {
+          protocol: publicOrigin.protocol === 'https:' ? 'wss' : 'ws',
+          host: publicOrigin.hostname,
+          clientPort: Number(publicOrigin.port || (publicOrigin.protocol === 'https:' ? 443 : 80)),
+        }
       : undefined,
     // Vite 注入的开发脚本早于 HTML meta，响应头必须先保护邀请 URL。
     headers: { 'Referrer-Policy': 'no-referrer' },
     proxy: {
       // 原样转发 `/api/*`：Server 自己注册 `/api` 前缀，因此这里不做 rewrite。
-      '/api': trustedProxy({
-        target: SERVER_ORIGIN,
-      }, publicOrigin?.origin ?? 'http://127.0.0.1:8081'),
+      '/api': trustedProxy(
+        {
+          target: SERVER_ORIGIN,
+        },
+        publicOrigin?.origin ?? 'http://127.0.0.1:8081',
+      ),
     },
   },
 })

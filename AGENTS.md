@@ -10,6 +10,7 @@
 - `/docs` 和 `/docs/` 是主站公开建设中页面；保留旧深路径的 404，不恢复已退役文档服务。身份客户端与 Hydra 边界见 `.ai/architectures/identity/integration-boundaries.md`。
 
 <!-- codebase-worker:start -->
+
 ## Project AI documentation rules
 
 - Before design, development, debugging, or a major decision, read the relevant content in `.ai/`.
@@ -27,22 +28,24 @@
 - Contribution rules: `@CONTRIBUTING.md`. Read this file before creating a commit or Pull Request; it is the single source of truth for contribution, commit, and PR rules.
 
 ### How to Commit
+
 - If a code-commiter skill is available, commits must be made using this SKILL.
+
 <!-- codebase-worker:end -->
 
 ## 架构与目录边界
 
 本仓库采用 Contract-first 架构：`api/openapi.yaml` 是唯一 HTTP Contract，`apps/server/` 是唯一 Website Fastify Server，业务数据使用独立 PostgreSQL `exre`。完整架构见 `.ai/architectures/overview.md`。
 
-| 路径 | 责任与边界 |
-| --- | --- |
-| `api/` | HTTP 路径、operation、请求/响应/错误 schema；不放实现。 |
-| `packages/sdk/` | 从 Contract 生成类型，公开 Browser/Node 单例 `instance({...})`、配置 setter 与 `storage`；不定义第二份 endpoint。 |
-| `packages/components/` | 基于 ExUI 的共享 UI；不访问 API、不定义路由表、不导入 ExUI 全局样式。 |
-| `packages/common/` | 按模块子入口公开跨应用共享的纯逻辑；消费规则见 `.agents/rules/package-common.md`。 |
-| `apps/web/` | 前端路由、主题、构建配置与 SDK 适配；本站业务 HTTP 调用只经 `@workspace/sdk`，不复制 DTO。 |
-| `apps/server/` | 加载 Contract、映射 handler、执行受控数据库访问；不绕过 Contract 注册 HTTP 路由或静态 JSON mock，不反向生成 OpenAPI，不连接 `hydra` 等其他数据库。 |
-| `tests/contract/` | 从 Contract 读取 schema，验证真实 Fastify 路由、原始 handler 输出和双向 operation 覆盖。 |
+| 路径                   | 责任与边界                                                                                                                                         |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `api/`                 | HTTP 路径、operation、请求/响应/错误 schema；不放实现。                                                                                            |
+| `packages/sdk/`        | 从 Contract 生成类型，公开 Browser/Node 单例 `instance({...})`、配置 setter 与 `storage`；不定义第二份 endpoint。                                  |
+| `packages/components/` | 基于 ExUI 的共享 UI；不访问 API、不定义路由表、不导入 ExUI 全局样式。                                                                              |
+| `packages/common/`     | 按模块子入口公开跨应用共享的纯逻辑；消费规则见 `.agents/rules/package-common.md`。                                                                 |
+| `apps/web/`            | 前端路由、主题、构建配置与 SDK 适配；本站业务 HTTP 调用只经 `@workspace/sdk`，不复制 DTO。                                                         |
+| `apps/server/`         | 加载 Contract、映射 handler、执行受控数据库访问；不绕过 Contract 注册 HTTP 路由或静态 JSON mock，不反向生成 OpenAPI，不连接 `hydra` 等其他数据库。 |
+| `tests/contract/`      | 从 Contract 读取 schema，验证真实 Fastify 路由、原始 handler 输出和双向 operation 覆盖。                                                           |
 
 Browser 和 Node 的本站业务 HTTP 调用统一使用 `@workspace/sdk` 的 `instance({...})`；上传使用同包 `storage`，其本站阶段经过同一请求管线。方法、路径、请求和响应类型从唯一 OpenAPI Contract 推导。第三方业务请求可自行选择 `fetch` 或其他工具，本站 token 不用于第三方请求。
 
@@ -54,7 +57,7 @@ Browser 和 Node 的本站业务 HTTP 调用统一使用 `@workspace/sdk` 的 `i
 2. API 变更先改 Contract，再运行 `pnpm api:lint` 和 `pnpm api:generate`。`packages/sdk/src/generated/schema.d.ts` 禁止手改，Contract 变更须同时提交重新生成的结果。
 3. 在所属模块的 `apps/server/src/modules/{name}/api/operations.ts` 或 `apps/server/src/domains/{name}/api/operations.ts` 中显式登记 `operationId`（系统 operation 在 `apps/server/src/http/system/operations.ts`），由 `apps/server/src/http/service-handlers.ts` 汇总，实现 handler，并通过 SDK 的对象请求 API 接入消费方。Contract 与登记表必须双向一致；文件名不参与映射。Glue 的 `/api` 前缀须显式配置，`servers[].url` 不能替代它。
 4. 新增或修改 operation 时同步更新 `tests/contract/`：校验真实 HTTP 响应及注册 handler 的原始返回值，防止序列化掩盖回归。原因见 `.ai/knowledge/server/serialization-masks-handler-regressions.md` 与 `.ai/knowledge/server/operation-registration-gaps.md`。
-5. 完成 API 变更后运行 `pnpm typecheck`、`pnpm test`、`pnpm build`；自动检查、真实浏览器验收和部署验收分别报告。
+5. API 变更的验证时机与范围统一遵守 `TESTING.md`；自动检查、真实浏览器验收和部署验收分别报告。
 
 OpenAPI 3.1 schema 仅使用 JSON Schema Draft-07 兼容子集；引入 Draft 2020-12 专有语义前，须单独设计并确认 validator/serializer compiler。破坏性 Contract 变更须显式评审与版本化；不要自行发明版本策略或兼容层。
 

@@ -38,17 +38,28 @@ describe('query string type coercion', () => {
     expect(coerce({ view: 'history', limit: 'abc' })).toEqual({ view: 'history', limit: 'abc' })
     expect(coerce({ view: 'history', limit: '' })).toEqual({ view: 'history', limit: '' })
     expect(coerce({ view: 'history', limit: '   ' })).toEqual({ view: 'history', limit: '   ' })
-    expect(coerce({ view: 'history', limit: 'Infinity' })).toEqual({ view: 'history', limit: 'Infinity' })
+    expect(coerce({ view: 'history', limit: 'Infinity' })).toEqual({
+      view: 'history',
+      limit: 'Infinity',
+    })
   })
 
   it('accepts only JSON number syntax, not everything Number() would parse', () => {
     // `Number()` 比 JSON 宽：这些写法 JSON 数字语法都不接受，照单全收会放行 Contract 本该拒绝的值。
     for (const rejected of ['0x10', '+20', '.5', '20.', '007', '1_0', '20 30', '1e', 'NaN', '-']) {
-      expect(coerce({ view: 'history', limit: rejected })).toEqual({ view: 'history', limit: rejected })
+      expect(coerce({ view: 'history', limit: rejected })).toEqual({
+        view: 'history',
+        limit: rejected,
+      })
     }
     // JSON 允许的写法必须仍然通过，收紧不能把合法值一起拒掉。
-    for (const [text, parsed] of [['0', 0], ['1e3', 1000], ['1E+2', 100],
-      ['0.5', 0.5], ['-12.25', -12.25]] as const) {
+    for (const [text, parsed] of [
+      ['0', 0],
+      ['1e3', 1000],
+      ['1E+2', 100],
+      ['0.5', 0.5],
+      ['-12.25', -12.25],
+    ] as const) {
       expect(coerce({ view: 'history', limit: text })).toEqual({ view: 'history', limit: parsed })
     }
   })
@@ -64,7 +75,10 @@ describe('query string type coercion', () => {
   it('never touches undeclared params, $ref params or repeated params', () => {
     expect(coerce({ view: 'history', cursor: '42' })).toEqual({ view: 'history', cursor: '42' })
     expect(coerce({ view: 'history', unknown: '7' })).toEqual({ view: 'history', unknown: '7' })
-    expect(coerce({ view: 'history', limit: ['20', '30'] })).toEqual({ view: 'history', limit: ['20', '30'] })
+    expect(coerce({ view: 'history', limit: ['20', '30'] })).toEqual({
+      view: 'history',
+      limit: ['20', '30'],
+    })
   })
 
   it('does nothing when the route declares no querystring schema', () => {

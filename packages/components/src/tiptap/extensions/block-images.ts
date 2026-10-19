@@ -5,7 +5,10 @@ import type { JSONContent, MarkdownParseResult } from '@tiptap/core'
 export function liftMarkdownBlockImages(parsed: MarkdownParseResult): MarkdownParseResult {
   function lift(node: JSONContent): JSONContent[] {
     if (!node.content) return [node]
-    if ((node.type === 'paragraph' || node.type === 'heading') && node.content.some(child => child.type === 'image')) {
+    if (
+      (node.type === 'paragraph' || node.type === 'heading') &&
+      node.content.some((child) => child.type === 'image')
+    ) {
       const blocks: JSONContent[] = []
       let inline: JSONContent[] = []
       const flush = () => {
@@ -13,14 +16,17 @@ export function liftMarkdownBlockImages(parsed: MarkdownParseResult): MarkdownPa
         inline = []
       }
       for (const child of node.content) {
-        if (child.type === 'image') { flush(); blocks.push(child) }
-        else inline.push(child)
+        if (child.type === 'image') {
+          flush()
+          blocks.push(child)
+        } else inline.push(child)
       }
       flush()
       return blocks
     }
     const content = node.content.flatMap(lift)
-    if (['listItem','taskItem'].includes(node.type ?? '') && content[0]?.type !== 'paragraph') content.unshift({ type: 'paragraph' })
+    if (['listItem', 'taskItem'].includes(node.type ?? '') && content[0]?.type !== 'paragraph')
+      content.unshift({ type: 'paragraph' })
     return [{ ...node, content }]
   }
   if (Array.isArray(parsed)) return parsed.flatMap(lift)

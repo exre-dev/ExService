@@ -1,0 +1,6 @@
+.site {
+  --async-boundary-page-height: calc(100dvh - var(--site-header-height, 4rem));
+}
+.standalone {
+  --async-boundary-page-height: 100dvh;
+}

@@ -15,16 +15,16 @@
 
 ## 当前实现与问题
 
-| 来源 | 已核对行为 | 必要变化 |
-| --- | --- | --- |
-| `apps/server/src/modules/identity/config.ts` | clientId 联合类型只有两个 Outline ID 和测试 probe；callback、internal URL、密钥和目标由文档模式派生。 | 用显式身份客户端配置取代固定文档客户端，允许空集合。 |
-| `apps/server/src/modules/identity/oidc.ts` | 已支持通过客户端字典核对精确回调和 scope，并持久化 flow、sid 与本站 sessionId。 | 复用现有协议实现，改变配置来源，保持验证强度。 |
-| `apps/server/src/modules/identity/outbox.ts` | 非 probe 目标都必须向 Outline 投递，并使用 `outline:` 结果标识。 | 以目标配置决定是否通知应用，保留 Hydra 撤销与重试。 |
-| `scripts/docs-integration/hydra-client.mjs` | 登记和校验写死文档客户端、Docs callback、固定授权方式和 metadata；校验还探测真实 client secret。 | 迁到通用运行目录，消费显式客户端配置，继续只读检查与显式登记分离。 |
-| `scripts/runtime/deployment.mjs`、Server `deployment-binding.ts` | identity receipt 固定一个 Outline client secret 和 delivery key，并读取 Outline 库 marker。 | 保留身份绑定保护，改为按客户端固定路由与秘密指纹，去除文档库检查。 |
-| `apps/web/src/main.tsx` | 主站品牌样式从 Outline 子模块导入。 | 在删除子模块前迁回主站。 |
-| `apps/web/src/pages/IdentityPage/SignedOutPage.tsx` | OIDC 退出仍会进入此页，但页面包含 Docs 返回和恢复逻辑。 | 保留退出确认与竞态保护，改为身份通用文案及首页返回。 |
-| `scripts/runtime/`、`compose.yaml` | Website/Hydra 的运行工具也从文档集成目录导入；依赖清单包含 Redis。 | 迁移公共能力，删除 Redis 和 Outline 的运行配置。 |
+| 来源                                                             | 已核对行为                                                                                            | 必要变化                                                           |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `apps/server/src/modules/identity/config.ts`                     | clientId 联合类型只有两个 Outline ID 和测试 probe；callback、internal URL、密钥和目标由文档模式派生。 | 用显式身份客户端配置取代固定文档客户端，允许空集合。               |
+| `apps/server/src/modules/identity/oidc.ts`                       | 已支持通过客户端字典核对精确回调和 scope，并持久化 flow、sid 与本站 sessionId。                       | 复用现有协议实现，改变配置来源，保持验证强度。                     |
+| `apps/server/src/modules/identity/outbox.ts`                     | 非 probe 目标都必须向 Outline 投递，并使用 `outline:` 结果标识。                                      | 以目标配置决定是否通知应用，保留 Hydra 撤销与重试。                |
+| `scripts/docs-integration/hydra-client.mjs`                      | 登记和校验写死文档客户端、Docs callback、固定授权方式和 metadata；校验还探测真实 client secret。      | 迁到通用运行目录，消费显式客户端配置，继续只读检查与显式登记分离。 |
+| `scripts/runtime/deployment.mjs`、Server `deployment-binding.ts` | identity receipt 固定一个 Outline client secret 和 delivery key，并读取 Outline 库 marker。           | 保留身份绑定保护，改为按客户端固定路由与秘密指纹，去除文档库检查。 |
+| `apps/web/src/main.tsx`                                          | 主站品牌样式从 Outline 子模块导入。                                                                   | 在删除子模块前迁回主站。                                           |
+| `apps/web/src/pages/IdentityPage/SignedOutPage.tsx`              | OIDC 退出仍会进入此页，但页面包含 Docs 返回和恢复逻辑。                                               | 保留退出确认与竞态保护，改为身份通用文案及首页返回。               |
+| `scripts/runtime/`、`compose.yaml`                               | Website/Hydra 的运行工具也从文档集成目录导入；依赖清单包含 Redis。                                    | 迁移公共能力，删除 Redis 和 Outline 的运行配置。                   |
 
 ## 身份配置契约
 
@@ -44,16 +44,16 @@
 
 每项字段固定如下：
 
-| 字段 | 约束与用途 |
-| --- | --- |
-| `clientId` | 非空 ASCII 小写字母、数字和连字符，字母开头，最长 64 字符；唯一。两个已退役 Outline ID 不得重新登记。 |
-| `name` | 非空、无控制字符的显示名，只作界面内容，不参与授权判断。 |
-| `redirectUri` | 一个精确绝对回调 URL，拒绝 userinfo、fragment、通配符、控制字符和路径规范化歧义；local 为显式端口的 literal `127.0.0.1` HTTP，deployment 为 HTTPS。保留合法的精确 query，不做模糊匹配。 |
-| `postLogoutRedirectUri` | 同等 URL 验证，精确登记；不得从浏览器任意 return 参数派生。 |
-| `scopes` | 非重复数组，必须包含 `openid`，仅允许当前已实现的 `openid`、`profile`、`email`。 |
-| `clientSecret` | 非空且无控制字符的秘密，保留已有有效值，不自动生成、轮换或限定为十六进制；本阶段只保留 confidential authorization-code client，不扩展 public client、其他 grant 或 refresh token。 |
-| `integrationKey` | 可选 64 位十六进制秘密；仅配置后授予现有内部会话接口的该客户端身份。不同客户端不得复用。 |
-| `revocation` | 可选对象 `{ url, key }`；URL 是明确的受控会话撤销 endpoint，key 为 64 位十六进制。缺省表示只执行 Hydra 撤销，不请求应用通知。 |
+| 字段                    | 约束与用途                                                                                                                                                                              |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `clientId`              | 非空 ASCII 小写字母、数字和连字符，字母开头，最长 64 字符；唯一。两个已退役 Outline ID 不得重新登记。                                                                                   |
+| `name`                  | 非空、无控制字符的显示名，只作界面内容，不参与授权判断。                                                                                                                                |
+| `redirectUri`           | 一个精确绝对回调 URL，拒绝 userinfo、fragment、通配符、控制字符和路径规范化歧义；local 为显式端口的 literal `127.0.0.1` HTTP，deployment 为 HTTPS。保留合法的精确 query，不做模糊匹配。 |
+| `postLogoutRedirectUri` | 同等 URL 验证，精确登记；不得从浏览器任意 return 参数派生。                                                                                                                             |
+| `scopes`                | 非重复数组，必须包含 `openid`，仅允许当前已实现的 `openid`、`profile`、`email`。                                                                                                        |
+| `clientSecret`          | 非空且无控制字符的秘密，保留已有有效值，不自动生成、轮换或限定为十六进制；本阶段只保留 confidential authorization-code client，不扩展 public client、其他 grant 或 refresh token。      |
+| `integrationKey`        | 可选 64 位十六进制秘密；仅配置后授予现有内部会话接口的该客户端身份。不同客户端不得复用。                                                                                                |
+| `revocation`            | 可选对象 `{ url, key }`；URL 是明确的受控会话撤销 endpoint，key 为 64 位十六进制。缺省表示只执行 Hydra 撤销，不请求应用通知。                                                           |
 
 `revocation.url` 使用同样的 local/deployment 网络边界，保留实际 endpoint 路径，禁止 userinfo、fragment、query、规范化歧义与重定向跟随。该地址只来自可信根配置，不来自 HTTP 请求。
 
@@ -73,14 +73,14 @@
 
 保留 `AuthService` 的会话复核、锁顺序、停用事实与快照规则；保留所有 identity operation 及 HTTP 请求/响应形状。`IdentityClientId` 改为经过配置验证的字符串，不再是文档客户端字面量联合类型。
 
-| 场景 | 必须维持的结果 |
-| --- | --- |
-| 普通退出 | 当前本站会话及其绑定立即失效，只为受影响绑定保存撤销快照，不撤销其他设备会话。 |
-| 停用/恢复 | 停用撤销账号已有会话；恢复只允许新登录，不复活旧会话。 |
-| 过期清理 | 继续为有效绑定建立撤销任务，未完成事件不能因清理或重试保留期消失。 |
-| 晚到投递 | 使用原 sid/sessionId 和独立 eventId，不能以 userId 批量影响恢复后的新会话。 |
-| 未配置目标 | 保持 pending 并输出固定错误码；不从当前应用或 issuer 借用地址、秘密。 |
-| 无应用通知配置 | 只完成已明确配置的 Hydra 撤销步骤。不得据此声称外部应用获得实时强制退出能力。 |
+| 场景           | 必须维持的结果                                                                 |
+| -------------- | ------------------------------------------------------------------------------ |
+| 普通退出       | 当前本站会话及其绑定立即失效，只为受影响绑定保存撤销快照，不撤销其他设备会话。 |
+| 停用/恢复      | 停用撤销账号已有会话；恢复只允许新登录，不复活旧会话。                         |
+| 过期清理       | 继续为有效绑定建立撤销任务，未完成事件不能因清理或重试保留期消失。             |
+| 晚到投递       | 使用原 sid/sessionId 和独立 eventId，不能以 userId 批量影响恢复后的新会话。    |
+| 未配置目标     | 保持 pending 并输出固定错误码；不从当前应用或 issuer 借用地址、秘密。          |
+| 无应用通知配置 | 只完成已明确配置的 Hydra 撤销步骤。不得据此声称外部应用获得实时强制退出能力。  |
 
 将 worker 的 `deliverOutline` 改为通用应用撤销投递。固定消息仍为 `{ eventId, sessionId }`，使用 `X-Identity-Delivery-Key`，保留当前一秒超时、幂等和重试节奏；非成功响应、网络或解析失败不能标记投递完成。禁止跟随重定向，以免泄露投递密钥。
 
@@ -119,17 +119,17 @@
 
 ## 工程和 UI 变化
 
-| 位置 | 变化 |
-| --- | --- |
-| `apps/web/src/styles/website-theme.css` | 从固定子模块 revision 迁回主站品牌覆盖，保持值、作用域与导入顺序。 |
-| `apps/web/src/App.tsx`、`packages/components/src/SiteHeader.tsx` | 增加 `/docs` 与 `/docs/` 建设中页；使用内部路由；旧 Docs 子路径进入现有 404。 |
-| `apps/web/src/pages/IdentityPage/` | 保留 OIDC 页面与安全退出确认，改为通用文案和首页返回；删除 Outline iframe status、Docs returnPath/resume 工具及专属测试。 |
-| `scripts/runtime/` | 接回进程监督、公共 readiness、工具发现与 Hydra client 管理；拆除所有 Outline 构建、测试、监听、启动和 bootstrap 分支。 |
-| `compose.yaml`、`infra/runtime/` | 保留 PostgreSQL/Hydra 镜像与服务，删除 Redis 和 Outline 项；保留 Hydra public 白名单及 admin 不公开的边界。 |
-| Vite、本地 gateway、Nginx | 删除 Docs static、附件、HTTP/WS 转发；保留 Website API、身份流、SPA fallback、内部路径拒绝、转发信任和上传限额。 |
-| 根包与 workspace | 移除子模块登记、Outline 排除项和 Yarn 专属要求；只删除确认没有其他消费者的依赖。 |
-| `.github/workflows/ci.yml` | 删除递归子模块检出和 Outline Yarn 安装，保留 pnpm、Node、SDK 生成依赖、Contract/typecheck/build/test 以及现有 `ci-gate`；不降低身份测试范围。 |
-| 当前工程文档 | 同步 README、AGENTS、`.ai/` 的实际架构和运行说明；历史文档及迁移作为历史保留。 |
+| 位置                                                             | 变化                                                                                                                                          |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web/src/styles/website-theme.css`                          | 从固定子模块 revision 迁回主站品牌覆盖，保持值、作用域与导入顺序。                                                                            |
+| `apps/web/src/App.tsx`、`packages/components/src/SiteHeader.tsx` | 增加 `/docs` 与 `/docs/` 建设中页；使用内部路由；旧 Docs 子路径进入现有 404。                                                                 |
+| `apps/web/src/pages/IdentityPage/`                               | 保留 OIDC 页面与安全退出确认，改为通用文案和首页返回；删除 Outline iframe status、Docs returnPath/resume 工具及专属测试。                     |
+| `scripts/runtime/`                                               | 接回进程监督、公共 readiness、工具发现与 Hydra client 管理；拆除所有 Outline 构建、测试、监听、启动和 bootstrap 分支。                        |
+| `compose.yaml`、`infra/runtime/`                                 | 保留 PostgreSQL/Hydra 镜像与服务，删除 Redis 和 Outline 项；保留 Hydra public 白名单及 admin 不公开的边界。                                   |
+| Vite、本地 gateway、Nginx                                        | 删除 Docs static、附件、HTTP/WS 转发；保留 Website API、身份流、SPA fallback、内部路径拒绝、转发信任和上传限额。                              |
+| 根包与 workspace                                                 | 移除子模块登记、Outline 排除项和 Yarn 专属要求；只删除确认没有其他消费者的依赖。                                                              |
+| `.github/workflows/ci.yml`                                       | 删除递归子模块检出和 Outline Yarn 安装，保留 pnpm、Node、SDK 生成依赖、Contract/typecheck/build/test 以及现有 `ci-gate`；不降低身份测试范围。 |
+| 当前工程文档                                                     | 同步 README、AGENTS、`.ai/` 的实际架构和运行说明；历史文档及迁移作为历史保留。                                                                |
 
 `pnpm service:*` 继续管理 PostgreSQL/Hydra；`pnpm dev/build/test/start/stop/logs` 保留现有职责并移除文档项。`pnpm infra init/migrate` 只处理 Hydra 的显式准备，`pnpm infra clients` 负责明确的客户端登记，删除 Outline 管理员 bootstrap。`db:*` 仍只维护独立 `exre`。
 
@@ -147,31 +147,31 @@
 
 ## 验证与验收证据
 
-| 层次 | 核验内容与现有入口 |
-| --- | --- |
-| 配置 | `tests/auth/identity-config.test.ts`、`scripts/runtime/settings.test.mjs`：空集合、重复 clientId、非法 URL、缺失秘密、权限投影、现役与 cleanup-only 隔离。 |
-| 协议 | `tests/auth/oidc.test.ts`、`tests/contract/identity.test.ts`：精确回调/scope、未知客户端拒绝、flow 重试、相同 session 与 sid 校验；七个 operation 的 HTTP 和原始 handler 输出继续覆盖。 |
-| 会话 | `tests/auth/identity.test.ts`、`disable.test.ts`、`outbox.test.ts`：跨客户端/跨设备隔离、停用恢复、快照、晚到投递、配置缺失保持 pending、Hydra-only 与应用通知模式、超时和幂等。 |
-| 维护 | 新增退役维护行为测试：其他 clientId 及混合 outbox 不受损、畸形快照整事务回滚、重复执行、错误数据库/资源归属拒绝、保留 PG/Hydra proof 和 receipt 转换拒绝未知目标。使用临时 PostgreSQL与可控资源适配器，不连接开发库。 |
-| 编排 | `tests/dev/entry.test.ts`、`proxy-boundary.test.ts`、runtime 原生测试：缺少 Outline/Redis 仍能构建启动；不隐式登记/迁移；内部接口拒绝和代理预算保留。 |
-| 自动检查 | 依次执行 `pnpm api:lint`、`pnpm api:generate`、`pnpm api:check`、`pnpm typecheck`、`pnpm test`、`pnpm build`。依赖产物的 build/typecheck 不并发；Testcontainers 无 Docker 时明确失败。 |
-| 本机运行 | 验证 PostgreSQL/Hydra、Website readiness、零客户端启动，以及独立隔离客户端的完整授权码流程；记录真实资源清理各项结果。 |
-| 浏览器 | Docs 导航、两个根路径、深链 404、刷新、匿名/登录、桌面/移动端、明暗主题；普通登录退出、SSO、身份确认页与品牌样式。 |
-| 外部验收 | 第三方 provider 和其他应用真实登录按实际接入状态报告。测试客户端和本机浏览器通过不表示 provider、其他应用或公网部署验收通过。 |
+| 层次     | 核验内容与现有入口                                                                                                                                                                                                    |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 配置     | `tests/auth/identity-config.test.ts`、`scripts/runtime/settings.test.mjs`：空集合、重复 clientId、非法 URL、缺失秘密、权限投影、现役与 cleanup-only 隔离。                                                            |
+| 协议     | `tests/auth/oidc.test.ts`、`tests/contract/identity.test.ts`：精确回调/scope、未知客户端拒绝、flow 重试、相同 session 与 sid 校验；七个 operation 的 HTTP 和原始 handler 输出继续覆盖。                               |
+| 会话     | `tests/auth/identity.test.ts`、`disable.test.ts`、`outbox.test.ts`：跨客户端/跨设备隔离、停用恢复、快照、晚到投递、配置缺失保持 pending、Hydra-only 与应用通知模式、超时和幂等。                                      |
+| 维护     | 新增退役维护行为测试：其他 clientId 及混合 outbox 不受损、畸形快照整事务回滚、重复执行、错误数据库/资源归属拒绝、保留 PG/Hydra proof 和 receipt 转换拒绝未知目标。使用临时 PostgreSQL与可控资源适配器，不连接开发库。 |
+| 编排     | `tests/dev/entry.test.ts`、`proxy-boundary.test.ts`、runtime 原生测试：缺少 Outline/Redis 仍能构建启动；不隐式登记/迁移；内部接口拒绝和代理预算保留。                                                                 |
+| 自动检查 | 依次执行 `pnpm api:lint`、`pnpm api:generate`、`pnpm api:check`、`pnpm typecheck`、`pnpm test`、`pnpm build`。依赖产物的 build/typecheck 不并发；Testcontainers 无 Docker 时明确失败。                                |
+| 本机运行 | 验证 PostgreSQL/Hydra、Website readiness、零客户端启动，以及独立隔离客户端的完整授权码流程；记录真实资源清理各项结果。                                                                                                |
+| 浏览器   | Docs 导航、两个根路径、深链 404、刷新、匿名/登录、桌面/移动端、明暗主题；普通登录退出、SSO、身份确认页与品牌样式。                                                                                                    |
+| 外部验收 | 第三方 provider 和其他应用真实登录按实际接入状态报告。测试客户端和本机浏览器通过不表示 provider、其他应用或公网部署验收通过。                                                                                         |
 
 退役目录中的工具若被迁移，更新测试位置和根清单；不要删除其断言来规避回归。CSS `outline`、UI variant、历史迁移和历史设计中的同名文本不属于退役残留。
 
 ## 风险与恢复
 
-| 风险 | 检测与处置 |
-| --- | --- |
-| 保留 Hydra 但配置仍强制 Outline | 零客户端启动、无子模块构建及 OIDC 独立测试必须通过。 |
-| 新客户端配置扩大权限 | 精确 allowlist、保留既有 grant 和 scope 边界、拒绝非法 URL；不增加公开注册。 |
-| 删除或错误完成其他客户端撤销事件 | 精确 JSON 匹配、事务回滚、混合事件及晚到投递测试；未知目标继续 pending。 |
-| 投递密钥泄露 | 只接受可信配置地址、禁止重定向、服务端环境隔离、整项秘密配置脱敏；日志只含固定错误码。 |
-| issuer 或目的地错配 | 维持 receipt 核验与显式转换；失败禁止 worker 投递。 |
-| 主站样式、会话安全或运行工具被误删 | 先迁回资源与公共能力，保留认证测试并做真实浏览器验收。 |
-| 误删共享数据或绕过资源归属 | 实际数据库名、exact ID、配置和挂载核验；保留 PG/Hydra，禁止整套卷删除与 proof 刷新。 |
+| 风险                               | 检测与处置                                                                             |
+| ---------------------------------- | -------------------------------------------------------------------------------------- |
+| 保留 Hydra 但配置仍强制 Outline    | 零客户端启动、无子模块构建及 OIDC 独立测试必须通过。                                   |
+| 新客户端配置扩大权限               | 精确 allowlist、保留既有 grant 和 scope 边界、拒绝非法 URL；不增加公开注册。           |
+| 删除或错误完成其他客户端撤销事件   | 精确 JSON 匹配、事务回滚、混合事件及晚到投递测试；未知目标继续 pending。               |
+| 投递密钥泄露                       | 只接受可信配置地址、禁止重定向、服务端环境隔离、整项秘密配置脱敏；日志只含固定错误码。 |
+| issuer 或目的地错配                | 维持 receipt 核验与显式转换；失败禁止 worker 投递。                                    |
+| 主站样式、会话安全或运行工具被误删 | 先迁回资源与公共能力，保留认证测试并做真实浏览器验收。                                 |
+| 误删共享数据或绕过资源归属         | 实际数据库名、exact ID、配置和挂载核验；保留 PG/Hydra，禁止整套卷删除与 proof 刷新。   |
 
 源码回滚可以恢复旧 gitlink 和代码；新的客户端注册配置需要显式恢复对应配置，不能回退后覆盖或撤销新客户端。Hydra 与 Website 数据不删除，是身份能力恢复的基础。
 
