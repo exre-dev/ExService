@@ -36,6 +36,112 @@ async function setup() {
 }
 
 describe('Docs reviewed tree invariants', () => {
+  it('rejects a malformed space cursor id with BAD_REQUEST over HTTP', async () => {
+    const { fixture, service, actor } = await setup()
+    await service.createSpace({ name: 'First', description: '' }, actor)
+    await service.createSpace({ name: 'Second', description: '' }, actor)
+    const app = createApp({ ...fixture })
+    apps.push(app)
+    await app.ready()
+    const first = await app.inject({ method: 'GET', url: '/api/docs/spaces?limit=1' })
+    expect(first.statusCode).toBe(200)
+    const cursor = invalidCursorId(first.json().nextCursor)
+    const page = await app.inject({
+      method: 'GET',
+      url: `/api/docs/spaces?limit=1&cursor=${cursor}`,
+    })
+    expect(page.statusCode, page.body).toBe(400)
+    expect(page.json().error.code).toBe('BAD_REQUEST')
+  })
+
+  it('rejects a malformed tree cursor id with BAD_REQUEST over HTTP', async () => {
+    const { fixture, service, actor } = await setup()
+    const space = await service.createSpace({ name: 'Tree', description: '' }, actor)
+    for (const [index, title] of ['First', 'Second'].entries())
+      await service.createDocument(
+        space.id,
+        {
+          expectedTreeVersion: index + 1,
+          parentId: null,
+          beforeDocumentId: null,
+          title,
+          content: CONTENT,
+        },
+        actor,
+      )
+    const app = createApp({ ...fixture })
+    apps.push(app)
+    await app.ready()
+    const first = await app.inject({
+      method: 'GET',
+      url: `/api/docs/spaces/${space.id}/tree?limit=1`,
+    })
+    expect(first.statusCode).toBe(200)
+    const cursor = invalidCursorId(first.json().nextCursor)
+    const page = await app.inject({
+      method: 'GET',
+      url: `/api/docs/spaces/${space.id}/tree?limit=1&cursor=${cursor}`,
+    })
+    expect(page.statusCode, page.body).toBe(400)
+    expect(page.json().error.code).toBe('BAD_REQUEST')
+  })
+
+  it('rejects a malformed trash cursor id with BAD_REQUEST over HTTP', async () => {
+    const { fixture, service, actor } = await setup()
+    const space = await service.createSpace({ name: 'Trash', description: '' }, actor)
+    const roots = []
+    for (const [index, title] of ['First', 'Second'].entries()) {
+      const created = await service.createDocument(
+        space.id,
+        {
+          expectedTreeVersion: index + 1,
+          parentId: null,
+          beforeDocumentId: null,
+          title,
+          content: CONTENT,
+        },
+        actor,
+      )
+      roots.push(created.document)
+    }
+    let treeVersion = 3
+    for (const root of roots) {
+      const current = await service.getDocument(root.id)
+      const trashed = await service.trashDocument(
+        root.id,
+        {
+          expectedSpaceId: space.id,
+          expectedVersion: current.document.version,
+          expectedTreeVersion: treeVersion,
+        },
+        actor,
+      )
+      treeVersion = trashed.treeVersion
+    }
+    const app = createApp({ ...fixture })
+    apps.push(app)
+    await app.ready()
+    const { token } = await fixture.authServices.login({
+      email: 'docs-review@example.com',
+      password: 'valid password',
+    })
+    const headers = { authorization: `Bearer ${token}` }
+    const first = await app.inject({
+      method: 'GET',
+      url: `/api/docs/spaces/${space.id}/trash?limit=1`,
+      headers,
+    })
+    expect(first.statusCode).toBe(200)
+    const cursor = invalidCursorId(first.json().nextCursor)
+    const page = await app.inject({
+      method: 'GET',
+      url: `/api/docs/spaces/${space.id}/trash?limit=1&cursor=${cursor}`,
+      headers,
+    })
+    expect(page.statusCode, page.body).toBe(400)
+    expect(page.json().error.code).toBe('BAD_REQUEST')
+  })
+
   it('queries metadata without selecting rich content for navigation and relocation', async () => {
     const { fixture, service, actor } = await setup()
     const space = await service.createSpace({ name: 'Projection', description: '' }, actor)
@@ -371,6 +477,49 @@ describe('Docs reviewed tree invariants', () => {
     expect(response.statusCode, response.body).toBe(500)
     expect(response.json().error.code).toBe('INTERNAL_ERROR')
     expect(response.body).not.toContain('secret-invalid-node')
+  })
+
+  it('pages every trash root sharing one deletion millisecond', async () => {
+    const { service, actor } = await setup()
+    const space = await service.createSpace({ name: 'Trash pages', description: '' }, actor)
+    let treeVersion = 1
+    const roots = []
+    for (const title of ['A', 'B', 'C']) {
+      const created = await service.createDocument(
+        space.id,
+        {
+          expectedTreeVersion: treeVersion,
+          parentId: null,
+          beforeDocumentId: null,
+          title,
+          content: CONTENT,
+        },
+        actor,
+      )
+      roots.push(created.document)
+      treeVersion = created.treeVersion
+    }
+    for (const root of roots) {
+      const current = await service.getDocument(root.id)
+      const deleted = await service.trashDocument(
+        root.id,
+        {
+          expectedSpaceId: space.id,
+          expectedVersion: current.document.version,
+          expectedTreeVersion: treeVersion,
+        },
+        actor,
+      )
+      treeVersion = deleted.treeVersion
+    }
+    const seen: string[] = []
+    let cursor: string | undefined
+    do {
+      const page = await service.listTrash(space.id, { limit: 1, cursor })
+      seen.push(...page.items.map((item) => item.title))
+      cursor = page.nextCursor ?? undefined
+    } while (cursor !== undefined)
+    expect(seen).toEqual(['A', 'B', 'C'])
   })
 
   it('moves within one parent with one version increment per changed row', async () => {

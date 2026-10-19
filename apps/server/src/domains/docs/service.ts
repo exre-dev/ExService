@@ -154,6 +154,14 @@ function cursorString(value: unknown): string {
   return value
 }
 
+const CURSOR_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+
+function cursorId(value: unknown): string {
+  const id = cursorString(value)
+  if (!CURSOR_UUID.test(id)) throw docsBadRequest()
+  return id
+}
+
 function clampLimit(value: number | null | undefined): number {
   if (value === null || value === undefined) return DOCS_LIMITS.defaultPageLimit
   if (!Number.isSafeInteger(value)) return DOCS_LIMITS.defaultPageLimit
@@ -299,7 +307,7 @@ export class DocsService {
         if (cursor.kind !== 'docs-space') throw docsBadRequest()
         const result = await tx.query<Record<string, unknown>>(
           `SELECT ${SPACE_COLUMNS} FROM docs_spaces WHERE (created_at, id) > ($1, $2) ORDER BY created_at, id LIMIT $3`,
-          [cursorInteger(cursor.createdAt), cursorString(cursor.id), limit + 1],
+          [cursorInteger(cursor.createdAt), cursorId(cursor.id), limit + 1],
         )
         rows = result.rows
       }
@@ -401,7 +409,7 @@ export class DocsService {
         if (cursor.parentId !== parentId) throw docsBadRequest()
         if (cursorInteger(cursor.treeVersion) !== space.treeVersion)
           throw new DocsError('DOCS_TREE_CHANGED')
-        after = { position: cursorInteger(cursor.position), id: cursorString(cursor.id) }
+        after = { position: cursorInteger(cursor.position), id: cursorId(cursor.id) }
       }
       const result =
         after === undefined
@@ -781,7 +789,7 @@ export class DocsService {
           throw docsBadRequest()
         if (cursorInteger(cursor.treeVersion) !== space.treeVersion)
           throw new DocsError('DOCS_TREE_CHANGED')
-        after = { deletedAt: cursorInteger(cursor.deletedAt), id: cursorString(cursor.id) }
+        after = { deletedAt: cursorInteger(cursor.deletedAt), id: cursorId(cursor.id) }
       }
       const result =
         after === undefined
@@ -800,7 +808,7 @@ export class DocsService {
                WHERE m.space_id = r.space_id AND m.deletion_batch_id = r.deletion_batch_id) AS document_count
            FROM docs_documents r
            WHERE r.space_id = $1 AND r.deleted_at IS NOT NULL AND r.deletion_root_id = r.id
-             AND (r.deleted_at, r.id) < ($2, $3)
+             AND (r.deleted_at < $2 OR (r.deleted_at = $2 AND r.id > $3))
            ORDER BY r.deleted_at DESC, r.id LIMIT $4`,
               [spaceId, after.deletedAt, after.id, limit + 1],
             )
