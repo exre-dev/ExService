@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { AppDatabase, SqlExecutor } from '@server/src/db/client.js'
 import { DocsError, docsBadRequest, docsBusy, docsCorrupted, docsNotImplemented } from './errors.js'
 import {
+  assertStoredDocsContent,
   validateDocsContent,
   type DocsContentNode,
   type DocsDocument,
@@ -10,11 +11,11 @@ import {
   clearTrashed,
   countSpaceDocuments,
   countSpaceTemplates,
-  countTrashInSubtree,
   decodeDocument,
   decodeSpace,
   deleteSpaceRow,
   findDocument,
+  findDocumentWithContent,
   findSpace,
   hasActiveChildren,
   insertDocument,
@@ -28,6 +29,8 @@ import {
   saveDocumentContent,
   setDocumentPlacement,
   updateSpaceRow,
+  DOCUMENT_METADATA_COLUMNS,
+  type DocsDocumentContentRow,
   type DocsDocumentRow,
   type DocsSpaceRow,
 } from './repository.js'
@@ -110,10 +113,6 @@ export interface DocsTrashGroupView {
 
 const SPACE_COLUMNS =
   'id, name, description, version, tree_version, created_at, updated_at, created_by_user_id, updated_by_user_id'
-const DOCUMENT_COLUMNS = `id, space_id, parent_id, position, title, content_schema_version, content, text_content,
-  version, created_at, updated_at, created_by_user_id, updated_by_user_id,
-  deleted_at, deleted_by_user_id, deletion_batch_id, deletion_root_id`
-
 /** 空间写锁顺序：去重后按 UUID 字节序逐个加锁，跨空间命令不会互锁。 */
 function orderedSpaceIds(...ids: readonly (string | null | undefined)[]): string[] {
   const unique = new Set(ids.filter((id): id is string => typeof id === 'string' && id.length > 0))
@@ -198,13 +197,23 @@ function treeNodeView(row: DocsDocumentRow, hasChildren: boolean): DocsTreeNodeV
   }
 }
 
-function documentView(row: DocsDocumentRow, hasChildren: boolean): DocsDocumentView {
+function documentView(row: DocsDocumentContentRow, hasChildren: boolean): DocsDocumentView {
   return {
     ...treeNodeView(row, hasChildren),
     contentSchemaVersion: 1,
     content: row.content as DocsDocument,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  }
+}
+
+function assertStoredContent(row: DocsDocumentContentRow): void {
+  if (row.contentSchemaVersion !== 1) throw docsCorrupted()
+  try {
+    assertStoredDocsContent(row.content)
+  } catch (error) {
+    if (error instanceof DocsError) throw docsCorrupted()
+    throw error
   }
 }
 
@@ -397,13 +406,13 @@ export class DocsService {
       const result =
         after === undefined
           ? await tx.query<Record<string, unknown>>(
-              `SELECT ${DOCUMENT_COLUMNS} FROM docs_documents
+              `SELECT ${DOCUMENT_METADATA_COLUMNS} FROM docs_documents
            WHERE space_id = $1 AND parent_id IS NOT DISTINCT FROM $2 AND deleted_at IS NULL
            ORDER BY position, id LIMIT $3`,
               [spaceId, parentId, limit + 1],
             )
           : await tx.query<Record<string, unknown>>(
-              `SELECT ${DOCUMENT_COLUMNS} FROM docs_documents
+              `SELECT ${DOCUMENT_METADATA_COLUMNS} FROM docs_documents
            WHERE space_id = $1 AND parent_id IS NOT DISTINCT FROM $2 AND deleted_at IS NULL
              AND (position, id) > ($3, $4)
            ORDER BY position, id LIMIT $5`,
@@ -438,7 +447,7 @@ export class DocsService {
     documentId: string,
   ): Promise<{ document: DocsDocumentView; treeVersion: number }> {
     return this.snapshot('content', async (tx) => {
-      const row = await findDocument(tx, documentId)
+      const row = await findDocumentWithContent(tx, documentId)
       if (row === undefined || row.deletedAt !== null) throw new DocsError('DOCS_NOT_FOUND')
       await this.assertReadable(tx, row)
       const space = await findSpace(tx, row.spaceId)
@@ -456,7 +465,7 @@ export class DocsService {
     deletion: { batchId: string; rootId: string; deletedAt: number }
   }> {
     return this.snapshot('content', async (tx) => {
-      const row = await findDocument(tx, documentId)
+      const row = await findDocumentWithContent(tx, documentId)
       if (
         row === undefined ||
         row.deletedAt === null ||
@@ -465,6 +474,7 @@ export class DocsService {
       ) {
         throw new DocsError('DOCS_NOT_FOUND')
       }
+      assertStoredContent(row)
       const space = await findSpace(tx, row.spaceId)
       if (space === undefined) throw docsCorrupted()
       return {
@@ -505,10 +515,7 @@ export class DocsService {
         input.parentId === null
           ? null
           : await this.requireActiveParent(tx, spaceId, input.parentId, null)
-      const depth =
-        parent === null
-          ? 1
-          : (await loadPhysicalAncestors(tx, parent.id, DOCS_LIMITS.treeDepth)).length + 2
+      const depth = parent === null ? 1 : (await loadPhysicalAncestors(tx, parent.id)).length + 2
       if (depth > DOCS_LIMITS.treeDepth) throw new DocsError('DOCS_LIMIT_EXCEEDED')
       const count = await countSpaceDocuments(tx, spaceId)
       if (count + 1 > DOCS_LIMITS.documentsPerSpace) throw new DocsError('DOCS_LIMIT_EXCEEDED')
@@ -535,7 +542,7 @@ export class DocsService {
       ordered.splice(index, 0, { ...siblings[0], id, position: index } as DocsDocumentRow)
       await this.rewritePositions(tx, ordered, at, actorId, affected)
       const treeVersion = await this.bumpTreeVersion(tx, spaceId)
-      const created = await findDocument(tx, id)
+      const created = await findDocumentWithContent(tx, id)
       if (created === undefined) throw docsCorrupted()
       return { document: documentView(created, false), treeVersion }
     })
@@ -576,7 +583,7 @@ export class DocsService {
         actorId,
       })
       const treeVersion = await this.bumpTreeVersion(tx, locked.spaceId)
-      const saved = await findDocument(tx, documentId)
+      const saved = await findDocumentWithContent(tx, documentId)
       if (saved === undefined) throw docsCorrupted()
       return {
         document: documentView(saved, (await hasActiveChildren(tx, [documentId])).has(documentId)),
@@ -639,8 +646,7 @@ export class DocsService {
               root.id,
               subtreeIds,
             )
-      const ancestors =
-        parent === null ? [] : await loadPhysicalAncestors(tx, parent.id, DOCS_LIMITS.treeDepth)
+      const ancestors = parent === null ? [] : await loadPhysicalAncestors(tx, parent.id)
       if (ancestors.some((ancestor) => subtreeIds.includes(ancestor.id)))
         throw new DocsError('DOCS_INVALID_MOVE')
       if (ancestors.length + 1 + subtreeHeight(subtree, root.id) > DOCS_LIMITS.treeDepth)
@@ -674,6 +680,7 @@ export class DocsService {
       // 跨空间后代的 space_id 全部变化，因此它们也是本次实际更新的行。
       for (const id of await this.relocateRoot(tx, {
         root,
+        subtreeIds,
         targetSpaceId: input.targetSpaceId,
         parentId: input.parentId,
         at,
@@ -860,7 +867,7 @@ export class DocsService {
       if (root.deletionRootId !== root.id) throw new DocsError('DOCS_RESTORE_ROOT_REQUIRED')
 
       const members = await tx.query<Record<string, unknown>>(
-        `SELECT ${DOCUMENT_COLUMNS} FROM docs_documents
+        `SELECT ${DOCUMENT_METADATA_COLUMNS} FROM docs_documents
          WHERE space_id = $1 AND deletion_batch_id = $2 AND deletion_root_id = $3`,
         [root.spaceId, root.deletionBatchId, root.id],
       )
@@ -908,7 +915,10 @@ export class DocsService {
       }
 
       const treeVersion = await this.bumpTreeVersion(tx, root.spaceId)
-      const retainedTrashedCount = await countTrashInSubtree(tx, root.spaceId, root.id)
+      const restoredIds = new Set(batchIds)
+      const retainedTrashedCount = subtree.filter(
+        (row) => row.deletedAt !== null && !restoredIds.has(row.id),
+      ).length
       return {
         documentId: root.id,
         version: root.version + 1,
@@ -969,6 +979,7 @@ export class DocsService {
     tx: SqlExecutor,
     args: {
       root: DocsDocumentRow
+      subtreeIds: readonly string[]
       targetSpaceId: string
       parentId: string | null
       at: number
@@ -983,15 +994,10 @@ export class DocsService {
         [args.root.id, args.targetSpaceId, args.parentId, args.at, args.actorId],
       )
       const result = await tx.query<{ id: string }>(
-        `WITH RECURSIVE subtree AS (
-           SELECT d.id FROM docs_documents d WHERE d.space_id = $1 AND d.id = $2
-           UNION ALL
-           SELECT child.id FROM docs_documents child JOIN subtree ON child.parent_id = subtree.id
-         )
-         UPDATE docs_documents SET space_id = $1, version = version + 1, updated_at = $3, updated_by_user_id = $4
-         WHERE id IN (SELECT id FROM subtree) AND id <> $2
+        `UPDATE docs_documents SET space_id = $1, version = version + 1, updated_at = $3, updated_by_user_id = $4
+         WHERE id = ANY($5::uuid[]) AND id <> $2
          RETURNING id`,
-        [args.targetSpaceId, args.root.id, args.at, args.actorId],
+        [args.targetSpaceId, args.root.id, args.at, args.actorId, args.subtreeIds],
       )
       return result.rows.map((row) => row.id)
     }
@@ -1037,20 +1043,14 @@ export class DocsService {
   }
 
   /** 按稳定 ID 读取时同样核验祖先活动链，不能绕过树导航暴露回收祖先下的活动行。 */
-  private async assertReadable(tx: SqlExecutor, row: DocsDocumentRow): Promise<void> {
+  private async assertReadable(tx: SqlExecutor, row: DocsDocumentContentRow): Promise<void> {
     if (row.parentId !== null) {
-      const ancestors = await loadPhysicalAncestors(tx, row.id, DOCS_LIMITS.treeDepth + 1)
-      if (ancestors.length > DOCS_LIMITS.treeDepth) throw docsCorrupted()
+      const ancestors = await loadPhysicalAncestors(tx, row.id)
       if (ancestors.some((ancestor) => ancestor.deletedAt !== null))
         throw new DocsError('DOCS_NOT_FOUND')
     }
     // 存量 profile 1 内容真实损坏时读取失败，不静默修补或回写。
-    try {
-      validateDocsContent(row.content)
-    } catch (error) {
-      if (error instanceof DocsError) throw docsCorrupted()
-      throw error
-    }
+    assertStoredContent(row)
   }
 }
 

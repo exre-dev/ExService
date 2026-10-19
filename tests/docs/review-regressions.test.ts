@@ -36,6 +36,165 @@ async function setup() {
 }
 
 describe('Docs reviewed tree invariants', () => {
+  it('queries metadata without selecting rich content for navigation and relocation', async () => {
+    const { fixture, service, actor } = await setup()
+    const space = await service.createSpace({ name: 'Projection', description: '' }, actor)
+    const root = await service.createDocument(
+      space.id,
+      {
+        expectedTreeVersion: 1,
+        parentId: null,
+        beforeDocumentId: null,
+        title: 'Root',
+        content: CONTENT,
+      },
+      actor,
+    )
+    const child = await service.createDocument(
+      space.id,
+      {
+        expectedTreeVersion: 2,
+        parentId: root.document.id,
+        beforeDocumentId: null,
+        title: 'Child',
+        content: CONTENT,
+      },
+      actor,
+    )
+    const selects: string[] = []
+    const record = (tx: SqlExecutor): SqlExecutor => ({
+      query: async (sql, values) => {
+        if (/^\s*(SELECT|WITH)/i.test(sql)) selects.push(sql)
+        return tx.query(sql, values)
+      },
+    })
+    const observedDb: AppDatabase = {
+      ...record(fixture.db),
+      transaction: (run, mode) => fixture.db.transaction((tx) => run(record(tx)), mode),
+      close: async () => {},
+    }
+    const observedService = new DocsService({ db: observedDb, now: fixture.now })
+    await observedService.getTree(space.id, {})
+    await observedService.getTree(space.id, { parentId: root.document.id })
+    await observedService.moveDocument(
+      child.document.id,
+      {
+        sourceSpaceId: space.id,
+        targetSpaceId: space.id,
+        expectedVersion: 1,
+        expectedSourceTreeVersion: 3,
+        expectedTargetTreeVersion: 3,
+        parentId: null,
+        beforeDocumentId: null,
+      },
+      actor,
+    )
+    expect(selects.length).toBeGreaterThan(0)
+    expect(selects.filter((sql) => /\b(content|text_content)\b/i.test(sql))).toEqual([])
+    await observedService.getDocument(child.document.id)
+    expect(selects.some((sql) => /\bcontent\b/.test(sql))).toBe(true)
+  })
+
+  it('rejects a physical cycle as corrupt and rolls back the attempted move', async () => {
+    const { fixture, service, actor } = await setup()
+    const source = await service.createSpace({ name: 'Cycle source', description: '' }, actor)
+    const target = await service.createSpace({ name: 'Cycle target', description: '' }, actor)
+    const a = await service.createDocument(
+      source.id,
+      {
+        expectedTreeVersion: 1,
+        parentId: null,
+        beforeDocumentId: null,
+        title: 'A',
+        content: CONTENT,
+      },
+      actor,
+    )
+    const b = await service.createDocument(
+      source.id,
+      {
+        expectedTreeVersion: 2,
+        parentId: a.document.id,
+        beforeDocumentId: null,
+        title: 'B',
+        content: CONTENT,
+      },
+      actor,
+    )
+    await fixture.db.query('UPDATE docs_documents SET parent_id = $2 WHERE id = $1', [
+      a.document.id,
+      b.document.id,
+    ])
+    const short = new DocsService({
+      db: fixture.db,
+      now: fixture.now,
+      timeouts: {
+        metadata: { lockTimeoutMs: 500, statementTimeoutMs: 1000 },
+        content: { lockTimeoutMs: 500, statementTimeoutMs: 1000 },
+        tree: { lockTimeoutMs: 500, statementTimeoutMs: 1000 },
+      },
+    })
+    await expect(
+      short.moveDocument(
+        a.document.id,
+        {
+          sourceSpaceId: source.id,
+          targetSpaceId: target.id,
+          expectedVersion: 1,
+          expectedSourceTreeVersion: 3,
+          expectedTargetTreeVersion: 1,
+          parentId: null,
+          beforeDocumentId: null,
+        },
+        actor,
+      ),
+    ).rejects.toMatchObject({ code: 'INTERNAL_ERROR', statusCode: 500 })
+    const rows = await fixture.db.query<{ space_id: string }>(
+      'SELECT space_id FROM docs_documents WHERE id = ANY($1::uuid[])',
+      [[a.document.id, b.document.id]],
+    )
+    expect(rows.rows.map((row) => row.space_id)).toEqual([source.id, source.id])
+  })
+
+  it('rejects an existing 65-level physical subtree as corrupt without trashing it', async () => {
+    const { fixture, service, actor } = await setup()
+    const space = await service.createSpace({ name: 'Overdeep', description: '' }, actor)
+    const ids = Array.from(
+      { length: 65 },
+      (_entry, index) => `30000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+    )
+    const parents = ids.map((_id, index) => (index === 0 ? null : ids[index - 1]))
+    await fixture.db.query(
+      `INSERT INTO docs_documents
+       (id, space_id, parent_id, position, title, content_schema_version, content, text_content,
+        version, created_at, updated_at, created_by_user_id, updated_by_user_id)
+       SELECT input.id, $3, input.parent_id, 0, 'Deep', 1, $4::jsonb, '',
+              1, $5, $5, $6, $6
+       FROM unnest($1::uuid[], $2::uuid[]) AS input(id, parent_id)`,
+      [ids, parents, space.id, JSON.stringify(CONTENT), fixture.now(), actor],
+    )
+    await expect(service.getDocument(ids[64]!)).rejects.toMatchObject({
+      code: 'INTERNAL_ERROR',
+      statusCode: 500,
+    })
+    await expect(
+      service.trashDocument(
+        ids[0]!,
+        {
+          expectedSpaceId: space.id,
+          expectedVersion: 1,
+          expectedTreeVersion: 1,
+        },
+        actor,
+      ),
+    ).rejects.toMatchObject({ code: 'INTERNAL_ERROR', statusCode: 500 })
+    const rows = await fixture.db.query<{ count: string }>(
+      'SELECT count(*)::text AS count FROM docs_documents WHERE deleted_at IS NOT NULL AND space_id = $1',
+      [space.id],
+    )
+    expect(Number(rows.rows[0]!.count)).toBe(0)
+  })
+
   it('preserves Unicode code-point limits and description round trips over HTTP', async () => {
     const { fixture } = await setup()
     const app = createApp({ ...fixture })
@@ -107,6 +266,54 @@ describe('Docs reviewed tree invariants', () => {
       },
     })
     expect(tooLongTitle.statusCode).toBe(400)
+  })
+
+  it('returns a fixed 500 for corrupted stored trash content', async () => {
+    const { fixture, service, actor } = await setup()
+    const space = await service.createSpace({ name: 'Corruption', description: '' }, actor)
+    const created = await service.createDocument(
+      space.id,
+      {
+        expectedTreeVersion: 1,
+        parentId: null,
+        beforeDocumentId: null,
+        title: 'Corrupt me',
+        content: CONTENT,
+      },
+      actor,
+    )
+    await service.trashDocument(
+      created.document.id,
+      {
+        expectedSpaceId: space.id,
+        expectedVersion: 1,
+        expectedTreeVersion: 2,
+      },
+      actor,
+    )
+    await fixture.db.query('UPDATE docs_documents SET content = $2::jsonb WHERE id = $1', [
+      created.document.id,
+      JSON.stringify({ type: 'doc', content: [{ type: 'secret-invalid-node' }] }),
+    ])
+    await expect(service.getTrashedDocument(created.document.id)).rejects.toMatchObject({
+      code: 'INTERNAL_ERROR',
+      statusCode: 500,
+    })
+    const app = createApp({ ...fixture })
+    apps.push(app)
+    await app.ready()
+    const { token } = await fixture.authServices.login({
+      email: 'docs-review@example.com',
+      password: 'valid password',
+    })
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/docs/trash/documents/${created.document.id}`,
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(response.statusCode, response.body).toBe(500)
+    expect(response.json().error.code).toBe('INTERNAL_ERROR')
+    expect(response.body).not.toContain('secret-invalid-node')
   })
 })
 

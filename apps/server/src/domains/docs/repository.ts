@@ -1,5 +1,8 @@
 import type { SqlExecutor } from '@server/src/db/client.js'
 import type { DocsContentNode } from './content/validation.js'
+import { docsCorrupted } from './errors.js'
+
+const MAX_TREE_DEPTH = 64
 
 export interface DocsSpaceRow {
   id: string
@@ -20,8 +23,6 @@ export interface DocsDocumentRow {
   position: number
   title: string
   contentSchemaVersion: number
-  content: unknown
-  textContent: string
   version: number
   createdAt: number
   updatedAt: number
@@ -31,6 +32,11 @@ export interface DocsDocumentRow {
   deletedByUserId: string | null
   deletionBatchId: string | null
   deletionRootId: string | null
+}
+
+export interface DocsDocumentContentRow extends DocsDocumentRow {
+  content: unknown
+  textContent: string
 }
 
 /** node-postgres 把 `bigint` 作为字符串返回；Docs 在解码边界显式转成安全整数。 */
@@ -66,8 +72,6 @@ export function decodeDocument(row: Record<string, unknown>): DocsDocumentRow {
     position: integer(row.position, 'position'),
     title: String(row.title),
     contentSchemaVersion: integer(row.content_schema_version, 'content_schema_version'),
-    content: row.content,
-    textContent: String(row.text_content),
     version: integer(row.version, 'version'),
     createdAt: integer(row.created_at, 'created_at'),
     updatedAt: integer(row.updated_at, 'updated_at'),
@@ -89,11 +93,16 @@ export function decodeDocument(row: Record<string, unknown>): DocsDocumentRow {
   }
 }
 
+export function decodeDocumentWithContent(row: Record<string, unknown>): DocsDocumentContentRow {
+  return { ...decodeDocument(row), content: row.content, textContent: String(row.text_content) }
+}
+
 const SPACE_COLUMNS =
   'id, name, description, version, tree_version, created_at, updated_at, created_by_user_id, updated_by_user_id'
-const DOCUMENT_COLUMNS = `id, space_id, parent_id, position, title, content_schema_version, content, text_content,
+export const DOCUMENT_METADATA_COLUMNS = `id, space_id, parent_id, position, title, content_schema_version,
   version, created_at, updated_at, created_by_user_id, updated_by_user_id,
   deleted_at, deleted_by_user_id, deletion_batch_id, deletion_root_id`
+const DOCUMENT_CONTENT_COLUMNS = `${DOCUMENT_METADATA_COLUMNS}, content, text_content`
 
 /** 空间行锁：命令显式给出的空间 ID 去重后按 UUID 字节序逐个加锁。 */
 export async function lockSpaces(tx: SqlExecutor, spaceIds: readonly string[]): Promise<void> {
@@ -134,10 +143,21 @@ export async function findDocument(
   documentId: string,
 ): Promise<DocsDocumentRow | undefined> {
   const result = await tx.query<Record<string, unknown>>(
-    `SELECT ${DOCUMENT_COLUMNS} FROM docs_documents WHERE id = $1`,
+    `SELECT ${DOCUMENT_METADATA_COLUMNS} FROM docs_documents WHERE id = $1`,
     [documentId],
   )
   return result.rows[0] === undefined ? undefined : decodeDocument(result.rows[0])
+}
+
+export async function findDocumentWithContent(
+  tx: SqlExecutor,
+  documentId: string,
+): Promise<DocsDocumentContentRow | undefined> {
+  const result = await tx.query<Record<string, unknown>>(
+    `SELECT ${DOCUMENT_CONTENT_COLUMNS} FROM docs_documents WHERE id = $1`,
+    [documentId],
+  )
+  return result.rows[0] === undefined ? undefined : decodeDocumentWithContent(result.rows[0])
 }
 
 export async function countSpaceDocuments(tx: SqlExecutor, spaceId: string): Promise<number> {
@@ -175,13 +195,13 @@ export async function listActiveSiblings(
   const result =
     parentId === null
       ? await tx.query<Record<string, unknown>>(
-          `SELECT ${DOCUMENT_COLUMNS} FROM docs_documents
+          `SELECT ${DOCUMENT_METADATA_COLUMNS} FROM docs_documents
        WHERE space_id = $1 AND parent_id IS NULL AND deleted_at IS NULL
        ORDER BY position, id`,
           [spaceId],
         )
       : await tx.query<Record<string, unknown>>(
-          `SELECT ${DOCUMENT_COLUMNS} FROM docs_documents
+          `SELECT ${DOCUMENT_METADATA_COLUMNS} FROM docs_documents
        WHERE space_id = $1 AND parent_id = $2 AND deleted_at IS NULL
        ORDER BY position, id`,
           [spaceId, parentId],
@@ -195,16 +215,26 @@ export async function loadPhysicalSubtree(
   spaceId: string,
   rootId: string,
 ): Promise<DocsDocumentRow[]> {
-  const result = await tx.query<Record<string, unknown>>(
+  const result = await tx.query<Record<string, unknown> & { depth: number; is_cycle: boolean }>(
     `WITH RECURSIVE subtree AS (
-       SELECT d.id FROM docs_documents d WHERE d.space_id = $1 AND d.id = $2
+       SELECT d.id, ARRAY[d.id] AS path, 1 AS depth, false AS is_cycle
+       FROM docs_documents d WHERE d.space_id = $1 AND d.id = $2
        UNION ALL
-       SELECT child.id FROM docs_documents child JOIN subtree ON child.parent_id = subtree.id
+       SELECT child.id, subtree.path || child.id, subtree.depth + 1,
+         child.id = ANY(subtree.path) AS is_cycle
+       FROM docs_documents child JOIN subtree ON child.parent_id = subtree.id
+       WHERE child.space_id = $1 AND subtree.depth < $3 AND NOT subtree.is_cycle
      )
-     SELECT ${DOCUMENT_COLUMNS.split('\n').join(' ')} FROM docs_documents
-     WHERE id IN (SELECT id FROM subtree)`,
-    [spaceId, rootId],
+     SELECT ${DOCUMENT_METADATA_COLUMNS.split('\n')
+       .join(' ')
+       .replace(
+         /\b(id|space_id|parent_id|position|title|content_schema_version|version|created_at|updated_at|created_by_user_id|updated_by_user_id|deleted_at|deleted_by_user_id|deletion_batch_id|deletion_root_id)\b/g,
+         'd.$1',
+       )}, subtree.depth, subtree.is_cycle
+     FROM docs_documents d JOIN subtree ON d.id = subtree.id`,
+    [spaceId, rootId, MAX_TREE_DEPTH + 1],
   )
+  if (result.rows.some((row) => row.is_cycle || row.depth > MAX_TREE_DEPTH)) throw docsCorrupted()
   return result.rows.map(decodeDocument)
 }
 
@@ -216,25 +246,29 @@ export async function loadPhysicalSubtree(
 export async function loadPhysicalAncestors(
   tx: SqlExecutor,
   documentId: string,
-  maxDepth: number,
 ): Promise<DocsDocumentRow[]> {
-  const result = await tx.query<Record<string, unknown> & { depth: string }>(
+  const result = await tx.query<Record<string, unknown> & { depth: number; is_cycle: boolean }>(
     `WITH RECURSIVE chain AS (
-       SELECT d.parent_id AS id, 1 AS depth FROM docs_documents d WHERE d.id = $1 AND d.parent_id IS NOT NULL
+       SELECT d.parent_id AS id, ARRAY[d.id, d.parent_id] AS path, 1 AS depth,
+         d.parent_id = d.id AS is_cycle
+       FROM docs_documents d WHERE d.id = $1 AND d.parent_id IS NOT NULL
        UNION ALL
-       SELECT parent.parent_id, chain.depth + 1 FROM docs_documents parent
-         JOIN chain ON parent.id = chain.id AND chain.depth < $2 AND parent.parent_id IS NOT NULL
+       SELECT parent.parent_id, chain.path || parent.parent_id, chain.depth + 1,
+         parent.parent_id = ANY(chain.path) AS is_cycle
+       FROM docs_documents parent JOIN chain ON parent.id = chain.id
+       WHERE chain.depth < $2 AND NOT chain.is_cycle AND parent.parent_id IS NOT NULL
      )
-     SELECT ${DOCUMENT_COLUMNS.split('\n')
+     SELECT ${DOCUMENT_METADATA_COLUMNS.split('\n')
        .join(' ')
        .replace(
-         /\b(id|space_id|parent_id|position|title|content_schema_version|content|text_content|version|created_at|updated_at|created_by_user_id|updated_by_user_id|deleted_at|deleted_by_user_id|deletion_batch_id|deletion_root_id)\b/g,
+         /\b(id|space_id|parent_id|position|title|content_schema_version|version|created_at|updated_at|created_by_user_id|updated_by_user_id|deleted_at|deleted_by_user_id|deletion_batch_id|deletion_root_id)\b/g,
          'd.$1',
-       )}, chain.depth
+       )}, chain.depth, chain.is_cycle
      FROM docs_documents d JOIN chain ON d.id = chain.id
      ORDER BY chain.depth`,
-    [documentId, maxDepth],
+    [documentId, MAX_TREE_DEPTH],
   )
+  if (result.rows.some((row) => row.is_cycle || row.depth >= MAX_TREE_DEPTH)) throw docsCorrupted()
   return result.rows.map(decodeDocument)
 }
 
@@ -364,24 +398,6 @@ export async function setDocumentPlacement(
     placement.spaceId,
     placement.parentId,
   ])
-}
-
-export async function countTrashInSubtree(
-  tx: SqlExecutor,
-  spaceId: string,
-  rootId: string,
-): Promise<number> {
-  const result = await tx.query<{ count: string }>(
-    `WITH RECURSIVE subtree AS (
-       SELECT d.id FROM docs_documents d WHERE d.space_id = $1 AND d.id = $2
-       UNION ALL
-       SELECT child.id FROM docs_documents child JOIN subtree ON child.parent_id = subtree.id
-     )
-     SELECT count(*)::text AS count FROM docs_documents
-     WHERE id IN (SELECT id FROM subtree) AND deleted_at IS NOT NULL`,
-    [spaceId, rootId],
-  )
-  return Number(result.rows[0]?.count ?? 0)
 }
 
 export async function updateSpaceRow(
