@@ -163,7 +163,8 @@ function clampLimit(value: number | null | undefined): number {
 
 function normalizeName(value: string, max: number): string {
   const trimmed = value.trim()
-  if (trimmed.length === 0 || trimmed.length > max) throw new DocsError('DOCS_INVALID_CONTENT')
+  const length = [...trimmed].length
+  if (length === 0 || length > max) throw new DocsError('DOCS_INVALID_CONTENT')
   return trimmed
 }
 
@@ -311,7 +312,7 @@ export class DocsService {
     actorId: string,
   ): Promise<DocsSpaceView> {
     const name = normalizeName(input.name, 100)
-    const description = clampText(input.description, 2000)
+    const description = normalizeDescription(input.description, 2000)
     const id = this.createId()
     const at = this.now()
     await this.command('metadata', async (tx) => {
@@ -334,7 +335,7 @@ export class DocsService {
     actorId: string,
   ): Promise<DocsSpaceView> {
     const name = normalizeName(input.name, 100)
-    const description = clampText(input.description, 2000)
+    const description = normalizeDescription(input.description, 2000)
     const expectedVersion = requireVersion(input.expectedVersion)
     return this.command('metadata', async (tx) => {
       await lockSpaces(tx, [spaceId])
@@ -1057,8 +1058,9 @@ function compareId(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0
 }
 
-function clampText(value: string, max: number): string {
-  return value.length > max ? value.slice(0, max) : value
+function normalizeDescription(value: string, max: number): string {
+  if ([...value].length > max) throw new DocsError('DOCS_INVALID_CONTENT')
+  return value
 }
 
 function freezeTimeouts(

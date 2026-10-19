@@ -116,7 +116,7 @@ export function assertKnownContentShape(value: unknown): void {
     }
     if (current.marks !== undefined) {
       if (!Array.isArray(current.marks)) fail('DOCS_INVALID_CONTENT')
-      for (const child of current.marks) walk(child, true, depth + 1)
+      for (const child of current.marks) walk(child, true, depth)
     }
   }
   walk(value, false, 0)
