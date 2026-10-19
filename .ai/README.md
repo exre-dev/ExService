@@ -27,7 +27,7 @@ _最后更新：2026-10-19_
 
 ## 支持中心
 
-支持中心的已接受边界与实现范围见 `.ai/decisions/support-center/01-authenticated-support-and-clickup-view.md`，内容与会话接线见 `.ai/architectures/web/content-rendering.md`。反馈提交、恢复与维护接线见 `.ai/architectures/support-center/feedback-lifecycle.md`；真实 ClickUp 验收与本站实现分别核对。技术设计与 RFC 保留在 `.notes/support-center/`。
+支持中心的已接受边界与实现范围见 `.ai/decisions/support-center/01-authenticated-support-and-clickup-view.md`，内容与会话接线见 `.ai/architectures/web/content-rendering.md`。反馈提交、恢复与维护接线见 `.ai/architectures/support-center/feedback-lifecycle.md`；真实 ClickUp 验收与本站实现分别核对。技术设计与 RFC 保留在 `.notes/archive/support-center/`。
 
 ## 知识归属
 

@@ -123,4 +123,4 @@ JSON 修改使用 Vite 原生 HMR，当前成员 id 仍存在时保持选择；�
 3. 声明 `virtual:content/<namespace>` 的浏览器类型，通过 `createContentStore(loaders)` 与 `useContent` 加载正文。复用 `createMdxComponents`，注入本业务链接、资源和特殊组件。
 4. 在 Web 中定义页面与导航，不把路由或交易数据放入通用组件。为该集合添加字段、引用、草稿和实际编译测试。
 
-新栏目不必复制 About 编译器、代码块或加载状态机。模块边界见 `.ai/architectures/web/content-rendering.md`；About 首页布局以 `.notes/about-us/specs/2026-10-12-about-us-refined-design.md` 为准。
+新栏目不必复制 About 编译器、代码块或加载状态机。模块边界见 `.ai/architectures/web/content-rendering.md`；About 首页布局以 `.notes/archive/about-us/specs/2026-10-12-about-us-refined-design.md` 为准。

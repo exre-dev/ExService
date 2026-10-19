@@ -1,6 +1,6 @@
 # 支持反馈提交与核对边界
 
-支持首页有「功能和需求」「投诉和建议」两个正式入口，复用一个按 area 配置的 Modal。development 提供 `bug`、`feature`、`asset`、`request`、`content`、`campaign`；community 提供 `suggestion`、`complaint`。正文使用 Tiptap 的纯 GFM 预设，大文件补充信息仍为普通多行文本。前后端通过 `@workspace/common/feedback-content` 共用按格式选择的正文校验、Bug 组合、大小限制与 MIME 规范化。提交编号追加和 ClickUp 正文回读结构核对位于 `apps/server/src/domains/support/markdown.ts`，不进入浏览器共享入口。字段矩阵与交互规则见 `.notes/support-center/specs/2026-10-15-support-feedback-redesign-design.md`、`.notes/support-center/specs/2026-10-15-complaints-and-suggestions-design.md`；Markdown 体验依据为 `.notes/support-center/specs/2026-10-16-feedback-markdown-design.md`。
+支持首页有「功能和需求」「投诉和建议」两个正式入口，复用一个按 area 配置的 Modal。development 提供 `bug`、`feature`、`asset`、`request`、`content`、`campaign`；community 提供 `suggestion`、`complaint`。正文使用 Tiptap 的纯 GFM 预设，大文件补充信息仍为普通多行文本。前后端通过 `@workspace/common/feedback-content` 共用按格式选择的正文校验、Bug 组合、大小限制与 MIME 规范化。提交编号追加和 ClickUp 正文回读结构核对位于 `apps/server/src/domains/support/markdown.ts`，不进入浏览器共享入口。字段矩阵与交互规则见 `.notes/archive/support-center/specs/2026-10-15-support-feedback-redesign-design.md`、`.notes/archive/support-center/specs/2026-10-15-complaints-and-suggestions-design.md`；Markdown 体验依据为 `.notes/archive/support-center/specs/2026-10-16-feedback-markdown-design.md`。
 
 ## Markdown 与历史正文
 
@@ -40,7 +40,7 @@ prepare 固化带版本的表单、昵称快照、生成的正文、附件清单
 
 创建请求一并传入操作 Tag，不另加补 Tag 写步骤。创建响应的 task ID 先保存，再只读核对远端类型、List、标题、状态、用户字段、填写字段、操作 Tag 和正文。任务与全部附件都保存成功结果才 completed。成功附件释放暂存字节，失败和未知结果保留原任务与字节。外部明确拒绝才允许用户重试；超时、断线、5xx 或无法解析的成功结果进入 verification_required，不依据“没查到”重新写入。
 
-ClickUp 的 Markdown 回读会将显式 hard break 改为文本内换行；正文核对保留每个换行并合并相邻 text 节点，其他内联与块结构仍须一致。按已确认的自动链接规则，远端 HTTP／HTTPS 链接仅在全部子节点为 text、无 title、文字与目标逐字符相同且 URL 无凭据、空白、控制字符或反斜杠时还原为原 URL 文字参与完整 AST 核对；不做 URL 同化。其他链接或 HTML、标题等格式变化保留已知任务 ID 并进入 verification_required。不能用 description 的纯文字相同绕过此核对，也不能为继续上传而重新创建任务。产品规则见 `.notes/support-center/rfcs/support-feedback-rfc.md` 第 8 节。
+ClickUp 的 Markdown 回读会将显式 hard break 改为文本内换行；正文核对保留每个换行并合并相邻 text 节点，其他内联与块结构仍须一致。按已确认的自动链接规则，远端 HTTP／HTTPS 链接仅在全部子节点为 text、无 title、文字与目标逐字符相同且 URL 无凭据、空白、控制字符或反斜杠时还原为原 URL 文字参与完整 AST 核对；不做 URL 同化。其他链接或 HTML、标题等格式变化保留已知任务 ID 并进入 verification_required。不能用 description 的纯文字相同绕过此核对，也不能为继续上传而重新创建任务。产品规则见 `.notes/archive/support-center/rfcs/support-feedback-rfc.md` 第 8 节。
 
 GET、HEAD 和 lookup 不认领、清理或写远端。过期在途读取只派生 verify；显式 advance、启动恢复或维护操作才持久化核对状态。监听前恢复旧 boot 尝试，关闭时拒绝新推进并等待当前步骤收尾；没有后台重投队列。
 
@@ -58,8 +58,8 @@ development 的 sessionStorage key 保持 `exwebsite.feedback.v2`，community �
 
 每个流程阶段在发送前和接收结果后核对 epoch、API 范围与会话，选项读取和页面成功/失败分支也拒绝旧范围结果。范围检查直接参与 Flow 的有效性判定，不依赖 React 卸载完成；旧 prepare 或附件响应不能在新 root 继续上传或 advance，也不能覆盖新会话指针、显示旧账号的结果或释放新任务的认领。停止命令不代表撤回已经发出的远端写入。
 
-维护入口为 `pnpm --filter @workspace/server support-feedback`，具体命令参数见 `.notes/support-center/rfcs/support-feedback-rfc.md` 第 9 节。CLI 只显式运行，支持安全 inspect、任务/附件回填、有限未执行证据确认和过期接收清理计划。回填要求精确 attempt 和远端归属；附件还须校验维护者提供的下载文件字节。清理默认只读，应用需显式确认，只能删除未开始外部同步的过期 receiving。
+维护入口为 `pnpm --filter @workspace/server support-feedback`，具体命令参数见 `.notes/archive/support-center/rfcs/support-feedback-rfc.md` 第 9 节。CLI 只显式运行，支持安全 inspect、任务/附件回填、有限未执行证据确认和过期接收清理计划。回填要求精确 attempt 和远端归属；附件还须校验维护者提供的下载文件字节。清理默认只读，应用需显式确认，只能删除未开始外部同步的过期 receiving。
 
-当前读取六类 development v2 与两类 community v3 记录；v3 增量迁移仅扩展约束，不清理 v2 反馈或附件。早期 Request/Bug v1 退役规则仍属于历史迁移，不能在新增类型时再次清理已接收记录。普通启动不执行迁移；具体兼容与隐私核对见 `.notes/support-center/rfcs/complaints-and-suggestions-rfc.md`。
+当前读取六类 development v2 与两类 community v3 记录；v3 增量迁移仅扩展约束，不清理 v2 反馈或附件。早期 Request/Bug v1 退役规则仍属于历史迁移，不能在新增类型时再次清理已接收记录。普通启动不执行迁移；具体兼容与隐私核对见 `.notes/archive/support-center/rfcs/complaints-and-suggestions-rfc.md`。
 
 自动测试使用 fake transport 与隔离 PostgreSQL，浏览器可核对本站流程；这些不代表真实 ClickUp 显示、六类任务／Tag／附件上传或公网部署已经验收。外部 Tag 准备、真实写入和开发库迁移仍需分别显式执行。
