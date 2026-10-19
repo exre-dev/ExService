@@ -26,7 +26,10 @@ interface Payload {
   [key: string]: string | number | string[]
 }
 
-export function deriveNotificationTokenKey(explicit: string | undefined, codeHmacKey: Buffer): Buffer {
+export function deriveNotificationTokenKey(
+  explicit: string | undefined,
+  codeHmacKey: Buffer,
+): Buffer {
   if (explicit !== undefined && explicit !== '') {
     if (!/^[0-9a-fA-F]{64}$/.test(explicit)) {
       throw new Error('SERVER_NOTIFICATION_TOKEN_KEY 必须是 32 个随机字节的 64 位十六进制编码。')
@@ -62,7 +65,8 @@ export function verifyToken(
   now: number,
 ): Record<string, string | number | string[]> {
   const separator = token.indexOf('.')
-  if (separator <= 0 || separator === token.length - 1) throw new NotificationError('NOTIFICATION_TOKEN_INVALID')
+  if (separator <= 0 || separator === token.length - 1)
+    throw new NotificationError('NOTIFICATION_TOKEN_INVALID')
   const body = token.slice(0, separator)
   const provided = Buffer.from(token.slice(separator + 1), 'base64url')
   const expected = createHmac('sha256', key).update(`${purpose}.${body}`).digest()
@@ -76,7 +80,8 @@ export function verifyToken(
   } catch {
     throw new NotificationError('NOTIFICATION_TOKEN_INVALID')
   }
-  if (typeof payload !== 'object' || payload === null) throw new NotificationError('NOTIFICATION_TOKEN_INVALID')
+  if (typeof payload !== 'object' || payload === null)
+    throw new NotificationError('NOTIFICATION_TOKEN_INVALID')
   const claims = payload as Record<string, unknown>
   if (claims.p !== purpose) throw new NotificationError('NOTIFICATION_TOKEN_INVALID')
   if (claims.u !== userId) throw new NotificationError('NOTIFICATION_TOKEN_INVALID')
@@ -90,7 +95,7 @@ export function verifyToken(
     if (name === 'p' || name === 'u' || name === 'e') continue
     if (typeof value === 'number' || typeof value === 'string') {
       result[name] = value
-    } else if (Array.isArray(value) && value.every(entry => typeof entry === 'string')) {
+    } else if (Array.isArray(value) && value.every((entry) => typeof entry === 'string')) {
       result[name] = value as string[]
     }
   }

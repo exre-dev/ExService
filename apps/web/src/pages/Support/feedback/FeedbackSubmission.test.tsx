@@ -8,29 +8,90 @@ import { FeedbackProvider, useFeedback } from './FeedbackProvider'
 import type { FeedbackSnapshot } from './flow'
 import { writeToken } from '../../../auth/storage'
 
-
 function pasteMarkdown(node: HTMLElement, text: string) {
-  fireEvent.paste(node, { clipboardData: { files: [], getData: (type: string) => type === 'text/plain' ? text : '' } })
+  fireEvent.paste(node, {
+    clipboardData: { files: [], getData: (type: string) => (type === 'text/plain' ? text : '') },
+  })
 }
 
-const port = vi.hoisted(() => ({ prepare: vi.fn(), get: vi.fn(), lookup: vi.fn(), upload: vi.fn(), advance: vi.fn() }))
+const port = vi.hoisted(() => ({
+  prepare: vi.fn(),
+  get: vi.fn(),
+  lookup: vi.fn(),
+  upload: vi.fn(),
+  advance: vi.fn(),
+}))
 vi.mock('./api', () => ({
-  getFeedbackOptions: async () => ({ available: true, reason: null, fields: [], actions: [], limits: {}, kinds: ['suggestion', 'complaint'].map(kind => ({ kind, available: true, reason: null })) }),
+  getFeedbackOptions: async () => ({
+    available: true,
+    reason: null,
+    fields: [],
+    actions: [],
+    limits: {},
+    kinds: ['suggestion', 'complaint'].map((kind) => ({ kind, available: true, reason: null })),
+  }),
   feedbackPort: port,
 }))
-vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
-beforeAll(async () => { await import('./FeedbackModal') })
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+)
+beforeAll(async () => {
+  await import('./FeedbackModal')
+})
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); sessionStorage.clear(); localStorage.clear(); vi.resetAllMocks() })
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+  sessionStorage.clear()
+  localStorage.clear()
+  vi.resetAllMocks()
+})
 
 function Entries() {
   const { openFeedback } = useFeedback()
-  return <><Button onClick={event => openFeedback('community', event.currentTarget)}>投诉和建议</Button><Button onClick={event => openFeedback('development', event.currentTarget)}>功能和需求</Button><Link to="/elsewhere">离开支持中心</Link></>
+  return (
+    <>
+      <Button onClick={(event) => openFeedback('community', event.currentTarget)}>
+        投诉和建议
+      </Button>
+      <Button onClick={(event) => openFeedback('development', event.currentTarget)}>
+        功能和需求
+      </Button>
+      <Link to="/elsewhere">离开支持中心</Link>
+    </>
+  )
 }
 
 function mount() {
   localStorage.setItem('exwebsite.auth.token', 'preview-token')
-  render(<StrictMode><ThemeProvider defaultTheme="light"><ExMessageContext /><MemoryRouter initialEntries={['/support']}><FeedbackProvider><Routes><Route path="/support" element={<Entries />} /><Route path="/elsewhere" element={<><h1>其他页面</h1><Link to="/support">返回支持中心</Link></>} /></Routes></FeedbackProvider></MemoryRouter></ThemeProvider></StrictMode>)
+  render(
+    <StrictMode>
+      <ThemeProvider defaultTheme="light">
+        <ExMessageContext />
+        <MemoryRouter initialEntries={['/support']}>
+          <FeedbackProvider>
+            <Routes>
+              <Route path="/support" element={<Entries />} />
+              <Route
+                path="/elsewhere"
+                element={
+                  <>
+                    <h1>其他页面</h1>
+                    <Link to="/support">返回支持中心</Link>
+                  </>
+                }
+              />
+            </Routes>
+          </FeedbackProvider>
+        </MemoryRouter>
+      </ThemeProvider>
+    </StrictMode>,
+  )
 }
 
 async function start(waitForLoading = true) {
@@ -39,22 +100,60 @@ async function start(waitForLoading = true) {
   fireEvent.change(screen.getByLabelText('标题'), { target: { value: '体验建议' } })
   pasteMarkdown(screen.getByLabelText('内容'), '改善提交体验')
   fireEvent.click(screen.getByRole('button', { name: '提交' }))
-  if (waitForLoading) await waitFor(() => expect(screen.queryByRole('button', { name: '提交中' })).not.toBeNull())
+  if (waitForLoading)
+    await waitFor(() => expect(screen.queryByRole('button', { name: '提交中' })).not.toBeNull())
 }
 
-function snapshot(status: FeedbackSnapshot['status'], nextAction: FeedbackSnapshot['nextAction']): FeedbackSnapshot {
-  return { id: '11111111-1111-4111-8111-111111111111', submissionKey: '22222222-2222-4222-8222-222222222222', revision: 1, createdAt: 1, receiveExpiresAt: 86400001, status, nextAction, taskId: null, taskUrl: null, failure: null, attachments: [], form: { kind: 'suggestion', title: '体验建议', contentText: '改善提交体验', largeFileInfo: null } }
+function snapshot(
+  status: FeedbackSnapshot['status'],
+  nextAction: FeedbackSnapshot['nextAction'],
+): FeedbackSnapshot {
+  return {
+    id: '11111111-1111-4111-8111-111111111111',
+    submissionKey: '22222222-2222-4222-8222-222222222222',
+    revision: 1,
+    createdAt: 1,
+    receiveExpiresAt: 86400001,
+    status,
+    nextAction,
+    taskId: null,
+    taskUrl: null,
+    failure: null,
+    attachments: [],
+    form: {
+      kind: 'suggestion',
+      title: '体验建议',
+      contentText: '改善提交体验',
+      largeFileInfo: null,
+    },
+  }
 }
 
 function deferPrepare() {
   let resolve!: (value: FeedbackSnapshot) => void
-  port.prepare.mockImplementationOnce(() => new Promise<FeedbackSnapshot>(done => { resolve = done }))
-  return (value: FeedbackSnapshot) => act(async () => { resolve(value) })
+  port.prepare.mockImplementationOnce(
+    () =>
+      new Promise<FeedbackSnapshot>((done) => {
+        resolve = done
+      }),
+  )
+  return (value: FeedbackSnapshot) =>
+    act(async () => {
+      resolve(value)
+    })
 }
 
 it('does not prevent unrelated pages from rendering when browser storage is unavailable', () => {
-  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('storage denied') })
-  render(<MemoryRouter><FeedbackProvider><p>其他页面</p></FeedbackProvider></MemoryRouter>)
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    throw new Error('storage denied')
+  })
+  render(
+    <MemoryRouter>
+      <FeedbackProvider>
+        <p>其他页面</p>
+      </FeedbackProvider>
+    </MemoryRouter>,
+  )
   expect(screen.getByText('其他页面')).toBeTruthy()
 })
 
@@ -78,7 +177,11 @@ it('preserves the unsent current draft when SPA navigation hides its modal', asy
   expect(screen.getByRole('heading', { name: '其他页面' })).toBeTruthy()
   fireEvent.click(screen.getByRole('link', { name: '返回支持中心' }))
   fireEvent.click(screen.getByRole('button', { name: '投诉和建议' }))
-  await waitFor(() => expect((screen.queryByLabelText('标题') as HTMLInputElement | null)?.value).toBe('尚未提交的建议'))
+  await waitFor(() =>
+    expect((screen.queryByLabelText('标题') as HTMLInputElement | null)?.value).toBe(
+      '尚未提交的建议',
+    ),
+  )
   expect(screen.getByLabelText('内容').textContent).toBe('切换页面后继续填写')
 })
 
@@ -151,7 +254,10 @@ it('allows retry after reopening confirms that an uncertain submission has faile
   expect(await screen.findByRole('button', { name: '核对进度' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: '关闭反馈表单' }))
   const pointer = JSON.parse(sessionStorage.getItem('exwebsite.feedback.community.v1')!)
-  port.lookup.mockResolvedValueOnce({ ...snapshot('failed', 'retry'), submissionKey: pointer.submissionKey })
+  port.lookup.mockResolvedValueOnce({
+    ...snapshot('failed', 'retry'),
+    submissionKey: pointer.submissionKey,
+  })
   fireEvent.click(screen.getByRole('button', { name: '投诉和建议' }))
   expect(await screen.findByRole('button', { name: '重试' })).toBeTruthy()
 })
@@ -165,7 +271,11 @@ it('preserves a known prepare rejection when lookup still finds no record after 
   fireEvent.click(screen.getByRole('button', { name: '关闭反馈表单' }))
   fireEvent.click(screen.getByRole('button', { name: '投诉和建议' }))
   await waitFor(() => expect(port.lookup).toHaveBeenCalledTimes(2))
-  await waitFor(() => expect((screen.queryByRole('button', { name: '重试' }) as HTMLButtonElement | null)?.disabled).toBe(false))
+  await waitFor(() =>
+    expect(
+      (screen.queryByRole('button', { name: '重试' }) as HTMLButtonElement | null)?.disabled,
+    ).toBe(false),
+  )
 })
 
 it('closes the open modal only after successful completion', async () => {
@@ -196,7 +306,9 @@ it('releases the previous account gate without accepting its late completion', a
   const resolve = deferPrepare()
   mount()
   await start()
-  act(() => { writeToken(localStorage, 'another-account') })
+  act(() => {
+    writeToken(localStorage, 'another-account')
+  })
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   fireEvent.click(screen.getByRole('button', { name: '投诉和建议' }))
   expect(await screen.findByRole('dialog')).toBeTruthy()

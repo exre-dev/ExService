@@ -137,11 +137,11 @@ API 插件是模块 HTTP 接入入口；路径、method 和 schema 仍只由 Glu
 例如 `apps/server/src/modules/storage/fastify.d.ts`：
 
 ```ts
-import type { StorageServices } from './factory.js';
+import type { StorageServices } from './factory.js'
 
 declare module 'fastify' {
   interface FastifyInstance {
-    storageServices: StorageServices;
+    storageServices: StorageServices
   }
 }
 ```

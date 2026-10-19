@@ -22,18 +22,18 @@
 
 以下均为拟新增或调整，不是已存在命令：
 
-| 路径 | 责任 |
-| --- | --- |
-| `.gitmodules`、`apps/outline/` | fork remote 和经过联调的 submodule 提交 |
-| `pnpm-workspace.yaml` | 保持现有包，增加 `!apps/outline` 排除 |
-| `compose.yaml` | PostgreSQL、Redis、Hydra、gateway 和持久化声明 |
-| `compose.full.yaml`、`compose.dev.yaml` | 完整模式应用容器；开发模式宿主机上游和端口暴露 |
-| `infra/docs-integration/` | gateway、Hydra 模板、镜像版本记录及初始化配置模板 |
-| `scripts/docs-integration/` | 配置检查、显式初始化/迁移、两模式启动与停止封装 |
-| `Dockerfile`、`.dockerignore` | Website/ExUI 多阶段构建及前端、Server target |
+| 路径                                                      | 责任                                                            |
+| --------------------------------------------------------- | --------------------------------------------------------------- |
+| `.gitmodules`、`apps/outline/`                            | fork remote 和经过联调的 submodule 提交                         |
+| `pnpm-workspace.yaml`                                     | 保持现有包，增加 `!apps/outline` 排除                           |
+| `compose.yaml`                                            | PostgreSQL、Redis、Hydra、gateway 和持久化声明                  |
+| `compose.full.yaml`、`compose.dev.yaml`                   | 完整模式应用容器；开发模式宿主机上游和端口暴露                  |
+| `infra/docs-integration/`                                 | gateway、Hydra 模板、镜像版本记录及初始化配置模板               |
+| `scripts/docs-integration/`                               | 配置检查、显式初始化/迁移、两模式启动与停止封装                 |
+| `Dockerfile`、`.dockerignore`                             | Website/ExUI 多阶段构建及前端、Server target                    |
 | `apps/outline/Dockerfile`、`apps/outline/Dockerfile.base` | 定制 Outline 构建和运行产物，禁止默用未经本地构建的官方应用产物 |
-| `vendor/exui/` | 忽略的本地目录链接，不纳入版本控制或 pnpm workspace |
-| `.local/docs-integration/` | 忽略的配置、模式锁和运行记录；不存入镜像 |
+| `vendor/exui/`                                            | 忽略的本地目录链接，不纳入版本控制或 pnpm workspace             |
+| `.local/docs-integration/`                                | 忽略的配置、模式锁和运行记录；不存入镜像                        |
 
 submodule 接入创建独立 checkout，不移动或删除原 Outline 目录。需要纳入其现有修改时，先识别改动归属，再由正常交付流程选择提交；本 RFC 不授权提交这些修改。Website 和 Outline 的提交与引用更新分别进行。
 
@@ -57,9 +57,9 @@ Outline runtime 如保留 portal 依赖，必须保留解析所需的 ExUI 产�
 
 本地选定两个名称，显式配置宿主机解析到 `127.0.0.1`：
 
-| 公共地址 | 作用 |
-| --- | --- |
-| `http://exwebsite.test:8090` | Website 及 `/docs` |
+| 公共地址                              | 作用                                                      |
+| ------------------------------------- | --------------------------------------------------------- |
+| `http://exwebsite.test:8090`          | Website 及 `/docs`                                        |
 | `http://identity.exwebsite.test:8090` | 固定 Hydra issuer，协议走根路径，避免嵌套 issuer 路径适配 |
 
 gateway 容器监听 8090，宿主机仅发布 `127.0.0.1:8090`；Compose 网络中给 gateway 配置相同 DNS aliases。两种模式均使用这一 issuer，不能让容器用另一个 issuer 字符串。初始化检查并提供 hosts 配置步骤，不静默修改系统 hosts。
@@ -72,15 +72,15 @@ gateway 容器监听 8090，宿主机仅发布 `127.0.0.1:8090`；Compose 网络
 
 ## 路由与路径实现
 
-| Host / 路径 | 上游 | 规则 |
-| --- | --- | --- |
-| Website `/api/*` | Website Server | 保留 `/api`；拒绝公共访问 `/api/internal/*` |
-| Website `/docs` | gateway | 规范化到 `/docs/`，保留 query |
-| Website `/docs/*` | Outline | 仅此处剥离一次 `/docs`；保留 query 与 WebSocket upgrade |
-| Website `/docs/static/*` | Outline 构建资源或其 Vite | 完整模式剥 `/docs`；开发模式定向 3001 并保留 `/docs/static`，与 Vite base 一致 |
-| Website `/docs/realtime/*`、`/docs/collaboration/*` | Outline 后端 | 含 polling、upgrade，内部仍使用原 `/realtime`、`/collaboration` |
-| Website 其他页面、身份适配 UI | Website Web | SPA fallback；禁止覆盖 `/docs` 和 `/api` |
-| Identity 公共 OIDC 路径 | Hydra public | 原样路径；仅允许选定协议路径，不转发 `/admin` |
+| Host / 路径                                         | 上游                      | 规则                                                                           |
+| --------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------ |
+| Website `/api/*`                                    | Website Server            | 保留 `/api`；拒绝公共访问 `/api/internal/*`                                    |
+| Website `/docs`                                     | gateway                   | 规范化到 `/docs/`，保留 query                                                  |
+| Website `/docs/*`                                   | Outline                   | 仅此处剥离一次 `/docs`；保留 query 与 WebSocket upgrade                        |
+| Website `/docs/static/*`                            | Outline 构建资源或其 Vite | 完整模式剥 `/docs`；开发模式定向 3001 并保留 `/docs/static`，与 Vite base 一致 |
+| Website `/docs/realtime/*`、`/docs/collaboration/*` | Outline 后端              | 含 polling、upgrade，内部仍使用原 `/realtime`、`/collaboration`                |
+| Website 其他页面、身份适配 UI                       | Website Web               | SPA fallback；禁止覆盖 `/docs` 和 `/api`                                       |
+| Identity 公共 OIDC 路径                             | Hydra public              | 原样路径；仅允许选定协议路径，不转发 `/admin`                                  |
 
 引入 Outline 集中 `publicPath()`/`publicUrl()` 工具：`URL` 配置为完整 `http://exwebsite.test:8090/docs`，`BASE_PATH` 从 URL pathname 校验得到 `/docs`，内部 Router 路径继续根相对。客户端 history 使用 basename，所有应用内路由仍使用逻辑路径；API base 和外部资源 URL 则显式加前缀，禁止重复加 `/docs/docs`。
 
@@ -96,15 +96,15 @@ Cookies（包括原 accessToken、OAuth state、lastSignedIn）集中设置/清�
 
 拟新增根命令：
 
-| 命令 | 行为 |
-| --- | --- |
-| `pnpm integration:configure` | 校验 ExUI 和 submodule、生成本机配置及目录链接；不创建数据库 |
-| `pnpm integration:init` | 显式启动基础设施、创建本集成独立数据库/角色、应用三方 migration；不接入或重置旧本机库 |
-| `pnpm integration:bootstrap -- --admin-user-id <id>` | 按另两份 RFC 创建 Hydra 客户端和唯一文档工作区 |
-| `pnpm integration:up` | 以完整模式启动；结构未初始化时失败并提示 init |
-| `pnpm integration:dev` | 基础服务加宿主机应用与仓库内 ExUI integration watcher；以统一入口访问 |
-| `pnpm integration:migrate` | 显式执行各服务 migration；打印目标身份，不打印秘密 |
-| `pnpm integration:down` | 停止当前模式，不删除 volumes 或本地文件 |
+| 命令                                                                 | 行为                                                                                    |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `pnpm integration:configure`                                         | 校验 ExUI 和 submodule、生成本机配置及目录链接；不创建数据库                            |
+| `pnpm integration:init`                                              | 显式启动基础设施、创建本集成独立数据库/角色、应用三方 migration；不接入或重置旧本机库   |
+| `pnpm integration:bootstrap -- --admin-user-id <id>`                 | 按另两份 RFC 创建 Hydra 客户端和唯一文档工作区                                          |
+| `pnpm integration:up`                                                | 以完整模式启动；结构未初始化时失败并提示 init                                           |
+| `pnpm integration:dev`                                               | 基础服务加宿主机应用与仓库内 ExUI integration watcher；以统一入口访问                   |
+| `pnpm integration:migrate`                                           | 显式执行各服务 migration；打印目标身份，不打印秘密                                      |
+| `pnpm integration:down`                                              | 停止当前模式，不删除 volumes 或本地文件                                                 |
 | `pnpm integration:test:outline <server-test-file> "<case-name>" ...` | 每个明确用例创建独立 PostgreSQL/Redis 容器，显式 migration 后执行；不读取既有测试库连接 |
 
 模式锁记录进程/Compose 项目身份；启动另一模式时检查实际存活情况，避免 stale lock 永久阻塞。初始化不调用 Website `db:reset`；其回环和数据库身份限制不为容器方便而放宽。

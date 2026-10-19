@@ -20,7 +20,7 @@ FeedbackRequestForm:
       $ref: ../openapi.yaml#/components/schemas/NullableUuid
     largeFileInfo: &a4
       oneOf:
-        - type: "null"
+        - type: 'null'
         - type: string
           maxLength: 16384
     contentText:
@@ -46,25 +46,25 @@ FeedbackBugDetails:
       maxLength: 16384
     reproductionSteps:
       oneOf:
-        - type: "null"
+        - type: 'null'
         - type: string
           minLength: 0
           maxLength: 16384
     expectedResult:
       oneOf:
-        - type: "null"
+        - type: 'null'
         - type: string
           minLength: 0
           maxLength: 16384
     actualResult:
       oneOf:
-        - type: "null"
+        - type: 'null'
         - type: string
           minLength: 0
           maxLength: 16384
     frequency:
       oneOf:
-        - type: "null"
+        - type: 'null'
         - type: string
           enum:
             - always
@@ -290,9 +290,17 @@ FeedbackKindAvailability:
   additionalProperties: false
   required: [kind, available, reason]
   properties:
-    kind: { type: string, enum: [bug, feature, asset, request, content, campaign, suggestion, complaint] }
+    kind:
+      {
+        type: string,
+        enum: [bug, feature, asset, request, content, campaign, suggestion, complaint],
+      }
     available: { type: boolean }
-    reason: { type: [string, 'null'], enum: [not_configured, configuration_invalid, upstream_unavailable, null] }
+    reason:
+      {
+        type: [string, 'null'],
+        enum: [not_configured, configuration_invalid, upstream_unavailable, null],
+      }
 FeedbackActionAvailability:
   type: object
   additionalProperties: false
@@ -345,7 +353,7 @@ FeedbackOptions:
       type: boolean
     reason:
       oneOf:
-        - type: "null"
+        - type: 'null'
         - type: string
           enum:
             - not_configured
@@ -395,7 +403,7 @@ FeedbackFailure:
       $ref: ../openapi.yaml#/components/schemas/NullableUuid
     retryAfterSeconds:
       oneOf:
-        - type: "null"
+        - type: 'null'
         - type: integer
           minimum: 1
           maximum: 9007199254740991
@@ -444,7 +452,7 @@ FeedbackAttachment:
         - uploaded
     remoteAttachmentId:
       oneOf:
-        - type: "null"
+        - type: 'null'
         - type: string
           minLength: 1
           maxLength: 256
@@ -501,21 +509,21 @@ FeedbackSnapshot:
         - restart
     taskId:
       oneOf:
-        - type: "null"
+        - type: 'null'
         - type: string
           minLength: 1
           maxLength: 128
           pattern: ^[A-Za-z0-9_-]+$
     taskUrl:
       oneOf:
-        - type: "null"
+        - type: 'null'
         - type: string
           minLength: 1
           maxLength: 256
           pattern: ^https://app\.clickup\.com/t/[A-Za-z0-9_-]+$
     failure:
       oneOf:
-        - type: "null"
+        - type: 'null'
         - $ref: ../openapi.yaml#/components/schemas/FeedbackFailure
     attachments:
       type: array

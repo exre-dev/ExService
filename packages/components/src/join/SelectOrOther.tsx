@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState } from 'react'
 import {
   Input,
   Textarea,
@@ -7,24 +7,24 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@exre/exui";
-import styles from "@components/src/join/CompleteJoinApplication.module.scss";
+} from '@exre/exui'
+import styles from '@components/src/join/CompleteJoinApplication.module.scss'
 
 interface Props {
-  value: string;
-  options: readonly string[];
-  label: string;
-  multiline?: boolean;
-  disabled: boolean;
+  value: string
+  options: readonly string[]
+  label: string
+  multiline?: boolean
+  disabled: boolean
   accessibility: {
-    id: string;
-    name: string;
-    "aria-invalid": boolean;
-    "aria-describedby"?: string;
-  };
-  onChange: (value: string) => void;
-  onBlur: () => void;
-  inputRef: (element: HTMLElement | null) => void;
+    id: string
+    name: string
+    'aria-invalid': boolean
+    'aria-describedby'?: string
+  }
+  onChange: (value: string) => void
+  onBlur: () => void
+  inputRef: (element: HTMLElement | null) => void
 }
 
 /** Only the disclosure mode is local; the answer itself belongs to ExForm. */
@@ -39,19 +39,17 @@ export function SelectOrOther({
   onBlur,
   inputRef,
 }: Props) {
-  const [other, setOther] = useState(
-    () => value !== "" && !options.includes(value),
-  );
-  const custom = other || (value !== "" && !options.includes(value));
-  const Control = multiline ? Textarea : Input;
+  const [other, setOther] = useState(() => value !== '' && !options.includes(value))
+  const custom = other || (value !== '' && !options.includes(value))
+  const Control = multiline ? Textarea : Input
   return (
     <div className={styles.selectOrOther}>
       <SelectField
-        value={custom ? "__other__" : value}
+        value={custom ? '__other__' : value}
         disabled={disabled}
         onValueChange={(next) => {
-          setOther(next === "__other__");
-          onChange(next === "__other__" ? "" : next);
+          setOther(next === '__other__')
+          onChange(next === '__other__' ? '' : next)
         }}
       >
         <SelectTrigger
@@ -85,5 +83,5 @@ export function SelectOrOther({
         />
       )}
     </div>
-  );
+  )
 }

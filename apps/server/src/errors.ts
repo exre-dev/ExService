@@ -7,7 +7,13 @@ import type { FeedbackErrorCode } from './domains/support/errors.js'
  * Contract 只把 `ErrorEnvelope.error.code` 约束为 string；下列取值是实现侧的约定。
  * 新增取值不需要改 Contract，但必须集中在本文件构造 envelope，并保持 Contract Test 通过。
  */
-export type ErrorCode = 'BAD_REQUEST' | 'INTERNAL_ERROR' | 'NOT_FOUND' | AuthErrorCode | StorageErrorCode | FeedbackErrorCode
+export type ErrorCode =
+  | 'BAD_REQUEST'
+  | 'INTERNAL_ERROR'
+  | 'NOT_FOUND'
+  | AuthErrorCode
+  | StorageErrorCode
+  | FeedbackErrorCode
 
 /**
  * 应用错误对外契约：带 code / statusCode / publicMessage 的错误都按固定文案输出，
@@ -67,13 +73,19 @@ export interface ErrorResolution {
  * 非上传错误 envelope 的逐字节回归。日志等级与字段（`request failed` / `request rejected`）
  * 一并属于本函数的契约，调用方不得自行再记一份。
  */
-export function resolveErrorResponse(error: unknown, log: SafeErrorLog, requestId: string): ErrorResolution {
+export function resolveErrorResponse(
+  error: unknown,
+  log: SafeErrorLog,
+  requestId: string,
+): ErrorResolution {
   const publicError = findPublicError(error)
   const reportedStatus = (error as { statusCode?: unknown } | null | undefined)?.statusCode
-  const reported = publicError?.statusCode ?? (typeof reportedStatus === 'number' ? reportedStatus : 500)
+  const reported =
+    publicError?.statusCode ?? (typeof reportedStatus === 'number' ? reportedStatus : 500)
   const statusCode = reported >= 400 && reported < 600 ? reported : 500
 
-  const message = publicError?.publicMessage ?? resolvePublicMessage(statusCode, error as FastifyError)
+  const message =
+    publicError?.publicMessage ?? resolvePublicMessage(statusCode, error as FastifyError)
   const code = publicError?.code ?? codeForStatus(statusCode)
 
   // Exceptions from hashing, delivery or PostgreSQL can contain submitted secrets.
@@ -88,7 +100,9 @@ export function resolveErrorResponse(error: unknown, log: SafeErrorLog, requestI
     statusCode,
     code,
     message,
-    ...(publicError?.retryAfterSeconds === undefined ? {} : { retryAfterSeconds: publicError.retryAfterSeconds }),
+    ...(publicError?.retryAfterSeconds === undefined
+      ? {}
+      : { retryAfterSeconds: publicError.retryAfterSeconds }),
     envelope: createErrorEnvelope(code, message, requestId),
   }
 }

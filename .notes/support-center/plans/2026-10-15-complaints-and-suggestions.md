@@ -38,8 +38,9 @@
 Representative boundary assertion:
 
 ```ts
-expect(taskInput(anonymousComplaint, markdown, nickname, userId).custom_fields)
-  .not.toContainEqual(expect.objectContaining({ id: TARGET.user }))
+expect(taskInput(anonymousComplaint, markdown, nickname, userId).custom_fields).not.toContainEqual(
+  expect.objectContaining({ id: TARGET.user }),
+)
 ```
 
 ## Task 2: Community Modal and independent browser flow

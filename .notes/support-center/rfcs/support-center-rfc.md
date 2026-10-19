@@ -17,16 +17,16 @@
 
 ## 已核实的工程基础
 
-| 事实 | 依据 |
-| --- | --- |
-| `App` 位于统一 `AuthProvider` 下；普通业务页面通过 `RootLayout` 展示导航与登录弹窗。 | `apps/web/src/App.tsx`、`apps/web/src/routes/RootLayout.tsx` |
-| 认证状态有 `loading`、`anonymous`、`unavailable` 和 `authenticated`，会话恢复经过 `/auth/me`。 | `apps/web/src/auth/AuthContext.tsx`、`packages/components/src/AuthArea.tsx` |
-| 普通弹窗登录成功后重新加载当前地址；独立登录页则返回首页。 | `apps/web/src/auth/AuthFlow.tsx` |
-| 桌面和移动导航在同一个 `SiteHeader` 中实现，当前尚无 Support 项。 | `packages/components/src/SiteHeader.tsx` |
-| 通用 `ContentDefinition` 已提供分类、schema、业务投影，虚拟模块导出数据、资源和正文加载器。 | `apps/web/build/content/compiler.ts`、`apps/web/build/content/plugin.ts` |
-| 通用加载器只承诺 `ContentModule.default`，没有声明 `toc` 导出。 | `apps/web/src/content/store.ts` |
-| `useContent` 拒绝过时的页面加载结果，失败 Promise 可重试；浏览器模块缓存失败还需要整页重新加载。 | `apps/web/src/content/useContent.ts`、`.ai/architectures/web/content-rendering.md` |
-| Website 测试由 Vitest 文件模式发现；已有内容编译和真实 Fumadocs/Vite 集成测试。 | `vitest.config.ts`、`scripts/runtime/tests.mjs`、`tests/content/`、`apps/web/src/content/compiler.integration.test.ts` |
+| 事实                                                                                             | 依据                                                                                                                   |
+| ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `App` 位于统一 `AuthProvider` 下；普通业务页面通过 `RootLayout` 展示导航与登录弹窗。             | `apps/web/src/App.tsx`、`apps/web/src/routes/RootLayout.tsx`                                                           |
+| 认证状态有 `loading`、`anonymous`、`unavailable` 和 `authenticated`，会话恢复经过 `/auth/me`。   | `apps/web/src/auth/AuthContext.tsx`、`packages/components/src/AuthArea.tsx`                                            |
+| 普通弹窗登录成功后重新加载当前地址；独立登录页则返回首页。                                       | `apps/web/src/auth/AuthFlow.tsx`                                                                                       |
+| 桌面和移动导航在同一个 `SiteHeader` 中实现，当前尚无 Support 项。                                | `packages/components/src/SiteHeader.tsx`                                                                               |
+| 通用 `ContentDefinition` 已提供分类、schema、业务投影，虚拟模块导出数据、资源和正文加载器。      | `apps/web/build/content/compiler.ts`、`apps/web/build/content/plugin.ts`                                               |
+| 通用加载器只承诺 `ContentModule.default`，没有声明 `toc` 导出。                                  | `apps/web/src/content/store.ts`                                                                                        |
+| `useContent` 拒绝过时的页面加载结果，失败 Promise 可重试；浏览器模块缓存失败还需要整页重新加载。 | `apps/web/src/content/useContent.ts`、`.ai/architectures/web/content-rendering.md`                                     |
+| Website 测试由 Vitest 文件模式发现；已有内容编译和真实 Fumadocs/Vite 集成测试。                  | `vitest.config.ts`、`scripts/runtime/tests.mjs`、`tests/content/`、`apps/web/src/content/compiler.integration.test.ts` |
 
 用户指定的视觉参考是已审阅的本地 About 页面，而不是本工作树任意版本的 About CSS。实施时依据来源设计和 `.superpowers/brainstorm/13166-1791802386/content/support-about-v3.html` 的简洁方向使用 ExUI token，不复制预览中的独立主题变量或全局 CSS。
 
@@ -59,17 +59,17 @@ flowchart LR
 
 以下为拟新增路径，不是已存在的实现。
 
-| 路径 | 职责 |
-| --- | --- |
-| `apps/web/build/support/schema.ts` | 错误、分类、联系人、设置 schema；复用通用 `text`、`slug`、`imageSchema`。 |
-| `apps/web/build/support/definition.ts` | Support 文件分类、跨引用校验、发布投影及 Fumadocs 集合声明。 |
-| `apps/web/build/support/clickup-policy.ts` | 已核实 ClickUp 来源的固定 host 策略与 URL 校验，保持构建侧。 |
-| `apps/web/content/support/errors/` | 已审核或草稿 MDX 错误条目。 |
-| `apps/web/content/support/contacts.yaml` | 联系人目录，可合法为空。 |
-| `apps/web/content/support/settings.yaml` | 分类目录与可选 ClickUp 配置。 |
-| `apps/web/src/content/support/types.ts`、`virtual.d.ts`、`registry.ts` | 发布投影的类型、虚拟模块声明、资源和正文适配。 |
-| `apps/web/src/pages/Support/` | `SupportRoutes`、首页、列表、详情、案例、联系人、iframe 和页面局部 CSS Modules。 |
-| `apps/web/src/routes/SupportAccess.tsx` | 不依赖内容注册表的会话访问边界。 |
+| 路径                                                                   | 职责                                                                             |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `apps/web/build/support/schema.ts`                                     | 错误、分类、联系人、设置 schema；复用通用 `text`、`slug`、`imageSchema`。        |
+| `apps/web/build/support/definition.ts`                                 | Support 文件分类、跨引用校验、发布投影及 Fumadocs 集合声明。                     |
+| `apps/web/build/support/clickup-policy.ts`                             | 已核实 ClickUp 来源的固定 host 策略与 URL 校验，保持构建侧。                     |
+| `apps/web/content/support/errors/`                                     | 已审核或草稿 MDX 错误条目。                                                      |
+| `apps/web/content/support/contacts.yaml`                               | 联系人目录，可合法为空。                                                         |
+| `apps/web/content/support/settings.yaml`                               | 分类目录与可选 ClickUp 配置。                                                    |
+| `apps/web/src/content/support/types.ts`、`virtual.d.ts`、`registry.ts` | 发布投影的类型、虚拟模块声明、资源和正文适配。                                   |
+| `apps/web/src/pages/Support/`                                          | `SupportRoutes`、首页、列表、详情、案例、联系人、iframe 和页面局部 CSS Modules。 |
+| `apps/web/src/routes/SupportAccess.tsx`                                | 不依赖内容注册表的会话访问边界。                                                 |
 
 注册点为 `apps/web/build/collections.ts` 和 `apps/web/source.config.ts`。只为错误 MDX 定义 Fumadocs `supportErrors` doc 集合；联系人和设置 YAML 由通用 `readContent` 及 Support 投影消费，不生成没有正文用途的浏览器 meta import。
 
@@ -81,12 +81,12 @@ flowchart LR
 
 `App` 在 `RootLayout` 下登记 `/support/*`。`SupportAccess` 放在惰性页面的 `Suspense` 和内容错误边界之外，先读取 `useAuth().state`，只有 `authenticated` 才返回页面子树。不能把 Support registry 静态导入 `App`、`RootLayout`、`SiteHeader` 或访问边界，也不在导航悬停时预加载它。
 
-| 状态 | 输出 | 动作 |
-| --- | --- | --- |
-| `loading` | “正在确认登录状态”的状态提示。 | 等待现有恢复流程。 |
-| `anonymous` | “登录后可访问支持中心”和登录按钮。 | 打开 RootLayout 已有弹窗。 |
-| `unavailable` | 固定认证不可用文案与重试按钮。 | 调用 `retrySession()`。 |
-| `authenticated` | 当前 Support 页面。 | 正常页面交互。 |
+| 状态            | 输出                               | 动作                       |
+| --------------- | ---------------------------------- | -------------------------- |
+| `loading`       | “正在确认登录状态”的状态提示。     | 等待现有恢复流程。         |
+| `anonymous`     | “登录后可访问支持中心”和登录按钮。 | 打开 RootLayout 已有弹窗。 |
+| `unavailable`   | 固定认证不可用文案与重试按钮。     | 调用 `retrySession()`。    |
+| `authenticated` | 当前 Support 页面。                | 正常页面交互。             |
 
 认证变化使子树直接卸载，包括已经展开的案例、加载中的正文和 iframe。缓存已加载的静态模块不会授予访问权限；非登录状态不得继续渲染缓存内容。无需取消已经发出的原生动态 import，但它的完成结果不能绕过当前会话边界。
 
@@ -114,16 +114,16 @@ flowchart LR
 
 文件名固定为 `errors/<slug>.mdx`，文件 basename 必须与字段 slug 一致。
 
-| 字段 | 类型与规则 | 用途 |
-| --- | --- | --- |
-| `slug` | 必填，通用 slug schema；全目录唯一。 | 路由和稳定标识。 |
-| `title` | 必填，非空文本。 | 列表、案例和详情标题。 |
-| `description` | 必填，非空纯文本。 | 列表及详情摘要。 |
-| `category` | 必填，settings 中已存在的分类 id。 | 分类标签。 |
-| `quickAnswer` | 必填，非空纯文本，不解释为 HTML/MDX。 | 首页展开后的快速说明。 |
-| `order` | 可选，非负整数，默认 `0`。 | 全列表编辑顺序。 |
+| 字段            | 类型与规则                                     | 用途                       |
+| --------------- | ---------------------------------------------- | -------------------------- |
+| `slug`          | 必填，通用 slug schema；全目录唯一。           | 路由和稳定标识。           |
+| `title`         | 必填，非空文本。                               | 列表、案例和详情标题。     |
+| `description`   | 必填，非空纯文本。                             | 列表及详情摘要。           |
+| `category`      | 必填，settings 中已存在的分类 id。             | 分类标签。                 |
+| `quickAnswer`   | 必填，非空纯文本，不解释为 HTML/MDX。          | 首页展开后的快速说明。     |
+| `order`         | 可选，非负整数，默认 `0`。                     | 全列表编辑顺序。           |
 | `featuredOrder` | 可选，只允许 `1`、`2`、`3`，整个目录不得重复。 | 首页精选位置；缺省不精选。 |
-| `draft` | 可选 boolean，默认 `false`。 | 排除发布投影与 loader。 |
+| `draft`         | 可选 boolean，默认 `false`。                   | 排除发布投影与 loader。    |
 
 草稿同样接受字段、文件名、分类、资源和引用校验。正文从二级标题开始，不重复页面 h1；使用已有白名单 `Callout`、`ContentImage` 与标准 Markdown，不注册 About 专属作者组件。
 
@@ -139,15 +139,15 @@ flowchart LR
 
 `contacts.yaml` 必須存在，形态为 `{ items: Contact[] }`。`Contact` 字段如下：
 
-| 字段 | 规则 |
-| --- | --- |
-| `id` | 必填，唯一 kebab-case。 |
-| `name`、`role` | 必填，非空真实展示资料。 |
-| `order` | 可选，非负整数，默认 `0`。 |
-| `draft` | 可选 boolean，默认 `false`；草稿不显示。 |
-| `avatar` | 可选通用 ImageRef，位于本集合 `assets/`。 |
-| `qq` | 可选非空 ASCII 数字文本，保持字符串，不转为 number。 |
-| `email` | 可选单个邮箱，校验邮箱格式并拒绝换行及控制字符。 |
+| 字段           | 规则                                                 |
+| -------------- | ---------------------------------------------------- |
+| `id`           | 必填，唯一 kebab-case。                              |
+| `name`、`role` | 必填，非空真实展示资料。                             |
+| `order`        | 可选，非负整数，默认 `0`。                           |
+| `draft`        | 可选 boolean，默认 `false`；草稿不显示。             |
+| `avatar`       | 可选通用 ImageRef，位于本集合 `assets/`。            |
+| `qq`           | 可选非空 ASCII 数字文本，保持字符串，不转为 number。 |
+| `email`        | 可选单个邮箱，校验邮箱格式并拒绝换行及控制字符。     |
 
 `items: []` 合法，不用虚构人物满足 schema。两个联系方式均缺少时，仅展示身份与职责，不渲染联系按钮。头像图片、说明和联系方式不能由预览示例自动转为真实资料。
 
@@ -210,40 +210,40 @@ publicUrl 存在时提供新标签页打开链接，带 `noopener noreferrer`。
 
 ## 备选方案与取舍
 
-| 方案 | 取舍 |
-| --- | --- |
-| 本 RFC：仓库内容 + 官方面板 | 复用现有能力，最快接入真实进度；ClickUp 内部样式和权限独立，须接受跨域限制。 |
-| ClickUp API 后端投影 | 更能控制字段、布局和本站权限，但增加认证、缓存、同步及 HTTP Contract，超出已确认本期。 |
-| 只跳转 ClickUp | 最省接入工作，但不能满足面板直接显示在支持首页的决定。 |
-| 将 FAQ 或反馈放入 Outline | 引入文档服务权限与路由边界，不符合已确认的独立 Support MDX 内容路径。 |
+| 方案                        | 取舍                                                                                   |
+| --------------------------- | -------------------------------------------------------------------------------------- |
+| 本 RFC：仓库内容 + 官方面板 | 复用现有能力，最快接入真实进度；ClickUp 内部样式和权限独立，须接受跨域限制。           |
+| ClickUp API 后端投影        | 更能控制字段、布局和本站权限，但增加认证、缓存、同步及 HTTP Contract，超出已确认本期。 |
+| 只跳转 ClickUp              | 最省接入工作，但不能满足面板直接显示在支持首页的决定。                                 |
+| 将 FAQ 或反馈放入 Outline   | 引入文档服务权限与路由边界，不符合已确认的独立 Support MDX 内容路径。                  |
 
 选择不建立数据库投影、后台管理或新反馈系统。后续真提交能力须另行设计 Contract、身份、附件和处理流程。
 
 ## 风险与验证信号
 
-| 风险 | 缓解或接受方式 | 检测 |
-| --- | --- | --- |
-| UI 隐藏导航却仍允许匿名渲染内容 | 统一会话边界置于页面与 registry 渲染之外。 | 四状态路由测试、匿名深链接和跨标签退出浏览器验收。 |
-| 会话失效后迟到正文继续显示 | 子树卸载，复用 `useContent` 请求隔离。 | 延迟 loader 期间退出/切换路由，结果不得显示。 |
-| 草稿、错误字段或联系人资源意外发布 | 严格 schema、引用图和发布投影。 | 真实 `readContent(supportDefinition)` 负例与输出检查。 |
-| ClickUp 公开内容范围大于预期 | 由维护者审阅实际分享范围，不承诺本站会话控制原链接。 | 无痕浏览分享链接，检查可见任务和字段。 |
-| 视图不可嵌入、权限或 Cookie 限制 | 固定来源校验、外部链接回退、真实接入 gate。 | 用实际代码在目标浏览器测试。 |
-| 预览样例被误作运营内容 | 初始合法空目录，不发布示例人物或错误。 | 内容审阅与浏览器空态验收。 |
-| 正文目录依赖并不存在的 loader 出口 | 从已渲染 h2/h3 派生目录。 | 真实编译正文，验证目录锚点和加载切换。 |
-| 样式复制影响其他页面 | Support CSS Modules、既有主题和 token，不复制预览全局 CSS。 | About/首页回归、明暗主题和窄屏检查。 |
+| 风险                               | 缓解或接受方式                                              | 检测                                                   |
+| ---------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------ |
+| UI 隐藏导航却仍允许匿名渲染内容    | 统一会话边界置于页面与 registry 渲染之外。                  | 四状态路由测试、匿名深链接和跨标签退出浏览器验收。     |
+| 会话失效后迟到正文继续显示         | 子树卸载，复用 `useContent` 请求隔离。                      | 延迟 loader 期间退出/切换路由，结果不得显示。          |
+| 草稿、错误字段或联系人资源意外发布 | 严格 schema、引用图和发布投影。                             | 真实 `readContent(supportDefinition)` 负例与输出检查。 |
+| ClickUp 公开内容范围大于预期       | 由维护者审阅实际分享范围，不承诺本站会话控制原链接。        | 无痕浏览分享链接，检查可见任务和字段。                 |
+| 视图不可嵌入、权限或 Cookie 限制   | 固定来源校验、外部链接回退、真实接入 gate。                 | 用实际代码在目标浏览器测试。                           |
+| 预览样例被误作运营内容             | 初始合法空目录，不发布示例人物或错误。                      | 内容审阅与浏览器空态验收。                             |
+| 正文目录依赖并不存在的 loader 出口 | 从已渲染 h2/h3 派生目录。                                   | 真实编译正文，验证目录锚点和加载切换。                 |
+| 样式复制影响其他页面               | Support CSS Modules、既有主题和 token，不复制预览全局 CSS。 | About/首页回归、明暗主题和窄屏检查。                   |
 
 ## 测试与验收矩阵
 
 测试以真实被测函数和最小边界替身为主，不能 mock 掉 Support 投影或访问边界后宣称覆盖。
 
-| 层 | 必测行为 |
-| --- | --- |
-| 内容 schema/投影 | 文件名与 slug、重复标识和精选顺序、非法分类、未知字段、草稿与资源不公开、链接/锚点、合法空目录、非法 ClickUp URL。 |
-| 路由与组件 | 四种会话状态、匿名不挂载 loader/iframe、状态变化卸载、支持子路由选中、移动导航隐藏、404、深链接地址保留、登录关闭焦点。 |
-| 用户行为 | 多案例展开与收起、同条目完整详情、查看更多、列表导航、空态、QQ 复制失败、正文延迟结果和重试。 |
-| 真实内容编译 | 一篇临时测试 MDX 经过 Fumadocs、virtual module 和渲染，验证正文、资源及目录；不将该测试正文放入正式内容。 |
-| 真实浏览器 | 登录/退出与跨标签变化、详情刷新、键盘/焦点、明暗主题、长姓名和邮箱、手机页面无横向溢出。 |
-| 真实 ClickUp | 实际 iframe 显示任务、点击详情、尺寸、原链接、分享失效与 Cookie 限制；无配置不等于此项通过。 |
+| 层               | 必测行为                                                                                                                |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 内容 schema/投影 | 文件名与 slug、重复标识和精选顺序、非法分类、未知字段、草稿与资源不公开、链接/锚点、合法空目录、非法 ClickUp URL。      |
+| 路由与组件       | 四种会话状态、匿名不挂载 loader/iframe、状态变化卸载、支持子路由选中、移动导航隐藏、404、深链接地址保留、登录关闭焦点。 |
+| 用户行为         | 多案例展开与收起、同条目完整详情、查看更多、列表导航、空态、QQ 复制失败、正文延迟结果和重试。                           |
+| 真实内容编译     | 一篇临时测试 MDX 经过 Fumadocs、virtual module 和渲染，验证正文、资源及目录；不将该测试正文放入正式内容。               |
+| 真实浏览器       | 登录/退出与跨标签变化、详情刷新、键盘/焦点、明暗主题、长姓名和邮箱、手机页面无横向溢出。                                |
+| 真实 ClickUp     | 实际 iframe 显示任务、点击详情、尺寸、原链接、分享失效与 Cookie 限制；无配置不等于此项通过。                            |
 
 内容测试新增于 `tests/content/support.test.ts`，UI/路由测试邻近新模块；既有 `SiteHeader.test.tsx`、RootLayout 及认证路由测试补充新增边界。根 Vitest 模式已覆盖这些目录，不为新增 Website 测试修改 Outline manifest。
 
@@ -264,12 +264,12 @@ publicUrl 存在时提供新标签页打开链接，带 `noopener noreferrer`。
 
 ## 输入依赖与后续决策点
 
-| 输入 | 提供或核对责任 | 何时需要 | 未取得时 |
-| --- | --- | --- | --- |
-| 官方 iframe 代码和原分享链接 | 用户提供；接入人员核对真实 origin、视图与必要属性。 | 启用真实开发面板之前。 | clickup 为 null，接入验收未执行。 |
-| 联系人姓名、职责、头像和公开联系方式 | 用户或内容维护者确认。 | 展示真实联系人之前。 | items 为空，显示整理中。 |
-| 正式错误正文、分类与三个精选位置 | 内容维护者核对适用范围与解决办法。 | 发布案例之前。 | 错误目录为空，显示整理中。 |
-| 多脚本/非单 iframe 的实际代码 | 接入人员记录与来源设计的差异，用户决定是否扩大范围。 | 出现代码形态差异时。 | 保持禁用真实面板，不执行任意 HTML。 |
+| 输入                                 | 提供或核对责任                                       | 何时需要               | 未取得时                            |
+| ------------------------------------ | ---------------------------------------------------- | ---------------------- | ----------------------------------- |
+| 官方 iframe 代码和原分享链接         | 用户提供；接入人员核对真实 origin、视图与必要属性。  | 启用真实开发面板之前。 | clickup 为 null，接入验收未执行。   |
+| 联系人姓名、职责、头像和公开联系方式 | 用户或内容维护者确认。                               | 展示真实联系人之前。   | items 为空，显示整理中。            |
+| 正式错误正文、分类与三个精选位置     | 内容维护者核对适用范围与解决办法。                   | 发布案例之前。         | 错误目录为空，显示整理中。          |
+| 多脚本/非单 iframe 的实际代码        | 接入人员记录与来源设计的差异，用户决定是否扩大范围。 | 出现代码形态差异时。   | 保持禁用真实面板，不执行任意 HTML。 |
 
 以上是明确的内容或供应商接入 gate，没有隐藏的产品选择。稳定结论提炼到 `.ai/` 需按 `AGENTS.md` 另行取得用户同意；本 RFC 不自行登记持久知识或替用户授权实现。
 

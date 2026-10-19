@@ -28,8 +28,15 @@ const plugin: FastifyPluginAsync<WebsiteApiPluginOptions> = async (app, options)
   const document = readContract()
   assertOperationCoverage(document, serviceHandlers)
   await app.register(openapiGlue, {
-    specification: document, prefix: API_PREFIX, serviceHandlers,
+    specification: document,
+    prefix: API_PREFIX,
+    serviceHandlers,
     securityHandlers: createSecurityHandlers(options.identityKeys),
   })
 }
-export default fp(plugin, { name: 'website-api', fastify: '5.x', encapsulate: true, dependencies: ['http-foundation'] })
+export default fp(plugin, {
+  name: 'website-api',
+  fastify: '5.x',
+  encapsulate: true,
+  dependencies: ['http-foundation'],
+})

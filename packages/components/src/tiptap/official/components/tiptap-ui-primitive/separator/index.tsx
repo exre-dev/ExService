@@ -1,1 +1,1 @@
-export { Separator } from "../../../primitives"
+export { Separator } from '../../../primitives'

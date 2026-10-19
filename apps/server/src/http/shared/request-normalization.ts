@@ -12,7 +12,10 @@ export function registerRequestNormalization(app: FastifyInstance): void {
   })
   // Only query parameters use Contract scalar coercion; JSON bodies remain strict.
   app.addHook('preValidation', (request, _reply, done) => {
-    coerceQueryStringTypes(request.query as Record<string, unknown>, request.routeOptions?.schema?.querystring)
+    coerceQueryStringTypes(
+      request.query as Record<string, unknown>,
+      request.routeOptions?.schema?.querystring,
+    )
     done()
   })
 }

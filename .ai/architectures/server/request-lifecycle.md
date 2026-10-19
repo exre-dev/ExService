@@ -38,11 +38,11 @@ URL 只允许单次设置 `sslmode`、`sslrootcert`、`connect_timeout`、`optio
 
 Server 独立 build 与根 build 的 Server 阶段均在 Contract 生成后、编译前执行 `scripts/clean-server-build.mjs`，只清理固定 `apps/server/dist`，拒绝链接、非目录和额外目标参数；清理失败阻止编译。编译及 alias 重写后再消费产物，删除或重命名的业务入口不会因旧输出残留重新加载。清理不访问持久 `data` 或环境文件，生产 start 不负责生成文件。整体配置和运行边界见 `.ai/architectures/runtime/runtime-boundaries.md`。
 
-| 命令 | 行为 |
-| --- | --- |
-| `pnpm db:migrate` | 对已存在的 `exre` 应用 `apps/server/drizzle/` 的 PostgreSQL 基线或未执行迁移；完成后复核结构。 |
-| `pnpm db:reset -- --confirm exre` | 开发专用：仅接受回环地址、`exre` 和显式确认；拒绝非本应用对象，清理应用表及 journal 后重跑基线；不删除头像。 |
-| `pnpm --filter @workspace/server db:generate` | 从 `apps/server/src/db/schema.ts` 生成候选 migration；需审阅 SQL 与约束。 |
+| 命令                                          | 行为                                                                                                         |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `pnpm db:migrate`                             | 对已存在的 `exre` 应用 `apps/server/drizzle/` 的 PostgreSQL 基线或未执行迁移；完成后复核结构。               |
+| `pnpm db:reset -- --confirm exre`             | 开发专用：仅接受回环地址、`exre` 和显式确认；拒绝非本应用对象，清理应用表及 journal 后重跑基线；不删除头像。 |
+| `pnpm --filter @workspace/server db:generate` | 从 `apps/server/src/db/schema.ts` 生成候选 migration；需审阅 SQL 与约束。                                    |
 
 `apps/server/src/db/migrate.ts` 和 `apps/server/src/db/reset.ts` 是不可 import 的 CLI 入口。共享逻辑分别在 `apps/server/src/db/migration-runner.ts`、`apps/server/src/db/reset-plan.ts`；运行时不会导入带写入副作用的 CLI。`apps/server/drizzle.config.ts` 供 Drizzle Kit 生成使用，运行迁移由显式 CLI 触发。
 

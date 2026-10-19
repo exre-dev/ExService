@@ -105,7 +105,10 @@ async function withDeadline<T>(operation: Promise<T>): Promise<T> {
     return await Promise.race([
       operation,
       new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => reject(new StorageError('STORAGE_UPSTREAM_FAILED')), COS_DEADLINE_MS)
+        timer = setTimeout(
+          () => reject(new StorageError('STORAGE_UPSTREAM_FAILED')),
+          COS_DEADLINE_MS,
+        )
         timer.unref()
       }),
     ])
@@ -167,7 +170,9 @@ export function createCosDependencies(config: CosConfig): CosDependencies {
 
     async headObject({ key }) {
       // 缺失与上游故障的区分交给 Adapter 层的 classify。
-      const result = await withDeadline(client.headObject({ Bucket: config.bucket, Region: config.region, Key: key }))
+      const result = await withDeadline(
+        client.headObject({ Bucket: config.bucket, Region: config.region, Key: key }),
+      )
       const bytes = contentLength(result.headers)
       if (bytes === undefined) throw new StorageError('STORAGE_UPSTREAM_FAILED')
       return { bytes }

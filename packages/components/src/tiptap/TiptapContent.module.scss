@@ -6,53 +6,228 @@
   line-height: 1.6;
   overflow-wrap: anywhere;
   min-width: 0;
-  :global(.tiptap) { padding: 1.25rem; min-height: 12rem; outline: none; }
-  h1, h2, h3, h4, h5, h6 { line-height: 1.35; font-weight: 650; }
-  h1 { font-size: 2rem; margin-block: 1.5rem .75rem; }
-  h2 { font-size: 1.6rem; margin-block: 1.25rem .625rem; }
-  h3 { font-size: 1.3rem; margin-block: 1rem .5rem; }
-  h4 { font-size: 1.1rem; margin-block: .875rem .5rem; }
-  h5 { font-size: 1rem; margin-block: .875rem .5rem; }
-  h6 { font-size: .9rem; margin-block: .75rem .5rem; }
-  :global(.tiptap) > :first-child { margin-top: 0; }
-  p { margin-block: .6rem; }
-  ul, ol { padding-inline-start: 1.5rem; margin-block: .75rem; }
-  ul { list-style: disc; } ol { list-style: decimal; }
-  li > p { margin-block: .25rem; }
-  blockquote { border-inline-start: 3px solid var(--exui-border-focused); margin: 1rem 0; padding-inline-start: 1rem; color: var(--exui-text-secondary); }
-  a { color: var(--exui-text-link); text-decoration: underline; }
-  pre { background: var(--exui-surface-secondary); border: 1px solid var(--exui-border-default); border-radius: var(--density-control-radius); overflow-x: auto; padding: .875rem; white-space: pre; overflow-wrap: normal; max-width: 100%; }
-  code { font-family: 'Maple Mono CN', var(--exui-font-family-mono); font-size: .9em; }
-  :not(pre) > code { background: var(--exui-surface-secondary); border-radius: var(--density-control-radius); padding: .125rem .25rem; }
-  img { max-width: 100%; height: auto; border-radius: var(--density-control-radius); }
-  p img, h1 img, h2 img, h3 img, h4 img, h5 img, h6 img { display: inline; width: auto; vertical-align: middle; }
-  [data-tiptap-image-layout] { max-width: 100%; margin-block: 1rem; }
-  [data-tiptap-image-layout] img { display: block; height: auto !important; aspect-ratio: var(--tiptap-image-ratio, auto); }
-  [data-tiptap-image-layout]:not([data-resize-state='true']) img { width: var(--tiptap-image-width, auto) !important; height: var(--tiptap-image-height, auto) !important; }
-  [data-resize-container] { max-width: 100%; margin-block: 1rem; }
-  [data-resize-wrapper] { max-width: 100%; }
+  :global(.tiptap) {
+    padding: 1.25rem;
+    min-height: 12rem;
+    outline: none;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    line-height: 1.35;
+    font-weight: 650;
+  }
+  h1 {
+    font-size: 2rem;
+    margin-block: 1.5rem 0.75rem;
+  }
+  h2 {
+    font-size: 1.6rem;
+    margin-block: 1.25rem 0.625rem;
+  }
+  h3 {
+    font-size: 1.3rem;
+    margin-block: 1rem 0.5rem;
+  }
+  h4 {
+    font-size: 1.1rem;
+    margin-block: 0.875rem 0.5rem;
+  }
+  h5 {
+    font-size: 1rem;
+    margin-block: 0.875rem 0.5rem;
+  }
+  h6 {
+    font-size: 0.9rem;
+    margin-block: 0.75rem 0.5rem;
+  }
+  :global(.tiptap) > :first-child {
+    margin-top: 0;
+  }
+  p {
+    margin-block: 0.6rem;
+  }
+  ul,
+  ol {
+    padding-inline-start: 1.5rem;
+    margin-block: 0.75rem;
+  }
+  ul {
+    list-style: disc;
+  }
+  ol {
+    list-style: decimal;
+  }
+  li > p {
+    margin-block: 0.25rem;
+  }
+  blockquote {
+    border-inline-start: 3px solid var(--exui-border-focused);
+    margin: 1rem 0;
+    padding-inline-start: 1rem;
+    color: var(--exui-text-secondary);
+  }
+  a {
+    color: var(--exui-text-link);
+    text-decoration: underline;
+  }
+  pre {
+    background: var(--exui-surface-secondary);
+    border: 1px solid var(--exui-border-default);
+    border-radius: var(--density-control-radius);
+    overflow-x: auto;
+    padding: 0.875rem;
+    white-space: pre;
+    overflow-wrap: normal;
+    max-width: 100%;
+  }
+  code {
+    font-family: 'Maple Mono CN', var(--exui-font-family-mono);
+    font-size: 0.9em;
+  }
+  :not(pre) > code {
+    background: var(--exui-surface-secondary);
+    border-radius: var(--density-control-radius);
+    padding: 0.125rem 0.25rem;
+  }
+  img {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--density-control-radius);
+  }
+  p img,
+  h1 img,
+  h2 img,
+  h3 img,
+  h4 img,
+  h5 img,
+  h6 img {
+    display: inline;
+    width: auto;
+    vertical-align: middle;
+  }
+  [data-tiptap-image-layout] {
+    max-width: 100%;
+    margin-block: 1rem;
+  }
+  [data-tiptap-image-layout] img {
+    display: block;
+    height: auto !important;
+    aspect-ratio: var(--tiptap-image-ratio, auto);
+  }
+  [data-tiptap-image-layout]:not([data-resize-state='true']) img {
+    width: var(--tiptap-image-width, auto) !important;
+    height: var(--tiptap-image-height, auto) !important;
+  }
+  [data-resize-container] {
+    max-width: 100%;
+    margin-block: 1rem;
+  }
+  [data-resize-wrapper] {
+    max-width: 100%;
+  }
   // Retain the official resize hit areas without visible corner decorations.
-  [data-resize-handle] { width: .625rem; height: .625rem; background: transparent; border: 0; opacity: 0; }
-  [data-resize-handle='top-left'], [data-resize-handle='bottom-right'] { cursor: nwse-resize; }
-  [data-resize-handle='top-right'], [data-resize-handle='bottom-left'] { cursor: nesw-resize; }
-  hr { border: 0; border-top: 1px solid var(--exui-border-divider); margin-block: 1.5rem; }
-  :global(.tableWrapper) { max-width: 100%; overflow-x: auto; margin-block: 1rem; border: 1px solid var(--exui-border-default); border-radius: var(--density-control-radius); }
-  table { border-collapse: collapse; table-layout: fixed; width: 100%; }
-  td, th { position: relative; min-width: 6.25rem; border: 1px solid var(--exui-border-default); padding: .5rem .75rem; vertical-align: top; text-align: left; }
-  th { font-weight: 650; background: var(--exui-surface-secondary); }
-  td > :first-child, th > :first-child { margin-top: 0; }
-  td > :last-child, th > :last-child { margin-bottom: 0; }
-  :global(.selectedCell)::after { content: ''; position: absolute; inset: 0; background: var(--exui-control-selected); opacity: .15; pointer-events: none; }
-  :global(.ProseMirror-selectednode) { outline: 2px solid var(--exui-control-selected); }
-  :global(.ProseMirror-selectednode)[data-tiptap-image-layout] { outline: none; box-shadow: none; }
-  [data-type='taskList'] { list-style: none; padding-inline-start: .25rem; }
+  [data-resize-handle] {
+    width: 0.625rem;
+    height: 0.625rem;
+    background: transparent;
+    border: 0;
+    opacity: 0;
+  }
+  [data-resize-handle='top-left'],
+  [data-resize-handle='bottom-right'] {
+    cursor: nwse-resize;
+  }
+  [data-resize-handle='top-right'],
+  [data-resize-handle='bottom-left'] {
+    cursor: nesw-resize;
+  }
+  hr {
+    border: 0;
+    border-top: 1px solid var(--exui-border-divider);
+    margin-block: 1.5rem;
+  }
+  :global(.tableWrapper) {
+    max-width: 100%;
+    overflow-x: auto;
+    margin-block: 1rem;
+    border: 1px solid var(--exui-border-default);
+    border-radius: var(--density-control-radius);
+  }
+  table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+  }
+  td,
+  th {
+    position: relative;
+    min-width: 6.25rem;
+    border: 1px solid var(--exui-border-default);
+    padding: 0.5rem 0.75rem;
+    vertical-align: top;
+    text-align: left;
+  }
+  th {
+    font-weight: 650;
+    background: var(--exui-surface-secondary);
+  }
+  td > :first-child,
+  th > :first-child {
+    margin-top: 0;
+  }
+  td > :last-child,
+  th > :last-child {
+    margin-bottom: 0;
+  }
+  :global(.selectedCell)::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--exui-control-selected);
+    opacity: 0.15;
+    pointer-events: none;
+  }
+  :global(.ProseMirror-selectednode) {
+    outline: 2px solid var(--exui-control-selected);
+  }
+  :global(.ProseMirror-selectednode)[data-tiptap-image-layout] {
+    outline: none;
+    box-shadow: none;
+  }
+  [data-type='taskList'] {
+    list-style: none;
+    padding-inline-start: 0.25rem;
+  }
   // Official TaskItem's live NodeView emits data-checked but no data-type.
   // Anchor to its owning TaskList so editing and viewing share the same layout.
-  [data-type='taskList'] > li { display: flex; align-items: flex-start; gap: .5rem; }
-  [data-type='taskList'] > li > label { flex: 0 0 auto; padding-top: .3rem; }
-  [data-type='taskList'] > li > div { flex: 1; min-width: 0; }
-  [data-type='taskList'] > li > div > p:first-child { margin-top: .25rem; }
-  [data-type='details'] { display: flex; gap: .5rem; margin-block: 1rem; padding: .75rem; border: 0; border-radius: var(--density-control-radius); }
+  [data-type='taskList'] > li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  [data-type='taskList'] > li > label {
+    flex: 0 0 auto;
+    padding-top: 0.3rem;
+  }
+  [data-type='taskList'] > li > div {
+    flex: 1;
+    min-width: 0;
+  }
+  [data-type='taskList'] > li > div > p:first-child {
+    margin-top: 0.25rem;
+  }
+  [data-type='details'] {
+    display: flex;
+    gap: 0.5rem;
+    margin-block: 1rem;
+    padding: 0.75rem;
+    border: 0;
+    border-radius: var(--density-control-radius);
+  }
   [data-type='details']:not(:has(> button[aria-expanded='true'])) {
     --exui-glass-background: transparent;
     --exui-glass-fallback-background: transparent;
@@ -60,27 +235,89 @@
     -webkit-backdrop-filter: none;
   }
   // ExUI composes this outer shadow with its own glass inset edge/highlight.
-  [data-type='details']:has(> button[aria-expanded='true']) { --tw-shadow: var(--exui-shadow-medium); }
-  [data-type='details'] > button { flex: 0 0 auto; width: 1.5rem; height: 1.5rem; color: var(--exui-text-secondary); cursor: pointer; }
-  [data-type='details'] > button::before { content: '▸'; }
-  [data-type='details'] > button[aria-expanded='true']::before { content: '▾'; }
-  [data-type='details'] > div { flex: 1; min-width: 0; }
-  summary { font-weight: 600; }
+  [data-type='details']:has(> button[aria-expanded='true']) {
+    --tw-shadow: var(--exui-shadow-medium);
+  }
+  [data-type='details'] > button {
+    flex: 0 0 auto;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--exui-text-secondary);
+    cursor: pointer;
+  }
+  [data-type='details'] > button::before {
+    content: '▸';
+  }
+  [data-type='details'] > button[aria-expanded='true']::before {
+    content: '▾';
+  }
+  [data-type='details'] > div {
+    flex: 1;
+    min-width: 0;
+  }
+  summary {
+    font-weight: 600;
+  }
   // The official NodeView has its own toggle button; suppress the native marker.
-  [data-type='details'] summary { display: block; list-style: none; }
-  [data-type='details'] summary::-webkit-details-marker { display: none; }
-  [data-type='admonition'] { margin-block: 1rem; padding: .75rem 1rem; border: 1px solid var(--exui-border-default); border-inline-start: 4px solid var(--exui-feedback-info); border-radius: var(--density-control-radius); background: var(--exui-surface-card); }
+  [data-type='details'] summary {
+    display: block;
+    list-style: none;
+  }
+  [data-type='details'] summary::-webkit-details-marker {
+    display: none;
+  }
+  [data-type='admonition'] {
+    margin-block: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--exui-border-default);
+    border-inline-start: 4px solid var(--exui-feedback-info);
+    border-radius: var(--density-control-radius);
+    background: var(--exui-surface-card);
+  }
   // ExUI's default primary blue, independent of Website's monochrome primary.
-  [data-admonition-type='info'] { --exui-feedback-info: #0088ff; }
-  [data-admonition-type='tip'] { border-inline-start-color: var(--exui-feedback-success); }
-  [data-admonition-type='warning'] { border-inline-start-color: var(--exui-feedback-warning); }
-  [data-admonition-type='error'] { border-inline-start-color: var(--exui-feedback-danger); }
-  [data-type='admonitionTitle'] { font-weight: 650; }
+  [data-admonition-type='info'] {
+    --exui-feedback-info: #0088ff;
+  }
+  [data-admonition-type='tip'] {
+    border-inline-start-color: var(--exui-feedback-success);
+  }
+  [data-admonition-type='warning'] {
+    border-inline-start-color: var(--exui-feedback-warning);
+  }
+  [data-admonition-type='error'] {
+    border-inline-start-color: var(--exui-feedback-danger);
+  }
+  [data-type='admonitionTitle'] {
+    font-weight: 650;
+  }
   // Static SVG masks generated from the installed lucide-react public icons.
   // Display decoration stays outside serialized document/clipboard content.
-  [data-type='admonitionTitle']::before { content: ''; display: inline-block; width: 1em; height: 1em; vertical-align: -.125em; margin-inline-end: .5rem; background-color: var(--exui-feedback-info); mask: url('./icons/info.svg') center / contain no-repeat; }
-  [data-admonition-type='tip'] > [data-type='admonitionTitle']::before { background-color: var(--exui-feedback-success); mask-image: url('./icons/tip.svg'); }
-  [data-admonition-type='warning'] > [data-type='admonitionTitle']::before { background-color: var(--exui-feedback-warning); mask-image: url('./icons/warning.svg'); }
-  [data-admonition-type='error'] > [data-type='admonitionTitle']::before { background-color: var(--exui-feedback-danger); mask-image: url('./icons/error.svg'); }
-  [data-type='mention'] { border-radius: var(--density-control-radius); background: var(--exui-surface-secondary); color: var(--exui-text-link); padding: .1rem .25rem; }
+  [data-type='admonitionTitle']::before {
+    content: '';
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    vertical-align: -0.125em;
+    margin-inline-end: 0.5rem;
+    background-color: var(--exui-feedback-info);
+    mask: url('./icons/info.svg') center / contain no-repeat;
+  }
+  [data-admonition-type='tip'] > [data-type='admonitionTitle']::before {
+    background-color: var(--exui-feedback-success);
+    mask-image: url('./icons/tip.svg');
+  }
+  [data-admonition-type='warning'] > [data-type='admonitionTitle']::before {
+    background-color: var(--exui-feedback-warning);
+    mask-image: url('./icons/warning.svg');
+  }
+  [data-admonition-type='error'] > [data-type='admonitionTitle']::before {
+    background-color: var(--exui-feedback-danger);
+    mask-image: url('./icons/error.svg');
+  }
+  [data-type='mention'] {
+    border-radius: var(--density-control-radius);
+    background: var(--exui-surface-secondary);
+    color: var(--exui-text-link);
+    padding: 0.1rem 0.25rem;
+  }
 }

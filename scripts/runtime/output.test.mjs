@@ -5,9 +5,15 @@ import { fileURLToPath } from 'node:url'
 import { reporter, RuntimeError, redact } from './output.mjs'
 
 function capture({ isTTY = false, colorEnvironment = {}, ...options } = {}) {
-  const lines = [], retained = []
-  const output = reporter({ stream: { isTTY }, colorEnvironment, write: line => lines.push(line),
-    persist: line => retained.push(line), ...options })
+  const lines = [],
+    retained = []
+  const output = reporter({
+    stream: { isTTY },
+    colorEnvironment,
+    write: (line) => lines.push(line),
+    persist: (line) => retained.push(line),
+    ...options,
+  })
   return { output, lines, retained }
 }
 
@@ -15,7 +21,10 @@ test('service summaries separate readiness, addresses and copyable commands with
   const { output, lines } = capture()
   output.heading('ExWebsite · 后台服务')
   output.status('PostgreSQL', '已就绪', '127.0.0.1:5432', { level: 'success' })
-  output.next('pnpm dev', [['状态', 'pnpm service:status'], ['日志', 'pnpm service:logs']])
+  output.next('pnpm dev', [
+    ['状态', 'pnpm service:status'],
+    ['日志', 'pnpm service:logs'],
+  ])
   const text = lines.join('\n')
   assert.match(text, /✓ PostgreSQL\s+已就绪\s+127\.0\.0\.1:5432/)
   assert.match(text, /下一步\n  pnpm dev\n\n其他操作\n  状态  pnpm service:status/)
@@ -23,8 +32,12 @@ test('service summaries separate readiness, addresses and copyable commands with
 })
 
 test('color follows each output stream and explicit disable settings', () => {
-  for (const options of [{ isTTY: false }, { isTTY: true, colorEnvironment: { NO_COLOR: '1' } },
-    { isTTY: true, colorEnvironment: { TERM: 'dumb' } }, { isTTY: true, colorEnvironment: { FORCE_COLOR: '0' } }]) {
+  for (const options of [
+    { isTTY: false },
+    { isTTY: true, colorEnvironment: { NO_COLOR: '1' } },
+    { isTTY: true, colorEnvironment: { TERM: 'dumb' } },
+    { isTTY: true, colorEnvironment: { FORCE_COLOR: '0' } },
+  ]) {
     const { output, lines } = capture(options)
     output.status('Redis', '已停止', '', { level: 'warning' })
     assert.doesNotMatch(lines.join('\n'), /\x1b/)
@@ -37,8 +50,14 @@ test('color follows each output stream and explicit disable settings', () => {
 })
 
 test('live logs use short time while persisted logs keep ISO time, with neither secrets nor ANSI', () => {
-  const { output, lines, retained } = capture({ isTTY: true, environment: { DATABASE_PASSWORD: 'p@%' } })
-  output.log('server', '\x1b[31mBearer private-token postgres://user:p@%25@host/exre p%40%25\x1b[0m')
+  const { output, lines, retained } = capture({
+    isTTY: true,
+    environment: { DATABASE_PASSWORD: 'p@%' },
+  })
+  output.log(
+    'server',
+    '\x1b[31mBearer private-token postgres://user:p@%25@host/exre p%40%25\x1b[0m',
+  )
   assert.match(redact(lines[0]), /^\d{2}:\d{2}:\d{2} \[server\]/)
   assert.match(retained[0], /^\d{4}-\d{2}-\d{2}T.* \[信息\] \[server\]/)
   assert.doesNotMatch(retained[0], /\x1b|private-token|p@%|p%40%25|postgres:\/\//)
@@ -46,9 +65,19 @@ test('live logs use short time while persisted logs keep ISO time, with neither 
 })
 
 test('errors show a readable reason, context and next step but hide untrusted exception messages', () => {
-  const { output, lines, retained } = capture({ isTTY: true, environment: { DATABASE_PASSWORD: 'private-password' } })
-  output.failure(new RuntimeError('DOCKER_UNAVAILABLE', { service: 'Docker', phase: '引擎连接失败',
-    target: 'private-password', keys: ['DOCKER_HOST'], next: '检查 Docker Desktop/daemon 状态；执行 docker info' }))
+  const { output, lines, retained } = capture({
+    isTTY: true,
+    environment: { DATABASE_PASSWORD: 'private-password' },
+  })
+  output.failure(
+    new RuntimeError('DOCKER_UNAVAILABLE', {
+      service: 'Docker',
+      phase: '引擎连接失败',
+      target: 'private-password',
+      keys: ['DOCKER_HOST'],
+      next: '检查 Docker Desktop/daemon 状态；执行 docker info',
+    }),
+  )
   const text = redact(lines.join('\n'))
   assert.match(text, /✗ Docker 无法连接 Docker 引擎/)
   assert.match(text, /错误码  DOCKER_UNAVAILABLE/)
@@ -56,17 +85,28 @@ test('errors show a readable reason, context and next step but hide untrusted ex
   assert.match(text, /配置键  DOCKER_HOST/)
   assert.match(text, /下一步\n  检查 Docker Desktop\/daemon 状态\n  执行 docker info/)
   assert.doesNotMatch(text, /private-password/)
-  assert.ok(retained.every(line => !line.includes('\x1b')))
-  for (const error of [new Error('private-password'), { code: 'DOCKER_UNAVAILABLE', message: 'private-password' }]) {
-    const result = capture(); result.output.failure(error)
+  assert.ok(retained.every((line) => !line.includes('\x1b')))
+  for (const error of [
+    new Error('private-password'),
+    { code: 'DOCKER_UNAVAILABLE', message: 'private-password' },
+  ]) {
+    const result = capture()
+    result.output.failure(error)
     assert.doesNotMatch(result.lines.join('\n'), /private-password/)
     assert.match(result.lines.join('\n'), /下一步/)
   }
 })
 
 test('the real entry point writes grouped errors to redirected stderr and retains failure exit status', () => {
-  const result = spawnSync(process.execPath, [fileURLToPath(new URL('./entry.mjs', import.meta.url)), 'private-command'],
-    { encoding: 'utf8', windowsHide: true, env: { ...process.env, NO_COLOR: '', TERM: 'xterm-256color' } })
+  const result = spawnSync(
+    process.execPath,
+    [fileURLToPath(new URL('./entry.mjs', import.meta.url)), 'private-command'],
+    {
+      encoding: 'utf8',
+      windowsHide: true,
+      env: { ...process.env, NO_COLOR: '', TERM: 'xterm-256color' },
+    },
+  )
   assert.equal(result.status, 1)
   assert.equal(result.stdout, '')
   assert.match(result.stderr, /✗.*\n\n.*检查项/)
@@ -90,9 +130,16 @@ test('log colors follow severity, not error words in file names or informational
   }
 })
 
-test('missing Hydra clients point to the supported explicit registration action',async()=>{
- const {runtimeFailure}=await import('./output.mjs'),{parseRuntimeArguments}=await import('./entry.mjs')
- const message=runtimeFailure({code:'HYDRA_CLIENT_MISSING'})
- assert.match(message,/IDENTITY_CLIENTS_JSON/);assert.match(message,/pnpm infra clients/);assert.doesNotMatch(message,/bootstrap|UUID|admin-user-id/)
- assert.deepEqual(parseRuntimeArguments(['infra','clients']),{command:'infra',action:'clients',verbose:false})
+test('missing Hydra clients point to the supported explicit registration action', async () => {
+  const { runtimeFailure } = await import('./output.mjs'),
+    { parseRuntimeArguments } = await import('./entry.mjs')
+  const message = runtimeFailure({ code: 'HYDRA_CLIENT_MISSING' })
+  assert.match(message, /IDENTITY_CLIENTS_JSON/)
+  assert.match(message, /pnpm infra clients/)
+  assert.doesNotMatch(message, /bootstrap|UUID|admin-user-id/)
+  assert.deepEqual(parseRuntimeArguments(['infra', 'clients']), {
+    command: 'infra',
+    action: 'clients',
+    verbose: false,
+  })
 })

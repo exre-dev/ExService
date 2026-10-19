@@ -1,29 +1,27 @@
-import type { Node as TiptapNode } from "@tiptap/pm/model"
-import { NodeSelection, Selection, TextSelection } from "@tiptap/pm/state"
-import type { Editor } from "@tiptap/react"
+import type { Node as TiptapNode } from '@tiptap/pm/model'
+import { NodeSelection, Selection, TextSelection } from '@tiptap/pm/state'
+import type { Editor } from '@tiptap/react'
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
 export const MAC_SYMBOLS: Record<string, string> = {
-  mod: "⌘",
-  command: "⌘",
-  meta: "⌘",
-  ctrl: "⌃",
-  control: "⌃",
-  alt: "⌥",
-  option: "⌥",
-  shift: "⇧",
-  backspace: "Del",
-  delete: "⌦",
-  enter: "⏎",
-  escape: "⎋",
-  capslock: "⇪",
+  mod: '⌘',
+  command: '⌘',
+  meta: '⌘',
+  ctrl: '⌃',
+  control: '⌃',
+  alt: '⌥',
+  option: '⌥',
+  shift: '⇧',
+  backspace: 'Del',
+  delete: '⌦',
+  enter: '⏎',
+  escape: '⎋',
+  capslock: '⇪',
 } as const
 
-export function cn(
-  ...classes: (string | boolean | undefined | null)[]
-): string {
-  return classes.filter(Boolean).join(" ")
+export function cn(...classes: (string | boolean | undefined | null)[]): string {
+  return classes.filter(Boolean).join(' ')
 }
 
 /**
@@ -31,10 +29,7 @@ export function cn(
  * @returns boolean indicating if the current platform is Mac
  */
 export function isMac(): boolean {
-  return (
-    typeof navigator !== "undefined" &&
-    navigator.platform.toLowerCase().includes("mac")
-  )
+  return typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac')
 }
 
 /**
@@ -44,11 +39,7 @@ export function isMac(): boolean {
  * @param capitalize - Whether to capitalize the key (default: true)
  * @returns Formatted shortcut key symbol
  */
-export const formatShortcutKey = (
-  key: string,
-  isMac: boolean,
-  capitalize: boolean = true
-) => {
+export const formatShortcutKey = (key: string, isMac: boolean, capitalize: boolean = true) => {
   if (isMac) {
     const lowerKey = key.toLowerCase()
     return MAC_SYMBOLS[lowerKey] || (capitalize ? key.toUpperCase() : key)
@@ -69,7 +60,7 @@ export const parseShortcutKeys = (props: {
   delimiter?: string
   capitalize?: boolean
 }) => {
-  const { shortcutKeys, delimiter = "+", capitalize = true } = props
+  const { shortcutKeys, delimiter = '+', capitalize = true } = props
 
   if (!shortcutKeys) return []
 
@@ -85,10 +76,7 @@ export const parseShortcutKeys = (props: {
  * @param editor - The editor instance
  * @returns boolean indicating if the mark exists in the schema
  */
-export const isMarkInSchema = (
-  markName: string,
-  editor: Editor | null
-): boolean => {
+export const isMarkInSchema = (markName: string, editor: Editor | null): boolean => {
   if (!editor || editor.isDestroyed || !editor.schema) return false
   return editor.schema.spec.marks.get(markName) !== undefined
 }
@@ -99,10 +87,7 @@ export const isMarkInSchema = (
  * @param editor - The editor instance
  * @returns boolean indicating if the node exists in the schema
  */
-export const isNodeInSchema = (
-  nodeName: string,
-  editor: Editor | null
-): boolean => {
+export const isNodeInSchema = (nodeName: string, editor: Editor | null): boolean => {
   if (!editor || editor.isDestroyed || !editor.schema) return false
   return editor.schema.spec.nodes.get(nodeName) !== undefined
 }
@@ -124,7 +109,7 @@ export function focusNextNode(editor: Editor) {
 
   const paragraphType = state.schema.nodes.paragraph
   if (!paragraphType) {
-    console.warn("No paragraph node type found in schema.")
+    console.warn('No paragraph node type found in schema.')
     return false
   }
 
@@ -145,7 +130,7 @@ export function focusNextNode(editor: Editor) {
  * @returns boolean indicating if the value is a valid number
  */
 export function isValidPosition(pos: number | null | undefined): pos is number {
-  return typeof pos === "number" && pos >= 0
+  return typeof pos === 'number' && pos >= 0
 }
 
 /**
@@ -156,21 +141,19 @@ export function isValidPosition(pos: number | null | undefined): pos is number {
  */
 export function isExtensionAvailable(
   editor: Editor | null,
-  extensionNames: string | string[]
+  extensionNames: string | string[],
 ): boolean {
   if (!editor || editor.isDestroyed) return false
 
-  const names = Array.isArray(extensionNames)
-    ? extensionNames
-    : [extensionNames]
+  const names = Array.isArray(extensionNames) ? extensionNames : [extensionNames]
 
   const found = names.some((name) =>
-    editor.extensionManager.extensions.some((ext) => ext.name === name)
+    editor.extensionManager.extensions.some((ext) => ext.name === name),
   )
 
   if (!found) {
     console.warn(
-      `None of the extensions [${names.join(", ")}] were found in the editor schema. Ensure they are included in the editor configuration.`
+      `None of the extensions [${names.join(', ')}] were found in the editor schema. Ensure they are included in the editor configuration.`,
     )
   }
 
@@ -260,10 +243,7 @@ export function findNodePosition(props: {
  * @param types An array of node type names to check against
  * @returns boolean indicating if the selected node matches any of the specified types
  */
-export function isNodeTypeSelected(
-  editor: Editor | null,
-  types: string[] = []
-): boolean {
+export function isNodeTypeSelected(editor: Editor | null, types: string[] = []): boolean {
   if (!editor || !editor.state.selection) return false
 
   const { state } = editor
@@ -278,7 +258,6 @@ export function isNodeTypeSelected(
 
   return false
 }
-
 
 /** Avoid a deferred focus stealing focus from a subsequently opened panel. */
 export function focusEditor(editor: Editor): Editor {

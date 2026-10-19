@@ -12,12 +12,12 @@
 
 ## 现状证据与目标
 
-| 候选 | 当前证据 | 目标与边界 |
-| --- | --- | --- |
-| 01 | `records.ts` 第 35–42 行用当前 `TARGET` 字段 ID 生成期望字段，且 v3 要求当前 `COMMUNITY_TARGET` 的 List、TaskType、status；`metadata.ts` 第 118–122 行依赖当前 List 区分社区 Tag 与匿名用户字段。现有 `state-machine.test.ts` 第 29–50 行已证明 v2 允许旧 List、TaskType、status、用户字段 ID；`community.test.ts` 第 73–106 行证明匿名载荷和远端复杂身份值须拒绝。 | 历史记录按冻结值和受控历史策略核验；当前目标配置只用于新记录的 preflight 与冻结。保留 v2 的宽容历史映射及 v3 的严格匿名隐私约束。 |
-| 02 | `feedbackFormConfig.ts` 分组入口，`flow.ts` 第 19 行用非社区补集推断 development，`schema.ts` 与 `FeedbackModal.tsx` 重复解释分类、操作、部门、正文与匿名适用性。 | 一个前端纯规则入口提供 kind→area、适用字段和展示元数据；保留 Zod、RHF 和生成的 Contract union 各自职责，不迁入 `packages/common/`。 |
-| 03 | `service.ts` 第 87–123 行及 `maintenance.ts` 第 42–80 行分别更新相同的 status、attempt、failure、revision 与附件字节列；`records.ts` 仅共享清理 SQL 片段。 | 一处事务内的结果裁决和持久化规则，两个调用者仍分别取得外部结果与证据；不引入通用 repository 框架。 |
-| 04 | `scripts/copy-support-fields.mjs` 第 6–34 行与 `field-config.ts` 第 7–46 行维护同一组三个字段身份和 JSON 约束。目前没有已证实的接受语义偏差。 | 一个无 I/O 的原生 ESM 解析函数；构建继续全量校验后复制且失败中断，运行继续逐文件降级并排序。 |
+| 候选 | 当前证据                                                                                                                                                                                                                                                                                                                                                            | 目标与边界                                                                                                                          |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 01   | `records.ts` 第 35–42 行用当前 `TARGET` 字段 ID 生成期望字段，且 v3 要求当前 `COMMUNITY_TARGET` 的 List、TaskType、status；`metadata.ts` 第 118–122 行依赖当前 List 区分社区 Tag 与匿名用户字段。现有 `state-machine.test.ts` 第 29–50 行已证明 v2 允许旧 List、TaskType、status、用户字段 ID；`community.test.ts` 第 73–106 行证明匿名载荷和远端复杂身份值须拒绝。 | 历史记录按冻结值和受控历史策略核验；当前目标配置只用于新记录的 preflight 与冻结。保留 v2 的宽容历史映射及 v3 的严格匿名隐私约束。   |
+| 02   | `feedbackFormConfig.ts` 分组入口，`flow.ts` 第 19 行用非社区补集推断 development，`schema.ts` 与 `FeedbackModal.tsx` 重复解释分类、操作、部门、正文与匿名适用性。                                                                                                                                                                                                   | 一个前端纯规则入口提供 kind→area、适用字段和展示元数据；保留 Zod、RHF 和生成的 Contract union 各自职责，不迁入 `packages/common/`。 |
+| 03   | `service.ts` 第 87–123 行及 `maintenance.ts` 第 42–80 行分别更新相同的 status、attempt、failure、revision 与附件字节列；`records.ts` 仅共享清理 SQL 片段。                                                                                                                                                                                                          | 一处事务内的结果裁决和持久化规则，两个调用者仍分别取得外部结果与证据；不引入通用 repository 框架。                                  |
+| 04   | `scripts/copy-support-fields.mjs` 第 6–34 行与 `field-config.ts` 第 7–46 行维护同一组三个字段身份和 JSON 约束。目前没有已证实的接受语义偏差。                                                                                                                                                                                                                       | 一个无 I/O 的原生 ESM 解析函数；构建继续全量校验后复制且失败中断，运行继续逐文件降级并排序。                                        |
 
 全局守卫：`user_id` 归属核验和固定安全错误不变；`form_version=2` 的六类及 `form_version=3` 的两类均可读取、恢复和推进；匿名投诉的内部归属不外发；unknown 结果先核对，绝不因为 GET 未找到而盲重试；单次 `advance` 最多一个远端 POST；外部 I/O 在数据库事务外；父行锁、attempt UUID、boot ID、revision 的现有竞态防护不减弱；仅远端附件 ID 已在同一事务持久化后释放对应 `bytea`。
 
@@ -28,7 +28,11 @@
 ```ts
 type ValidatedFrozenTask = { payload: FrozenTaskPayload; policy: FrozenPolicy }
 function validateStoredTask(row: FrozenTaskColumns, form: FeedbackForm): ValidatedFrozenTask
-function matchesFrozenTask(remote: ClickUpTask, frozen: ValidatedFrozenTask, taskId: string): boolean
+function matchesFrozenTask(
+  remote: ClickUpTask,
+  frozen: ValidatedFrozenTask,
+  taskId: string,
+): boolean
 ```
 
 `records.ts` 仍负责账号限定查询、表单及附件归一化、摘要、行和附件状态不变量；它把冻结 JSON、表单版本、目标 ID、昵称快照、最终 Markdown、账号 ID 传入 `validateStoredTask`，并将返回值放入 `RecordSet`。`service.ts` 的任务 GET 与 `maintenance.ts` 的远端确认均调用 `matchesFrozenTask`。`metadata.ts` 保留当前配置的 `options`、`preflight`、`taskInput` 和 `frozenTaskInput`；历史核验、Tag 分类与匿名回读逻辑迁出。`FrozenTaskPayload` 类型可由 `metadata.ts` 以 type-only 方式引用，避免运行时循环依赖。现有直接调用 `matchesTask` 的测试改从新模块导入。
@@ -60,11 +64,26 @@ type AttemptGuard =
 type Outcome =
   | { kind: 'task_id_saved'; taskId: string }
   | { kind: 'task_confirmed'; taskId: string; resolution?: MaintenanceResolution }
-  | { kind: 'attachment_uploaded'; attachmentId: string; remoteId: string; resolution?: MaintenanceResolution }
+  | {
+      kind: 'attachment_uploaded'
+      attachmentId: string
+      remoteId: string
+      resolution?: MaintenanceResolution
+    }
   | { kind: 'definite_failure'; code: FailureCode; retryNotBefore: number | null }
   | { kind: 'unknown' }
-  | { kind: 'confirmed_not_written'; evidence: NotWrittenEvidence; resolution: MaintenanceResolution }
-async function persistOutcome(tx: SqlExecutor, locked: RecordSet, guard: AttemptGuard, outcome: Outcome, at: number): Promise<boolean>
+  | {
+      kind: 'confirmed_not_written'
+      evidence: NotWrittenEvidence
+      resolution: MaintenanceResolution
+    }
+async function persistOutcome(
+  tx: SqlExecutor,
+  locked: RecordSet,
+  guard: AttemptGuard,
+  outcome: Outcome,
+  at: number,
+): Promise<boolean>
 ```
 
 `persistOutcome` 在调用者已持有父行 `FOR UPDATE` 的短事务中核验 guard、attempt kind、附件 ID、当前状态及结果适用性，原子更新 submission／attachment，并只在真正应用时增加 revision。`advance` 的 guard 同时匹配 attempt ID、boot ID 和运行中状态；晚到结果返回 false，不覆盖维护结论。`reconcile` 的 expired guard 还须核验同一个 attempt 的期限不晚于 `currentTime`，old_boot guard 须核验 attempt 所属 boot ID 不等于 `currentBootId`；只允许从 creating/uploading 的在途状态转 unknown。维护启动先用 expired guard 持久化过期 attempt 为 `verification_required`，重新读取 revision 后才用 maintenance guard 提交人工结论。maintenance 结果 guard 匹配 attempt ID、预读 revision 与 `verification_required`，不匹配则抛现有状态冲突。`task_id_saved` 只保存远端 ID、保留创建 attempt，以便事务外 GET 核对；`task_confirmed` 在有有效远端证据后清 attempt/failure，按附件是否全部上传设为 uploading/completed。`attachment_uploaded` 在同一事务写远端附件 ID、`status='uploaded'`、`bytes=NULL`，然后计算父状态与清理 attempt/failure。`definite_failure` 只接纳远端明确拒绝：create_task 要求尚未保存 task ID；upload_attachment 允许已有 task ID，但对应附件尚未保存 remote ID，转为 failed 时保留该附件字节以供后续显式 retry。不确定结果一律 unknown，保留 attempt 与字节并置 `verification_required`；`confirmed_not_written` 仅接受维护入口已验证的有限证据，置明确失败后才允许后续显式 retry。维护路径的 `maintenance_resolution_json` 只在受控维护结果中写入。
@@ -79,36 +98,36 @@ async function persistOutcome(tx: SqlExecutor, locked: RecordSet, guard: Attempt
 
 ## 文件归属与落地顺序
 
-| 阶段 | 主要文件 | 依赖与交接 |
-| --- | --- | --- |
-| 01 | 新增 `apps/server/src/domains/support/frozen-payload.ts`；调整同目录 `records.ts`、`metadata.ts`、`service.ts`、`maintenance.ts`；更新 `tests/support/state-machine.test.ts`、`community.test.ts`、`metadata.test.ts` | 先固定历史 v2/v3 策略，再让正常和维护读路径都消费同一验证结果。 |
-| 03 | 新增 `apps/server/src/domains/support/lifecycle.ts`；调整 `records.ts`、`service.ts`、`maintenance.ts`；更新 `tests/support/state-machine.test.ts`、`result-persistence.test.ts`、`community.test.ts` | 依赖 01 的 `RecordSet`／远端等价语义；由一个实现者串行修改重叠文件。 |
-| 02 | 新增 `apps/web/src/pages/Support/feedback/kind-rules.ts`；调整 `feedbackFormConfig.ts`、`flow.ts`、`schema.ts`、`FeedbackModal.tsx` 与对应测试 | 与 01/03 行为独立；共享工作树写入与集成检查串行。 |
-| 04 | 新增 `scripts/support-field-definition.mjs`、`.d.mts`；调整 `scripts/copy-support-fields.mjs`、`apps/server/src/domains/support/field-config.ts` 与 `tests/support/field-copy.test.ts`、`metadata.test.ts` | 与其他阶段行为独立；在 Server build 中确认原生 `.mjs` 与编译产物加载。 |
+| 阶段 | 主要文件                                                                                                                                                                                                              | 依赖与交接                                                             |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| 01   | 新增 `apps/server/src/domains/support/frozen-payload.ts`；调整同目录 `records.ts`、`metadata.ts`、`service.ts`、`maintenance.ts`；更新 `tests/support/state-machine.test.ts`、`community.test.ts`、`metadata.test.ts` | 先固定历史 v2/v3 策略，再让正常和维护读路径都消费同一验证结果。        |
+| 03   | 新增 `apps/server/src/domains/support/lifecycle.ts`；调整 `records.ts`、`service.ts`、`maintenance.ts`；更新 `tests/support/state-machine.test.ts`、`result-persistence.test.ts`、`community.test.ts`                 | 依赖 01 的 `RecordSet`／远端等价语义；由一个实现者串行修改重叠文件。   |
+| 02   | 新增 `apps/web/src/pages/Support/feedback/kind-rules.ts`；调整 `feedbackFormConfig.ts`、`flow.ts`、`schema.ts`、`FeedbackModal.tsx` 与对应测试                                                                        | 与 01/03 行为独立；共享工作树写入与集成检查串行。                      |
+| 04   | 新增 `scripts/support-field-definition.mjs`、`.d.mts`；调整 `scripts/copy-support-fields.mjs`、`apps/server/src/domains/support/field-config.ts` 与 `tests/support/field-copy.test.ts`、`metadata.test.ts`            | 与其他阶段行为独立；在 Server build 中确认原生 `.mjs` 与编译产物加载。 |
 
 若多个阶段均涉及 `tests/support/metadata.test.ts` 或 Server 构建，不由多个实现者同时编辑同一文件。每阶段完成后做定向验证，最终稳定候选统一交独立测试与代码审查；不重写已存记录或附件，不执行真实 ClickUp 写入。
 
 ## 回归验证矩阵
 
-| 场景 | 验证方法与应得结果 |
-| --- | --- |
-| v2 历史映射 | Testcontainers 注入旧 List、TaskType、status、用户字段 UUID、旧操作 Tag；GET、advance、维护仍用冻结值。旧 Bug 空 Type 可继续；附加社区 Tag 不改变 v2 判定。 |
-| v3 配置漂移 | 在测试中先按已登记的旧 profile 冻结并持久化 community 记录，再将当前新写入配置切换为不同 List/TaskType/status/字段 ID；旧 GET、advance、维护按旧元组继续，新记录按新元组可读。测试不通过修改历史策略来放行旧记录。 |
-| v3 匿名与篡改 | 匿名 payload 无用户字段且昵称快照为空；重算 hash 后注入用户字段、错字段 ID、错 Tag、任意未登记目标均被读取拒绝。远端在旧或新用户字段 ID 返回非空或不可解析复杂值时进入核对；具名身份字段仍按冻结值精确核对。 |
-| 远端未知与权限 | 不同账号 GET/lookup 不可读取记录；超时/断线/5xx/无法核对正文或身份进入 `verification_required`，不重复 POST；每次 advance 至多一次 POST。 |
+| 场景           | 验证方法与应得结果                                                                                                                                                                                                                 |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v2 历史映射    | Testcontainers 注入旧 List、TaskType、status、用户字段 UUID、旧操作 Tag；GET、advance、维护仍用冻结值。旧 Bug 空 Type 可继续；附加社区 Tag 不改变 v2 判定。                                                                        |
+| v3 配置漂移    | 在测试中先按已登记的旧 profile 冻结并持久化 community 记录，再将当前新写入配置切换为不同 List/TaskType/status/字段 ID；旧 GET、advance、维护按旧元组继续，新记录按新元组可读。测试不通过修改历史策略来放行旧记录。                 |
+| v3 匿名与篡改  | 匿名 payload 无用户字段且昵称快照为空；重算 hash 后注入用户字段、错字段 ID、错 Tag、任意未登记目标均被读取拒绝。远端在旧或新用户字段 ID 返回非空或不可解析复杂值时进入核对；具名身份字段仍按冻结值精确核对。                       |
+| 远端未知与权限 | 不同账号 GET/lookup 不可读取记录；超时/断线/5xx/无法核对正文或身份进入 `verification_required`，不重复 POST；每次 advance 至多一次 POST。                                                                                          |
 | 状态等价和竞态 | 正常任务／附件成功与人工回填产生相同业务状态、revision、attempt/failure 清理；附件远端 ID 与 `bytes=NULL` 同事务提交。并发抢占、过期 attempt、旧 boot、旧 revision、维护后晚到结果不能覆盖已裁决状态；事务提交失败保留可核对事实。 |
-| kind 全量矩阵 | 八类逐一核对 area、入口、字段显隐、必填、冻结 form、草稿恢复；错误 area 拒绝提交及恢复，未知 kind 不回退；anonymous 仅 complaint。运行 `flow.test.ts`、`schema.test.ts`、`FeedbackModal.test.tsx`。 |
-| 字段定义一致性 | 同一组有效/无效 JSON 在构建与运行两侧使用同一个纯解析结果；重复 ID/顺序、负顺序、越界、错误类型均拒绝。构建失败不创建目标目录；运行单文件失败仅降级该字段。执行原生 Node import、Server typecheck/build 及编译后加载烟测。 |
+| kind 全量矩阵  | 八类逐一核对 area、入口、字段显隐、必填、冻结 form、草稿恢复；错误 area 拒绝提交及恢复，未知 kind 不回退；anonymous 仅 complaint。运行 `flow.test.ts`、`schema.test.ts`、`FeedbackModal.test.tsx`。                                |
+| 字段定义一致性 | 同一组有效/无效 JSON 在构建与运行两侧使用同一个纯解析结果；重复 ID/顺序、负顺序、越界、错误类型均拒绝。构建失败不创建目标目录；运行单文件失败仅降级该字段。执行原生 Node import、Server typecheck/build 及编译后加载烟测。         |
 
 按仓库 `TESTING.md`（若存在）执行测试；至少运行定向 support/Web 测试、`pnpm typecheck`、`pnpm test`、`pnpm build`。无 HTTP operation 或 schema 变更，因此不触发重新生成 Client 或 Contract test 更新；若实现中发现确需改变 Contract，停止该部分并先另行评审 Contract。自动测试、浏览器交互与真实 ClickUp/部署验收分别报告。
 
 ## 风险、回滚和待评审点
 
-| 风险 | 缓解与检测 |
-| --- | --- |
-| 旧 v3 目标变更时遗失历史 profile | 旧条目只追加，不随当前配置覆盖；配置漂移测试先冻结旧记录再切换当前配置，并覆盖 GET、advance、维护。 |
-| 匿名记录没有用户字段，无法单靠 frozen payload 知道须禁用的身份字段 | 历史 profile 保存用户字段身份并使用同目标代际 ID 并集；远端非空或不可解析值拒绝确认为成功。 |
-| 状态收敛改变 unknown 或晚到结果语义 | Testcontainers 对正常/维护路径同案比较、并发和失败注入；所有外部 I/O 仍在短事务外。 |
-| 编译后 `.mjs` 路径不成立 | 在实际 Server build 后由 Node 加载编译产物；保留根 `scripts/` 的运行布局。 |
+| 风险                                                               | 缓解与检测                                                                                          |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| 旧 v3 目标变更时遗失历史 profile                                   | 旧条目只追加，不随当前配置覆盖；配置漂移测试先冻结旧记录再切换当前配置，并覆盖 GET、advance、维护。 |
+| 匿名记录没有用户字段，无法单靠 frozen payload 知道须禁用的身份字段 | 历史 profile 保存用户字段身份并使用同目标代际 ID 并集；远端非空或不可解析值拒绝确认为成功。         |
+| 状态收敛改变 unknown 或晚到结果语义                                | Testcontainers 对正常/维护路径同案比较、并发和失败注入；所有外部 I/O 仍在短事务外。                 |
+| 编译后 `.mjs` 路径不成立                                           | 在实际 Server build 后由 Node 加载编译产物；保留根 `scripts/` 的运行布局。                          |
 
 回滚仅回滚应用代码；数据库结构和冻结 JSON 均不变，不能丢弃 v3 读取支持或清理历史数据。若某阶段回归未通过，停止该阶段后续落地，保留上一已验证阶段；外部写入不用于本地回归。当前没有新表职责、数据规则或 HTTP Contract 决策，因此不需新 ADR、迁移或 OpenAPI 修改。设计后的稳定知识是否归档 `.ai/` 按 `AGENTS.md` 在实现完成后另行处理。

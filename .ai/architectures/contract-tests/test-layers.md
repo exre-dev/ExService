@@ -12,13 +12,13 @@ _最后更新：2026-10-19_
 
 ## HTTP 与 schema
 
-| 层 | 覆盖目的 |
-| --- | --- |
+| 层                | 覆盖目的                                                                                                                                                        |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Contract 双向覆盖 | `operationId` 与各模块 `api/operations.ts`、`apps/server/src/http/system/operations.ts` 汇总的 `serviceHandlers` 两边都无缺漏或多余映射；应用启动前也检查覆盖。 |
-| HTTP 响应 | `/api` 前缀、状态、header、错误 envelope 和响应 schema；Bearer 异步验证在 handler 前完成。 |
-| 原始 handler 输出 | 检查序列化前结果，发现 Fastify 静默丢弃字段或强制 `const` 掩盖的回归。 |
-| schema 反例 | 证明缺字段、额外字段、错误类型和 `const` 冲突受到校验。 |
-| 日志与传输 | 真实日志流不泄密；multipart 字节、摘要、容量与断开连接回收。 |
+| HTTP 响应         | `/api` 前缀、状态、header、错误 envelope 和响应 schema；Bearer 异步验证在 handler 前完成。                                                                      |
+| 原始 handler 输出 | 检查序列化前结果，发现 Fastify 静默丢弃字段或强制 `const` 掩盖的回归。                                                                                          |
+| schema 反例       | 证明缺字段、额外字段、错误类型和 `const` 冲突受到校验。                                                                                                         |
+| 日志与传输        | 真实日志流不泄密；multipart 字节、摘要、容量与断开连接回收。                                                                                                    |
 
 schema 经 `tests/helpers/contract.ts` 从 `api/generated/openapi.json` 读取，统一转换引用并编译结构校验器，不在各套件复制解析器或 DTO。校验器不检查 `format`，相应语义由业务行为测试验证；缺字段、额外字段、类型和常量等结构反例仍保留。同一层已做封闭 schema 或精确对象断言时，不另建夹具重复检查字段名。读器的引用、路径和 operation 约束见 `.ai/knowledge/contract-tests/contract-parsing-constraints.md`。跨多步业务测试覆盖保留的内部申请、审核、验证码、完善、登录、资料与头像；申请 HTTP 退役不代表删除邀请注册和历史资料兼容覆盖。PostgreSQL 专项测试覆盖空库迁移、重复迁移、错误目标拒绝、半迁移、未知对象重置拒绝、约束、事务回滚及双连接竞争。自动测试证明隔离容器中的行为；本机迁移与真实服务冒烟另行验证。
 

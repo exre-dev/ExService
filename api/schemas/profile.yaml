@@ -1,7 +1,7 @@
 CurrentUser:
   type: object
   additionalProperties: false
-  required: [ id, email, nickname ]
+  required: [id, email, nickname]
   properties:
     id:
       type: string
@@ -9,14 +9,14 @@ CurrentUser:
     email: { $ref: '../openapi.yaml#/components/schemas/Email' }
     nickname: { $ref: '../openapi.yaml#/components/schemas/Nickname' }
     qq:
-      type: [ string, 'null' ]
+      type: [string, 'null']
       pattern: '^[0-9]{1,20}$'
     fivemId:
-      type: [ string, 'null' ]
+      type: [string, 'null']
       pattern: '^fivem:[0-9]+$'
       maxLength: 64
     avatarUrl:
-      type: [ string, 'null' ]
+      type: [string, 'null']
       format: uri
 UpdateCurrentUserRequest:
   type: object
@@ -24,10 +24,10 @@ UpdateCurrentUserRequest:
   properties:
     nickname: { $ref: '../openapi.yaml#/components/schemas/Nickname' }
     qq:
-      type: [ string, 'null' ]
+      type: [string, 'null']
       pattern: '^[0-9]{1,20}$'
     fivemId:
-      type: [ string, 'null' ]
+      type: [string, 'null']
       pattern: '^fivem:[0-9]+$'
       maxLength: 64
     avatar:
@@ -36,7 +36,7 @@ UpdateCurrentUserRequest:
 UploadAvatarRequest:
   type: object
   additionalProperties: false
-  required: [ imageBase64, mediaType ]
+  required: [imageBase64, mediaType]
   properties:
     imageBase64:
       type: string
@@ -44,4 +44,4 @@ UploadAvatarRequest:
       description: Base64-encoded image bytes, without a data URL prefix.
     mediaType:
       type: string
-      enum: [ image/png, image/jpeg, image/webp ]
+      enum: [image/png, image/jpeg, image/webp]

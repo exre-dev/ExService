@@ -50,20 +50,20 @@ flowchart LR
 
 拟新增模块文件职责如下；实现可以拆分较大的文件，但不得混入现有业务：
 
-| 路径 | 职责 |
-| --- | --- |
-| `apps/server/src/modules/storage/index.ts` | 内部创建工厂、StorageService 与输入类型出口 |
-| `apps/server/src/modules/storage/config.ts` | 环境变量解析及不可变配置 |
-| `apps/server/src/modules/storage/key.ts` | 跨 Adapter 一致的 key 校验 |
-| `apps/server/src/modules/storage/service.ts` | 介质选择、输入归一化、大小与 MIME 校验、上传与 URL 返回 |
-| `apps/server/src/modules/storage/adapters/file.ts` | 本地写入、替换、受控读取 |
-| `apps/server/src/modules/storage/adapters/cos.ts` | PutObject、HEAD、GET 签名以及可注入云端依赖 |
-| `apps/server/src/modules/storage/direct-upload.ts` | prepare、STS 和 complete 协调 |
-| `apps/server/src/modules/storage/upload-ticket.ts` | 无状态 HMAC 凭据 |
-| `apps/server/src/modules/storage/handlers.ts` | 四个 operation handlers |
-| `apps/server/src/modules/storage/transport.ts` | 当前上传 operation 的认证前移、multipart 限制及清理 |
-| `apps/server/src/modules/storage/errors.ts` | 固定错误分类，不包含原始云 SDK 消息 |
-| `packages/sdk/src/` | SDK 工厂、共享协调、浏览器和 Node COS 传输入口 |
+| 路径                                               | 职责                                                    |
+| -------------------------------------------------- | ------------------------------------------------------- |
+| `apps/server/src/modules/storage/index.ts`         | 内部创建工厂、StorageService 与输入类型出口             |
+| `apps/server/src/modules/storage/config.ts`        | 环境变量解析及不可变配置                                |
+| `apps/server/src/modules/storage/key.ts`           | 跨 Adapter 一致的 key 校验                              |
+| `apps/server/src/modules/storage/service.ts`       | 介质选择、输入归一化、大小与 MIME 校验、上传与 URL 返回 |
+| `apps/server/src/modules/storage/adapters/file.ts` | 本地写入、替换、受控读取                                |
+| `apps/server/src/modules/storage/adapters/cos.ts`  | PutObject、HEAD、GET 签名以及可注入云端依赖             |
+| `apps/server/src/modules/storage/direct-upload.ts` | prepare、STS 和 complete 协调                           |
+| `apps/server/src/modules/storage/upload-ticket.ts` | 无状态 HMAC 凭据                                        |
+| `apps/server/src/modules/storage/handlers.ts`      | 四个 operation handlers                                 |
+| `apps/server/src/modules/storage/transport.ts`     | 当前上传 operation 的认证前移、multipart 限制及清理     |
+| `apps/server/src/modules/storage/errors.ts`        | 固定错误分类，不包含原始云 SDK 消息                     |
+| `packages/sdk/src/`                                | SDK 工厂、共享协调、浏览器和 Node COS 传输入口          |
 
 `apps/server/src/server.ts` 在监听前解析存储配置并创建模块，再注入 createApp。createApp 接受显式 storage 依赖，测试使用临时目录和 fake COS。工厂不连接数据库、不读取登录状态；仅 HTTP 层通过已有 AuthService 获取用户 ID。
 
@@ -148,20 +148,20 @@ operationId：getStoredFile；security：空数组；只有 key query 参数。�
 
 复用现有 ErrorEnvelope 和 Bearer schema，使用 Draft-07 兼容关键字。每个 operation 声明适用状态及 default；错误正文只含安全 code/message/requestId。
 
-| code | 状态 | 含义 |
-| --- | --- | --- |
-| STORAGE_INVALID_INPUT | 400 | key、字段、MIME、ticket 非法或过期 |
-| 现有 SESSION_INVALID 等 | 401 | 登录认证失败 |
-| STORAGE_TICKET_FORBIDDEN | 403 | ticket 与当前用户不匹配 |
-| STORAGE_NOT_FOUND | 404 | 本地/COS 对象不存在 |
-| STORAGE_CONFLICT | 409 | 文件目录冲突或确认大小不符 |
-| STORAGE_TOO_LARGE | 413 | 文件或 wire 预算超限 |
-| STORAGE_UNSUPPORTED_MEDIA_TYPE | 415 | HTTP 类型不支持 |
-| STORAGE_TIMEOUT | 408 | 入站上传未在截止时间内完成 |
-| STORAGE_UPSTREAM_FAILED | 502 | COS/STS 依赖失败或超时 |
-| STORAGE_UNAVAILABLE | 503 | Adapter 未启用 |
-| STORAGE_BUSY | 503 | 上传容量用尽，Retry-After: 5 |
-| INTERNAL_ERROR | 500 | 未知或本地 I/O 错误 |
+| code                           | 状态 | 含义                               |
+| ------------------------------ | ---- | ---------------------------------- |
+| STORAGE_INVALID_INPUT          | 400  | key、字段、MIME、ticket 非法或过期 |
+| 现有 SESSION_INVALID 等        | 401  | 登录认证失败                       |
+| STORAGE_TICKET_FORBIDDEN       | 403  | ticket 与当前用户不匹配            |
+| STORAGE_NOT_FOUND              | 404  | 本地/COS 对象不存在                |
+| STORAGE_CONFLICT               | 409  | 文件目录冲突或确认大小不符         |
+| STORAGE_TOO_LARGE              | 413  | 文件或 wire 预算超限               |
+| STORAGE_UNSUPPORTED_MEDIA_TYPE | 415  | HTTP 类型不支持                    |
+| STORAGE_TIMEOUT                | 408  | 入站上传未在截止时间内完成         |
+| STORAGE_UPSTREAM_FAILED        | 502  | COS/STS 依赖失败或超时             |
+| STORAGE_UNAVAILABLE            | 503  | Adapter 未启用                     |
+| STORAGE_BUSY                   | 503  | 上传容量用尽，Retry-After: 5       |
+| INTERNAL_ERROR                 | 500  | 未知或本地 I/O 错误                |
 
 408、容量错误是来源设计的传输边界细化。错误映射仍由现有统一 errors.ts 完成，不建立第二套 envelope。
 
@@ -249,17 +249,17 @@ HMAC key 严格为 64 位十六进制，不能复用 AUTH_CODE_HMAC_KEY。任一
 
 ## 10. 风险和检测
 
-| 风险 | 处理与检测 |
-| --- | --- |
+| 风险                              | 处理与检测                                                       |
+| --------------------------------- | ---------------------------------------------------------------- |
 | COS 完成确认失败但对象已上传/覆盖 | 明确非事务行为，不自动删除；故障注入覆盖上传成功后 HEAD/响应失败 |
-| STS 无法硬阻止绕过 SDK 的超限 PUT | prepare 和 complete 校验；拒绝 URL，不声称对象未写入 |
-| 同 key 并发改变 URL 对应内容 | 接受覆盖，无版本；并发测试验证返回对象始终完整 |
-| 一年 URL 过期及密钥撤销 | 文档明确期限，不提供续签；验证签名参数和当前访问，不伪称长期验证 |
-| 本地 Windows 替换失败 | 不先删旧文件，专项占用与失败测试 |
-| multipart 先解析后认证 | 原始 HTTP 慢流测试证明认证失败时不调用内容解析/存储 |
-| 提高上限导致内存压力 | 固定 2 个上传 slot、wire 计数与 deadline；记录容量配置影响 |
-| 包外消费仍依赖仓库源码 | tarball 在临时外部项目中实际导入、调用及类型检查 |
-| 浏览器 CORS、云端权限配置不符 | 真实 COS gate 单独记录 PASS/FAIL/NOT_EXECUTED |
+| STS 无法硬阻止绕过 SDK 的超限 PUT | prepare 和 complete 校验；拒绝 URL，不声称对象未写入             |
+| 同 key 并发改变 URL 对应内容      | 接受覆盖，无版本；并发测试验证返回对象始终完整                   |
+| 一年 URL 过期及密钥撤销           | 文档明确期限，不提供续签；验证签名参数和当前访问，不伪称长期验证 |
+| 本地 Windows 替换失败             | 不先删旧文件，专项占用与失败测试                                 |
+| multipart 先解析后认证            | 原始 HTTP 慢流测试证明认证失败时不调用内容解析/存储              |
+| 提高上限导致内存压力              | 固定 2 个上传 slot、wire 计数与 deadline；记录容量配置影响       |
+| 包外消费仍依赖仓库源码            | tarball 在临时外部项目中实际导入、调用及类型检查                 |
+| 浏览器 CORS、云端权限配置不符     | 真实 COS gate 单独记录 PASS/FAIL/NOT_EXECUTED                    |
 
 ## 11. 落地顺序、验证与回退
 

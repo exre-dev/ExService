@@ -1,6 +1,12 @@
 import { NotificationError } from '../errors.js'
 import { classifyHref, isControlCodePoint, POLICY_VERSION } from './policy.js'
-import { buildHtmlTree, DEFAULT_TREE_LIMITS, type ElementNode, type HtmlNode, type TreeLimits } from './tree.js'
+import {
+  buildHtmlTree,
+  DEFAULT_TREE_LIMITS,
+  type ElementNode,
+  type HtmlNode,
+  type TreeLimits,
+} from './tree.js'
 
 /**
  * `notification-html-v1` 的规范化与序列化。
@@ -18,18 +24,87 @@ import { buildHtmlTree, DEFAULT_TREE_LIMITS, type ElementNode, type HtmlNode, ty
  * 输出 HTML 由本模块自己序列化，不回显原始字节，也不保留任何原始属性。
  */
 
-const FLOW = new Set(['p', 'br', 'h2', 'h3', 'strong', 'em', 's', 'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'hr', 'a'])
+const FLOW = new Set([
+  'p',
+  'br',
+  'h2',
+  'h3',
+  'strong',
+  'em',
+  's',
+  'ul',
+  'ol',
+  'li',
+  'blockquote',
+  'code',
+  'pre',
+  'hr',
+  'a',
+])
 const TABLE = new Set(['table', 'caption', 'thead', 'tbody', 'tr', 'th', 'td'])
 const ALLOWED = new Set([...FLOW, ...TABLE])
 
 /** 出现即失败：主动内容、内嵌资源、可执行组件、表单与文档级元素。 */
 const FORBIDDEN_ELEMENTS = new Set([
-  'script', 'style', 'iframe', 'object', 'embed', 'applet', 'frame', 'frameset', 'noscript',
-  'template', 'slot', 'svg', 'math', 'canvas', 'img', 'picture', 'source', 'audio', 'video',
-  'track', 'map', 'area', 'form', 'input', 'button', 'select', 'option', 'textarea', 'label',
-  'fieldset', 'legend', 'output', 'progress', 'meter', 'dialog', 'portal', 'base', 'link',
-  'meta', 'title', 'head', 'body', 'html', 'xmp', 'noembed', 'noframes', 'plaintext',
-  'listing', 'marquee', 'blink', 'font', 'center', 'big', 'small', 'tt', 'strike', 'u', 'b', 'i',
+  'script',
+  'style',
+  'iframe',
+  'object',
+  'embed',
+  'applet',
+  'frame',
+  'frameset',
+  'noscript',
+  'template',
+  'slot',
+  'svg',
+  'math',
+  'canvas',
+  'img',
+  'picture',
+  'source',
+  'audio',
+  'video',
+  'track',
+  'map',
+  'area',
+  'form',
+  'input',
+  'button',
+  'select',
+  'option',
+  'textarea',
+  'label',
+  'fieldset',
+  'legend',
+  'output',
+  'progress',
+  'meter',
+  'dialog',
+  'portal',
+  'base',
+  'link',
+  'meta',
+  'title',
+  'head',
+  'body',
+  'html',
+  'xmp',
+  'noembed',
+  'noframes',
+  'plaintext',
+  'listing',
+  'marquee',
+  'blink',
+  'font',
+  'center',
+  'big',
+  'small',
+  'tt',
+  'strike',
+  'u',
+  'b',
+  'i',
 ])
 
 const VOID_ELEMENTS = new Set(['br', 'hr'])
@@ -64,8 +139,22 @@ const CONTEXT: Record<string, Set<string>> = {
  * 正文不得携带事件处理器、样式或任何会加载/提交远端资源的属性。
  */
 const DANGEROUS_ATTRIBUTE_NAMES = new Set([
-  'style', 'srcdoc', 'src', 'srcset', 'formaction', 'action', 'background', 'poster', 'ping',
-  'http-equiv', 'content', 'sandbox', 'allow', 'allowfullscreen', 'xlink:href', 'autofocus',
+  'style',
+  'srcdoc',
+  'src',
+  'srcset',
+  'formaction',
+  'action',
+  'background',
+  'poster',
+  'ping',
+  'http-equiv',
+  'content',
+  'sandbox',
+  'allow',
+  'allowfullscreen',
+  'xlink:href',
+  'autofocus',
 ])
 
 function hasDangerousAttribute(node: ElementNode): boolean {
@@ -96,13 +185,16 @@ export interface SanitizeFailure {
 }
 
 export type SanitizeOutcome =
-  | { ok: true; result: SanitizeResult }
-  | { ok: false; failure: SanitizeFailure }
+  { ok: true; result: SanitizeResult } | { ok: false; failure: SanitizeFailure }
 
-export function sanitizeNotificationHtml(input: string, options: SanitizeOptions = {}): SanitizeOutcome {
+export function sanitizeNotificationHtml(
+  input: string,
+  options: SanitizeOptions = {},
+): SanitizeOutcome {
   const maxHtmlBytes = options.maxHtmlBytes ?? 32 * 1024
   const maxTextCodePoints = options.maxTextCodePoints ?? 8000
-  if (Buffer.byteLength(input, 'utf8') > maxHtmlBytes) return { ok: false, failure: { code: 'CONTENT_TOO_LARGE' } }
+  if (Buffer.byteLength(input, 'utf8') > maxHtmlBytes)
+    return { ok: false, failure: { code: 'CONTENT_TOO_LARGE' } }
 
   let tree: HtmlNode[]
   try {
@@ -170,7 +262,8 @@ export function sanitizeNotificationHtml(input: string, options: SanitizeOptions
         }
       }
       for (const name of Object.keys(node.attributes)) {
-        if (!((node.name === 'a' && name === 'href') || (node.name === 'th' && name === 'scope'))) return null
+        if (!((node.name === 'a' && name === 'href') || (node.name === 'th' && name === 'scope')))
+          return null
       }
 
       const element: ElementNode = { type: 'element', name: node.name, attributes, children: [] }
@@ -189,16 +282,21 @@ export function sanitizeNotificationHtml(input: string, options: SanitizeOptions
   if (safeTree === null) return unsafe()
 
   const html = serializeNodes(safeTree)
-  if (Buffer.byteLength(html, 'utf8') > maxHtmlBytes) return { ok: false, failure: { code: 'CONTENT_TOO_LARGE' } }
+  if (Buffer.byteLength(html, 'utf8') > maxHtmlBytes)
+    return { ok: false, failure: { code: 'CONTENT_TOO_LARGE' } }
   const text = deriveText(safeTree)
   // 至少要有非空可读文本：空正文或只剩被剥除脚本的输入不接受。
   if (text.trim().length === 0) return unsafe()
-  if (Array.from(text).length > maxTextCodePoints) return { ok: false, failure: { code: 'CONTENT_TOO_LARGE' } }
+  if (Array.from(text).length > maxTextCodePoints)
+    return { ok: false, failure: { code: 'CONTENT_TOO_LARGE' } }
 
   return { ok: true, result: { html, text, unwrappedTags: [...unwrapped].sort() } }
 }
 
-export function assertSafeNotificationHtml(input: string, options: SanitizeOptions = {}): SanitizeResult {
+export function assertSafeNotificationHtml(
+  input: string,
+  options: SanitizeOptions = {},
+): SanitizeResult {
   const outcome = sanitizeNotificationHtml(input, options)
   if (!outcome.ok) throw new NotificationError(outcome.failure.code)
   return outcome.result
@@ -208,8 +306,22 @@ export { POLICY_VERSION }
 
 /** 单元格里不能出现块级或结构性内容：表格只承载文字。 */
 const BLOCK_OR_STRUCTURE = new Set([
-  'p', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'pre', 'hr',
-  'table', 'caption', 'thead', 'tbody', 'tr', 'th', 'td',
+  'p',
+  'h2',
+  'h3',
+  'ul',
+  'ol',
+  'li',
+  'blockquote',
+  'pre',
+  'hr',
+  'table',
+  'caption',
+  'thead',
+  'tbody',
+  'tr',
+  'th',
+  'td',
 ])
 
 /** 表格必须是纯文字单元格，且带 caption 或紧邻的语义标题。 */
@@ -221,7 +333,10 @@ function sanitizeTable(
   walk: (parent: string, nodes: HtmlNode[], depth: number) => HtmlNode[] | null,
 ): ElementNode | null {
   if (Object.keys(node.attributes).length > 0) return null
-  if (!headingBeforeTable.get(tableId) && !node.children.some(child => child.type === 'element' && child.name === 'caption')) {
+  if (
+    !headingBeforeTable.get(tableId) &&
+    !node.children.some((child) => child.type === 'element' && child.name === 'caption')
+  ) {
     return null
   }
 
@@ -230,8 +345,10 @@ function sanitizeTable(
   const rawRows = collectRows(node)
   if (rawRows.length === 0 || rawRows.length > MAX_TABLE_ROWS) return null
   for (const row of rawRows) {
-    const cells = row.children.filter((cell): cell is ElementNode =>
-      cell.type === 'element' && (cell.name === 'th' || cell.name === 'td'))
+    const cells = row.children.filter(
+      (cell): cell is ElementNode =>
+        cell.type === 'element' && (cell.name === 'th' || cell.name === 'td'),
+    )
     if (cells.length > MAX_TABLE_COLUMNS) return null
     for (const cell of cells) {
       if (!rawCellIsTextOnly(cell)) return null
@@ -245,7 +362,7 @@ function sanitizeTable(
   if (rows.length === 0 || rows.length > MAX_TABLE_ROWS) return null
   let columns = 0
   for (const row of rows) {
-    const cells = row.children.filter(cell => cell.type === 'element')
+    const cells = row.children.filter((cell) => cell.type === 'element')
     columns = Math.max(columns, cells.length)
     if (cells.length > MAX_TABLE_COLUMNS) return null
   }
@@ -282,7 +399,7 @@ function rawCellIsTextOnly(node: ElementNode): boolean {
 
 function isEmptyLink(element: ElementNode): boolean {
   if (element.children.length === 0) return true
-  return element.children.every(child => child.type === 'text' && child.value.trim().length === 0)
+  return element.children.every((child) => child.type === 'text' && child.value.trim().length === 0)
 }
 
 function markTableHeadings(nodes: HtmlNode[], into: Map<number, boolean>): void {
@@ -292,8 +409,12 @@ function markTableHeadings(nodes: HtmlNode[], into: Map<number, boolean>): void 
     if (node.type === 'element' && node.name === 'table') {
       tableIndex += 1
       const previous = nodes[index - 1]
-      into.set(tableIndex, previous !== undefined && previous.type === 'element' &&
-        (previous.name === 'h2' || previous.name === 'h3'))
+      into.set(
+        tableIndex,
+        previous !== undefined &&
+          previous.type === 'element' &&
+          (previous.name === 'h2' || previous.name === 'h3'),
+      )
     }
   }
 }
@@ -347,7 +468,11 @@ export function deriveText(nodes: HtmlNode[]): string {
       continue
     }
     output += deriveText(node.children)
-    if (['p', 'h2', 'h3', 'li', 'blockquote', 'pre', 'hr', 'tr', 'table', 'caption'].includes(node.name)) {
+    if (
+      ['p', 'h2', 'h3', 'li', 'blockquote', 'pre', 'hr', 'tr', 'table', 'caption'].includes(
+        node.name,
+      )
+    ) {
       output += '\n'
     }
   }
@@ -355,7 +480,10 @@ export function deriveText(nodes: HtmlNode[]): string {
 }
 
 export function deriveSummary(text: string, maxCodePoints = 240): string {
-  const collapsed = text.replace(/[ \t]+/g, ' ').replace(/\n{2,}/g, '\n').trim()
+  const collapsed = text
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{2,}/g, '\n')
+    .trim()
   const chars = Array.from(collapsed)
   if (chars.length <= maxCodePoints) return collapsed
   return `${chars.slice(0, maxCodePoints).join('')}…`

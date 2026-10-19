@@ -3,7 +3,9 @@ import fp from 'fastify-plugin'
 import type { ProfileService } from './service.js'
 import { requireBusinessServices } from '../../business-plugin-errors.js'
 
-export interface ProfilePluginOptions { profileServices: ProfileService }
+export interface ProfilePluginOptions {
+  profileServices: ProfileService
+}
 
 const plugin: FastifyPluginAsync<ProfilePluginOptions> = async (app, options) => {
   requireBusinessServices('business-profile', { profileServices: options.profileServices })
@@ -11,5 +13,6 @@ const plugin: FastifyPluginAsync<ProfilePluginOptions> = async (app, options) =>
 }
 
 export default fp(plugin, {
-  name: 'business-profile', fastify: '5.x',
+  name: 'business-profile',
+  fastify: '5.x',
 })

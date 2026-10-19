@@ -17,17 +17,17 @@
 
 技术选择摘要：
 
-| 事项 | 本文提案 |
-| --- | --- |
-| 前端 | `/join` 展示页、两类独立 Modal；`/join/result` 邮箱查询页 |
-| 表单 | RHF + Zod + ExUI Field；两套完整 schema，共用字段配置与控件 |
+| 事项 | 本文提案                                                                              |
+| ---- | ------------------------------------------------------------------------------------- |
+| 前端 | `/join` 展示页、两类独立 Modal；`/join/result` 邮箱查询页                             |
+| 表单 | RHF + Zod + ExUI Field；两套完整 schema，共用字段配置与控件                           |
 | 提交 | `POST /join/applications` 改为 multipart：JSON application part + 0–5 个 proofs parts |
-| 保存 | 申请、结构化表单 JSON、邮箱唯一登记、附件 BLOB 同一 SQLite 事务 |
-| 查询 | `POST /join/applications/query`，仅返回状态及下一步，完全只读 |
-| 审核 | 现有列表及详情增加类别、完整表单和附件元数据；新增附件下载 operation |
-| 版本 | 邀请基线 `0.4.0` → `0.5.0`，一次切换；此版本方案须在技术评审中明确批准 |
-| 历史 | 保留已有账号、申请、审核、邀请和投递记录；三字段历史显示为 legacy |
-| 边界 | 不新增申请密码、查询验证码、面试系统、生产权限或 ExUI 公共 API |
+| 保存 | 申请、结构化表单 JSON、邮箱唯一登记、附件 BLOB 同一 SQLite 事务                       |
+| 查询 | `POST /join/applications/query`，仅返回状态及下一步，完全只读                         |
+| 审核 | 现有列表及详情增加类别、完整表单和附件元数据；新增附件下载 operation                  |
+| 版本 | 邀请基线 `0.4.0` → `0.5.0`，一次切换；此版本方案须在技术评审中明确批准                |
+| 历史 | 保留已有账号、申请、审核、邀请和投递记录；三字段历史显示为 legacy                     |
+| 边界 | 不新增申请密码、查询验证码、面试系统、生产权限或 ExUI 公共 API                        |
 
 成功标准是两套资料完整可审、原子保存与唯一性经数据库竞争验证、六种结果正确且查询无业务写入，以及窄屏一列可完成整个流程。真实邮件、PHP/MySQL 和生产验收不属于本地成功标准。
 
@@ -69,17 +69,17 @@ flowchart LR
   D[既有审核页] --> C
 ```
 
-| 层 | 责任与拟落点 |
-| --- | --- |
-| `api/openapi.yaml` | 完整输入、multipart encoding、查询、详情与下载 Contract，错误和资源限制描述 |
-| `packages/api-client/` | 只重新生成类型，保留 `createApiClient` 工厂 |
-| `packages/components/src/join/` | 两类表单、摘要、文件输入、Modal 与结果视图；props/回调，不 import API Client |
-| `apps/web/src/` | 路由、页面文案/链接、Modal 流程、生成 Client 调用、multipart serializer、下载与查询代次 |
-| `apps/mock-server/src/join/` | 输入语义验证、事务、邮箱登记、详情和只读结果计算 |
-| `apps/mock-server/src/handlers/join.ts` | operation handler、no-store、调用业务层 |
-| `apps/mock-server/src/app.ts` | 仅对指定 operation 接入 multipart 传输 hooks；所有 HTTP 路由仍由 Glue 注册 |
-| `apps/mock-server/src/db/schema.ts` 与 `apps/mock-server/drizzle/` | 经模型评审后新增结构与显式 migration |
-| `tests/contract/` | 真实 Glue 路由、原始 handler 输出与 coverage 验证 |
+| 层                                                                 | 责任与拟落点                                                                            |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `api/openapi.yaml`                                                 | 完整输入、multipart encoding、查询、详情与下载 Contract，错误和资源限制描述             |
+| `packages/api-client/`                                             | 只重新生成类型，保留 `createApiClient` 工厂                                             |
+| `packages/components/src/join/`                                    | 两类表单、摘要、文件输入、Modal 与结果视图；props/回调，不 import API Client            |
+| `apps/web/src/`                                                    | 路由、页面文案/链接、Modal 流程、生成 Client 调用、multipart serializer、下载与查询代次 |
+| `apps/mock-server/src/join/`                                       | 输入语义验证、事务、邮箱登记、详情和只读结果计算                                        |
+| `apps/mock-server/src/handlers/join.ts`                            | operation handler、no-store、调用业务层                                                 |
+| `apps/mock-server/src/app.ts`                                      | 仅对指定 operation 接入 multipart 传输 hooks；所有 HTTP 路由仍由 Glue 注册              |
+| `apps/mock-server/src/db/schema.ts` 与 `apps/mock-server/drizzle/` | 经模型评审后新增结构与显式 migration                                                    |
+| `tests/contract/`                                                  | 真实 Glue 路由、原始 handler 输出与 coverage 验证                                       |
 
 通用配置式表单交接位于 ExWebsite 主仓库的 `.notes/todos/2026-09-27-configurable-forms-and-join-handoff.md`。可先在 `packages/components/src/forms/` 提供少量配置能力；本 RFC 不设计动态表单平台，不要求修改或发布 ExUI。组件内的输入类型从 Zod 推导，表示含 File 的 UI 草稿；HTTP DTO 从生成类型取得，应用侧做映射并用类型检查约束，不维护手写 HTTP DTO 副本。
 
@@ -109,45 +109,45 @@ Modal 头部标题/进度和底部按钮保持可见，内容区滚动；使用�
 - 每一层对象 `additionalProperties: false`；必填见表。不允许任意 details/answers 字典。
 - 两类 schema 用 Draft-07 兼容的 oneOf/const/required/properties/$ref/数组规则；每个具体对象完整声明属性，避免 allOf 与 additionalProperties 的封闭对象扩展陷阱。
 
-| JSON 字段 | 类型、范围与业务内容 |
-| --- | --- |
-| email | 当前 Email schema；trim/lowercase，3–254，既有邮箱语法 |
-| nickname | 当前 Nickname schema；trim，1–32 Unicode 码点，禁止控制字符，允许重名 |
-| qq | string，`^[0-9]{5,13}$`；保留前导零。新申请专用 schema，不改变账号 QQ 或历史摘要的 1–20 位 |
-| form.applicationType | `new` 或 `experienced`；与成年/未成年等身份类别分开 |
-| form.birthDate | string `YYYY-MM-DD`，实际合法日历日期且不超过服务时钟的 UTC 当日，不转换为 timestamp |
-| form.applicantCategory | string enum `100 | 101 | 102a | 102b` |
-| form.department | enum `leo | ems` |
-| form.freeTime | trim 非空 string，1–256；选择“每晚都有空 / 每周三天以上 / 每周三天以下”或自填 |
-| form.discoveryChannels | 非空数组，1–4 个 uniqueItems；enum `bilibili | douyin | friends | other` |
-| form.answers | 下述类别专属封闭对象，全部字段必填 |
-| form.commitments | 下述类别专属封闭对象，每个值必须 boolean const true |
+| JSON 字段              | 类型、范围与业务内容                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------ |
+| email                  | 当前 Email schema；trim/lowercase，3–254，既有邮箱语法                                     |
+| nickname               | 当前 Nickname schema；trim，1–32 Unicode 码点，禁止控制字符，允许重名                      |
+| qq                     | string，`^[0-9]{5,13}$`；保留前导零。新申请专用 schema，不改变账号 QQ 或历史摘要的 1–20 位 |
+| form.applicationType   | `new` 或 `experienced`；与成年/未成年等身份类别分开                                        |
+| form.birthDate         | string `YYYY-MM-DD`，实际合法日历日期且不超过服务时钟的 UTC 当日，不转换为 timestamp       |
+| form.applicantCategory | string enum `100                                                                           | 101    | 102a    | 102b`  |
+| form.department        | enum `leo                                                                                  | ems`   |
+| form.freeTime          | trim 非空 string，1–256；选择“每晚都有空 / 每周三天以上 / 每周三天以下”或自填              |
+| form.discoveryChannels | 非空数组，1–4 个 uniqueItems；enum `bilibili                                               | douyin | friends | other` |
+| form.answers           | 下述类别专属封闭对象，全部字段必填                                                         |
+| form.commitments       | 下述类别专属封闭对象，每个值必须 boolean const true                                        |
 
 全新玩家 `form.answers`：
 
-| 字段 | 必答内容与上限 |
-| --- | --- |
-| fiveMExperience | 接触 FiveM / 其他 RP 服务器情况，含“没有接触过”选项；1–4000 |
-| emergencyRoleplayKnowledge | 了解紧急职业模拟情况，含“了解 / 不了解”或自填；1–4000 |
-| emergencyProceduresKnowledge | 美国执法、救援或医疗流程理解；1–4000 |
-| rpUnderstanding | 对 RP 的理解；1–4000 |
-| frpUnderstanding | 对 FRP 的理解；1–4000 |
+| 字段                         | 必答内容与上限                                              |
+| ---------------------------- | ----------------------------------------------------------- |
+| fiveMExperience              | 接触 FiveM / 其他 RP 服务器情况，含“没有接触过”选项；1–4000 |
+| emergencyRoleplayKnowledge   | 了解紧急职业模拟情况，含“了解 / 不了解”或自填；1–4000       |
+| emergencyProceduresKnowledge | 美国执法、救援或医疗流程理解；1–4000                        |
+| rpUnderstanding              | 对 RP 的理解；1–4000                                        |
+| frpUnderstanding             | 对 FRP 的理解；1–4000                                       |
 
 全新玩家 `form.commitments` 为 `informationAccurate`、`obeyCommunityRules`、`acceptAcademyAttendanceConsequences`，全部 true。
 
 经验玩家 `form.answers`：
 
-| 字段 | 必答内容与上限 |
-| --- | --- |
-| previousServer | 以前服务器；1–256 |
-| leaveReason | 离开原因；1–4000 |
-| previousDepartment | 以前部门；巡逻、交通、特殊、警探、飞机、医疗、消防或自填；1–256 |
-| lawEnforcementExperience | 执法生涯经历；1–4000 |
-| highestRank | 最高警衔/等级；1–256 |
-| punishmentHistory | 处罚经历，无处罚也明确回答；1–4000 |
-| deescalationEssay | 是否需要遵循武力降级、为什么；150–4000 |
-| discretionEssay | 何时可以使用自由裁量权；150–4000 |
-| transferReason | 为什么接受调转；1–4000 |
+| 字段                     | 必答内容与上限                                                  |
+| ------------------------ | --------------------------------------------------------------- |
+| previousServer           | 以前服务器；1–256                                               |
+| leaveReason              | 离开原因；1–4000                                                |
+| previousDepartment       | 以前部门；巡逻、交通、特殊、警探、飞机、医疗、消防或自填；1–256 |
+| lawEnforcementExperience | 执法生涯经历；1–4000                                            |
+| highestRank              | 最高警衔/等级；1–256                                            |
+| punishmentHistory        | 处罚经历，无处罚也明确回答；1–4000                              |
+| deescalationEssay        | 是否需要遵循武力降级、为什么；150–4000                          |
+| discretionEssay          | 何时可以使用自由裁量权；150–4000                                |
+| transferReason           | 为什么接受调转；1–4000                                          |
 
 经验玩家 `form.commitments` 只有 `informationAccurate: true`。证明文件在 multipart proofs 中，不放入 answers、JSON 或 base64。
 
@@ -161,16 +161,16 @@ Modal 头部标题/进度和底部按钮保持可见，内容区滚动；使用�
 
 OpenAPI 路径不含 /api；运行时由 Glue prefix 注册 /api。所有 operation 均声明 no-store 成功/错误语义。
 
-| 方法与 OpenAPI 路径 | operationId | 请求与成功响应 |
-| --- | --- | --- |
-| POST /join/applications | submitJoinApplication，变更 | 必需 multipart envelope；成功仍 202 `{status: "received"}`，仅事务提交完成后返回 |
-| POST /join/applications/query | queryJoinApplicationResult，新增 | JSON `{email: Email}`；200 `JoinApplicationResult`，未找到也是 200 |
-| GET /admin/join/applications | listJoinApplications，扩展 | 保留 view/limit/offset、分页与排序，摘要新增 applicationType |
-| GET /admin/join/applications/{applicationId} | getJoinApplication，扩展 | 保留 application/invitation/serverTime，增加 formVersion/form/attachments |
-| POST /admin/join/applications/{applicationId}/approve | approveJoinApplication，扩展 | 返回同一扩展详情；审批与投递仍分离 |
-| POST /admin/join/applications/{applicationId}/reject | rejectJoinApplication，扩展 | 返回同一扩展详情；拒绝不释放邮箱名额 |
-| POST /admin/join/applications/{applicationId}/invitations | resendJoinInvitation，扩展 | 返回同一扩展详情；沿用邀请重发与冷却 |
-| GET /admin/join/applications/{applicationId}/attachments/{attachmentId} | downloadJoinApplicationAttachment，新增 | 两个 Uuid 参数；200 application/octet-stream binary，附件下载头 |
+| 方法与 OpenAPI 路径                                                     | operationId                             | 请求与成功响应                                                                   |
+| ----------------------------------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------- |
+| POST /join/applications                                                 | submitJoinApplication，变更             | 必需 multipart envelope；成功仍 202 `{status: "received"}`，仅事务提交完成后返回 |
+| POST /join/applications/query                                           | queryJoinApplicationResult，新增        | JSON `{email: Email}`；200 `JoinApplicationResult`，未找到也是 200               |
+| GET /admin/join/applications                                            | listJoinApplications，扩展              | 保留 view/limit/offset、分页与排序，摘要新增 applicationType                     |
+| GET /admin/join/applications/{applicationId}                            | getJoinApplication，扩展                | 保留 application/invitation/serverTime，增加 formVersion/form/attachments        |
+| POST /admin/join/applications/{applicationId}/approve                   | approveJoinApplication，扩展            | 返回同一扩展详情；审批与投递仍分离                                               |
+| POST /admin/join/applications/{applicationId}/reject                    | rejectJoinApplication，扩展             | 返回同一扩展详情；拒绝不释放邮箱名额                                             |
+| POST /admin/join/applications/{applicationId}/invitations               | resendJoinInvitation，扩展              | 返回同一扩展详情；沿用邀请重发与冷却                                             |
+| GET /admin/join/applications/{applicationId}/attachments/{attachmentId} | downloadJoinApplicationAttachment，新增 | 两个 Uuid 参数；200 application/octet-stream binary，附件下载头                  |
 
 继承本地公开方案：以上新匿名申请/查询和临时审核/下载均 `security: []`。该方案不应对外网部署；本地服务继续回环绑定。生产权限必须统一保护审核列表、完整详情和下载，这一后续工作不能通过知道邮箱或 UUID 代替。
 
@@ -207,15 +207,15 @@ JSON 解码后、Contract validator 前，规范化嵌套 application.email/appl
 
 ### 5.4 资源预算与文件类型
 
-| 限制 | 提案值与执行点 |
-| --- | --- |
-| 业务证明文件 | 0–5；仅经验玩家；每个 1–10 × 1024 × 1024 字节，总量 ≤50 MiB |
-| JSON part | ≤64 KiB，严格 UTF-8 JSON，无未知属性 |
-| parts | 最多 6，只有一个 application 与最多 5 个 proofs；字段名最多 64 字节，每 part 头部最多 32 对且总计不超过 16 KiB |
-| wire 总量 | ≤64 MiB，包含 multipart 头及边界；preParsing 计数流执行，不能只查 Content-Length |
-| 同时处理 | 单进程最多 2 个完整上传，从解析前占位至响应/失败清理；超出返回 503 和 Retry-After: 5 |
-| 时间 | 解析总期限 120 秒，超时 408 固定安全错误；408 加入 Contract，取消流并释放预算 |
-| 内存 | 活跃附件原始字节 ≤100 MiB；每请求合并 Buffer 的暂时副本使上传缓冲峰值预算约 200 MiB，额外 JS/SQLite 内存另计 |
+| 限制         | 提案值与执行点                                                                                                 |
+| ------------ | -------------------------------------------------------------------------------------------------------------- |
+| 业务证明文件 | 0–5；仅经验玩家；每个 1–10 × 1024 × 1024 字节，总量 ≤50 MiB                                                    |
+| JSON part    | ≤64 KiB，严格 UTF-8 JSON，无未知属性                                                                           |
+| parts        | 最多 6，只有一个 application 与最多 5 个 proofs；字段名最多 64 字节，每 part 头部最多 32 对且总计不超过 16 KiB |
+| wire 总量    | ≤64 MiB，包含 multipart 头及边界；preParsing 计数流执行，不能只查 Content-Length                               |
+| 同时处理     | 单进程最多 2 个完整上传，从解析前占位至响应/失败清理；超出返回 503 和 Retry-After: 5                           |
+| 时间         | 解析总期限 120 秒，超时 408 固定安全错误；408 加入 Contract，取消流并释放预算                                  |
+| 内存         | 活跃附件原始字节 ≤100 MiB；每请求合并 Buffer 的暂时副本使上传缓冲峰值预算约 200 MiB，额外 JS/SQLite 内存另计   |
 
 全局 4 MiB bodyLimit 不提高；仅上传路由设置 64 MiB 防御值，并通过计数流和 parser 每 part 限制实际执行。JSON Blob 虽以 file part 传输，单独应用 64 KiB，而不是给予 10 MiB。容量门在读取 body 前执行；429 的共享真实 request.ip 限流也在此执行，不能重复计数。沿用邀请基线 60 次/分钟和有界 IP 集合，不信任 forwarded header；查询共用该限制但不占上传容量。容量拒绝/限流后不缓冲请求，及时结束连接并处理流错误。
 
@@ -240,11 +240,11 @@ JSON 解码后、Contract validator 前，规范化嵌套 application.email/appl
 
 现有 join_applications 保留所有已有字段并增加 form_version 标记；邀请/投递/用户结构保持。新增三表：
 
-| 表 | 字段与约束提案 |
-| --- | --- |
-| join_application_email_registry | email TEXT PRIMARY KEY（规范化）；canonical_application_id NOT NULL FK → join_applications.id；每个历史邮箱一行，pointer 指向最近历史。无状态释放、无用户重申覆盖 |
-| join_application_forms | application_id PRIMARY KEY/FK → join_applications.id；version INTEGER CHECK =1；application_type CHECK new/experienced；form_json TEXT NOT NULL。JSON为上述 form 对象，不重复持久化 email/nickname/qq |
-| join_application_attachments | id UUID PRIMARY KEY；application_id NOT NULL FK；ordinal INTEGER 0–4；original_name、extension、sha256、byte_length、bytes BLOB；UNIQUE(application_id, ordinal)，CHECK byte_length=length(bytes) 且 1–10 MiB |
+| 表                              | 字段与约束提案                                                                                                                                                                                                |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| join_application_email_registry | email TEXT PRIMARY KEY（规范化）；canonical_application_id NOT NULL FK → join_applications.id；每个历史邮箱一行，pointer 指向最近历史。无状态释放、无用户重申覆盖                                             |
+| join_application_forms          | application_id PRIMARY KEY/FK → join_applications.id；version INTEGER CHECK =1；application_type CHECK new/experienced；form_json TEXT NOT NULL。JSON为上述 form 对象，不重复持久化 email/nickname/qq         |
+| join_application_attachments    | id UUID PRIMARY KEY；application_id NOT NULL FK；ordinal INTEGER 0–4；original_name、extension、sha256、byte_length、bytes BLOB；UNIQUE(application_id, ordinal)，CHECK byte_length=length(bytes) 且 1–10 MiB |
 
 表单 JSON 必须在保存和读取时依据 Contract 对应版本验证，不是允许任意 details 的逃生口。version1 全新/经验类型与 JSON const 一致；已有三字段记录没有 forms 行，视为 legacy，而不是补造生日、回答或承诺。未来要新增表单版本必须另行评审、迁移或读兼容，不静默用新 schema 否定旧记录。
 
@@ -285,14 +285,14 @@ JSON 解码后、Contract validator 前，规范化嵌套 application.email/appl
 
 JoinApplicationResult 是六个封闭对象的 oneOf，每个只有必需的 status/nextAction 两字段：
 
-| status | nextAction | 页面含义 |
-| --- | --- | --- |
-| not_found | apply | 核对邮箱或返回申请 |
-| pending | wait | 等待人工审核/社区安排，用户可主动再查 |
-| approved | register | 获批，进入 /register；不等于邮件送达 |
-| rejected | contact_community | 未通过且不能重申，联系社区 |
-| invitation_expired | contact_community | 联系社区重新签发，不能重填 |
-| registered | login | 已通过关联完成注册，进入 /login |
+| status             | nextAction        | 页面含义                              |
+| ------------------ | ----------------- | ------------------------------------- |
+| not_found          | apply             | 核对邮箱或返回申请                    |
+| pending            | wait              | 等待人工审核/社区安排，用户可主动再查 |
+| approved           | register          | 获批，进入 /register；不等于邮件送达  |
+| rejected           | contact_community | 未通过且不能重申，联系社区            |
+| invitation_expired | contact_community | 联系社区重新签发，不能重填            |
+| registered         | login             | 已通过关联完成注册，进入 /login       |
 
 响应不回显邮箱、不含 id、姓名、QQ、生日、类别、答案、附件、承诺、审核人、邀请标识、投递错误、验证码、token 或授权凭证。页面文案由 status 固定映射，nextAction 不接受服务器任意 URL。所有结果和错误 no-store；日志不记录邮箱或完整 body。
 
@@ -329,25 +329,25 @@ JoinApplicationSummary 新增必需 applicationType enum new/experienced/legacy�
 
 三字段 JSON 请求与静默重复成功被完整 multipart 和显式 409 替换，是破坏性 Contract 变更。建议将邀请基线 0.4.0 切为 0.5.0，本文的版本及切换方式仍须技术评审批准；不能因为产品 spec 已批准就宣称公共契约已评审。切换前端、生成 Client、Mock handler、schema 与测试一起落地，不保留绕过完整申请的旧 route/content type，不重新开放直接注册。
 
-| 替代方案 | 不采用的原因 / 当前代价 |
-| --- | --- |
-| 复制旧 UI 和请求 | 保留内容但违反新视觉、RHF 和 Contract 边界 |
-| 仅三字段 | 缺完整审核资料，违反已批准范围 |
-| 全局 email unique 并删历史 | 会丢旧拒绝/审核/邀请历史；registry 保留历史但多一张表和回填验证 |
-| JSON base64 文件 | 体积与内存增大，仍需大 body 解析；multipart 需要额外 adapter 与端到端验证 |
-| 提前上传/文件目录 | 不符合无草稿、同一事务及 SQLite 业务数据边界 |
-| 查询先验证码 | 已批准邮箱直查；保留最小状态曝光，不扩大到资料读取 |
-| 使用新 ExUI forms 包 | 包尚不存在，主线不依赖其开发/发布 |
+| 替代方案                   | 不采用的原因 / 当前代价                                                   |
+| -------------------------- | ------------------------------------------------------------------------- |
+| 复制旧 UI 和请求           | 保留内容但违反新视觉、RHF 和 Contract 边界                                |
+| 仅三字段                   | 缺完整审核资料，违反已批准范围                                            |
+| 全局 email unique 并删历史 | 会丢旧拒绝/审核/邀请历史；registry 保留历史但多一张表和回填验证           |
+| JSON base64 文件           | 体积与内存增大，仍需大 body 解析；multipart 需要额外 adapter 与端到端验证 |
+| 提前上传/文件目录          | 不符合无草稿、同一事务及 SQLite 业务数据边界                              |
+| 查询先验证码               | 已批准邮箱直查；保留最小状态曝光，不扩大到资料读取                        |
+| 使用新 ExUI forms 包       | 包尚不存在，主线不依赖其开发/发布                                         |
 
-| 风险 | 处理与检测 |
-| --- | --- |
-| 大文件内存、慢上传和下载 | 限额、两个上传/两个下载槽、计数流、超时、断流清理；容量边界测试 |
-| 邮箱枚举与资料可见 | 用户已接受最小状态直查；no-store、限流、响应字段白名单；完整资料仅本地临时公开，不外网部署 |
-| 容器签名不保证内容安全 | attachment 强制下载、不解包/执行/预览，明确无杀毒保证；实际文档由审核判断 |
-| 文本 XSS | 所有回答/文件名按普通文本显示，不 dangerouslySetInnerHTML |
-| 数据历史重复、损坏或缺详情 | 保留历史 registry、form_version 标记、迁移审计和不一致返回安全失败 |
-| SQLite 文件增长、备份包含个人资料 | 每申请最多 50 MiB；关闭服务后受控备份固定库，备份不提交；不新增自动删除/保留期策略 |
-| 并行邀请代码漂移 | 先确认整合基线，复核最新 Contract 与 migration，再实施本 RFC |
+| 风险                              | 处理与检测                                                                                 |
+| --------------------------------- | ------------------------------------------------------------------------------------------ |
+| 大文件内存、慢上传和下载          | 限额、两个上传/两个下载槽、计数流、超时、断流清理；容量边界测试                            |
+| 邮箱枚举与资料可见                | 用户已接受最小状态直查；no-store、限流、响应字段白名单；完整资料仅本地临时公开，不外网部署 |
+| 容器签名不保证内容安全            | attachment 强制下载、不解包/执行/预览，明确无杀毒保证；实际文档由审核判断                  |
+| 文本 XSS                          | 所有回答/文件名按普通文本显示，不 dangerouslySetInnerHTML                                  |
+| 数据历史重复、损坏或缺详情        | 保留历史 registry、form_version 标记、迁移审计和不一致返回安全失败                         |
+| SQLite 文件增长、备份包含个人资料 | 每申请最多 50 MiB；关闭服务后受控备份固定库，备份不提交；不新增自动删除/保留期策略         |
+| 并行邀请代码漂移                  | 先确认整合基线，复核最新 Contract 与 migration，再实施本 RFC                               |
 
 申请资料按审核历史保留，无本期自动清理或删除入口；查询未命中与限流不留申请数据。备份同样包含资料和 BLOB，仅本地开发使用。生产存储、权限、保留/删除规则必须另行设计，本 RFC 不宣称任何合规或生产保护已完成。
 
@@ -369,19 +369,19 @@ JoinApplicationSummary 新增必需 applicationType enum new/experienced/legacy�
 
 实施前重查 `TESTING.md`，存在时以其为准；目前不存在，沿用 Vitest/Testing Library、隔离 SQLite、Fastify inject。测试不读写开发库。
 
-| 层级 | 可执行验证与必要案例 |
-| --- | --- |
-| Contract | 每个变更/新增 operation 的真实 HTTP、原始注册 handler、serviceHandlers 双向 coverage；禁止未声明字段、旧三字段和 JSON 提交 |
-| 传输互通 | 用生成 Client + bodySerializer 连接临时真实 Fastify server；两类/零文件/多文件；实际 multipart JSON encoding/同名 array，与浏览器一致 |
-| 文件限制 | 0/5/6 个证明，10 MiB 与 +1 字节、总 50 MiB、JSON 64 KiB、wire 限额（含无 Content-Length）、truncated、未知 part/重复 application、MIME 伪装、家族不符 |
-| 类型与文本 | 新 QQ 5–13 位且前导零，生日闰年/未来，Unicode 149/150/4000/+1，选项+自填，来源唯一，承诺必须 true，另一类别字段被拒 |
-| 事务与并发 | 对每个插入阶段注入错误，四类记录均回滚；不同 SQLite 连接竞争同邮箱及跨类型，仅一条完整新申请；重试不覆盖 |
-| 历史与迁移 | 从邀请 0.4 实际迁移链夹具升级，保留全部历史/账号/邀请/投递；重复邮箱 registry、form_version、legacy、integrity/FK，无 reset |
-| 结果查询 | 六种结果，完成优先于较新拒绝、同时间稳定排序、到期瞬间、投递失败仍 approved；异常关联安全 500；响应无敏感字段，全业务表无变更 |
-| 审核下载 | 两套全文与承诺、legacy、五附件元数据；跨申请 id 拒绝、真实字节/hash/头、容量限制；列表无 BLOB |
-| 组件 | 当前步不验证未来字段、最终全量、返回保留、类型隔离、关闭清空、在途保护、失败保留文件、选择/拖放/粘贴/移除；查询迟到结果丢弃 |
-| 邀请回归 | 审批与投递分离、7 天期限、检查不发码、冷却、验码、凭证与完成幂等、登录/退出/资料/SSO |
-| 容量与断流 | 两上传满额/第三503、超时/断开释放、有效重试；两个下载及断开释放，上传下载不互相占槽 |
+| 层级       | 可执行验证与必要案例                                                                                                                                  |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contract   | 每个变更/新增 operation 的真实 HTTP、原始注册 handler、serviceHandlers 双向 coverage；禁止未声明字段、旧三字段和 JSON 提交                            |
+| 传输互通   | 用生成 Client + bodySerializer 连接临时真实 Fastify server；两类/零文件/多文件；实际 multipart JSON encoding/同名 array，与浏览器一致                 |
+| 文件限制   | 0/5/6 个证明，10 MiB 与 +1 字节、总 50 MiB、JSON 64 KiB、wire 限额（含无 Content-Length）、truncated、未知 part/重复 application、MIME 伪装、家族不符 |
+| 类型与文本 | 新 QQ 5–13 位且前导零，生日闰年/未来，Unicode 149/150/4000/+1，选项+自填，来源唯一，承诺必须 true，另一类别字段被拒                                   |
+| 事务与并发 | 对每个插入阶段注入错误，四类记录均回滚；不同 SQLite 连接竞争同邮箱及跨类型，仅一条完整新申请；重试不覆盖                                              |
+| 历史与迁移 | 从邀请 0.4 实际迁移链夹具升级，保留全部历史/账号/邀请/投递；重复邮箱 registry、form_version、legacy、integrity/FK，无 reset                           |
+| 结果查询   | 六种结果，完成优先于较新拒绝、同时间稳定排序、到期瞬间、投递失败仍 approved；异常关联安全 500；响应无敏感字段，全业务表无变更                         |
+| 审核下载   | 两套全文与承诺、legacy、五附件元数据；跨申请 id 拒绝、真实字节/hash/头、容量限制；列表无 BLOB                                                         |
+| 组件       | 当前步不验证未来字段、最终全量、返回保留、类型隔离、关闭清空、在途保护、失败保留文件、选择/拖放/粘贴/移除；查询迟到结果丢弃                           |
+| 邀请回归   | 审批与投递分离、7 天期限、检查不发码、冷却、验码、凭证与完成幂等、登录/退出/资料/SSO                                                                  |
+| 容量与断流 | 两上传满额/第三503、超时/断开释放、有效重试；两个下载及断开释放，上传下载不互相占槽                                                                   |
 
 必须运行 `pnpm api:lint`、`pnpm api:generate`、`pnpm typecheck`、`pnpm test`、`pnpm build`。现有组件测试若未包含根 test 命令，按其已配置脚本补跑并列明证据。生成后确认没有手改 `packages/api-client/src/generated/schema.d.ts`。
 

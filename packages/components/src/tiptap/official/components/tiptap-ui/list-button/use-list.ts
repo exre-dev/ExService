@@ -1,17 +1,17 @@
-import { focusEditor } from "../../../lib/tiptap-utils"
-"use client"
+import { focusEditor } from '../../../lib/tiptap-utils'
+;('use client')
 
-import * as React from "react"
-import { type Editor } from "@tiptap/react"
-import { NodeSelection, TextSelection } from "@tiptap/pm/state"
+import * as React from 'react'
+import { type Editor } from '@tiptap/react'
+import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 
 // --- Hooks ---
-import { useTiptapEditor } from "../../../hooks/use-tiptap-editor"
+import { useTiptapEditor } from '../../../hooks/use-tiptap-editor'
 
 // --- Icons ---
-import { ListIcon } from "../../tiptap-icons/list-icon"
-import { ListOrderedIcon } from "../../tiptap-icons/list-ordered-icon"
-import { ListTodoIcon } from "../../tiptap-icons/list-todo-icon"
+import { ListIcon } from '../../tiptap-icons/list-icon'
+import { ListOrderedIcon } from '../../tiptap-icons/list-ordered-icon'
+import { ListTodoIcon } from '../../tiptap-icons/list-todo-icon'
 
 // --- Lib ---
 import {
@@ -19,9 +19,9 @@ import {
   isNodeInSchema,
   isNodeTypeSelected,
   isValidPosition,
-} from "../../../lib/tiptap-utils"
+} from '../../../lib/tiptap-utils'
 
-export type ListType = "bulletList" | "orderedList" | "taskList"
+export type ListType = 'bulletList' | 'orderedList' | 'taskList'
 
 /**
  * Configuration for the list functionality
@@ -53,15 +53,15 @@ export const listIcons = {
 }
 
 export const listLabels: Record<ListType, string> = {
-  bulletList: "Bullet List",
-  orderedList: "Ordered List",
-  taskList: "Task List",
+  bulletList: 'Bullet List',
+  orderedList: 'Ordered List',
+  taskList: 'Task List',
 }
 
 export const LIST_SHORTCUT_KEYS: Record<ListType, string> = {
-  bulletList: "mod+shift+8",
-  orderedList: "mod+shift+7",
-  taskList: "mod+shift+9",
+  bulletList: 'mod+shift+8',
+  orderedList: 'mod+shift+7',
+  taskList: 'mod+shift+9',
 }
 
 /**
@@ -70,20 +70,19 @@ export const LIST_SHORTCUT_KEYS: Record<ListType, string> = {
 export function canToggleList(
   editor: Editor | null,
   type: ListType,
-  turnInto: boolean = true
+  turnInto: boolean = true,
 ): boolean {
   if (!editor || editor.isDestroyed || !editor.isEditable) return false
-  if (!isNodeInSchema(type, editor) || isNodeTypeSelected(editor, ["image"]))
-    return false
+  if (!isNodeInSchema(type, editor) || isNodeTypeSelected(editor, ['image'])) return false
 
   if (!turnInto) {
     switch (type) {
-      case "bulletList":
+      case 'bulletList':
         return editor.can().toggleBulletList()
-      case "orderedList":
+      case 'orderedList':
         return editor.can().toggleOrderedList()
-      case "taskList":
-        return editor.can().toggleList("taskList", "taskItem")
+      case 'taskList':
+        return editor.can().toggleList('taskList', 'taskItem')
       default:
         return false
     }
@@ -115,12 +114,12 @@ export function isListActive(editor: Editor | null, type: ListType): boolean {
   if (!editor || editor.isDestroyed || !editor.isEditable) return false
 
   switch (type) {
-    case "bulletList":
-      return editor.isActive("bulletList")
-    case "orderedList":
-      return editor.isActive("orderedList")
-    case "taskList":
-      return editor.isActive("taskList")
+    case 'bulletList':
+      return editor.isActive('bulletList')
+    case 'orderedList':
+      return editor.isActive('orderedList')
+    case 'taskList':
+      return editor.isActive('taskList')
     default:
       return false
   }
@@ -167,31 +166,22 @@ export function toggleList(editor: Editor | null, type: ListType): boolean {
       const firstChild = selection.node.firstChild?.firstChild
       const lastChild = selection.node.lastChild?.lastChild
 
-      const from = firstChild
-        ? selection.from + firstChild.nodeSize
-        : selection.from + 1
+      const from = firstChild ? selection.from + firstChild.nodeSize : selection.from + 1
 
-      const to = lastChild
-        ? selection.to - lastChild.nodeSize
-        : selection.to - 1
+      const to = lastChild ? selection.to - lastChild.nodeSize : selection.to - 1
 
       chain = chain.setTextSelection({ from, to }).clearNodes()
     }
 
     if (editor.isActive(type)) {
       // Unwrap list
-      chain
-        .liftListItem("listItem")
-        .lift("bulletList")
-        .lift("orderedList")
-        .lift("taskList")
-        .run()
+      chain.liftListItem('listItem').lift('bulletList').lift('orderedList').lift('taskList').run()
     } else {
       // Wrap in specific list type
       const toggleMap: Record<ListType, () => typeof chain> = {
         bulletList: () => chain.toggleBulletList(),
         orderedList: () => chain.toggleOrderedList(),
-        taskList: () => chain.toggleList("taskList", "taskItem"),
+        taskList: () => chain.toggleList('taskList', 'taskItem'),
       }
 
       const toggle = toggleMap[type]
@@ -221,7 +211,7 @@ export function shouldShowButton(props: {
   if (!editor || editor.isDestroyed || !editor.isEditable) return false
   if (!isNodeInSchema(type, editor)) return false
 
-  if (hideWhenUnavailable && !editor.isActive("code")) {
+  if (hideWhenUnavailable && !editor.isActive('code')) {
     return canToggleList(editor, type)
   }
 
@@ -266,12 +256,7 @@ export function shouldShowButton(props: {
  * ```
  */
 export function useList(config: UseListConfig) {
-  const {
-    editor: providedEditor,
-    type,
-    hideWhenUnavailable = false,
-    onToggled,
-  } = config
+  const { editor: providedEditor, type, hideWhenUnavailable = false, onToggled } = config
 
   const { editor } = useTiptapEditor(providedEditor)
   const [isVisible, setIsVisible] = React.useState<boolean>(true)
@@ -287,10 +272,10 @@ export function useList(config: UseListConfig) {
 
     handleSelectionUpdate()
 
-    editor.on("selectionUpdate", handleSelectionUpdate)
+    editor.on('selectionUpdate', handleSelectionUpdate)
 
     return () => {
-      editor.off("selectionUpdate", handleSelectionUpdate)
+      editor.off('selectionUpdate', handleSelectionUpdate)
     }
   }, [editor, type, hideWhenUnavailable])
 

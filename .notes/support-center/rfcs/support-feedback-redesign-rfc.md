@@ -16,16 +16,16 @@
 
 ## 2. 责任与改动边界
 
-| 单元 | 所有权 |
-| --- | --- |
-| `apps/web/src/pages/Support/` | 两张入口、类型选择、分类型草稿、表单展示、提交与恢复 UI。 |
-| `packages/components/src/` | `ClickUpFieldInput`、`FileUploader` 及各自样式、测试和公开导出。组件不访问 API。 |
-| `apps/web/public/clickups/fields/` | 三个 UUID 命名 JSON，是字段显示配置的唯一编辑来源。 |
-| `packages/feedback-content/` | 类型无关的纯文本规则、Bug 正文组合和共享大小限制。 |
-| `apps/server/src/domains/support/` | JSON 配置读取、六类映射、preflight、不可变创建载荷、进度与恢复。 |
-| `apps/server/src/modules/clickup/` | 通用 tags 读写载荷及回读解析、Space Tag 查询；不引用支持中心类型。 |
-| `api/` | options、六类输入、快照的唯一 HTTP Contract。 |
-| Server DB / drizzle | 新格式快照约束和仅反馈数据的破坏性增量迁移。 |
+| 单元                               | 所有权                                                                           |
+| ---------------------------------- | -------------------------------------------------------------------------------- |
+| `apps/web/src/pages/Support/`      | 两张入口、类型选择、分类型草稿、表单展示、提交与恢复 UI。                        |
+| `packages/components/src/`         | `ClickUpFieldInput`、`FileUploader` 及各自样式、测试和公开导出。组件不访问 API。 |
+| `apps/web/public/clickups/fields/` | 三个 UUID 命名 JSON，是字段显示配置的唯一编辑来源。                              |
+| `packages/feedback-content/`       | 类型无关的纯文本规则、Bug 正文组合和共享大小限制。                               |
+| `apps/server/src/domains/support/` | JSON 配置读取、六类映射、preflight、不可变创建载荷、进度与恢复。                 |
+| `apps/server/src/modules/clickup/` | 通用 tags 读写载荷及回读解析、Space Tag 查询；不引用支持中心类型。               |
+| `api/`                             | options、六类输入、快照的唯一 HTTP Contract。                                    |
+| Server DB / drizzle                | 新格式快照约束和仅反馈数据的破坏性增量迁移。                                     |
 
 不修改 Outline、不安装 Tiptap、不提交凭据、不创建新的数据库或重置 `exre`。
 
@@ -73,14 +73,14 @@ options operation 返回经校验的字段定义、六类可用状态、受支�
 
 `FeedbackForm` 改为六个封闭对象的 oneOf，各自 `kind` 用 const 区分，`additionalProperties: false`。共同字段为 `kind/title/largeFileInfo`，正文为 `contentText`（非 Bug）或 `details`（Bug）。
 
-| kind | 额外输入 | ClickUp |
-| --- | --- | --- |
-| bug | `typeOptionId`（新提交必填）、Bug details | 1001 |
-| feature | `typeOptionId`、`departmentOptionId`、contentText | 0 |
-| asset | `typeOptionId`、`action`、contentText | 1009 |
-| request | `typeOptionId`、contentText | 1005 |
-| content | `action`、contentText | 1007 |
-| campaign | contentText | 1008 |
+| kind     | 额外输入                                          | ClickUp |
+| -------- | ------------------------------------------------- | ------- |
+| bug      | `typeOptionId`（新提交必填）、Bug details         | 1001    |
+| feature  | `typeOptionId`、`departmentOptionId`、contentText | 0       |
+| asset    | `typeOptionId`、`action`、contentText             | 1009    |
+| request  | `typeOptionId`、contentText                       | 1005    |
+| content  | `action`、contentText                             | 1007    |
+| campaign | contentText                                       | 1008    |
 
 所有可选输入统一用显式 null 或 Contract 明确的缺省归一化，规范化持久值固定一致。`action` 为 `add | modify | delete | other`，映射「新增」「修改」「删除」或无 Tag。`largeFileInfo` 为 null 或至多 16 KiB UTF-8 的多行普通文本，替代 largeFileUrl；空白归一化 null。移除 categoryOptionId 和旧 FeedbackRequestForm 的部门规则。
 
@@ -152,14 +152,14 @@ prepare 在同一事务内固定规范表单、正文、用户快照及外部创
 
 ## 11. 风险与接受条件
 
-| 风险 | 处理与检测 |
-| --- | --- |
+| 风险                       | 处理与检测                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------ |
 | JSON 与 ClickUp 配置不同步 | 更新后重建重启；options/preflight 按字段适用性与真实 ID 核对，冻结后用原载荷。 |
-| 三个操作 Tag 尚未创建 | 显式准备，不在用户流程创建；按操作禁用，fake transport 覆盖，真实验收单列。 |
-| 大文本或附件超出预算 | RHF/Zod 和服务端共同校验 UTF-8/字节数，上传前认证，wire 预算保持一致。 |
-| 破坏性清理丢失旧恢复记录 | 用户已接受不兼容；停写、核对不确定任务、限定两张反馈表，不自动迁移。 |
-| 用户输入被解释为格式 | 共享纯文本转义和完整 Markdown 结构核对继续使用，Tiptap 不在本次引入。 |
-| 共享工作树已有未提交实现 | 以现有工作为基线，最小修改，不回滚无关文件，不自动提交。 |
+| 三个操作 Tag 尚未创建      | 显式准备，不在用户流程创建；按操作禁用，fake transport 覆盖，真实验收单列。    |
+| 大文本或附件超出预算       | RHF/Zod 和服务端共同校验 UTF-8/字节数，上传前认证，wire 预算保持一致。         |
+| 破坏性清理丢失旧恢复记录   | 用户已接受不兼容；停写、核对不确定任务、限定两张反馈表，不自动迁移。           |
+| 用户输入被解释为格式       | 共享纯文本转义和完整 Markdown 结构核对继续使用，Tiptap 不在本次引入。          |
+| 共享工作树已有未提交实现   | 以现有工作为基线，最小修改，不回滚无关文件，不自动提交。                       |
 
 无待用户决定的产品问题。外部 Tag 准备和真实六类任务写入是外部验收依赖，不影响本地开发与自动测试。
 

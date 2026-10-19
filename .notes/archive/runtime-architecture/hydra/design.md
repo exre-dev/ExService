@@ -12,14 +12,14 @@
 
 `hydra-client.mjs` 导出 `HydraClientCheckError`，其只供 Node runtime 消费，不成为 Website HTTP envelope 或通用错误框架。契约包含不可变、封闭集合的 `kind`，安全的固定 `message`，以及网络请求失败时可选的原生 `cause`。不得把请求 URL、配置值、密钥、Authorization、响应体或原始异常文案放入 `message`、公开诊断或日志。`cause` 只供运行适配器提取安全网络码，不能整体输出。适配器须同时核对 `instanceof HydraClientCheckError` 和合法 `kind`；同名属性的普通对象与未知 `kind` 按未知错误处理。非结构化原生网络错误仅可走下述安全码白名单。
 
-| `kind` | 校验模块产生条件 | `verifyRuntimeHydraClient()` 的现有运行分类 |
-| --- | --- | --- |
-| `CLIENT_MISSING` | 只读 GET 指定 client 返回 404 | `HYDRA_CLIENT_MISSING` |
-| `CLIENT_CONFLICT` | 已有 client 的 ID、回调、scope、grant、认证方式、issuer、指纹或其他受控元数据与显式配置不符 | `HYDRA_CLIENT_CONFLICT` |
-| `CREDENTIAL_PROBE_FAILED` | token 探测得到有效 JSON，但结果不是预期的 HTTP 400 + `invalid_grant` | `HYDRA_CLIENT_CONFLICT` |
-| `INVALID_CONFIG` | 显式 client、admin/public URL 解析或校验失败，且尚未请求 Hydra | `HYDRA_CONFIG_INVALID` |
-| `NETWORK_FAILURE` | admin 或 token `fetch` 拒绝、超时 | 仅安全白名单中的网络 `cause.code` 沿用现有 `diagnostic()`；其余为 `HYDRA_CLIENT_CHECK_FAILED` |
-| `CHECK_FAILED` | 非预期 admin HTTP 状态、响应 JSON 无效等无法确定 client 状态的结果 | `HYDRA_CLIENT_CHECK_FAILED` |
+| `kind`                    | 校验模块产生条件                                                                            | `verifyRuntimeHydraClient()` 的现有运行分类                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `CLIENT_MISSING`          | 只读 GET 指定 client 返回 404                                                               | `HYDRA_CLIENT_MISSING`                                                                        |
+| `CLIENT_CONFLICT`         | 已有 client 的 ID、回调、scope、grant、认证方式、issuer、指纹或其他受控元数据与显式配置不符 | `HYDRA_CLIENT_CONFLICT`                                                                       |
+| `CREDENTIAL_PROBE_FAILED` | token 探测得到有效 JSON，但结果不是预期的 HTTP 400 + `invalid_grant`                        | `HYDRA_CLIENT_CONFLICT`                                                                       |
+| `INVALID_CONFIG`          | 显式 client、admin/public URL 解析或校验失败，且尚未请求 Hydra                              | `HYDRA_CONFIG_INVALID`                                                                        |
+| `NETWORK_FAILURE`         | admin 或 token `fetch` 拒绝、超时                                                           | 仅安全白名单中的网络 `cause.code` 沿用现有 `diagnostic()`；其余为 `HYDRA_CLIENT_CHECK_FAILED` |
+| `CHECK_FAILED`            | 非预期 admin HTTP 状态、响应 JSON 无效等无法确定 client 状态的结果                          | `HYDRA_CLIENT_CHECK_FAILED`                                                                   |
 
 HTTP 404 只在只读 GET 指定 client 时证明“未登记”；POST 失败或其他 404 不得误报为缺失。`ensureHydraClient()` 仅在 GET 404 后 POST，POST 409 仍重新 GET 并按最终状态校验，不覆盖已有 client。GET 或 POST 的非预期状态归 `CHECK_FAILED`，不读取响应体来猜类别。凭据探测继续以随机无效 code 的 `400/invalid_grant` 证明秘密可用；任何其他有效 JSON 结果归 `CREDENTIAL_PROBE_FAILED`。这类结果可能来自无效凭据，也可能来自协议服务故障或 5xx，不能在诊断中声称已确定秘密错误。为保持已有运行分类与恢复步骤，该类别仍映射 `HYDRA_CLIENT_CONFLICT`；后续如需区分服务故障，须有独立证据和另行评审。无效 JSON 或意外解析错误归 `CHECK_FAILED`。
 

@@ -1,4 +1,12 @@
-import { inspectOidcRequest, acceptOidcLogin, acceptOidcConsent, acceptOidcLogout, checkLinkedSession, revokeLinkedSession, inspectIdentityUser } from './handlers.js'
+import {
+  inspectOidcRequest,
+  acceptOidcLogin,
+  acceptOidcConsent,
+  acceptOidcLogout,
+  checkLinkedSession,
+  revokeLinkedSession,
+  inspectIdentityUser,
+} from './handlers.js'
 
 export const operations = {
   inspectOidcRequest,

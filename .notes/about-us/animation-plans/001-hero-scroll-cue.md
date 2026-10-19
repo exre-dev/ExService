@@ -13,9 +13,26 @@ The user requests a shorter background, visible breathing room below it, and an 
 `apps/web/src/pages/AboutUs/AboutHomeHero.tsx` currently places the scroll link inside the rounded background surface. `apps/web/src/pages/AboutUs/AboutHomeHero.module.scss:37-39` currently provides a ring and only hover movement:
 
 ```scss
-.scrollCue { display: grid; place-items: center; justify-self: center; width: 3rem; height: 3rem; margin: 0 0 1.5rem; border: 1px solid currentColor; border-radius: var(--exui-radius-full); color: inherit; text-decoration: none; }
-.scrollCue svg { width: 1.25rem; height: 1.25rem; transition: transform 150ms ease-out; }
-.scrollCue:hover svg { transform: translateY(.1875rem); }
+.scrollCue {
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: 3rem;
+  height: 3rem;
+  margin: 0 0 1.5rem;
+  border: 1px solid currentColor;
+  border-radius: var(--exui-radius-full);
+  color: inherit;
+  text-decoration: none;
+}
+.scrollCue svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  transition: transform 150ms ease-out;
+}
+.scrollCue:hover svg {
+  transform: translateY(0.1875rem);
+}
 ```
 
 ## Target
@@ -55,24 +72,54 @@ Treat the Hero as one viewport containing two rows: a rounded image surface and 
   animation: scrollHint 2400ms cubic-bezier(0.77, 0, 0.175, 1) infinite;
   animation-play-state: paused;
 }
-.scrollCue[data-motion='active'] .cueMotion { animation-play-state: running; }
-.scrollCue svg { display: block; width: 1.5rem; height: 1.5rem; }
-@keyframes scrollHint {
-  0%, 100% { transform: translateY(-3px); opacity: .85; }
-  50% { transform: translateY(3px); opacity: 1; }
+.scrollCue[data-motion='active'] .cueMotion {
+  animation-play-state: running;
 }
-.scrollCue:focus-visible { color: var(--exui-text-primary); outline: 2px solid var(--exui-border-focused); outline-offset: 4px; }
-.scrollCue:focus-visible .cueMotion { animation-play-state: paused; }
+.scrollCue svg {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+@keyframes scrollHint {
+  0%,
+  100% {
+    transform: translateY(-3px);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateY(3px);
+    opacity: 1;
+  }
+}
+.scrollCue:focus-visible {
+  color: var(--exui-text-primary);
+  outline: 2px solid var(--exui-border-focused);
+  outline-offset: 4px;
+}
+.scrollCue:focus-visible .cueMotion {
+  animation-play-state: paused;
+}
 @media (hover: hover) and (pointer: fine) {
-  .scrollCue:hover { color: var(--exui-text-primary); }
-  .scrollCue:hover .cueMotion { animation-play-state: paused; }
+  .scrollCue:hover {
+    color: var(--exui-text-primary);
+  }
+  .scrollCue:hover .cueMotion {
+    animation-play-state: paused;
+  }
 }
 @media (max-width: 39.99rem) {
-  .hero { padding: .75rem .5rem 1rem; gap: .75rem; }
+  .hero {
+    padding: 0.75rem 0.5rem 1rem;
+    gap: 0.75rem;
+  }
   // Retain current mobile text rules; remove the old cue margin-bottom rule.
 }
 @media (prefers-reduced-motion: reduce) {
-  .cueMotion { animation: none; transform: none; opacity: 1; }
+  .cueMotion {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
 }
 ```
 

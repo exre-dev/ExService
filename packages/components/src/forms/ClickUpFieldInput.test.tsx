@@ -7,30 +7,57 @@ import { ClickUpFieldInput, type ClickUpFieldDefinition } from './ClickUpFieldIn
 
 afterEach(cleanup)
 const originalScroll = Element.prototype.scrollIntoView
-beforeAll(() => { Element.prototype.scrollIntoView = vi.fn() })
+beforeAll(() => {
+  Element.prototype.scrollIntoView = vi.fn()
+})
 afterAll(() => {
   if (originalScroll) Element.prototype.scrollIntoView = originalScroll
   else Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
 })
 
 const base: ClickUpFieldDefinition = {
-  id: 'field', name: 'Provider field', type: 'drop_down', required: false,
-  type_config: { options: [
-    { id: 'second', name: 'Second', color: null, orderindex: 2 },
-    { id: 'first', name: 'First', color: null, orderindex: 1 },
-  ] },
+  id: 'field',
+  name: 'Provider field',
+  type: 'drop_down',
+  required: false,
+  type_config: {
+    options: [
+      { id: 'second', name: 'Second', color: null, orderindex: 2 },
+      { id: 'first', name: 'First', color: null, orderindex: 1 },
+    ],
+  },
 }
 
 function mount(definition: ClickUpFieldDefinition | undefined, value = '') {
-  const onChange = vi.fn(), onBlur = vi.fn(), ref = vi.fn()
-  render(<ThemeProvider defaultTheme="light"><ClickUpFieldInput definition={definition} binding={{ name: 'provider', value, onChange, onBlur, ref }} error="Choose a value" disabled={false} /></ThemeProvider>)
+  const onChange = vi.fn(),
+    onBlur = vi.fn(),
+    ref = vi.fn()
+  render(
+    <ThemeProvider defaultTheme="light">
+      <ClickUpFieldInput
+        definition={definition}
+        binding={{ name: 'provider', value, onChange, onBlur, ref }}
+        error="Choose a value"
+        disabled={false}
+      />
+    </ThemeProvider>,
+  )
   return { onChange, onBlur, ref }
 }
 
 it('opens a styled menu in provider order and supports selecting and clearing an optional value', async () => {
   function ControlledField() {
     const [value, setValue] = useState('second')
-    return <ThemeProvider defaultTheme="light"><ClickUpFieldInput definition={base} binding={{ name: 'provider', value, onChange: setValue, onBlur: () => {}, ref: () => {} }} error="Choose a value" /><output aria-label="Selected ID">{value || 'empty'}</output></ThemeProvider>
+    return (
+      <ThemeProvider defaultTheme="light">
+        <ClickUpFieldInput
+          definition={base}
+          binding={{ name: 'provider', value, onChange: setValue, onBlur: () => {}, ref: () => {} }}
+          error="Choose a value"
+        />
+        <output aria-label="Selected ID">{value || 'empty'}</output>
+      </ThemeProvider>
+    )
   }
   render(<ControlledField />)
   const select = screen.getByRole('combobox', { name: /Provider field/ })
@@ -38,11 +65,17 @@ it('opens a styled menu in provider order and supports selecting and clearing an
   expect(select.getAttribute('aria-invalid')).toBe('true')
   fireEvent.keyDown(select, { key: 'ArrowDown' })
   const menu = await screen.findByRole('listbox')
-  expect(within(menu).getAllByRole('option').map(option => option.textContent)).toEqual(['不选择', 'First', 'Second'])
+  expect(
+    within(menu)
+      .getAllByRole('option')
+      .map((option) => option.textContent),
+  ).toEqual(['不选择', 'First', 'Second'])
   fireEvent.click(within(menu).getByRole('option', { name: 'First' }))
   await waitFor(() => expect(screen.getByLabelText('Selected ID').textContent).toBe('first'))
   fireEvent.keyDown(select, { key: 'ArrowDown' })
-  fireEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: '不选择' }))
+  fireEvent.click(
+    within(await screen.findByRole('listbox')).getByRole('option', { name: '不选择' }),
+  )
   await waitFor(() => expect(screen.getByLabelText('Selected ID').textContent).toBe('empty'))
   expect(select.textContent).toContain('请选择')
 })

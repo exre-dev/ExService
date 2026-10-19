@@ -1,5 +1,8 @@
 import { expect, it } from 'vitest'
-import { validateJoinApplicationPayload, validateStoredJoinForm } from '@server/src/domains/join/applications/form-validation'
+import {
+  validateJoinApplicationPayload,
+  validateStoredJoinForm,
+} from '@server/src/domains/join/applications/form-validation'
 
 const earlierTransferForm = {
   applicationType: 'experienced',
@@ -30,8 +33,18 @@ it('reads earlier transfer forms and validates the added acknowledgement when pr
     commitments: { ...earlierTransferForm.commitments, obeyCommunityRules: true },
   }
   expect(validateStoredJoinForm(currentForm, now)).toEqual(currentForm)
-  expect(() => validateJoinApplicationPayload({
-    email: 'player@example.com', nickname: '玩家', qq: '0012345',
-    form: { ...currentForm, commitments: { ...currentForm.commitments, obeyCommunityRules: false } },
-  }, now)).toThrow()
+  expect(() =>
+    validateJoinApplicationPayload(
+      {
+        email: 'player@example.com',
+        nickname: '玩家',
+        qq: '0012345',
+        form: {
+          ...currentForm,
+          commitments: { ...currentForm.commitments, obeyCommunityRules: false },
+        },
+      },
+      now,
+    ),
+  ).toThrow()
 })

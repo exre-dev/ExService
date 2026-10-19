@@ -38,7 +38,9 @@ describe('AuthForm', () => {
     expect(screen.getByRole('heading', { name: '输入验证码' })).toBeTruthy()
     expect(container.querySelector('.ex-glass')).toBeTruthy()
     const image = screen.getByRole('img', { name: '验证码图片占位区域' })
-    expect(image.parentElement?.contains(screen.getByRole('textbox', { name: '图片验证码' }))).toBe(true)
+    expect(image.parentElement?.contains(screen.getByRole('textbox', { name: '图片验证码' }))).toBe(
+      true,
+    )
     expect(screen.queryByText('完成后点击登录。')).toBeNull()
     expect(screen.getByText('验证码功能开发中，当前输入不校验；留空也可继续。')).toBeTruthy()
     await user.click(screen.getByRole('button', { name: '登录' }))
@@ -49,8 +51,12 @@ describe('AuthForm', () => {
   it('reserves disabled provider buttons and routes the join action through its callback', async () => {
     const user = userEvent.setup()
     const { props } = renderForm({})
-    expect((screen.getByRole('button', { name: 'Google 登录' }) as HTMLButtonElement).disabled).toBe(true)
-    expect((screen.getByRole('button', { name: 'QQ 登录' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(
+      (screen.getByRole('button', { name: 'Google 登录' }) as HTMLButtonElement).disabled,
+    ).toBe(true)
+    expect((screen.getByRole('button', { name: 'QQ 登录' }) as HTMLButtonElement).disabled).toBe(
+      true,
+    )
     await user.type(screen.getByLabelText('邮箱'), 'member@example.com')
     await user.click(screen.getByRole('button', { name: '加入我们' }))
     expect(props.onJoin).toHaveBeenCalledOnce()
@@ -66,7 +72,10 @@ describe('AuthForm', () => {
     await user.type(screen.getByLabelText('邮箱'), 'member@example.com')
     await user.type(screen.getByLabelText('密码', { exact: true }), 'password-one')
     await user.click(screen.getByRole('button', { name: '继续' }))
-    expect(props.onContinueLogin).toHaveBeenCalledWith({ email: 'member@example.com', password: 'password-one' })
+    expect(props.onContinueLogin).toHaveBeenCalledWith({
+      email: 'member@example.com',
+      password: 'password-one',
+    })
   })
 
   it('focuses the email input', () => {
@@ -81,7 +90,9 @@ describe('AuthForm', () => {
     expect(screen.getByText('密码错误')).toBeTruthy()
     expect(screen.getByText('登录失败').closest('[role="alert"]')).toBeTruthy()
     rendered.rerender(<AuthForm {...rendered.props} busy />)
-    expect((screen.getByRole('button', { name: '处理中' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: '处理中' }) as HTMLButtonElement).disabled).toBe(
+      true,
+    )
     expect((screen.getByLabelText('密码', { exact: true }) as HTMLInputElement).disabled).toBe(true)
   })
 
@@ -98,15 +109,23 @@ describe('AuthForm', () => {
     await user.type(screen.getByLabelText('邮箱'), 'member@example.com')
     await user.type(screen.getByLabelText('密码', { exact: true }), 'password-one')
     await user.click(screen.getByRole('button', { name: '继续' }))
-    expect(rendered.props.onContinueLogin).toHaveBeenCalledWith({ email: 'member@example.com', password: 'password-one' })
+    expect(rendered.props.onContinueLogin).toHaveBeenCalledWith({
+      email: 'member@example.com',
+      password: 'password-one',
+    })
   })
 
   it('keeps a service error in React Hook Form after asynchronous login completes', async () => {
     const user = userEvent.setup()
     const formRef = createRef<AuthFormHandle>()
-    renderForm({ onContinueLogin: () => {
-      formRef.current?.setServerErrors({ form: '登录服务暂时不可用' })
-    } }, formRef)
+    renderForm(
+      {
+        onContinueLogin: () => {
+          formRef.current?.setServerErrors({ form: '登录服务暂时不可用' })
+        },
+      },
+      formRef,
+    )
 
     await user.type(screen.getByLabelText('邮箱'), 'member@example.com')
     await user.type(screen.getByLabelText('密码', { exact: true }), 'password-one')
@@ -115,5 +134,4 @@ describe('AuthForm', () => {
     expect(await screen.findByText('登录服务暂时不可用')).toBeTruthy()
     expect((screen.getByRole('button', { name: '继续' }) as HTMLButtonElement).disabled).toBe(false)
   })
-
 })

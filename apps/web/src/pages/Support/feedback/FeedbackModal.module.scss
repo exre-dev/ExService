@@ -1,32 +1,152 @@
-.modal { max-height: 85dvh; max-width: calc(100vw - 1.5rem); }
-.formModal :global(.ex-modal-header) { padding-bottom: .5rem; }
-.form { display: grid; gap: 1.25rem; }
-.columns { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; }
-.typeGrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .75rem; }
-.typeCard, .skeletonCard { display: flex; align-items: flex-start; gap: .875rem; min-height: 6.5rem; padding: 1.125rem; border: 1px solid var(--exui-border-default); border-radius: .75rem; }
-.typeCard { text-align: left; background: var(--exui-surface-secondary); color: var(--exui-text-primary); cursor: pointer; }
-@media (hover: hover) and (pointer: fine) {
-  .typeCard { transition: background-color 160ms ease; }
-  .typeCard:hover:not(:disabled) { background: color-mix(in srgb, var(--exui-surface-secondary) 96%, var(--exui-text-primary)); }
+.modal {
+  max-height: 85dvh;
+  max-width: calc(100vw - 1.5rem);
 }
-.typeCard:focus-visible { outline: 2px solid var(--exui-text-primary); outline-offset: 3px; }
-.typeCard:disabled { opacity: .55; cursor: not-allowed; }
-.typeIcon, .skeletonIcon { flex: 0 0 auto; width: 4rem; height: 4rem; border-radius: .625rem; }
-.typeIcon { display: block; object-fit: contain; }
-.typeCopy { display: grid; gap: .5rem; min-width: 0; flex: 1; }
-.typeCard strong { font-size: 1.0625rem; font-weight: 700; line-height: 1.5; }
-.typeDescription, .typeCard small { font-size: .8125rem; line-height: 1.6; color: var(--exui-text-secondary); }
-.back { justify-self: start; margin-left: -.5rem; }
-.optional { color: var(--exui-text-secondary); font-size: .75rem; font-weight: 400; }
-.select { width: 100%; }
-.formSkeleton { display: grid; gap: 1rem; }
-.skeletonLine { width: 40%; height: 1rem; border-radius: .25rem; }
-.skeletonDescription { width: 100%; height: 2.5rem; margin-top: .25rem; border-radius: .25rem; }
-.skeletonControl { height: 2.5rem; }
-.skeletonContent { height: 12rem; }
-@media (prefers-reduced-motion: reduce) { .typeCard { transition: none; } .modal [data-slot='skeleton'] { animation: none; } }
-.notice { padding: 1rem; margin-block: 0 1rem; border: 1px solid var(--exui-border-default); border-radius: .75rem; background: var(--exui-surface-secondary); color: var(--exui-text-primary); }
-.anonymousFooter { margin-left: auto; display: grid; gap: .25rem; min-width: 0; max-width: 26rem; }
-.formModal :global(.ex-modal-footer):has(.anonymousFooter) { flex-direction: row; align-items: center; }
-.anonymousControl { display: flex; align-items: center; gap: .75rem; }
-@media (max-width: 640px) { .columns, .typeGrid { grid-template-columns: 1fr; } }
+.formModal :global(.ex-modal-header) {
+  padding-bottom: 0.5rem;
+}
+.form {
+  display: grid;
+  gap: 1.25rem;
+}
+.columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.typeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.typeCard,
+.skeletonCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  min-height: 6.5rem;
+  padding: 1.125rem;
+  border: 1px solid var(--exui-border-default);
+  border-radius: 0.75rem;
+}
+.typeCard {
+  text-align: left;
+  background: var(--exui-surface-secondary);
+  color: var(--exui-text-primary);
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .typeCard {
+    transition: background-color 160ms ease;
+  }
+  .typeCard:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--exui-surface-secondary) 96%, var(--exui-text-primary));
+  }
+}
+.typeCard:focus-visible {
+  outline: 2px solid var(--exui-text-primary);
+  outline-offset: 3px;
+}
+.typeCard:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.typeIcon,
+.skeletonIcon {
+  flex: 0 0 auto;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 0.625rem;
+}
+.typeIcon {
+  display: block;
+  object-fit: contain;
+}
+.typeCopy {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+.typeCard strong {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.typeDescription,
+.typeCard small {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--exui-text-secondary);
+}
+.back {
+  justify-self: start;
+  margin-left: -0.5rem;
+}
+.optional {
+  color: var(--exui-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+.select {
+  width: 100%;
+}
+.formSkeleton {
+  display: grid;
+  gap: 1rem;
+}
+.skeletonLine {
+  width: 40%;
+  height: 1rem;
+  border-radius: 0.25rem;
+}
+.skeletonDescription {
+  width: 100%;
+  height: 2.5rem;
+  margin-top: 0.25rem;
+  border-radius: 0.25rem;
+}
+.skeletonControl {
+  height: 2.5rem;
+}
+.skeletonContent {
+  height: 12rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .typeCard {
+    transition: none;
+  }
+  .modal [data-slot='skeleton'] {
+    animation: none;
+  }
+}
+.notice {
+  padding: 1rem;
+  margin-block: 0 1rem;
+  border: 1px solid var(--exui-border-default);
+  border-radius: 0.75rem;
+  background: var(--exui-surface-secondary);
+  color: var(--exui-text-primary);
+}
+.anonymousFooter {
+  margin-left: auto;
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  max-width: 26rem;
+}
+.formModal :global(.ex-modal-footer):has(.anonymousFooter) {
+  flex-direction: row;
+  align-items: center;
+}
+.anonymousControl {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+@media (max-width: 640px) {
+  .columns,
+  .typeGrid {
+    grid-template-columns: 1fr;
+  }
+}

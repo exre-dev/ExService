@@ -38,14 +38,14 @@
 
 Adapter 各自暴露完整 API 会重复认证与 key 校验；所有内容都经过服务器又无法满足 COS 客户端直传，因此不采用这两种方案。
 
-| 单元 | 职责 | 依赖边界 |
-| --- | --- | --- |
-| StorageService | 校验 key、内容大小，解析 medium，调用 Adapter 并返回 URL | 不依赖 HTTP、登录会话或数据库 |
-| FileAdapter | 写入本地文件，替换已有内容，提供公开读取所需的文件访问 | 仅限自己的 uploads 根目录 |
-| CosAdapter | 服务端上传、读取对象元数据、生成下载签名 | COS 配置与服务端 COS SDK |
-| COS 直传协调服务 | 获取限定权限的 STS 凭证，签发和核验上传凭据，完成确认 | COS 能力、凭据签名器；用户身份由 HTTP 层传入 |
-| HTTP handlers 与 transport | Bearer 认证、multipart 解析、Contract 输入输出、错误转换 | 调用模块服务，不新增业务数据持久化 |
-| packages/sdk | 接受二进制内容、执行准备、服务器上传或 COS 直传、完成确认 | 本站 api-client；按环境加载 COS 传输实现 |
+| 单元                       | 职责                                                      | 依赖边界                                     |
+| -------------------------- | --------------------------------------------------------- | -------------------------------------------- |
+| StorageService             | 校验 key、内容大小，解析 medium，调用 Adapter 并返回 URL  | 不依赖 HTTP、登录会话或数据库                |
+| FileAdapter                | 写入本地文件，替换已有内容，提供公开读取所需的文件访问    | 仅限自己的 uploads 根目录                    |
+| CosAdapter                 | 服务端上传、读取对象元数据、生成下载签名                  | COS 配置与服务端 COS SDK                     |
+| COS 直传协调服务           | 获取限定权限的 STS 凭证，签发和核验上传凭据，完成确认     | COS 能力、凭据签名器；用户身份由 HTTP 层传入 |
+| HTTP handlers 与 transport | Bearer 认证、multipart 解析、Contract 输入输出、错误转换  | 调用模块服务，不新增业务数据持久化           |
+| packages/sdk               | 接受二进制内容、执行准备、服务器上传或 COS 直传、完成确认 | 本站 api-client；按环境加载 COS 传输实现     |
 
 Adapter 的基础能力包括写入和生成访问地址。公开本地读取、COS 元数据查询和直传凭证属于对应 Adapter 的专有能力，不要求所有未来 Adapter 实现虚假的 COS 方法。
 
@@ -87,12 +87,12 @@ key 是相对存储路径，例如 `avatars/user-123.webp`，不是操作系统�
 
 以下为待写入 `api/openapi.yaml` 的设计接口，当前并不存在。路径不包含 Glue 自动添加的 `/api`。
 
-| 方法与路径 | operationId | 认证 | 内容 |
-| --- | --- | --- | --- |
-| POST /storage/uploads/prepare | prepareStorageUpload | Bearer | 解析 medium、校验 key 和申报大小，返回 file 上传计划或 COS 临时凭证与上传凭据 |
-| POST /storage/uploads | uploadStorageContent | Bearer | multipart 接收 key、data、可选 medium/contentType，服务端上传并返回 URL |
-| POST /storage/uploads/complete | completeStorageUpload | Bearer | 接收 COS key 与上传凭据，核实对象并返回 URL |
-| GET /storage/files | getStoredFile | 公开 | query 参数 key，读取本地 uploads 内的对象 |
+| 方法与路径                     | operationId           | 认证   | 内容                                                                          |
+| ------------------------------ | --------------------- | ------ | ----------------------------------------------------------------------------- |
+| POST /storage/uploads/prepare  | prepareStorageUpload  | Bearer | 解析 medium、校验 key 和申报大小，返回 file 上传计划或 COS 临时凭证与上传凭据 |
+| POST /storage/uploads          | uploadStorageContent  | Bearer | multipart 接收 key、data、可选 medium/contentType，服务端上传并返回 URL       |
+| POST /storage/uploads/complete | completeStorageUpload | Bearer | 接收 COS key 与上传凭据，核实对象并返回 URL                                   |
+| GET /storage/files             | getStoredFile         | 公开   | query 参数 key，读取本地 uploads 内的对象                                     |
 
 上传准备同时承担“获取 COS 临时密钥”的 API 职责，不再增加第二个语义重复的凭证接口或配置查询接口。
 
@@ -142,16 +142,16 @@ COS 使用服务器持有的最小权限长期子账号密钥生成 31,536,000 �
 
 ## 7. 环境变量
 
-| 变量 | 默认或要求 | 用途 |
-| --- | --- | --- |
-| STORAGE_DEFAULT_ADAPTER | file | 缺省调用使用 file 或 cos |
-| STORAGE_MAX_BYTES | 20971520 | 正整数，三条上传路径共用的单文件上限 |
-| STORAGE_PUBLIC_API_BASE_URL | http://127.0.0.1:8080/api | 生成本地公开 URL；仅接受无凭据、query、hash 的 HTTP(S) URL |
-| STORAGE_UPLOAD_HMAC_KEY | 启用 COS 时必填，独立随机 32 字节密钥的十六进制值 | 无状态上传凭据签名 |
-| TENCENT_COS_SECRET_ID | 启用 COS 时必填 | 服务端长期子账号密钥 ID |
-| TENCENT_COS_SECRET_KEY | 启用 COS 时必填 | 服务端长期子账号密钥 |
-| TENCENT_COS_REGION | 启用 COS 时必填 | 唯一配置区域 |
-| TENCENT_COS_BUCKET | 启用 COS 时必填 | 唯一配置 bucket，包含 APPID 后缀 |
+| 变量                        | 默认或要求                                        | 用途                                                       |
+| --------------------------- | ------------------------------------------------- | ---------------------------------------------------------- |
+| STORAGE_DEFAULT_ADAPTER     | file                                              | 缺省调用使用 file 或 cos                                   |
+| STORAGE_MAX_BYTES           | 20971520                                          | 正整数，三条上传路径共用的单文件上限                       |
+| STORAGE_PUBLIC_API_BASE_URL | http://127.0.0.1:8080/api                         | 生成本地公开 URL；仅接受无凭据、query、hash 的 HTTP(S) URL |
+| STORAGE_UPLOAD_HMAC_KEY     | 启用 COS 时必填，独立随机 32 字节密钥的十六进制值 | 无状态上传凭据签名                                         |
+| TENCENT_COS_SECRET_ID       | 启用 COS 时必填                                   | 服务端长期子账号密钥 ID                                    |
+| TENCENT_COS_SECRET_KEY      | 启用 COS 时必填                                   | 服务端长期子账号密钥                                       |
+| TENCENT_COS_REGION          | 启用 COS 时必填                                   | 唯一配置区域                                               |
+| TENCENT_COS_BUCKET          | 启用 COS 时必填                                   | 唯一配置 bucket，包含 APPID 后缀                           |
 
 配置在启动时解析为不可变对象。完全没有 COS 配置时仅 file 可用；部分填写 COS 配置、未知默认 Adapter、非法大小或选择 cos 但未完整配置时启动失败。默认 file 且未配置 COS 时，单次请求显式选择 cos 返回 Adapter 不可用，不自动回退。
 
@@ -161,18 +161,18 @@ COS 浏览器直传需要 bucket 允许预期 Web origin 的 PUT 和必要签名
 
 ## 8. 错误、重试与残留
 
-| 情况 | HTTP 结果 |
-| --- | --- |
-| 非法 key、字段、medium 或上传凭据 | 400，固定安全错误码与文案 |
-| Bearer 缺失、无效或过期 | 401，沿用现有认证错误 |
-| 上传凭据不属于当前用户 | 403 |
-| 本地对象或待确认 COS 对象不存在 | 404 |
-| 本地文件/目录前缀冲突，完成确认大小不匹配 | 409 |
-| 实际内容超过上限 | 413 |
-| 不支持的 HTTP 请求 Content-Type | 415 |
-| 云端上传、STS 或 HEAD 依赖失败 | 502 |
-| 请求的 Adapter 未启用 | 503 |
-| 本地 I/O 或未知内部异常 | 500 |
+| 情况                                      | HTTP 结果                 |
+| ----------------------------------------- | ------------------------- |
+| 非法 key、字段、medium 或上传凭据         | 400，固定安全错误码与文案 |
+| Bearer 缺失、无效或过期                   | 401，沿用现有认证错误     |
+| 上传凭据不属于当前用户                    | 403                       |
+| 本地对象或待确认 COS 对象不存在           | 404                       |
+| 本地文件/目录前缀冲突，完成确认大小不匹配 | 409                       |
+| 实际内容超过上限                          | 413                       |
+| 不支持的 HTTP 请求 Content-Type           | 415                       |
+| 云端上传、STS 或 HEAD 依赖失败            | 502                       |
+| 请求的 Adapter 未启用                     | 503                       |
+| 本地 I/O 或未知内部异常                   | 500                       |
 
 错误统一经 `apps/server/src/errors.ts` 的 envelope 输出。SDK 保留安全 code、status 和 requestId；COS SDK 原始异常不直接作为对用户的展示文案。
 
@@ -196,16 +196,16 @@ SDK 的所有本站 HTTP 类型来自 `@workspace/api-client`。面向其他应�
 
 ## 10. 验收标准
 
-| 层级 | 必须验证 |
-| --- | --- |
-| 模块 | 默认与显式 medium、无数据库依赖、内部调用免认证、二进制输入一致性、大小边界、非法 key 拦截 |
-| FileAdapter | 新建、嵌套路径、同 key 覆盖、写入失败保留旧内容、公开读取、临时文件不可读、Windows 路径及符号链接边界 |
-| HTTP Contract | 四个 operation 注册与 Contract 双向一致，JSON handler 原始返回值和 HTTP 响应均校验，二进制 GET 验证响应头与真实字节 |
-| 上传 transport | Bearer 拦截早于内容消费、multipart 单文件约束、实际字节计数、20 MiB 边界、断开清理、既有申请上传无回归 |
-| COS 模拟 | STS 权限精确 key，凭据篡改/过期/串用户失败，HEAD 不存在/大小不符/超限失败，签名一年，云错误安全转换 |
-| SDK | 浏览器与 Node.js 的 file/cos 分支、返回字符串、动态 token、medium 固定、错误传播、没有自动分块或重复上传 |
-| 产物 | Node.js 外部应用消费构建产物；浏览器构建无 Node.js 模块和服务端密钥；类型可用 |
-| 真实 COS | 浏览器 CORS 与 STS 直传、Node.js 直传、服务器代传、完成确认、覆盖后下载内容、一年签名参数及当前可访问性 |
+| 层级           | 必须验证                                                                                                            |
+| -------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 模块           | 默认与显式 medium、无数据库依赖、内部调用免认证、二进制输入一致性、大小边界、非法 key 拦截                          |
+| FileAdapter    | 新建、嵌套路径、同 key 覆盖、写入失败保留旧内容、公开读取、临时文件不可读、Windows 路径及符号链接边界               |
+| HTTP Contract  | 四个 operation 注册与 Contract 双向一致，JSON handler 原始返回值和 HTTP 响应均校验，二进制 GET 验证响应头与真实字节 |
+| 上传 transport | Bearer 拦截早于内容消费、multipart 单文件约束、实际字节计数、20 MiB 边界、断开清理、既有申请上传无回归              |
+| COS 模拟       | STS 权限精确 key，凭据篡改/过期/串用户失败，HEAD 不存在/大小不符/超限失败，签名一年，云错误安全转换                 |
+| SDK            | 浏览器与 Node.js 的 file/cos 分支、返回字符串、动态 token、medium 固定、错误传播、没有自动分块或重复上传            |
+| 产物           | Node.js 外部应用消费构建产物；浏览器构建无 Node.js 模块和服务端密钥；类型可用                                       |
+| 真实 COS       | 浏览器 CORS 与 STS 直传、Node.js 直传、服务器代传、完成确认、覆盖后下载内容、一年签名参数及当前可访问性             |
 
 实现阶段按 Contract-first 顺序执行 `pnpm api:lint`、`pnpm api:generate`，再执行 `pnpm typecheck`、`pnpm test`、`pnpm build`，补充 SDK 构建及消费验收。数据库回归测试仍使用现有隔离容器，不连接本机数据库。
 

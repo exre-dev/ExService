@@ -3,7 +3,9 @@ import { createContentStore } from '../store'
 import type { ContentImageData } from './types'
 export const aboutRegistry = data
 export const aboutStore = createContentStore(loaders)
-export function aboutImage(image: ContentImageData): ContentImageData { return { ...image, src: assets[image.src] ?? '' } }
+export function aboutImage(image: ContentImageData): ContentImageData {
+  return { ...image, src: assets[image.src] ?? '' }
+}
 export function aboutTarget(target: string): string {
   const [kind, id] = target.split(':')
   if (kind === 'page') return id === 'home' ? '/aboutus' : `/aboutus/${id}`

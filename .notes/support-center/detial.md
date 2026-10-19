@@ -24,10 +24,9 @@ ClickUp TaskType: Task
 ClickUp TaskType: Asset
 选项: .notes/support-center/clickup-fields-probe.json:4c3befc0-5146-43a2-8610-86efe4e8124a
 内容选项: 新增, 修改, 删除, 其他
-内容选项  新增, 修改, 删除, 在创建Clickup的时候, 会变成Tag, 其他不创建Tag
+内容选项 新增, 修改, 删除, 在创建Clickup的时候, 会变成Tag, 其他不创建Tag
 内容输入: 输入文字内容
 文件上传: FileUploader
-
 
 4 需求
 ClickUp TaskType: Request
@@ -38,7 +37,7 @@ ClickUp TaskType: Request
 5 文档和内容
 ClickUp TaskType: Content
 内容选项: 新增, 修改, 删除, 其他
-内容选项  新增, 修改, 删除, 在创建Clickup的时候, 会变成Tag, 其他不创建Tag
+内容选项 新增, 修改, 删除, 在创建Clickup的时候, 会变成Tag, 其他不创建Tag
 内容输入: 输入文字内容
 文件上传: FileUploader
 
@@ -47,14 +46,12 @@ ClickUp TaskType: Campaign
 内容输入: 输入文字内容
 文件上传: FileUploader
 
-
 FileUploader写到packages\components
 变成一个通用的组件
 FileUploader, 可以设置最多上传数量, 可以设置最大文件大小, 可以设置支持的文件类型
 
 然后可以开启是否, 支持附加大内容
 即: 有一个Switch, 点击后, 显示一个内容输入区域, 可以给用户填写额外的大文件的信息
-
 
 还要有一个这样的组件
 TipTapInput组件

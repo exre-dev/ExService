@@ -19,16 +19,25 @@ class TestResizeObserver {
   disconnect() {}
 }
 vi.stubGlobal('ResizeObserver', TestResizeObserver)
-Object.defineProperty(document, 'elementFromPoint', { configurable: true, value: () => document.body })
+Object.defineProperty(document, 'elementFromPoint', {
+  configurable: true,
+  value: () => document.body,
+})
 
 import { OidcPage } from '@web/src/pages/IdentityPage/OidcPage'
 
-afterEach(() => { cleanup(); post.mockReset(); window.localStorage.clear() })
+afterEach(() => {
+  cleanup()
+  post.mockReset()
+  window.localStorage.clear()
+})
 
 function show() {
-  return render(<MemoryRouter initialEntries={['/identity/login?login_challenge=valid-challenge']}>
-    <OidcPage phase="login" />
-  </MemoryRouter>)
+  return render(
+    <MemoryRouter initialEntries={['/identity/login?login_challenge=valid-challenge']}>
+      <OidcPage phase="login" />
+    </MemoryRouter>,
+  )
 }
 
 describe('OIDC login presentation', () => {
@@ -52,14 +61,18 @@ describe('OIDC login presentation', () => {
     expect(within(dialog).getByRole('heading', { name: '账号身份' })).toBeTruthy()
     expect(within(dialog).getByRole('heading', { name: '基本资料' })).toBeTruthy()
     expect(within(dialog).getByText('用于识别你的 Exre 账号，关联应用中的身份。')).toBeTruthy()
-    expect(within(dialog).getByText('昵称、头像等基本资料，用于在应用中展示你的身份。')).toBeTruthy()
+    expect(
+      within(dialog).getByText('昵称、头像等基本资料，用于在应用中展示你的身份。'),
+    ).toBeTruthy()
     expect(within(dialog).getByRole('heading', { name: '邮箱地址' })).toBeTruthy()
     expect(post).toHaveBeenCalledTimes(1)
     await user.click(within(dialog).getByRole('button', { name: '知道了' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     await waitFor(() => expect(document.activeElement).toBe(disclosure))
     expect((screen.getByLabelText('邮箱') as HTMLInputElement).value).toBe('member@example.com')
-    expect((screen.getByLabelText('密码', { exact: true }) as HTMLInputElement).value).toBe('password-one')
+    expect((screen.getByLabelText('密码', { exact: true }) as HTMLInputElement).value).toBe(
+      'password-one',
+    )
     await user.click(screen.getByRole('button', { name: '继续' }))
     expect(screen.getByRole('heading', { name: '输入验证码' })).toBeTruthy()
     expect(screen.getByText(/使用 Exre 账号，继续访问/).closest('form')).toBeTruthy()
@@ -69,19 +82,22 @@ describe('OIDC login presentation', () => {
     expect(post).toHaveBeenCalledTimes(1)
   })
 
-  it.each(['Escape', 'close button'])('closes with %s and returns focus to the information trigger', async method => {
-    const user = userEvent.setup()
-    post.mockResolvedValue({ clientName: '示例应用', scopes: ['openid'] })
-    show()
-    const trigger = await screen.findByRole('button', { name: '示例应用将获取哪些信息？' })
-    await user.click(trigger)
-    const dialog = await screen.findByRole('dialog', { name: '登录时共享的信息' })
-    if (method === 'Escape') await user.keyboard('{Escape}')
-    else await user.click(within(dialog).getByRole('button', { name: '关闭信息说明' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    await waitFor(() => expect(document.activeElement).toBe(trigger))
-    expect(post).toHaveBeenCalledTimes(1)
-  })
+  it.each(['Escape', 'close button'])(
+    'closes with %s and returns focus to the information trigger',
+    async (method) => {
+      const user = userEvent.setup()
+      post.mockResolvedValue({ clientName: '示例应用', scopes: ['openid'] })
+      show()
+      const trigger = await screen.findByRole('button', { name: '示例应用将获取哪些信息？' })
+      await user.click(trigger)
+      const dialog = await screen.findByRole('dialog', { name: '登录时共享的信息' })
+      if (method === 'Escape') await user.keyboard('{Escape}')
+      else await user.click(within(dialog).getByRole('button', { name: '关闭信息说明' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      await waitFor(() => expect(document.activeElement).toBe(trigger))
+      expect(post).toHaveBeenCalledTimes(1)
+    },
+  )
 
   it('describes only the scopes returned by the inspected challenge', async () => {
     const user = userEvent.setup()

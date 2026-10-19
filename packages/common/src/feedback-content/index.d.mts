@@ -5,8 +5,17 @@ export const FEEDBACK_LIMITS: Readonly<{
   files: 5
   totalFileBytes: 104857600
 }>
-export const FREQUENCIES: Readonly<{ always: '每次'; often: '经常'; sometimes: '偶尔'; once: '仅一次' }>
-export interface ContentAnalysis { valid: boolean; markdown: string; reason: 'empty' | 'too_large' | 'invalid' | null }
+export const FREQUENCIES: Readonly<{
+  always: '每次'
+  often: '经常'
+  sometimes: '偶尔'
+  once: '仅一次'
+}>
+export interface ContentAnalysis {
+  valid: boolean
+  markdown: string
+  reason: 'empty' | 'too_large' | 'invalid' | null
+}
 export type FeedbackContentFormat = 'markdown' | undefined
 export interface BugContent {
   description: string

@@ -27,18 +27,18 @@
 
 ## 2. 现状与证据
 
-| 事实 | 仓库来源 |
-| --- | --- |
-| SDK 当前只有通用存储，分别构建浏览器与 Node 产物 | `packages/sdk/README.md`、`packages/sdk/src/browser.ts`、`packages/sdk/src/node.ts` |
-| 存储的本站 HTTP 经生成式 Client 执行，云上传使用环境对应的 COS SDK | `packages/sdk/src/shared.ts`、`packages/sdk/vite.config.ts` |
-| 生成式 Client 使用 openapi-fetch，返回 data/error/response；该结果结构是客户端行为，不是 Server 成功外壳 | `packages/api-client/src/client.ts` |
-| Web 配置集中于 VITE_API_BASE_URL，缺省 /api | `apps/web/src/api/client.ts` |
-| 本站 Token 存在 localStorage 的 exwebsite.auth.token 中 | `apps/web/src/auth/storage.ts` |
-| 登录保存 Token；AuthProvider 和设置控制器目前各自读取 Token、处理失效 | `apps/web/src/auth/AuthFlow.tsx`、`apps/web/src/auth/AuthContext.tsx`、`apps/web/src/settings/useSettingsController.ts` |
-| 全站只挂一个 ExMessageContext，消息发送依赖宿主已激活 | `apps/web/src/main.tsx`、`.ai/rules/frontend-notifications.md`、`.ai/knowledge/components/ex-message-host-lifecycle.md` |
-| Server 使用 Contract 注册业务路由，当前没有 CORS 接线 | `apps/server/src/app.ts` |
-| 错误结构固定为 error.code/message/requestId，code 在 schema 中为 string | `api/openapi.yaml`、`apps/server/src/errors.ts` |
-| SESSION_INVALID、INVALID_CREDENTIALS、COMPLETION_GRANT_INVALID 都可能返回 401，但语义不同 | `apps/server/src/auth/errors.ts` |
+| 事实                                                                                                     | 仓库来源                                                                                                                |
+| -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| SDK 当前只有通用存储，分别构建浏览器与 Node 产物                                                         | `packages/sdk/README.md`、`packages/sdk/src/browser.ts`、`packages/sdk/src/node.ts`                                     |
+| 存储的本站 HTTP 经生成式 Client 执行，云上传使用环境对应的 COS SDK                                       | `packages/sdk/src/shared.ts`、`packages/sdk/vite.config.ts`                                                             |
+| 生成式 Client 使用 openapi-fetch，返回 data/error/response；该结果结构是客户端行为，不是 Server 成功外壳 | `packages/api-client/src/client.ts`                                                                                     |
+| Web 配置集中于 VITE_API_BASE_URL，缺省 /api                                                              | `apps/web/src/api/client.ts`                                                                                            |
+| 本站 Token 存在 localStorage 的 exwebsite.auth.token 中                                                  | `apps/web/src/auth/storage.ts`                                                                                          |
+| 登录保存 Token；AuthProvider 和设置控制器目前各自读取 Token、处理失效                                    | `apps/web/src/auth/AuthFlow.tsx`、`apps/web/src/auth/AuthContext.tsx`、`apps/web/src/settings/useSettingsController.ts` |
+| 全站只挂一个 ExMessageContext，消息发送依赖宿主已激活                                                    | `apps/web/src/main.tsx`、`.ai/rules/frontend-notifications.md`、`.ai/knowledge/components/ex-message-host-lifecycle.md` |
+| Server 使用 Contract 注册业务路由，当前没有 CORS 接线                                                    | `apps/server/src/app.ts`                                                                                                |
+| 错误结构固定为 error.code/message/requestId，code 在 schema 中为 string                                  | `api/openapi.yaml`、`apps/server/src/errors.ts`                                                                         |
+| SESSION_INVALID、INVALID_CREDENTIALS、COMPLETION_GRANT_INVALID 都可能返回 401，但语义不同                | `apps/server/src/auth/errors.ts`                                                                                        |
 
 Axios 的实例、响应正文和拦截器机制分别见 [实例文档](https://axios-http.com/docs/instance)、[响应文档](https://axios-http.com/docs/res_schema)、[拦截器文档](https://axios-http.com/docs/interceptors)。绝对 URL 可以覆盖 baseURL，因此认证判断必须基于实际发送的 URL，见 [请求配置文档](https://axios-http.com/docs/req_config)。
 
@@ -241,20 +241,20 @@ SDK新增专门HTTP条件导出，让只使用ExAxios的消费者不加载COS运
 
 ## 13. 验收
 
-| 类别 | 必须证明的行为 |
-| --- | --- |
-| 类型 | 通用泛型得到Promise<T>；缺省unknown；本站非法path、method、body、query编译失败；成功类型从生成schema推导 |
-| 地址 | browser默认/api；Node未配置错误；setBaseUrl不扩大信任；显式website登记、绝对覆盖、路径越界、同前缀假路径与端口变化 |
-| 认证 | 初始化读取失败可继续；setToken即时生效；仅本站范围自动带Token；切换范围不复用旧Token；第三方和COS不带本站Token |
-| 并发 | 旧Token或旧范围401不清新会话；同时失效至多一次回调/跳转；重新登录后可以再次处理新会话失效 |
-| 错误 | 网络、超时、取消、HTTP和非规范响应正确分类；alert实例和请求优先级；提示失败不覆盖原请求错误 |
-| 导航 | 仅SESSION_INVALID触发；密码/注册凭证/第三方401不触发；已有登录页不循环；SSO上下文保留；Node不导航 |
-| 真实HTTP | 可信请求重定向不能泄露Token；FormData边界正确；文件与下载错误解析正常；30秒普通期限和120秒存储期限可配置并分类 |
-| 通知 | 同一ExUI实例、单一宿主；宿主未就绪不掩盖请求失败；字段/页面/loading不重复toast |
-| Server | 成功正文、错误envelope、二进制不变；X-Request-Id与正文/日志一致；Contract路由覆盖和原始handler结果检查 |
-| CORS | 白名单允许、非允许来源无授权头；Authorization预检；响应头可读取；默认同源；预检不绕过业务认证 |
-| 产物 | browser/Node/HTTP入口的真实构建消费；Node无需React/ExUI；HTTP入口不加载COS；无私有包名和源码别名泄露 |
-| 回归 | 普通登录、SSO接收、退出、资料、邀请、加入申请、文件和COS存储现有交互及异常语义 |
+| 类别     | 必须证明的行为                                                                                                     |
+| -------- | ------------------------------------------------------------------------------------------------------------------ |
+| 类型     | 通用泛型得到Promise<T>；缺省unknown；本站非法path、method、body、query编译失败；成功类型从生成schema推导           |
+| 地址     | browser默认/api；Node未配置错误；setBaseUrl不扩大信任；显式website登记、绝对覆盖、路径越界、同前缀假路径与端口变化 |
+| 认证     | 初始化读取失败可继续；setToken即时生效；仅本站范围自动带Token；切换范围不复用旧Token；第三方和COS不带本站Token     |
+| 并发     | 旧Token或旧范围401不清新会话；同时失效至多一次回调/跳转；重新登录后可以再次处理新会话失效                          |
+| 错误     | 网络、超时、取消、HTTP和非规范响应正确分类；alert实例和请求优先级；提示失败不覆盖原请求错误                        |
+| 导航     | 仅SESSION_INVALID触发；密码/注册凭证/第三方401不触发；已有登录页不循环；SSO上下文保留；Node不导航                  |
+| 真实HTTP | 可信请求重定向不能泄露Token；FormData边界正确；文件与下载错误解析正常；30秒普通期限和120秒存储期限可配置并分类     |
+| 通知     | 同一ExUI实例、单一宿主；宿主未就绪不掩盖请求失败；字段/页面/loading不重复toast                                     |
+| Server   | 成功正文、错误envelope、二进制不变；X-Request-Id与正文/日志一致；Contract路由覆盖和原始handler结果检查             |
+| CORS     | 白名单允许、非允许来源无授权头；Authorization预检；响应头可读取；默认同源；预检不绕过业务认证                      |
+| 产物     | browser/Node/HTTP入口的真实构建消费；Node无需React/ExUI；HTTP入口不加载COS；无私有包名和源码别名泄露               |
+| 回归     | 普通登录、SSO接收、退出、资料、邀请、加入申请、文件和COS存储现有交互及异常语义                                     |
 
 实施阶段执行pnpm api:lint、pnpm api:generate、pnpm typecheck、pnpm test、pnpm build，以及browser和Node外部产物验收。数据库测试仍使用独立Testcontainers，失败时不能回退本机exre。真实浏览器、独立Node、真实HTTP与静态/单元结果分别报告PASS/FAIL/NOT_EXECUTED。当前设计阶段不运行代码测试，也不声称实现已通过验收。
 

@@ -3,7 +3,7 @@
     operationId: inspectOidcRequest
     summary: Inspect an approved Hydra login or consent challenge
     security: []
-    tags: [ identity ]
+    tags: [identity]
     requestBody:
       required: true
       content:
@@ -27,7 +27,7 @@
     summary: Accept a Hydra login challenge with the current Website session
     security:
       - bearerAuth: []
-    tags: [ identity ]
+    tags: [identity]
     requestBody:
       required: true
       content:
@@ -53,7 +53,7 @@
     summary: Accept preapproved OIDC scopes for the current Website session
     security:
       - bearerAuth: []
-    tags: [ identity ]
+    tags: [identity]
     requestBody:
       required: true
       content:
@@ -79,7 +79,7 @@
     summary: Revoke the linked browser session and accept its Hydra logout challenge
     security:
       - bearerAuth: []
-    tags: [ identity ]
+    tags: [identity]
     requestBody:
       required: true
       content:
@@ -105,7 +105,7 @@
     summary: Check one client-bound Hydra session against the Website session
     security:
       - integrationKey: []
-    tags: [ identity ]
+    tags: [identity]
     requestBody:
       required: true
       content:
@@ -129,7 +129,7 @@
     summary: Revoke one client-bound Website browser session
     security:
       - integrationKey: []
-    tags: [ identity ]
+    tags: [identity]
     requestBody:
       required: true
       content:
@@ -153,7 +153,7 @@
     summary: Inspect an active Website account during controlled bootstrap
     security:
       - bootstrapKey: []
-    tags: [ identity ]
+    tags: [identity]
     requestBody:
       required: true
       content:

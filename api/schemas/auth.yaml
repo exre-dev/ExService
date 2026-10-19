@@ -4,14 +4,14 @@ VerificationCode:
 CaptchaSubmission:
   type: object
   additionalProperties: false
-  required: [ challengeId, answer ]
+  required: [challengeId, answer]
   properties:
     challengeId: { $ref: '../openapi.yaml#/components/schemas/OpaqueIdentifier' }
     answer: { type: string, minLength: 1, maxLength: 64 }
 CaptchaChallenge:
   type: object
   additionalProperties: false
-  required: [ challengeId, imageBase64, expiresAt ]
+  required: [challengeId, imageBase64, expiresAt]
   properties:
     challengeId: { $ref: '../openapi.yaml#/components/schemas/OpaqueIdentifier' }
     imageBase64:
@@ -21,7 +21,7 @@ CaptchaChallenge:
 LoginRequest:
   type: object
   additionalProperties: false
-  required: [ email, password ]
+  required: [email, password]
   properties:
     email: { $ref: '../openapi.yaml#/components/schemas/Email' }
     password: { $ref: '../openapi.yaml#/components/schemas/Password' }
@@ -29,26 +29,26 @@ LoginRequest:
 LoginResponse:
   type: object
   additionalProperties: false
-  required: [ token, expiresAt ]
+  required: [token, expiresAt]
   properties:
     token: { $ref: '../openapi.yaml#/components/schemas/OpaqueIdentifier' }
     expiresAt: { $ref: '../openapi.yaml#/components/schemas/SafeTimestamp' }
 LogoutResponse:
   type: object
   additionalProperties: false
-  required: [ status ]
+  required: [status]
   properties:
     status: { type: string, const: signed-out }
 SsoRequestRef:
   type: object
   additionalProperties: false
-  required: [ ssoRequestId ]
+  required: [ssoRequestId]
   properties:
     ssoRequestId: { $ref: '../openapi.yaml#/components/schemas/OpaqueIdentifier' }
 SsoPasswordRequest:
   type: object
   additionalProperties: false
-  required: [ ssoRequestId, email, password ]
+  required: [ssoRequestId, email, password]
   properties:
     ssoRequestId: { $ref: '../openapi.yaml#/components/schemas/OpaqueIdentifier' }
     email: { $ref: '../openapi.yaml#/components/schemas/Email' }
@@ -57,16 +57,16 @@ SsoPasswordRequest:
 SsoRequestInfo:
   type: object
   additionalProperties: false
-  required: [ ssoRequestId, status, expiresAt, serverTime ]
+  required: [ssoRequestId, status, expiresAt, serverTime]
   properties:
     ssoRequestId: { $ref: '../openapi.yaml#/components/schemas/OpaqueIdentifier' }
-    status: { type: string, enum: [ pending, completed ] }
+    status: { type: string, enum: [pending, completed] }
     expiresAt: { $ref: '../openapi.yaml#/components/schemas/SafeTimestamp' }
     serverTime: { $ref: '../openapi.yaml#/components/schemas/SafeTimestamp' }
 SsoCompleted:
   type: object
   additionalProperties: false
-  required: [ status, ssoRequestId ]
+  required: [status, ssoRequestId]
   properties:
     status: { type: string, const: completed }
     ssoRequestId: { $ref: '../openapi.yaml#/components/schemas/OpaqueIdentifier' }

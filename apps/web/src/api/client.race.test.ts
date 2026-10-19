@@ -5,21 +5,39 @@ import { afterEach, expect, it, vi } from 'vitest'
 // application wiring; real conditional Browser exports are covered independently.
 vi.mock('@workspace/sdk', async () => {
   const { createRuntime } = await import('../../../../packages/sdk/src/runtime')
-  const create = (origin: string) => createRuntime({
-    environment: 'browser', origin,
-    readToken: () => { try { return { kind: 'known', value: window.localStorage.getItem('exwebsite.auth.token') } } catch { return { kind: 'unavailable' } } },
-    clearToken: expected => {
-      if (window.localStorage.getItem('exwebsite.auth.token') !== expected) return false
-      window.localStorage.removeItem('exwebsite.auth.token')
-      return true
-    },
-  }, async () => { throw new Error('COS is not part of this fixture') })
+  const create = (origin: string) =>
+    createRuntime(
+      {
+        environment: 'browser',
+        origin,
+        readToken: () => {
+          try {
+            return { kind: 'known', value: window.localStorage.getItem('exwebsite.auth.token') }
+          } catch {
+            return { kind: 'unavailable' }
+          }
+        },
+        clearToken: (expected) => {
+          if (window.localStorage.getItem('exwebsite.auth.token') !== expected) return false
+          window.localStorage.removeItem('exwebsite.auth.token')
+          return true
+        },
+      },
+      async () => {
+        throw new Error('COS is not part of this fixture')
+      },
+    )
   let runtime = create(window.location.origin)
   return {
-    instance: ((config: Parameters<typeof runtime.instance>[0]) => runtime.instance(config)) as unknown as typeof runtime.instance,
-    setBaseUrl: (url: string) => { runtime = create(new URL(url).origin); runtime.setBaseUrl(url) },
+    instance: ((config: Parameters<typeof runtime.instance>[0]) =>
+      runtime.instance(config)) as unknown as typeof runtime.instance,
+    setBaseUrl: (url: string) => {
+      runtime = create(new URL(url).origin)
+      runtime.setBaseUrl(url)
+    },
     setAccessToken: (token: string | null) => runtime.setAccessToken(token),
-    setSessionExpiredHandler: (handler: Parameters<typeof runtime.setSessionExpiredHandler>[0]) => runtime.setSessionExpiredHandler(handler),
+    setSessionExpiredHandler: (handler: Parameters<typeof runtime.setSessionExpiredHandler>[0]) =>
+      runtime.setSessionExpiredHandler(handler),
   }
 })
 let disposeIntegration: (() => void) | undefined
@@ -33,73 +51,109 @@ afterEach(async () => {
   window.localStorage.clear()
   if (server) {
     server.closeAllConnections()
-    await new Promise<void>(resolve => server!.close(() => resolve()))
+    await new Promise<void>((resolve) => server!.close(() => resolve()))
     server = undefined
   }
 })
 
-it.each(['/support', '/support/errors/guide?via=direct#step', '/support/unknown'])('retains an expired Support deep link while clearing and notifying the real session: %s', async path => {
-  server = createServer((_request, response) => {
-    response.writeHead(401, { 'content-type': 'application/json' })
-    response.end(JSON.stringify({ error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'support-expired' } }))
-  })
-  await new Promise<void>(resolve => server!.listen(0, '127.0.0.1', resolve))
-  const address = server.address()
-  if (!address || typeof address === 'string') throw new Error('expected fixture TCP address')
-  vi.stubEnv('VITE_API_BASE_URL', `http://127.0.0.1:${address.port}/api`)
-  window.history.replaceState({}, '', path)
-  window.localStorage.setItem('exwebsite.auth.token', 'current-token')
-  const location = window.location
-  const replace = vi.fn()
-  // jsdom cannot navigate; expose navigation as an observable browser boundary.
-  vi.stubGlobal('window', { localStorage: window.localStorage,
-    addEventListener: window.addEventListener.bind(window), removeEventListener: window.removeEventListener.bind(window), location: {
-    origin: `http://127.0.0.1:${address.port}`, pathname: location.pathname, search: location.search, hash: location.hash, replace,
-  } })
-  vi.resetModules()
-  const { installSdkIntegration } = await import('@web/src/api/client')
-  const { instance } = await import('@workspace/sdk')
-  disposeIntegration = installSdkIntegration()
-  const { subscribeSessionChanges, readToken } = await import('@web/src/auth/storage')
-  const observed: Array<string | null> = []
-  const unsubscribe = subscribeSessionChanges(() => observed.push(readToken(window.localStorage)))
-  try {
-    await expect(instance({ url: '/auth/me', method: 'GET', alert: false })).rejects.toMatchObject({ code: 'SESSION_INVALID' })
-    expect(window.localStorage.getItem('exwebsite.auth.token')).toBeNull()
-    expect(observed).toEqual([null])
-    expect(replace).not.toHaveBeenCalled()
-    expect(location.pathname + location.search + location.hash).toBe(path)
-  } finally { unsubscribe() }
-})
+it.each(['/support', '/support/errors/guide?via=direct#step', '/support/unknown'])(
+  'retains an expired Support deep link while clearing and notifying the real session: %s',
+  async (path) => {
+    server = createServer((_request, response) => {
+      response.writeHead(401, { 'content-type': 'application/json' })
+      response.end(
+        JSON.stringify({
+          error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'support-expired' },
+        }),
+      )
+    })
+    await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve))
+    const address = server.address()
+    if (!address || typeof address === 'string') throw new Error('expected fixture TCP address')
+    vi.stubEnv('VITE_API_BASE_URL', `http://127.0.0.1:${address.port}/api`)
+    window.history.replaceState({}, '', path)
+    window.localStorage.setItem('exwebsite.auth.token', 'current-token')
+    const location = window.location
+    const replace = vi.fn()
+    // jsdom cannot navigate; expose navigation as an observable browser boundary.
+    vi.stubGlobal('window', {
+      localStorage: window.localStorage,
+      addEventListener: window.addEventListener.bind(window),
+      removeEventListener: window.removeEventListener.bind(window),
+      location: {
+        origin: `http://127.0.0.1:${address.port}`,
+        pathname: location.pathname,
+        search: location.search,
+        hash: location.hash,
+        replace,
+      },
+    })
+    vi.resetModules()
+    const { installSdkIntegration } = await import('@web/src/api/client')
+    const { instance } = await import('@workspace/sdk')
+    disposeIntegration = installSdkIntegration()
+    const { subscribeSessionChanges, readToken } = await import('@web/src/auth/storage')
+    const observed: Array<string | null> = []
+    const unsubscribe = subscribeSessionChanges(() => observed.push(readToken(window.localStorage)))
+    try {
+      await expect(
+        instance({ url: '/auth/me', method: 'GET', alert: false }),
+      ).rejects.toMatchObject({ code: 'SESSION_INVALID' })
+      expect(window.localStorage.getItem('exwebsite.auth.token')).toBeNull()
+      expect(observed).toEqual([null])
+      expect(replace).not.toHaveBeenCalled()
+      expect(location.pathname + location.search + location.hash).toBe(path)
+    } finally {
+      unsubscribe()
+    }
+  },
+)
 
 it('keeps the existing expiry redirect for similarly prefixed non-Support routes', async () => {
   server = createServer((_request, response) => {
     response.writeHead(401, { 'content-type': 'application/json' })
-    response.end(JSON.stringify({ error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'ordinary-expired' } }))
+    response.end(
+      JSON.stringify({
+        error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'ordinary-expired' },
+      }),
+    )
   })
-  await new Promise<void>(resolve => server!.listen(0, '127.0.0.1', resolve))
+  await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve))
   const address = server.address()
   if (!address || typeof address === 'string') throw new Error('expected fixture TCP address')
   vi.stubEnv('VITE_API_BASE_URL', `http://127.0.0.1:${address.port}/api`)
   window.history.replaceState({}, '', '/support-other')
   window.localStorage.setItem('exwebsite.auth.token', 'current-token')
   const replace = vi.fn()
-  vi.stubGlobal('window', { localStorage: window.localStorage,
-    addEventListener: window.addEventListener.bind(window), removeEventListener: window.removeEventListener.bind(window), location: {
-    origin: `http://127.0.0.1:${address.port}`, pathname: '/support-other', search: '', replace,
-  } })
+  vi.stubGlobal('window', {
+    localStorage: window.localStorage,
+    addEventListener: window.addEventListener.bind(window),
+    removeEventListener: window.removeEventListener.bind(window),
+    location: {
+      origin: `http://127.0.0.1:${address.port}`,
+      pathname: '/support-other',
+      search: '',
+      replace,
+    },
+  })
   vi.resetModules()
   const { installSdkIntegration } = await import('@web/src/api/client')
   const { instance } = await import('@workspace/sdk')
   disposeIntegration = installSdkIntegration()
-  await expect(instance({ url: '/auth/me', method: 'GET', alert: false })).rejects.toMatchObject({ code: 'SESSION_INVALID' })
+  await expect(instance({ url: '/auth/me', method: 'GET', alert: false })).rejects.toMatchObject({
+    code: 'SESSION_INVALID',
+  })
   expect(replace).toHaveBeenCalledWith('/login')
 })
 
 it('keeps a newer cross-tab session when an old Web API request expires before its storage event', async () => {
   let arrived!: () => void, release!: () => void
-  const reached = new Promise<void>(resolve => { arrived = resolve })
-  const gate = new Promise<void>(resolve => { release = resolve })
+  const reached = new Promise<void>((resolve) => {
+    arrived = resolve
+  })
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
   const authorization: string[] = []
   server = createServer(async (request, response) => {
     authorization.push(request.headers.authorization ?? '')
@@ -108,19 +162,30 @@ it('keeps a newer cross-tab session when an old Web API request expires before i
       arrived()
       await gate
       response.statusCode = 401
-      response.end(JSON.stringify({ error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'old-request' } }))
+      response.end(
+        JSON.stringify({
+          error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'old-request' },
+        }),
+      )
     } else response.end(JSON.stringify({ status: 'ok' }))
   })
-  await new Promise<void>(resolve => server!.listen(0, '127.0.0.1', resolve))
+  await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve))
   const address = server.address()
   if (!address || typeof address === 'string') throw new Error('expected fixture TCP address')
   vi.stubEnv('VITE_API_BASE_URL', `http://127.0.0.1:${address.port}/api`)
   window.history.replaceState({}, '', '/login')
   window.localStorage.setItem('exwebsite.auth.token', 'old-token')
-  vi.stubGlobal('window', { localStorage: window.localStorage,
-    addEventListener: window.addEventListener.bind(window), removeEventListener: window.removeEventListener.bind(window), location: {
-    origin: `http://127.0.0.1:${address.port}`, pathname: '/login', search: '', replace: vi.fn(),
-  } })
+  vi.stubGlobal('window', {
+    localStorage: window.localStorage,
+    addEventListener: window.addEventListener.bind(window),
+    removeEventListener: window.removeEventListener.bind(window),
+    location: {
+      origin: `http://127.0.0.1:${address.port}`,
+      pathname: '/login',
+      search: '',
+      replace: vi.fn(),
+    },
+  })
   vi.resetModules()
   const { installSdkIntegration } = await import('@web/src/api/client')
   const { instance } = await import('@workspace/sdk')
@@ -131,7 +196,9 @@ it('keeps a newer cross-tab session when an old Web API request expires before i
   release()
   await expect(pending).rejects.toMatchObject({ code: 'SESSION_INVALID' })
   expect(window.localStorage.getItem('exwebsite.auth.token')).toBe('new-token')
-  await expect(instance({ url: '/health', method: 'GET', alert: false })).resolves.toEqual({ status: 'ok' })
+  await expect(instance({ url: '/health', method: 'GET', alert: false })).resolves.toEqual({
+    status: 'ok',
+  })
   expect(authorization).toEqual(['Bearer old-token', 'Bearer new-token'])
 })
 
@@ -140,18 +207,29 @@ it('clears a matching persisted session and notifies the bound Web session', asy
   server = createServer((request, response) => {
     authorization.push(request.headers.authorization ?? '')
     response.writeHead(401, { 'content-type': 'application/json' })
-    response.end(JSON.stringify({ error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'current-request' } }))
+    response.end(
+      JSON.stringify({
+        error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'current-request' },
+      }),
+    )
   })
-  await new Promise<void>(resolve => server!.listen(0, '127.0.0.1', resolve))
+  await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve))
   const address = server.address()
   if (!address || typeof address === 'string') throw new Error('expected fixture TCP address')
   vi.stubEnv('VITE_API_BASE_URL', `http://127.0.0.1:${address.port}/api`)
   window.history.replaceState({}, '', '/login?ssoRequestId=keep-this-container')
   window.localStorage.setItem('exwebsite.auth.token', 'current-token')
-  vi.stubGlobal('window', { localStorage: window.localStorage,
-    addEventListener: window.addEventListener.bind(window), removeEventListener: window.removeEventListener.bind(window), location: {
-    origin: `http://127.0.0.1:${address.port}`, pathname: '/login', search: '?ssoRequestId=keep-this-container', replace: vi.fn(),
-  } })
+  vi.stubGlobal('window', {
+    localStorage: window.localStorage,
+    addEventListener: window.addEventListener.bind(window),
+    removeEventListener: window.removeEventListener.bind(window),
+    location: {
+      origin: `http://127.0.0.1:${address.port}`,
+      pathname: '/login',
+      search: '?ssoRequestId=keep-this-container',
+      replace: vi.fn(),
+    },
+  })
   vi.resetModules()
   const { installSdkIntegration } = await import('@web/src/api/client')
   const { instance } = await import('@workspace/sdk')
@@ -160,11 +238,15 @@ it('clears a matching persisted session and notifies the bound Web session', asy
   const observed: Array<string | null> = []
   const unsubscribe = subscribeSessionChanges(() => observed.push(readToken(window.localStorage)))
   try {
-    await expect(instance({ url: '/health', method: 'GET', alert: false })).rejects.toMatchObject({ code: 'SESSION_INVALID' })
+    await expect(instance({ url: '/health', method: 'GET', alert: false })).rejects.toMatchObject({
+      code: 'SESSION_INVALID',
+    })
     expect(authorization).toEqual(['Bearer current-token'])
     expect(window.localStorage.getItem('exwebsite.auth.token')).toBeNull()
     expect(observed).toEqual([null])
     expect(window.location.pathname).toBe('/login')
     expect(window.location.search).toBe('?ssoRequestId=keep-this-container')
-  } finally { unsubscribe() }
+  } finally {
+    unsubscribe()
+  }
 })

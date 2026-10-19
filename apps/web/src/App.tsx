@@ -16,8 +16,12 @@ import { SignedOutPage } from '@web/src/pages/IdentityPage/SignedOutPage'
 import { OidcPage } from '@web/src/pages/IdentityPage/OidcPage'
 import { SupportAccess } from './routes/SupportAccess'
 import { FeedbackProvider } from './pages/Support/feedback/FeedbackProvider'
-const AboutUs = lazy(() => import('./pages/AboutUs/AboutUs').then(module => ({ default: module.AboutUs })))
-const SupportRoutes = lazy(() => import('./pages/Support/SupportRoutes').then(module => ({ default: module.SupportRoutes })))
+const AboutUs = lazy(() =>
+  import('./pages/AboutUs/AboutUs').then((module) => ({ default: module.AboutUs })),
+)
+const SupportRoutes = lazy(() =>
+  import('./pages/Support/SupportRoutes').then((module) => ({ default: module.SupportRoutes })),
+)
 
 /**
  * 路由表：认证和 SSO 页面使用独立布局，其余页面共用站点顶栏。
@@ -27,30 +31,65 @@ export function App() {
   return (
     <AuthProvider>
       <FeedbackProvider>
-      <Routes>
-        <Route path="/login" element={<AuthPage mode="login" />} />
-        <Route path="/register" element={<InvitationRegistrationPage />} />
-        <Route path="/sso/success" element={<SsoSuccess />} />
-        <Route path="/sso/*" element={<NotFound />} />
-        <Route path="/identity/signed-out" element={<SignedOutPage />} />
-        <Route path="/identity/login" element={<OidcPage phase="login" />} />
-        <Route path="/identity/consent" element={<OidcPage phase="consent" />} />
-        <Route path="/identity/logout" element={<OidcPage phase="logout" />} />
-        <Route element={<RootLayout />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/docs" element={<DocsPage />} />
-          <Route path="/about" element={<Navigate to="/aboutus" replace />} />
-          <Route path="/aboutus/*" element={<ContentBoundary returnUrl="/"><Suspense fallback={<p role="status" style={{ padding: '3rem' }}>正在加载介绍…</p>}><AboutUs /></Suspense></ContentBoundary>} />
-          <Route path="/support/*" element={<SupportAccess><ContentBoundary returnUrl="/"><Suspense fallback={<p role="status" style={{ padding: '3rem' }}>正在加载支持中心…</p>}><SupportRoutes /></Suspense></ContentBoundary></SupportAccess>} />
-          <Route path="/communities" element={<Navigate to="/communities/rifling-911" replace />} />
-          <Route path="/communities/rifling-911" element={<JoinPage />} />
-          <Route path="/communities/caep" element={<CAEPJoinPage />} />
-          <Route path="/account/profile" element={<ProfilePage />} />
-        </Route>
-        <Route element={<RootLayout glassAtTop />}>
-          <Route path="*" element={<NotFound />} />
-        </Route>
-      </Routes>
+        <Routes>
+          <Route path="/login" element={<AuthPage mode="login" />} />
+          <Route path="/register" element={<InvitationRegistrationPage />} />
+          <Route path="/sso/success" element={<SsoSuccess />} />
+          <Route path="/sso/*" element={<NotFound />} />
+          <Route path="/identity/signed-out" element={<SignedOutPage />} />
+          <Route path="/identity/login" element={<OidcPage phase="login" />} />
+          <Route path="/identity/consent" element={<OidcPage phase="consent" />} />
+          <Route path="/identity/logout" element={<OidcPage phase="logout" />} />
+          <Route element={<RootLayout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/docs" element={<DocsPage />} />
+            <Route path="/about" element={<Navigate to="/aboutus" replace />} />
+            <Route
+              path="/aboutus/*"
+              element={
+                <ContentBoundary returnUrl="/">
+                  <Suspense
+                    fallback={
+                      <p role="status" style={{ padding: '3rem' }}>
+                        正在加载介绍…
+                      </p>
+                    }
+                  >
+                    <AboutUs />
+                  </Suspense>
+                </ContentBoundary>
+              }
+            />
+            <Route
+              path="/support/*"
+              element={
+                <SupportAccess>
+                  <ContentBoundary returnUrl="/">
+                    <Suspense
+                      fallback={
+                        <p role="status" style={{ padding: '3rem' }}>
+                          正在加载支持中心…
+                        </p>
+                      }
+                    >
+                      <SupportRoutes />
+                    </Suspense>
+                  </ContentBoundary>
+                </SupportAccess>
+              }
+            />
+            <Route
+              path="/communities"
+              element={<Navigate to="/communities/rifling-911" replace />}
+            />
+            <Route path="/communities/rifling-911" element={<JoinPage />} />
+            <Route path="/communities/caep" element={<CAEPJoinPage />} />
+            <Route path="/account/profile" element={<ProfilePage />} />
+          </Route>
+          <Route element={<RootLayout glassAtTop />}>
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        </Routes>
       </FeedbackProvider>
     </AuthProvider>
   )

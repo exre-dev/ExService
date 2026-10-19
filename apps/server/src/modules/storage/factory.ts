@@ -1,7 +1,11 @@
 import { mkdirSync } from 'node:fs'
 import type { StorageConfig } from '@server/src/modules/storage/config.js'
 import { FileAdapter } from '@server/src/modules/storage/adapters/file.js'
-import { CosAdapter, createCosDependencies, type CosDependencies } from '@server/src/modules/storage/adapters/cos.js'
+import {
+  CosAdapter,
+  createCosDependencies,
+  type CosDependencies,
+} from '@server/src/modules/storage/adapters/cos.js'
 import { DefaultStorageService } from '@server/src/modules/storage/service.js'
 import { DirectUploadService } from '@server/src/modules/storage/direct-upload.js'
 
@@ -28,17 +32,31 @@ export interface CreateStorageModuleOptions {
  *
  * 工厂不连接数据库、不读取登录状态；只有 HTTP 层通过既有 AuthService 取得用户 ID。
  */
-export function createStorageModule({ config, cosDependencies }: CreateStorageModuleOptions): StorageServices {
+export function createStorageModule({
+  config,
+  cosDependencies,
+}: CreateStorageModuleOptions): StorageServices {
   mkdirSync(config.uploadsRoot, { recursive: true })
   mkdirSync(config.uploadTmpRoot, { recursive: true })
 
-  const fileAdapter = new FileAdapter(config.uploadsRoot, config.uploadTmpRoot, config.publicApiBaseUrl)
-  const cosAdapter = config.cos === undefined
-    ? undefined
-    : new CosAdapter(config.cos, cosDependencies ?? createCosDependencies(config.cos))
+  const fileAdapter = new FileAdapter(
+    config.uploadsRoot,
+    config.uploadTmpRoot,
+    config.publicApiBaseUrl,
+  )
+  const cosAdapter =
+    config.cos === undefined
+      ? undefined
+      : new CosAdapter(config.cos, cosDependencies ?? createCosDependencies(config.cos))
   const service = new DefaultStorageService(config, {
     file: fileAdapter,
     ...(cosAdapter === undefined ? {} : { cos: cosAdapter }),
   })
-  return { config, service, direct: new DirectUploadService(config, cosAdapter), fileAdapter, cosAdapter }
+  return {
+    config,
+    service,
+    direct: new DirectUploadService(config, cosAdapter),
+    fileAdapter,
+    cosAdapter,
+  }
 }

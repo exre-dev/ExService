@@ -20,16 +20,16 @@
 
 ## 2. 源码约束
 
-| 证据 | 对实现的约束 |
-| --- | --- |
-| `scripts/dev-app.mjs`、`apps/web/dev-entry.ts`、`apps/web/vite.config.ts` | 已有 8080 入口和 8081/8082 进程分离，保持同源及热更新。 |
-| `apps/server/package.json` | Server 通过 Node env-file 加载 `apps/server/.env.local`，不得以编排生成的空库连接串覆盖。 |
-| `apps/server/src/server.ts` | issuer、客户端与回调目前固定在 8090，需要集中配置。 |
-| `scripts/docs-integration/hydra-client.mjs` | 目前只允许固定客户端且 metadata issuer 写死，需要接收经过验证的模式配置。 |
-| `apps/server/src/identity/outbox.ts` | 当前回调只接收 sid，且只对 `ex-outline` 投递 Outline，必须支持按客户端选择目的地。 |
-| 集成版 `apps/outline/server/identity/websiteOidc.ts`、`apps/outline/server/identity/websiteProvisioner.ts`、`apps/outline/server/scripts/integration-bootstrap.ts`、`apps/outline/server/routes/internalIdentity.ts` | 存在固定 issuer、clientId 或 origin；登录、关联、初始化和撤销必须统一配置。 |
-| 集成版 `apps/outline/vite.config.ts` | 集成 HMR 和 origin 写死在 8090，不能仅启用集成开关。 |
-| `infra/docs-integration/postgres/init.sh` | 旧环境初始化创建另一套 `exre`；本地模式不能复用该初始化脚本来替换主站数据。 |
+| 证据                                                                                                                                                                                                                 | 对实现的约束                                                                              |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `scripts/dev-app.mjs`、`apps/web/dev-entry.ts`、`apps/web/vite.config.ts`                                                                                                                                            | 已有 8080 入口和 8081/8082 进程分离，保持同源及热更新。                                   |
+| `apps/server/package.json`                                                                                                                                                                                           | Server 通过 Node env-file 加载 `apps/server/.env.local`，不得以编排生成的空库连接串覆盖。 |
+| `apps/server/src/server.ts`                                                                                                                                                                                          | issuer、客户端与回调目前固定在 8090，需要集中配置。                                       |
+| `scripts/docs-integration/hydra-client.mjs`                                                                                                                                                                          | 目前只允许固定客户端且 metadata issuer 写死，需要接收经过验证的模式配置。                 |
+| `apps/server/src/identity/outbox.ts`                                                                                                                                                                                 | 当前回调只接收 sid，且只对 `ex-outline` 投递 Outline，必须支持按客户端选择目的地。        |
+| 集成版 `apps/outline/server/identity/websiteOidc.ts`、`apps/outline/server/identity/websiteProvisioner.ts`、`apps/outline/server/scripts/integration-bootstrap.ts`、`apps/outline/server/routes/internalIdentity.ts` | 存在固定 issuer、clientId 或 origin；登录、关联、初始化和撤销必须统一配置。               |
+| 集成版 `apps/outline/vite.config.ts`                                                                                                                                                                                 | 集成 HMR 和 origin 写死在 8090，不能仅启用集成开关。                                      |
+| `infra/docs-integration/postgres/init.sh`                                                                                                                                                                            | 旧环境初始化创建另一套 `exre`；本地模式不能复用该初始化脚本来替换主站数据。               |
 
 Outline 的集成版本与当前开发版本需要衔接。实现时先列出两者的模块差异与当前改动，以正常合并或有来源的模块移植保留 UI、挂载工具及开发修正；不得 reset、整库覆盖或丢弃本地修改。此衔接不授权提交。
 
@@ -37,17 +37,17 @@ Outline 的集成版本与当前开发版本需要衔接。实现时先列出两
 
 默认布局如下，所有宿主机端口仅绑定 `127.0.0.1`。使用独立 Compose 项目 `exwebsite-local-dev`，拟新增独立文件 `compose.local-dev.yaml`，不叠加会创建另一套 Website 库的旧 Compose 基础文件。
 
-| 服务 | 默认地址 | 责任 |
-| --- | --- | --- |
-| Website 公共入口 | `http://127.0.0.1:8080` | Website SPA、身份适配、`/api` 与 `/docs` 代理。 |
-| Website Vite | `http://127.0.0.1:8081` | 开发服务；用户会话以 8080 为准。 |
-| Website Server | `http://127.0.0.1:8082` | 原 Website 业务、OIDC 接受与内部会话核验。 |
-| Outline 后端 | `http://127.0.0.1:3102` | 使用不迁移的集成启动脚本，公开 URL 为 `http://127.0.0.1:8080/docs`。 |
-| Outline Vite | `http://127.0.0.1:3101` | 本地模式关闭证书自动启用，静态 base 为 `/docs/static/`。 |
-| Hydra public | `http://127.0.0.1:14444/` | 固定本地 issuer；仅发布 public 服务。 |
-| Hydra admin | `http://127.0.0.1:14447/` | 受控准备与 Server 调用；与旧 14445 分离。 |
-| 本地文档 PostgreSQL | `127.0.0.1:17432` | 独立 `outline`、`hydra` 数据库，无 Website `exre`。 |
-| 本地文档 Redis | `127.0.0.1:17379` | Outline 队列、协作和一次性认证状态。 |
+| 服务                | 默认地址                  | 责任                                                                 |
+| ------------------- | ------------------------- | -------------------------------------------------------------------- |
+| Website 公共入口    | `http://127.0.0.1:8080`   | Website SPA、身份适配、`/api` 与 `/docs` 代理。                      |
+| Website Vite        | `http://127.0.0.1:8081`   | 开发服务；用户会话以 8080 为准。                                     |
+| Website Server      | `http://127.0.0.1:8082`   | 原 Website 业务、OIDC 接受与内部会话核验。                           |
+| Outline 后端        | `http://127.0.0.1:3102`   | 使用不迁移的集成启动脚本，公开 URL 为 `http://127.0.0.1:8080/docs`。 |
+| Outline Vite        | `http://127.0.0.1:3101`   | 本地模式关闭证书自动启用，静态 base 为 `/docs/static/`。             |
+| Hydra public        | `http://127.0.0.1:14444/` | 固定本地 issuer；仅发布 public 服务。                                |
+| Hydra admin         | `http://127.0.0.1:14447/` | 受控准备与 Server 调用；与旧 14445 分离。                            |
+| 本地文档 PostgreSQL | `127.0.0.1:17432`         | 独立 `outline`、`hydra` 数据库，无 Website `exre`。                  |
+| 本地文档 Redis      | `127.0.0.1:17379`         | Outline 队列、协作和一次性认证状态。                                 |
 
 基础服务使用 `infra/docs-integration/images.lock.json` 已锁定的 PostgreSQL、Redis 和 Hydra 镜像，不在本轮升级版本。Compose network 内 Hydra DSN 指向该项目的 PostgreSQL `hydra` 库。Hydra public/admin 是不同端口，浏览器及应用默认调用 public，管理端口不经 Website 代理。
 
@@ -83,21 +83,21 @@ Website `DATABASE_URL`、`AUTH_CODE_HMAC_KEY`、已有业务存储配置及头�
 
 拟新增 Website `apps/server/src/identity/config.ts` 及 Outline `apps/outline/server/identity/config.ts`，分别生成不可变配置。不同应用不共享运行时实现包，但遵守同一字段和值的配置契约。旧模式由旧配置显式注入；原有 8090 常量不作为本地模式的后备值。
 
-| 进程配置 | 本地模式取值或用途 |
-| --- | --- |
-| `WEBSITE_INTEGRATION_ENABLED` | `true`，启用身份与公共授权；不再用于判定一定是 8090。 |
-| `WEBSITE_INTEGRATION_MODE`（新增） | `local`；旧编排传 `dev` 或 `full`，兼容旧调用时明确解析为旧模式。 |
-| `SERVER_PUBLIC_WEB_BASE_URL` | `http://127.0.0.1:8080`。 |
-| `SERVER_PUBLIC_AVATAR_BASE_URL` | `http://127.0.0.1:8080/api/avatars`；只派生公开地址，保留头像存储目录。 |
-| `WEBSITE_URL` | `http://127.0.0.1:8080/`，用于 Outline 返回主站和统一身份页面。 |
-| Outline `URL` | `http://127.0.0.1:8080/docs`，不通过请求头修改。 |
-| `HYDRA_PUBLIC_URL` | `http://127.0.0.1:14444/`，供各方一致校验 issuer。 |
-| `HYDRA_ADMIN_URL` | `http://127.0.0.1:14447/`。 |
-| `OUTLINE_OIDC_CLIENT_ID` | `ex-outline-local`；旧模式保留 `ex-outline`。 |
-| `OUTLINE_OIDC_CLIENT_SECRET` | 稳定生成的本地客户端秘密，客户端登记与 Outline 一致。 |
-| `OUTLINE_INTEGRATION_KEY`、`IDENTITY_DELIVERY_KEY`、`IDENTITY_BOOTSTRAP_KEY`、`IDENTITY_FLOW_KEY` | 沿用现有编码要求，配置生成后稳定保存，普通启动不轮换。 |
-| `WEBSITE_INTERNAL_URL` | `http://127.0.0.1:8082/`。 |
-| `OUTLINE_INTERNAL_URL` | `http://127.0.0.1:3102/`。 |
+| 进程配置                                                                                          | 本地模式取值或用途                                                      |
+| ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `WEBSITE_INTEGRATION_ENABLED`                                                                     | `true`，启用身份与公共授权；不再用于判定一定是 8090。                   |
+| `WEBSITE_INTEGRATION_MODE`（新增）                                                                | `local`；旧编排传 `dev` 或 `full`，兼容旧调用时明确解析为旧模式。       |
+| `SERVER_PUBLIC_WEB_BASE_URL`                                                                      | `http://127.0.0.1:8080`。                                               |
+| `SERVER_PUBLIC_AVATAR_BASE_URL`                                                                   | `http://127.0.0.1:8080/api/avatars`；只派生公开地址，保留头像存储目录。 |
+| `WEBSITE_URL`                                                                                     | `http://127.0.0.1:8080/`，用于 Outline 返回主站和统一身份页面。         |
+| Outline `URL`                                                                                     | `http://127.0.0.1:8080/docs`，不通过请求头修改。                        |
+| `HYDRA_PUBLIC_URL`                                                                                | `http://127.0.0.1:14444/`，供各方一致校验 issuer。                      |
+| `HYDRA_ADMIN_URL`                                                                                 | `http://127.0.0.1:14447/`。                                             |
+| `OUTLINE_OIDC_CLIENT_ID`                                                                          | `ex-outline-local`；旧模式保留 `ex-outline`。                           |
+| `OUTLINE_OIDC_CLIENT_SECRET`                                                                      | 稳定生成的本地客户端秘密，客户端登记与 Outline 一致。                   |
+| `OUTLINE_INTEGRATION_KEY`、`IDENTITY_DELIVERY_KEY`、`IDENTITY_BOOTSTRAP_KEY`、`IDENTITY_FLOW_KEY` | 沿用现有编码要求，配置生成后稳定保存，普通启动不轮换。                  |
+| `WEBSITE_INTERNAL_URL`                                                                            | `http://127.0.0.1:8082/`。                                              |
+| `OUTLINE_INTERNAL_URL`                                                                            | `http://127.0.0.1:3102/`。                                              |
 
 Outline 本地进程另外固定 `PORT=3102`、`INTEGRATION_OUTLINE_VITE_PORT=3101`、`FORCE_HTTPS=false`，禁用该模式的后端与 Vite 证书读取。`apps/outline/server/main.ts` 在 local 模式明确监听回环地址，不能沿用无 hostname 的全部接口监听；旧模式的 TLS 和 Docker 可达监听行为保持原契约。
 
@@ -119,15 +119,15 @@ Outline 本地进程另外固定 `PORT=3102`、`INTEGRATION_OUTLINE_VITE_PORT=31
 
 保留现有无 `--mode local` 的命令语义。为现有入口增加如下拟实现参数，不新增 Fastify HTTP operation：
 
-| 命令 | 本地模式行为 |
-| --- | --- |
-| `pnpm integration:configure -- --mode local` | 验证子模块能力、Node/Corepack、ExUI 产物和 Website 配置来源；创建本地配置与密钥。无数据库写入，不改变现有 ExUI links。 |
-| `pnpm db:migrate` | 用户显式迁移当前 Website `exre`；继续原 CLI 数据库身份校验。 |
-| `pnpm integration:init -- --mode local` | 显式启动独立本地 PostgreSQL/Redis，创建并验证 `outline`、`hydra` 及其角色，执行两者 migration，核对结构，记录准备状态；不创建 `exre`。 |
-| `pnpm integration:migrate -- --mode local` | 对已存在且验证一致的本地 `outline`、`hydra` 显式迁移；不修改 Website 数据源。 |
-| `pnpm integration:bootstrap -- --mode local --admin-user-id <Website UUID>` | 验证并登记本地客户端，显式建立唯一集成工作区和指定文档管理员。 |
-| `pnpm dev` | 只读校验准备状态，启动准备好的依赖与应用，不执行上述准备动作。 |
-| `pnpm integration:down -- --mode local` | 请求本地监督进程退出，停止该模式的受管基础服务；不删卷或数据。 |
+| 命令                                                                        | 本地模式行为                                                                                                                           |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm integration:configure -- --mode local`                                | 验证子模块能力、Node/Corepack、ExUI 产物和 Website 配置来源；创建本地配置与密钥。无数据库写入，不改变现有 ExUI links。                 |
+| `pnpm db:migrate`                                                           | 用户显式迁移当前 Website `exre`；继续原 CLI 数据库身份校验。                                                                           |
+| `pnpm integration:init -- --mode local`                                     | 显式启动独立本地 PostgreSQL/Redis，创建并验证 `outline`、`hydra` 及其角色，执行两者 migration，核对结构，记录准备状态；不创建 `exre`。 |
+| `pnpm integration:migrate -- --mode local`                                  | 对已存在且验证一致的本地 `outline`、`hydra` 显式迁移；不修改 Website 数据源。                                                          |
+| `pnpm integration:bootstrap -- --mode local --admin-user-id <Website UUID>` | 验证并登记本地客户端，显式建立唯一集成工作区和指定文档管理员。                                                                         |
+| `pnpm dev`                                                                  | 只读校验准备状态，启动准备好的依赖与应用，不执行上述准备动作。                                                                         |
+| `pnpm integration:down -- --mode local`                                     | 请求本地监督进程退出，停止该模式的受管基础服务；不删卷或数据。                                                                         |
 
 普通开发的首次顺序为 configure、Website db:migrate、本地 init、bootstrap、dev。配置检查与初始化检查的报错须展示这个明确顺序及当前缺失项；不将容器第一次启动并创建数据库视为普通运行。
 
@@ -191,14 +191,14 @@ Website 可能保留其他模式的旧绑定和 outbox，运行模式互斥不�
 
 `apps/web/dev-entry.ts` 与 Vite 代理顺序固定如下，8080 和直接 8081 的开发中间件均执行内部路径拒绝规则：
 
-| 路径 | 规则 |
-| --- | --- |
-| `/api/internal` 及其后代、`/docs/internal` 及其后代 | 在代理前返回 404，不转发。拒绝 query、尾斜杠或编码形式造成的绕过。 |
-| `/docs` | 308 到 `/docs/`，保留 query。 |
-| `/docs/static/*` | 定向本地 Outline Vite，保留完整 `/docs/static/` 前缀；集成 Vite base 与之匹配。 |
-| `/docs/*` | 去掉且仅去掉一个 `/docs`，转发 Outline 后端，支持 HTTP、polling 与 WebSocket upgrade。 |
-| `/api/*` | 保留 `/api` 转发 Website Server。 |
-| 其他 | Website SPA 与身份适配页面。 |
+| 路径                                                | 规则                                                                                   |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `/api/internal` 及其后代、`/docs/internal` 及其后代 | 在代理前返回 404，不转发。拒绝 query、尾斜杠或编码形式造成的绕过。                     |
+| `/docs`                                             | 308 到 `/docs/`，保留 query。                                                          |
+| `/docs/static/*`                                    | 定向本地 Outline Vite，保留完整 `/docs/static/` 前缀；集成 Vite base 与之匹配。        |
+| `/docs/*`                                           | 去掉且仅去掉一个 `/docs`，转发 Outline 后端，支持 HTTP、polling 与 WebSocket upgrade。 |
+| `/api/*`                                            | 保留 `/api` 转发 Website Server。                                                      |
+| 其他                                                | Website SPA 与身份适配页面。                                                           |
 
 本地模式 Web 和 Outline 的 HMR 地址从公共 origin 派生，不沿用 8090 host，也不因启用集成模式对外监听全部接口。当前 standalone 开发代理的 static rewrite 与集成模式分支分别处理，不共用错误的 strip 规则。
 
@@ -214,16 +214,16 @@ Location 重写只处理明确属于 Outline 的未挂载本地路径，不能�
 
 ## 9. 改动归属与依赖顺序
 
-| 位置 | 变更职责 |
-| --- | --- |
-| `scripts/docs-integration/local-config.mjs`、`scripts/docs-integration/local-dev.mjs`（新增） | 本地配置、准备检查、监督与资源归属。 |
-| `scripts/docs-integration/command.mjs`、`scripts/docs-integration/configure.mjs`、`scripts/docs-integration/hydra-client.mjs` | local 参数解析、显式准备、固定客户端配置及只读核验。旧无参数行为保留。 |
-| `compose.local-dev.yaml`、`infra/docs-integration/postgres/init-local.sh`（新增） | 独立基础资源及无 Website 空库的初始化。 |
-| `package.json`、`scripts/dev-app.mjs` | 根 dev 接入监督进程、单服务使用统一配置。 |
-| `apps/server/src/identity/config.ts`（新增）、`apps/server/src/server.ts`、`apps/server/src/identity/outbox.ts` | 模式配置、批准客户端和按客户端投递；不新增 HTTP operation。 |
-| `apps/web/dev-entry.ts`、`apps/web/vite.config.ts` | 代理拒绝规则、prefix、Location、HMR 与监听模式。 |
-| `apps/outline/` | 衔接完整集成代码、集中配置、HTTP 本地开发、公开页和一次自动登录。沿用其独立 Yarn。 |
-| `.ai/architectures/docs-integration/integration-boundaries.md` 等现有知识位置 | 实施并验证后更新运行边界；不提前把方案写成已实现事实。 |
+| 位置                                                                                                                          | 变更职责                                                                           |
+| ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `scripts/docs-integration/local-config.mjs`、`scripts/docs-integration/local-dev.mjs`（新增）                                 | 本地配置、准备检查、监督与资源归属。                                               |
+| `scripts/docs-integration/command.mjs`、`scripts/docs-integration/configure.mjs`、`scripts/docs-integration/hydra-client.mjs` | local 参数解析、显式准备、固定客户端配置及只读核验。旧无参数行为保留。             |
+| `compose.local-dev.yaml`、`infra/docs-integration/postgres/init-local.sh`（新增）                                             | 独立基础资源及无 Website 空库的初始化。                                            |
+| `package.json`、`scripts/dev-app.mjs`                                                                                         | 根 dev 接入监督进程、单服务使用统一配置。                                          |
+| `apps/server/src/identity/config.ts`（新增）、`apps/server/src/server.ts`、`apps/server/src/identity/outbox.ts`               | 模式配置、批准客户端和按客户端投递；不新增 HTTP operation。                        |
+| `apps/web/dev-entry.ts`、`apps/web/vite.config.ts`                                                                            | 代理拒绝规则、prefix、Location、HMR 与监听模式。                                   |
+| `apps/outline/`                                                                                                               | 衔接完整集成代码、集中配置、HTTP 本地开发、公开页和一次自动登录。沿用其独立 Yarn。 |
+| `.ai/architectures/docs-integration/integration-boundaries.md` 等现有知识位置                                                 | 实施并验证后更新运行边界；不提前把方案写成已实现事实。                             |
 
 先完成 Outline 衔接与身份配置，再实现准备命令与跨模式 outbox，再接入监督及代理，最后联调公共阅读和浏览器验收。每阶段遵守已有 HTTP 与数据库模型，避免顺带重构 UI 或升级 ExUI。
 

@@ -20,41 +20,41 @@ Web 继续通过唯一共享 `api` 访问本站，由应用入口注入 ExAxios�
 
 当前事实和对应源码：
 
-| 当前事实 | 来源与实施影响 |
-| --- | --- |
-| OpenAPI 是唯一 HTTP Contract | `api/openapi.yaml`；响应头变更先 lint、generate，生成声明不手改 |
-| Client 当前由 openapi-fetch 发送请求 | `packages/api-client/src/client.ts`；所有消费点一起迁移结果协议 |
-| 浏览器 Token 在固定 localStorage key 中 | `apps/web/src/auth/storage.ts`；保持键名和已登录会话 |
-| 认证与设置各自使用 Token、失效分支和异步版本检查 | `apps/web/src/auth/AuthContext.tsx`、`apps/web/src/settings/useSettingsController.ts`；合并请求策略，保留业务版本检查 |
-| multipart 存在自定义 bodySerializer 和 JSON Blob part | `apps/web/src/join/client.ts`、`tests/contract/join-upload.test.ts`；显式 FormData 替代旧序列化回调 |
-| 存储测试目前 mock 全局 fetch | `tests/sdk/storage-sdk.test.ts`；Node 改用 Axios HTTP adapter 后测试需要真实本地 HTTP fixture |
-| 部分真实上传测试依赖 response.status/headers | `tests/contract/join-upload.test.ts`；协议断言改从真实 HTTP 响应获得，不能删除断言 |
-| SDK 已有独立 browser/Node 构建和声明内联 | `packages/sdk/vite.config.ts`、`packages/sdk/rollup.config.dts.mjs`；增加 HTTP 入口并保持类型与环境隔离 |
-| Server 已有统一错误与上传/下载资源截止时间 | `apps/server/src/errors.ts`、`apps/server/src/join/transport.ts`、`apps/server/src/modules/storage/transport.ts`；不替换资源管理 |
+| 当前事实                                              | 来源与实施影响                                                                                                                   |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| OpenAPI 是唯一 HTTP Contract                          | `api/openapi.yaml`；响应头变更先 lint、generate，生成声明不手改                                                                  |
+| Client 当前由 openapi-fetch 发送请求                  | `packages/api-client/src/client.ts`；所有消费点一起迁移结果协议                                                                  |
+| 浏览器 Token 在固定 localStorage key 中               | `apps/web/src/auth/storage.ts`；保持键名和已登录会话                                                                             |
+| 认证与设置各自使用 Token、失效分支和异步版本检查      | `apps/web/src/auth/AuthContext.tsx`、`apps/web/src/settings/useSettingsController.ts`；合并请求策略，保留业务版本检查            |
+| multipart 存在自定义 bodySerializer 和 JSON Blob part | `apps/web/src/join/client.ts`、`tests/contract/join-upload.test.ts`；显式 FormData 替代旧序列化回调                              |
+| 存储测试目前 mock 全局 fetch                          | `tests/sdk/storage-sdk.test.ts`；Node 改用 Axios HTTP adapter 后测试需要真实本地 HTTP fixture                                    |
+| 部分真实上传测试依赖 response.status/headers          | `tests/contract/join-upload.test.ts`；协议断言改从真实 HTTP 响应获得，不能删除断言                                               |
+| SDK 已有独立 browser/Node 构建和声明内联              | `packages/sdk/vite.config.ts`、`packages/sdk/rollup.config.dts.mjs`；增加 HTTP 入口并保持类型与环境隔离                          |
+| Server 已有统一错误与上传/下载资源截止时间            | `apps/server/src/errors.ts`、`apps/server/src/join/transport.ts`、`apps/server/src/modules/storage/transport.ts`；不替换资源管理 |
 
 仓库规则继续适用：`.ai/rules/frontend-forms.md`、`.ai/rules/frontend-notifications.md`、`.ai/architectures/api/contract-layout.md`、`.ai/architectures/server/request-lifecycle.md`、`.ai/knowledge/storage/lifecycle-traps.md` 与 `CONTRIBUTING.md`。没有 `TESTING.md`，测试沿用现有 Vitest、Contract 和 Testcontainers 约定。
 
 ## 3. 组件与依赖方向
 
-| 位置 | 责任 | 依赖限制 |
-| --- | --- | --- |
-| `packages/api-client/src/client.ts` | 类型化 Client 工厂、输入映射和序列化 | 只使用生成类型及标准运行时能力；不 import Axios、SDK、React、ExUI |
-| `packages/api-client/src/transport.ts`（拟新增） | 环境中立的请求 transport 类型 | 不维护 endpoint 表或业务 DTO |
-| `packages/sdk/src/http/`（拟新增） | Axios 包装核心、地址验证、快照、错误、环境入口 | Token 和通知策略在此，不进入 Client 包 |
-| `packages/sdk/src/shared.ts` | 存储 prepare/upload/complete 协调 | 复用 HTTP 核心，保持 COS、返回值和异常契约 |
-| `apps/web/src/api/client.ts` | 组装 ExAxios 和本站类型化 Client | 唯一解析 VITE_API_BASE_URL 的位置 |
-| `apps/web/src/auth/storage.ts` | 持久 Token 与内存同步适配 | 保留已用 key，不另建持久 Token 表示 |
-| `apps/server/src/http/`（拟新增文件） | request ID 响应头、CORS 配置与基础设施 hook | 不注册业务路由或维护业务 schema |
-| `apps/server/src/app.ts`、`apps/server/src/server.ts` | 组装 hook、传入已解析配置 | 维持 Contract-only 业务路由、现有启动检查 |
+| 位置                                                  | 责任                                           | 依赖限制                                                          |
+| ----------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------- |
+| `packages/api-client/src/client.ts`                   | 类型化 Client 工厂、输入映射和序列化           | 只使用生成类型及标准运行时能力；不 import Axios、SDK、React、ExUI |
+| `packages/api-client/src/transport.ts`（拟新增）      | 环境中立的请求 transport 类型                  | 不维护 endpoint 表或业务 DTO                                      |
+| `packages/sdk/src/http/`（拟新增）                    | Axios 包装核心、地址验证、快照、错误、环境入口 | Token 和通知策略在此，不进入 Client 包                            |
+| `packages/sdk/src/shared.ts`                          | 存储 prepare/upload/complete 协调              | 复用 HTTP 核心，保持 COS、返回值和异常契约                        |
+| `apps/web/src/api/client.ts`                          | 组装 ExAxios 和本站类型化 Client               | 唯一解析 VITE_API_BASE_URL 的位置                                 |
+| `apps/web/src/auth/storage.ts`                        | 持久 Token 与内存同步适配                      | 保留已用 key，不另建持久 Token 表示                               |
+| `apps/server/src/http/`（拟新增文件）                 | request ID 响应头、CORS 配置与基础设施 hook    | 不注册业务路由或维护业务 schema                                   |
+| `apps/server/src/app.ts`、`apps/server/src/server.ts` | 组装 hook、传入已解析配置                      | 维持 Contract-only 业务路由、现有启动检查                         |
 
 依赖始终为 SDK → api-client，Web → api-client + SDK。Client 接口接受函数注入，不反向 import SDK。只改变客户端 transport，不把 Server 的 endpoint 定义迁移到 SDK。
 
 替代方案及取舍：
 
-| 方案 | 优点 | 未选择原因 |
-| --- | --- | --- |
-| 所有请求直接 ExAxios<T> | 公开调用最简单，Client改动较少 | T不能保证本站path和输入符合Contract，容易出现重复DTO |
-| 保持openapi-fetch并另增Axios | 原有Web调用和测试迁移成本较低 | 存在两套实际HTTP引擎，认证、期限、失效与提示难以统一 |
+| 方案                              | 优点                               | 未选择原因                                                    |
+| --------------------------------- | ---------------------------------- | ------------------------------------------------------------- |
+| 所有请求直接 ExAxios<T>           | 公开调用最简单，Client改动较少     | T不能保证本站path和输入符合Contract，容易出现重复DTO          |
+| 保持openapi-fetch并另增Axios      | 原有Web调用和测试迁移成本较低      | 存在两套实际HTTP引擎，认证、期限、失效与提示难以统一          |
 | 注入ExAxios的typed Client（采用） | 单一请求策略与生成类型边界同时保留 | 需要重写薄适配、迁移全部旧结果协议，并验证multipart和产物依赖 |
 
 ## 4. 对外接口
@@ -225,16 +225,16 @@ Server入口解析不可变配置，传给CreateAppOptions；测试显式注入�
 
 逐模块迁移：
 
-| 消费者 | 必须保留的交互与迁移方式 |
-| --- | --- |
-| AuthProvider/退出/资料 | 用统一Token策略；成功得到正文；catch分类错误；保留unavailable与generation检查 |
-| 普通登录 | alert:false；仍映射密码错误到字段；持久化成功后同步内存；保持完成导航 |
-| SSO inspect/login/confirm | alert:false；保留无效入口、fatal/retry分支、ssoRequestId和sessionStorage成功记录 |
-| 邀请注册 | 直接正文/catch；CODE等错误继续表单显示；completionToken不能当本站Token |
-| 设置资料与头像 | 移除重复认证头和过期分支；保留snapshot/revision、保存结果及已有反馈 |
-| 申请提交 | 提前构造FormData，保留application JSON Blob、proofs文件名/媒体类型和64KiB文字预算；大上传显式120000ms |
-| 申请结果/审核 | 保留查询参数、分页、持续错误与loading句柄；HTTP状态从ExAxiosError.status判断 |
-| dev health | alert:false；成功正文直接读取，catch输出安全开发信息，不依赖旧error对象 |
+| 消费者                    | 必须保留的交互与迁移方式                                                                              |
+| ------------------------- | ----------------------------------------------------------------------------------------------------- |
+| AuthProvider/退出/资料    | 用统一Token策略；成功得到正文；catch分类错误；保留unavailable与generation检查                         |
+| 普通登录                  | alert:false；仍映射密码错误到字段；持久化成功后同步内存；保持完成导航                                 |
+| SSO inspect/login/confirm | alert:false；保留无效入口、fatal/retry分支、ssoRequestId和sessionStorage成功记录                      |
+| 邀请注册                  | 直接正文/catch；CODE等错误继续表单显示；completionToken不能当本站Token                                |
+| 设置资料与头像            | 移除重复认证头和过期分支；保留snapshot/revision、保存结果及已有反馈                                   |
+| 申请提交                  | 提前构造FormData，保留application JSON Blob、proofs文件名/媒体类型和64KiB文字预算；大上传显式120000ms |
+| 申请结果/审核             | 保留查询参数、分页、持续错误与loading句柄；HTTP状态从ExAxiosError.status判断                          |
+| dev health                | alert:false；成功正文直接读取，catch输出安全开发信息，不依赖旧error对象                               |
 
 现有bodySerializer停止使用；业务只负责FormData结构，Client/ExAxios负责发送。既有测试mock从resolve({data/error/response})迁移到resolve(body)/reject(ExAxiosError)。HTTP状态和响应头断言由app.inject或真实socket fixture承担，不能删减原覆盖来让新API通过。
 
@@ -252,12 +252,12 @@ COS PutObject和凭证管理不改，直传失败不complete，complete失败不
 
 新增HTTP源码环境入口，发布exports规划如下；名称为本RFC的绑定选择：
 
-| 导入入口 | 条件运行时 | 内容 |
-| --- | --- | --- |
-| `@workspace/sdk` | browser/node，default为browser | 保留createSdk和原存储类型，增加ExAxios、工厂、错误与typed Client工厂 |
-| `@workspace/sdk/browser`、`@workspace/sdk/node` | 明确环境 | 保留现存用法，增加对应HTTP导出 |
-| `@workspace/sdk/http` | browser/node，default为browser | 仅HTTP能力和生成类型，绝不import COS入口 |
-| `@workspace/sdk/http/browser`、`@workspace/sdk/http/node` | 明确环境 | 非条件解析工具可显式选环境 |
+| 导入入口                                                  | 条件运行时                     | 内容                                                                 |
+| --------------------------------------------------------- | ------------------------------ | -------------------------------------------------------------------- |
+| `@workspace/sdk`                                          | browser/node，default为browser | 保留createSdk和原存储类型，增加ExAxios、工厂、错误与typed Client工厂 |
+| `@workspace/sdk/browser`、`@workspace/sdk/node`           | 明确环境                       | 保留现存用法，增加对应HTTP导出                                       |
+| `@workspace/sdk/http`                                     | browser/node，default为browser | 仅HTTP能力和生成类型，绝不import COS入口                             |
+| `@workspace/sdk/http/browser`、`@workspace/sdk/http/node` | 明确环境                       | 非条件解析工具可显式选环境                                           |
 
 Axios是SDK运行时dependency，在产物中保持外部包，由安装的依赖提供；api-client适配和生成类型内联。ExUI是optional peer，仅browser通知实现引用，需外部化并使用消费方实例。Node声明和运行时代码不依赖ExUI/React，HTTP入口不加载COS；公开类型不含私有workspace import。根browser入口因新增通知导出需要ExUI peer，README须明确这个依赖变化，不能声称浏览器依赖契约完全不变。
 
@@ -280,20 +280,20 @@ Vite增加HTTP独立entry和external匹配；声明构建增加对应入口、�
 
 下列为实施验收要求，当前RFC阶段尚未执行。
 
-| ID | 层次 | 必须证明的行为 |
-| --- | --- | --- |
-| T01 | TypeScript fixture | ExAxios<T>为Promise<T>，缺省unknown；typed方法/路径/必填body/path/query检查，不能手写DTO覆盖；multipart仅适用相应operation |
-| T02 | HTTP核心单元 | 参数白名单、非法setter原子性、Node未配置地址；正常URL拼接、编码路径、绝对覆盖、端口及/api-other边界 |
-| T03 | HTTP核心单元 | Token初始化容错、即时setter、范围变化清空、不复用远程Token、显式Authorization与自动认证的资格区别 |
-| T04 | 并发fixture | 旧Token/旧范围迟到401不影响新会话；当前版本并发401仅一次清理/提示/回调；显式新Token重新使能 |
-| T05 | 错误与通知 | 网络、取消、timeout、HTTP、无效JSON、二进制错误体、Retry-After解析；alert请求优先、host缺失和回调失败不覆盖原错误 |
-| T06 | 真实HTTP与browser | 可信origin下302/307向/api外与其他origin均不转发Token；接收fixture证实零泄漏，不以mock替代重定向证明 |
-| T07 | Contract与实际路由 | 成功/错误/文件/未声明路径/预检的requestId头；入站伪造ID不被采纳；error正文与日志一致；原始handler和operation双向覆盖 |
-| T08 | CORS真实HTTP/browser | 白名单允许与拒绝、Authorization预检、方法/header拒绝、默认禁用、Vary合并、暴露头；实际业务仍需认证 |
-| T09 | Web交互回归 | 登录/SSO/邀请/退出/资料/头像/申请/审核保留字段及持续错误、loading、异步版本保护和Token存储同步 |
-| T10 | storage真实fixture | getter逐阶段、并发Token不串用、COS不带本站认证、阶段超时/取消与StorageSdkError分类、失败停止后续阶段 |
-| T11 | 外部产物消费 | 使用实际dist的browser/Node/HTTP入口；Node工程无React/ExUI也可运行；HTTP无COS；类型无源码别名或私有包名 |
-| T12 | 全量集成 | api:lint/generate、typecheck、Vitest、build及独立产物验收，生成结果无意外body漂移 |
+| ID  | 层次                 | 必须证明的行为                                                                                                             |
+| --- | -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| T01 | TypeScript fixture   | ExAxios<T>为Promise<T>，缺省unknown；typed方法/路径/必填body/path/query检查，不能手写DTO覆盖；multipart仅适用相应operation |
+| T02 | HTTP核心单元         | 参数白名单、非法setter原子性、Node未配置地址；正常URL拼接、编码路径、绝对覆盖、端口及/api-other边界                        |
+| T03 | HTTP核心单元         | Token初始化容错、即时setter、范围变化清空、不复用远程Token、显式Authorization与自动认证的资格区别                          |
+| T04 | 并发fixture          | 旧Token/旧范围迟到401不影响新会话；当前版本并发401仅一次清理/提示/回调；显式新Token重新使能                                |
+| T05 | 错误与通知           | 网络、取消、timeout、HTTP、无效JSON、二进制错误体、Retry-After解析；alert请求优先、host缺失和回调失败不覆盖原错误          |
+| T06 | 真实HTTP与browser    | 可信origin下302/307向/api外与其他origin均不转发Token；接收fixture证实零泄漏，不以mock替代重定向证明                        |
+| T07 | Contract与实际路由   | 成功/错误/文件/未声明路径/预检的requestId头；入站伪造ID不被采纳；error正文与日志一致；原始handler和operation双向覆盖       |
+| T08 | CORS真实HTTP/browser | 白名单允许与拒绝、Authorization预检、方法/header拒绝、默认禁用、Vary合并、暴露头；实际业务仍需认证                         |
+| T09 | Web交互回归          | 登录/SSO/邀请/退出/资料/头像/申请/审核保留字段及持续错误、loading、异步版本保护和Token存储同步                             |
+| T10 | storage真实fixture   | getter逐阶段、并发Token不串用、COS不带本站认证、阶段超时/取消与StorageSdkError分类、失败停止后续阶段                       |
+| T11 | 外部产物消费         | 使用实际dist的browser/Node/HTTP入口；Node工程无React/ExUI也可运行；HTTP无COS；类型无源码别名或私有包名                     |
+| T12 | 全量集成             | api:lint/generate、typecheck、Vitest、build及独立产物验收，生成结果无意外body漂移                                          |
 
 拟新增测试按模块放入 `tests/sdk/`、`tests/api-client/`、`tests/contract/`，Web交互测试沿用相邻test文件。类型负例使用实际tsc编译与预期错误断言，不能仅用Vitest跑未类型检查的代码。
 
@@ -309,15 +309,15 @@ HTTP body/状态不变，新增header属于加法。Client源码接口的data/er
 
 出现类型回归、Token泄漏、CORS误放行、失效循环、multipart变化或StorageSdkError漂移时停止验收。应用回滚须同时恢复Client、SDK、Web调用与对应依赖/测试，不能只换请求引擎留下新结果协议。Server头与CORS可以一并回退，CORS通过移除配置即时禁用。localStorage键和数据库结构不变，因此无数据恢复或回填；不删除已持久化Token或上传文件。
 
-| 风险 | 对策与检测 |
-| --- | --- |
-| 发布版Axios与当前源码适配不同 | 实施入口先验证发布产物，T06/T10/T11失败即不接受 |
-| 手写泛型误用为运行时验证 | README和类型用例明确unknown默认及本站typed入口，T01覆盖 |
-| 旧请求清理新Token或会话跳转循环 | 版本快照与失效锁，T04和SSO交互回归 |
-| SDK打包第二份ExUI或Node间接加载UI | external/optional peer/条件入口和独立consumer，T11覆盖 |
+| 风险                                  | 对策与检测                                                  |
+| ------------------------------------- | ----------------------------------------------------------- |
+| 发布版Axios与当前源码适配不同         | 实施入口先验证发布产物，T06/T10/T11失败即不接受             |
+| 手写泛型误用为运行时验证              | README和类型用例明确unknown默认及本站typed入口，T01覆盖     |
+| 旧请求清理新Token或会话跳转循环       | 版本快照与失效锁，T04和SSO交互回归                          |
+| SDK打包第二份ExUI或Node间接加载UI     | external/optional peer/条件入口和独立consumer，T11覆盖      |
 | multipart或测试因结果协议迁移失去覆盖 | T07/T09/T10保留真实状态、header、字节、文件名和资源释放断言 |
-| CORShook误变为业务旁路 | 仅根预检hook、严格范围与serviceHandlers双向覆盖，T08覆盖 |
-| 日志/公开错误泄露认证或云票据 | 安全字段白名单、原有sanitizer和异常日志回归 |
+| CORShook误变为业务旁路                | 仅根预检hook、严格范围与serviceHandlers双向覆盖，T08覆盖    |
+| 日志/公开错误泄露认证或云票据         | 安全字段白名单、原有sanitizer和异常日志回归                 |
 
 ## 14. 自审、未决项与交接
 

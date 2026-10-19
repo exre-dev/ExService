@@ -8,7 +8,11 @@ vi.mock('@exre/exui', () => ({ useTheme: () => ({ theme: theme.current }) }))
 
 import { SettingsThemeProjection } from '@web/src/settings/SettingsThemeProjection'
 
-afterEach(() => { cleanup(); theme.current = 'light'; settingsConfig.general.theme = 'system' })
+afterEach(() => {
+  cleanup()
+  theme.current = 'light'
+  settingsConfig.general.theme = 'system'
+})
 
 describe('settings theme projection', () => {
   it('follows ExUI theme updates while no settings panel is mounted', async () => {

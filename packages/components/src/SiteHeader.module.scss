@@ -151,8 +151,8 @@
 
   .mobileNavTrigger > svg:last-child,
   .mobileAccountTrigger > svg:last-child,
-  .mobileNavTrigger [data-slot="select-value"],
-  .mobileAccountTrigger [data-slot="select-value"] {
+  .mobileNavTrigger [data-slot='select-value'],
+  .mobileAccountTrigger [data-slot='select-value'] {
     display: none;
   }
 

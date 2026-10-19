@@ -28,23 +28,23 @@ Uuid:
 NullableUuid:
   type:
     - string
-    - "null"
+    - 'null'
   pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
 HealthResponse:
   type: object
   additionalProperties: false
-  required: [ status ]
+  required: [status]
   properties:
     status: { type: string, const: ok }
 ErrorEnvelope:
   type: object
   additionalProperties: false
-  required: [ error ]
+  required: [error]
   properties:
     error:
       type: object
       additionalProperties: false
-      required: [ code, message, requestId ]
+      required: [code, message, requestId]
       properties:
         code: { type: string }
         message: { type: string }

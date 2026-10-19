@@ -56,8 +56,13 @@ export const notificationsConfig = proxy({
 
 function emptyPage(): NotificationPageSlice {
   return {
-    status: 'idle', items: [], nextCursor: null, upperSequence: 0,
-    readThroughToken: null, nextPageStatus: 'idle', error: null,
+    status: 'idle',
+    items: [],
+    nextCursor: null,
+    upperSequence: 0,
+    readThroughToken: null,
+    nextPageStatus: 'idle',
+    error: null,
   }
 }
 
@@ -130,9 +135,14 @@ export function notificationCountState():
 /** 合并一页到既有列表：按 receiptId 去重，服务端不保证后续页不重复。 */
 export function mergeNotificationPage(
   page: NotificationPageSlice,
-  result: { items: NotificationItem[]; nextCursor: string | null; upperSequence: number; readThroughToken: string },
+  result: {
+    items: NotificationItem[]
+    nextCursor: string | null
+    upperSequence: number
+    readThroughToken: string
+  },
 ): NotificationItem[] {
-  const seen = new Set(page.items.map(item => item.receiptId))
+  const seen = new Set(page.items.map((item) => item.receiptId))
   const merged = [...page.items]
   for (const item of result.items) {
     if (seen.has(item.receiptId)) continue

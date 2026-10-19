@@ -5,5 +5,7 @@ import { DOMParser as ProseMirrorDOMParser, type Schema } from '@tiptap/pm/model
  * preserves editable document text; the AST gate removes container indentation only. */
 export function parseValidatedTiptapHTML(html: string, schema: Schema): JSONContent {
   const document = new window.DOMParser().parseFromString(html, 'text/html')
-  return ProseMirrorDOMParser.fromSchema(schema).parse(document.body, { preserveWhitespace: 'full' }).toJSON()
+  return ProseMirrorDOMParser.fromSchema(schema)
+    .parse(document.body, { preserveWhitespace: 'full' })
+    .toJSON()
 }

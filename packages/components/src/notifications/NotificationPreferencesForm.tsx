@@ -1,11 +1,22 @@
 import { useEffect, useId, useRef } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, Field, FieldContent, FieldDescription, FieldLabel, Skeleton, Switch } from '@exre/exui'
+import {
+  Button,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  Skeleton,
+  Switch,
+} from '@exre/exui'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import styles from '@components/src/notifications/NotificationPreferencesForm.module.scss'
 
-export interface NotificationPreferencesDraft { announcement: boolean; personal_update: boolean }
+export interface NotificationPreferencesDraft {
+  announcement: boolean
+  personal_update: boolean
+}
 export type PreferenceField = keyof NotificationPreferencesDraft
 /** 保存结算值：`null` 表示失去宿主/身份接受权或没有可用规范值。 */
 export type PreferenceCanonicalValues = NotificationPreferencesDraft | null
@@ -38,7 +49,10 @@ export interface PreferenceFormBinding {
   conflict: boolean
   failure: PreferenceSaveFailure | null
   onRetryRead: () => void
-  onSaveField: (field: PreferenceField, validated: NotificationPreferencesDraft) => Promise<PreferenceCanonicalValues>
+  onSaveField: (
+    field: PreferenceField,
+    validated: NotificationPreferencesDraft,
+  ) => Promise<PreferenceCanonicalValues>
 }
 
 export interface NotificationPreferencesFormProps extends PreferenceFormBinding {
@@ -72,7 +86,10 @@ type SaveIntent =
   | { kind: 'retry'; failure: PreferenceSaveFailure }
 
 function IdentityPreferencesForm(props: NotificationPreferencesFormProps) {
-  const form = useForm<NotificationPreferencesDraft>({ resolver: zodResolver(preferencesSchema), defaultValues: props.saved ?? defaults })
+  const form = useForm<NotificationPreferencesDraft>({
+    resolver: zodResolver(preferencesSchema),
+    defaultValues: props.saved ?? defaults,
+  })
   const fieldId = useId()
   const latest = useRef(props)
   latest.current = props
@@ -84,7 +101,10 @@ function IdentityPreferencesForm(props: NotificationPreferencesFormProps) {
 
   useEffect(() => {
     mounted.current = true
-    return () => { mounted.current = false; lock.current = null }
+    return () => {
+      mounted.current = false
+      lock.current = null
+    }
   }, [])
   useEffect(() => {
     const changedIdentity = seenEpoch.current !== props.identityEpoch
@@ -92,7 +112,13 @@ function IdentityPreferencesForm(props: NotificationPreferencesFormProps) {
     if (changedIdentity) form.clearErrors()
     // 规范值更新不清掉当前失败标识支配的 root 错误；换号才整体重建。
     form.reset(props.saved ?? defaults, { keepErrors: !changedIdentity })
-  }, [props.identityEpoch, props.saved?.announcement, props.saved?.personal_update, props.saved === null, form])
+  }, [
+    props.identityEpoch,
+    props.saved?.announcement,
+    props.saved?.personal_update,
+    props.saved === null,
+    form,
+  ])
   // 标量 id 驱动：同 id 的等价对象重渲染或 retryValues 更新都不重建、也不清除错误。
   useEffect(() => {
     if (failureId === null) form.clearErrors('root.server')
@@ -101,70 +127,137 @@ function IdentityPreferencesForm(props: NotificationPreferencesFormProps) {
 
   const submit = async (intent: SaveIntent) => {
     const current = latest.current
-    if (!current.active || current.status !== 'ready' || current.saved === null
-      || current.saving || lock.current !== null) return
+    if (
+      !current.active ||
+      current.status !== 'ready' ||
+      current.saved === null ||
+      current.saving ||
+      lock.current !== null
+    )
+      return
     const run = { epoch: current.identityEpoch }
     lock.current = run
-    const accepted = () => mounted.current && latest.current.identityEpoch === run.epoch && lock.current === run
+    const accepted = () =>
+      mounted.current && latest.current.identityEpoch === run.epoch && lock.current === run
     // 复位一律保留错误：root 错误归当前 failure id 支配，异步复位不能抢在它前面清掉反馈。
-    const resetTo = (values: NotificationPreferencesDraft) => form.reset(values, { keepErrors: true })
+    const resetTo = (values: NotificationPreferencesDraft) =>
+      form.reset(values, { keepErrors: true })
     // 整份值先经完整 schema 校验：重试也把 module 投影的 retryValues 放进 RHF 再校验。
-    resetTo(intent.kind === 'retry'
-      ? intent.failure.retryValues
-      : { ...current.saved, [intent.field]: intent.value })
+    resetTo(
+      intent.kind === 'retry'
+        ? intent.failure.retryValues
+        : { ...current.saved, [intent.field]: intent.value },
+    )
     try {
-      await form.handleSubmit(async values => {
-        if (!accepted()) return
-        // 分类已切走：尚未发送且仍在校验中的提交不再发送，并把开关恢复为规范值。
-        if (!latest.current.active) { resetTo(current.saved ?? defaults); return }
-        const canonical = intent.kind === 'retry'
-          ? await intent.failure.onRetrySave(values)
-          : await latest.current.onSaveField(intent.field, values)
-        if (!accepted()) return
-        if (canonical !== null) resetTo(preferencesSchema.parse(canonical))
-      }, () => {
-        if (accepted()) resetTo(current.saved ?? defaults)
-      })()
+      await form.handleSubmit(
+        async (values) => {
+          if (!accepted()) return
+          // 分类已切走：尚未发送且仍在校验中的提交不再发送，并把开关恢复为规范值。
+          if (!latest.current.active) {
+            resetTo(current.saved ?? defaults)
+            return
+          }
+          const canonical =
+            intent.kind === 'retry'
+              ? await intent.failure.onRetrySave(values)
+              : await latest.current.onSaveField(intent.field, values)
+          if (!accepted()) return
+          if (canonical !== null) resetTo(preferencesSchema.parse(canonical))
+        },
+        () => {
+          if (accepted()) resetTo(current.saved ?? defaults)
+        },
+      )()
     } catch {
       // 非预期异常不做 HTTP 分类：只把字段恢复为规范值。
       if (accepted()) resetTo(current.saved ?? defaults)
-    } finally { if (accepted()) lock.current = null }
+    } finally {
+      if (accepted()) lock.current = null
+    }
   }
 
   if (!props.active) return null
-  if (props.status === 'error') return <>
-    <header className={styles.header}><h2>通知</h2></header>
-    <div className={styles.notice} role="alert"><p>通知设置暂时无法读取。其他设置仍可使用。</p>
-      <Button type="button" variant="outline" size="sm" onClick={props.onRetryRead}>重试通知设置</Button></div>
-  </>
-  if (props.status !== 'ready' || props.saved === null) return <>
-    <header className={styles.header}><h2>通知</h2></header>
-    <div role="status" aria-label="正在加载通知设置" className={styles.skeletons}>
-      <Skeleton className={styles.skeleton} /><Skeleton className={styles.skeleton} />
-    </div>
-  </>
+  if (props.status === 'error')
+    return (
+      <>
+        <header className={styles.header}>
+          <h2>通知</h2>
+        </header>
+        <div className={styles.notice} role="alert">
+          <p>通知设置暂时无法读取。其他设置仍可使用。</p>
+          <Button type="button" variant="outline" size="sm" onClick={props.onRetryRead}>
+            重试通知设置
+          </Button>
+        </div>
+      </>
+    )
+  if (props.status !== 'ready' || props.saved === null)
+    return (
+      <>
+        <header className={styles.header}>
+          <h2>通知</h2>
+        </header>
+        <div role="status" aria-label="正在加载通知设置" className={styles.skeletons}>
+          <Skeleton className={styles.skeleton} />
+          <Skeleton className={styles.skeleton} />
+        </div>
+      </>
+    )
   const pending = props.saving || form.formState.isSubmitting
   const error = form.formState.errors.root?.server?.message
-  return <>
-    <header className={styles.header}><h2>通知</h2></header>
-    <p className={styles.intro}>管理站内通知。关闭可选分类只影响未来接收，已有通知保留。</p>
-    <form noValidate className={styles.form} onSubmit={event => event.preventDefault()}>
-      {fields.map(field => <Field key={field.name} orientation="horizontal" className={styles.row}>
-        <FieldContent><FieldLabel htmlFor={`${fieldId}-${field.name}`}>{field.label}</FieldLabel>
-          <FieldDescription>{field.description}</FieldDescription></FieldContent>
-        <Switch id={`${fieldId}-${field.name}`} disabled={pending} checked={form.watch(field.name)}
-          onCheckedChange={value => void submit({ kind: 'field', field: field.name, value })} />
-      </Field>)}
-      <div className={styles.feedback}>
-        {pending && <p className={styles.message} role="status">保存中…</p>}
-        {props.conflict && <p className={styles.error} role="alert">设置已由其他设备更新，请重新调整。</p>}
-        {!props.conflict && error !== undefined && <div className={styles.error} role="alert"><p>{error}</p>
-          {props.failure !== null && <Button type="button" variant="outline" size="sm" disabled={pending}
-            onClick={() => {
-              const failure = latest.current.failure
-              if (failure !== null) void submit({ kind: 'retry', failure })
-            }}>重试保存</Button>}</div>}
-      </div>
-    </form>
-  </>
+  return (
+    <>
+      <header className={styles.header}>
+        <h2>通知</h2>
+      </header>
+      <p className={styles.intro}>管理站内通知。关闭可选分类只影响未来接收，已有通知保留。</p>
+      <form noValidate className={styles.form} onSubmit={(event) => event.preventDefault()}>
+        {fields.map((field) => (
+          <Field key={field.name} orientation="horizontal" className={styles.row}>
+            <FieldContent>
+              <FieldLabel htmlFor={`${fieldId}-${field.name}`}>{field.label}</FieldLabel>
+              <FieldDescription>{field.description}</FieldDescription>
+            </FieldContent>
+            <Switch
+              id={`${fieldId}-${field.name}`}
+              disabled={pending}
+              checked={form.watch(field.name)}
+              onCheckedChange={(value) => void submit({ kind: 'field', field: field.name, value })}
+            />
+          </Field>
+        ))}
+        <div className={styles.feedback}>
+          {pending && (
+            <p className={styles.message} role="status">
+              保存中…
+            </p>
+          )}
+          {props.conflict && (
+            <p className={styles.error} role="alert">
+              设置已由其他设备更新，请重新调整。
+            </p>
+          )}
+          {!props.conflict && error !== undefined && (
+            <div className={styles.error} role="alert">
+              <p>{error}</p>
+              {props.failure !== null && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => {
+                    const failure = latest.current.failure
+                    if (failure !== null) void submit({ kind: 'retry', failure })
+                  }}
+                >
+                  重试保存
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </form>
+    </>
+  )
 }

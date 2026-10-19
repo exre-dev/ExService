@@ -34,7 +34,9 @@ export function SsoSuccess() {
       <AuthBackdrop />
       {record === null && (
         <Button asChild variant="ghost" className={styles.homeLink}>
-          <a href="/"><ArrowLeftIcon aria-hidden="true" /> Home</a>
+          <a href="/">
+            <ArrowLeftIcon aria-hidden="true" /> Home
+          </a>
         </Button>
       )}
       <Card glass className={`${styles.panel} ${styles.successPanel}`}>

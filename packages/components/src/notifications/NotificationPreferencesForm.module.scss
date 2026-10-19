@@ -47,7 +47,9 @@
   color: var(--exui-feedback-danger);
 }
 
-.error p { margin: 0 0 0.5rem; }
+.error p {
+  margin: 0 0 0.5rem;
+}
 
 .message {
   color: var(--exui-text-secondary);

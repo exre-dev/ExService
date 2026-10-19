@@ -7,18 +7,39 @@ import { operations as notifications } from '../modules/notifications/api/operat
 import { operations as system } from './system/operations.js'
 import { operations as support } from '../domains/support/api/operations.js'
 
-type MergedOperations<Maps extends readonly object[]> =
-  Maps extends readonly [infer First extends object, ...infer Rest extends readonly object[]]
-    ? First & MergedOperations<Rest> : object
+type MergedOperations<Maps extends readonly object[]> = Maps extends readonly [
+  infer First extends object,
+  ...infer Rest extends readonly object[],
+]
+  ? First & MergedOperations<Rest>
+  : object
 
 /** Preserve concrete handler signatures while rejecting accidental duplicate registrations. */
-export function mergeOperations<const Maps extends readonly object[]>(...maps: Maps): MergedOperations<Maps> {
+export function mergeOperations<const Maps extends readonly object[]>(
+  ...maps: Maps
+): MergedOperations<Maps> {
   const merged: Record<string, unknown> = {}
-  for (const map of maps) for (const [operationId, handler] of Object.entries(map)) {
-    if (Object.hasOwn(merged, operationId)) throw new Error(`Duplicate operation handler: ${operationId}`)
-    Object.defineProperty(merged, operationId, { value: handler, enumerable: true, writable: true, configurable: true })
-  }
+  for (const map of maps)
+    for (const [operationId, handler] of Object.entries(map)) {
+      if (Object.hasOwn(merged, operationId))
+        throw new Error(`Duplicate operation handler: ${operationId}`)
+      Object.defineProperty(merged, operationId, {
+        value: handler,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      })
+    }
   return merged as MergedOperations<Maps>
 }
 
-export const serviceHandlers = mergeOperations(system, auth, profile, join, identity, storage, notifications, support)
+export const serviceHandlers = mergeOperations(
+  system,
+  auth,
+  profile,
+  join,
+  identity,
+  storage,
+  notifications,
+  support,
+)

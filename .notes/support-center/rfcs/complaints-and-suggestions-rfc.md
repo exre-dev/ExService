@@ -18,10 +18,17 @@
 
 ```ts
 type SuggestionForm = {
-  kind: 'suggestion'; title: string; contentText: string; largeFileInfo: string | null
+  kind: 'suggestion'
+  title: string
+  contentText: string
+  largeFileInfo: string | null
 }
 type ComplaintForm = {
-  kind: 'complaint'; title: string; contentText: string; largeFileInfo: string | null; anonymous: boolean
+  kind: 'complaint'
+  title: string
+  contentText: string
+  largeFileInfo: string | null
+  anonymous: boolean
 }
 ```
 

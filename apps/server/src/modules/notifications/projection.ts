@@ -56,7 +56,9 @@ const DEFAULTS = {
 }
 
 export class NotificationProjectionWorker {
-  private readonly options: Required<Omit<ProjectionWorkerOptions, 'leaseOwner'>> & { leaseOwner: string }
+  private readonly options: Required<Omit<ProjectionWorkerOptions, 'leaseOwner'>> & {
+    leaseOwner: string
+  }
 
   constructor(options: ProjectionWorkerOptions) {
     this.options = {
@@ -80,11 +82,21 @@ export class NotificationProjectionWorker {
   async runRound(): Promise<ProjectionRoundResult> {
     const now = this.options.now()
     const result: ProjectionRoundResult = {
-      eventsClaimed: 0, delivered: 0, suppressed: 0, skippedDisabled: 0,
-      expired: 0, withdrawn: 0, eventsCompleted: 0, eventsFailed: 0,
+      eventsClaimed: 0,
+      delivered: 0,
+      suppressed: 0,
+      skippedDisabled: 0,
+      expired: 0,
+      withdrawn: 0,
+      eventsCompleted: 0,
+      eventsFailed: 0,
     }
     const events = await this.options.repository.claimDueEvents(
-      this.options.eventsPerRound, now, this.options.leaseOwner, this.options.leaseMs)
+      this.options.eventsPerRound,
+      now,
+      this.options.leaseOwner,
+      this.options.leaseMs,
+    )
     result.eventsClaimed = events.length
 
     for (const event of events) {
@@ -101,31 +113,69 @@ export class NotificationProjectionWorker {
         const attempts = event.projection_attempts + 1
         const delay = Math.min(this.options.retryBaseDelayMs * 2 ** (attempts - 1), 60 * 60 * 1000)
         await this.options.repository.failEventProjection(
-          event.event_id, this.options.now(), attempts, 'projection_failed', delay)
+          event.event_id,
+          this.options.now(),
+          attempts,
+          'projection_failed',
+          delay,
+        )
         result.eventsFailed += 1
       }
     }
     return result
   }
 
-  private async projectEvent(event: Awaited<ReturnType<NotificationRepository['claimDueEvents']>>[number],
-    now: number): Promise<{ delivered: number; suppressed: number; skippedDisabled: number;
-      expired: number; withdrawn: number; completed: boolean }> {
-    const totals = { delivered: 0, suppressed: 0, skippedDisabled: 0, expired: 0, withdrawn: 0, completed: false }
+  private async projectEvent(
+    event: Awaited<ReturnType<NotificationRepository['claimDueEvents']>>[number],
+    now: number,
+  ): Promise<{
+    delivered: number
+    suppressed: number
+    skippedDisabled: number
+    expired: number
+    withdrawn: number
+    completed: boolean
+  }> {
+    const totals = {
+      delivered: 0,
+      suppressed: 0,
+      skippedDisabled: 0,
+      expired: 0,
+      withdrawn: 0,
+      completed: false,
+    }
 
     for (;;) {
-      const round = await this.options.db.transaction(async tx => {
-        const counts = { delivered: 0, suppressed: 0, skippedDisabled: 0, expired: 0, withdrawn: 0, remaining: 0 }
+      const round = await this.options.db.transaction(async (tx) => {
+        const counts = {
+          delivered: 0,
+          suppressed: 0,
+          skippedDisabled: 0,
+          expired: 0,
+          withdrawn: 0,
+          remaining: 0,
+        }
         const userIds = await this.options.repository.pendingRecipients(
-          event.event_id, this.options.recipientsPerEvent, tx)
+          event.event_id,
+          this.options.recipientsPerEvent,
+          tx,
+        )
         if (userIds.length === 0) return counts
 
-        const content = event.content_id === null
-          ? undefined
-          : await this.options.repository.findContent(event.content_id, tx)
+        const content =
+          event.content_id === null
+            ? undefined
+            : await this.options.repository.findContent(event.content_id, tx)
         if (content === undefined || content.withdrawn_at !== null) {
           for (const userId of userIds) {
-            await this.options.repository.markRecipient(event.event_id, userId, 'withdrawn', null, now, tx)
+            await this.options.repository.markRecipient(
+              event.event_id,
+              userId,
+              'withdrawn',
+              null,
+              now,
+              tx,
+            )
             counts.withdrawn += 1
           }
           counts.remaining = await remainingPending(event.event_id, tx)
@@ -135,7 +185,11 @@ export class NotificationProjectionWorker {
           // 尚未生效：释放 lease 并推迟到生效时刻，不消耗失败预算，避免每轮空转。
           // 必须走事务连接：走默认连接会在事务外另起一条连接改同一行，
           // 一旦本事务也持有该行的锁就是自锁。
-          await this.options.repository.deferEventProjection(event.event_id, content.available_at, tx)
+          await this.options.repository.deferEventProjection(
+            event.event_id,
+            content.available_at,
+            tx,
+          )
           counts.remaining = userIds.length
           return counts
         }
@@ -144,18 +198,37 @@ export class NotificationProjectionWorker {
           const active = await this.options.repository.lockUser(userId, tx)
           if (!active) {
             await this.options.repository.markRecipient(
-              event.event_id, userId, 'skipped_disabled', null, now, tx)
+              event.event_id,
+              userId,
+              'skipped_disabled',
+              null,
+              now,
+              tx,
+            )
             counts.skippedDisabled += 1
             continue
           }
           if (content.expires_at !== null && content.expires_at <= now) {
-            await this.options.repository.markRecipient(event.event_id, userId, 'expired', null, now, tx)
+            await this.options.repository.markRecipient(
+              event.event_id,
+              userId,
+              'expired',
+              null,
+              now,
+              tx,
+            )
             counts.expired += 1
             continue
           }
           if (!(await preferenceAllows(this.options.repository, userId, content.category, tx))) {
             await this.options.repository.markRecipient(
-              event.event_id, userId, 'suppressed_preference', null, now, tx)
+              event.event_id,
+              userId,
+              'suppressed_preference',
+              null,
+              now,
+              tx,
+            )
             counts.suppressed += 1
             continue
           }
@@ -163,18 +236,30 @@ export class NotificationProjectionWorker {
           const stream = await this.options.repository.lockStream(userId, tx)
           const sequence = stream.lastSequence + 1
           const receiptId = this.options.createId()
-          await this.options.repository.insertReceipt({
-            receiptId,
-            userId,
-            contentId: content.content_id,
-            eventId: event.event_id,
-            sequence,
-            scope: content.scope,
-            deliveredAt: now,
-          }, tx)
+          await this.options.repository.insertReceipt(
+            {
+              receiptId,
+              userId,
+              contentId: content.content_id,
+              eventId: event.event_id,
+              sequence,
+              scope: content.scope,
+              deliveredAt: now,
+            },
+            tx,
+          )
           await tx.query(
-            'UPDATE notification_user_streams SET last_sequence = $2 WHERE user_id = $1', [userId, sequence])
-          await this.options.repository.markRecipient(event.event_id, userId, 'delivered', receiptId, now, tx)
+            'UPDATE notification_user_streams SET last_sequence = $2 WHERE user_id = $1',
+            [userId, sequence],
+          )
+          await this.options.repository.markRecipient(
+            event.event_id,
+            userId,
+            'delivered',
+            receiptId,
+            now,
+            tx,
+          )
           counts.delivered += 1
         }
 
@@ -194,7 +279,14 @@ export class NotificationProjectionWorker {
         return totals
       }
       // 本轮只处理有界批次，剩余受众留给下一轮，不在一个事务里做大规模 fanout。
-      if (round.delivered + round.suppressed + round.skippedDisabled + round.expired + round.withdrawn === 0) {
+      if (
+        round.delivered +
+          round.suppressed +
+          round.skippedDisabled +
+          round.expired +
+          round.withdrawn ===
+        0
+      ) {
         return totals
       }
     }
@@ -204,13 +296,18 @@ export class NotificationProjectionWorker {
 async function remainingPending(eventId: string, tx: SqlExecutor): Promise<number> {
   const result = await tx.query<{ count: string }>(
     `SELECT count(*)::text AS count FROM notification_event_recipients WHERE event_id = $1 AND state = 'pending'`,
-    [eventId])
+    [eventId],
+  )
   return Number(result.rows[0]?.count ?? 0)
 }
 
 /** 必要类别不能被偏好关闭；可选类别按本人偏好裁决，无行按默认开启。 */
-async function preferenceAllows(repository: NotificationRepository, userId: string,
-  category: string, tx: SqlExecutor): Promise<boolean> {
+async function preferenceAllows(
+  repository: NotificationRepository,
+  userId: string,
+  category: string,
+  tx: SqlExecutor,
+): Promise<boolean> {
   if (!isNotificationCategory(category)) return false
   if (!OPTIONAL_CATEGORIES.includes(category)) return true
   const stored = await repository.getPreferences(userId, tx)

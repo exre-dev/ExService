@@ -20,17 +20,17 @@
 
 不包含业务 HTTP schema 变更、账号数据搬运、密钥轮换、重置数据库、自动指定管理员、实际公网部署、提交或推送。
 
-| 已核对来源 | 约束 |
-| --- | --- |
-| `package.json`、`apps/server/package.json` | 根工具别名可删除，但 Server SSO/账号操作保留；根现有 build 没有完整 Outline。 |
-| `scripts/docs-integration/local-dev.mjs`、`scripts/docs-integration/foundation.mjs`、`scripts/docs-integration/ownership.mjs` | 当前 dev 启停依赖；精确容器/卷/进程 proof、跨模式 mutex 和失败恢复不能绕过。 |
-| `scripts/docs-integration/local-config.mjs` | v1 指纹为配置及文档秘密的摘要，Docker labels 和 prepared/run receipts 依赖该指纹。 |
-| `compose.local-dev.yaml`、`infra/docs-integration/postgres/init-local.sh` | local PostgreSQL 专用于 Outline/Hydra，明确拒绝包含 `exre`。 |
-| `apps/server/src/identity/config.ts`、`apps/outline/server/identity/config.ts` | 仅接受 local/dev/full，非 local 布局固定 8090，不能直接用任意服务器域名。 |
-| `apps/outline/vite.config.ts`、`apps/outline/server/presenters/env.ts`、`apps/outline/shared/env.ts` | `/docs/static/` 是集成资源前缀；浏览器公开环境由服务端 HTML 提供；构建不能引入秘密。 |
-| `apps/outline/server/utils/environment.ts` | 自动加载包内环境文件，集成启动需要防止旧包内配置填补未注入的键。 |
-| `apps/server/src/app.ts`、`apps/server/src/db/migration-runner.ts`、`Dockerfile` | 后端运行需要 Contract 和运行依赖，迁移需要 migration 文件；产物不是独立静态 JS。 |
-| `vitest.config.ts`、`scripts/docs-integration/local-dev.test.mjs` | Website Vitest 不收集 scripts 的 node:test 或 Outline；验收必须分别执行。 |
+| 已核对来源                                                                                                                    | 约束                                                                                 |
+| ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `package.json`、`apps/server/package.json`                                                                                    | 根工具别名可删除，但 Server SSO/账号操作保留；根现有 build 没有完整 Outline。        |
+| `scripts/docs-integration/local-dev.mjs`、`scripts/docs-integration/foundation.mjs`、`scripts/docs-integration/ownership.mjs` | 当前 dev 启停依赖；精确容器/卷/进程 proof、跨模式 mutex 和失败恢复不能绕过。         |
+| `scripts/docs-integration/local-config.mjs`                                                                                   | v1 指纹为配置及文档秘密的摘要，Docker labels 和 prepared/run receipts 依赖该指纹。   |
+| `compose.local-dev.yaml`、`infra/docs-integration/postgres/init-local.sh`                                                     | local PostgreSQL 专用于 Outline/Hydra，明确拒绝包含 `exre`。                         |
+| `apps/server/src/identity/config.ts`、`apps/outline/server/identity/config.ts`                                                | 仅接受 local/dev/full，非 local 布局固定 8090，不能直接用任意服务器域名。            |
+| `apps/outline/vite.config.ts`、`apps/outline/server/presenters/env.ts`、`apps/outline/shared/env.ts`                          | `/docs/static/` 是集成资源前缀；浏览器公开环境由服务端 HTML 提供；构建不能引入秘密。 |
+| `apps/outline/server/utils/environment.ts`                                                                                    | 自动加载包内环境文件，集成启动需要防止旧包内配置填补未注入的键。                     |
+| `apps/server/src/app.ts`、`apps/server/src/db/migration-runner.ts`、`Dockerfile`                                              | 后端运行需要 Contract 和运行依赖，迁移需要 migration 文件；产物不是独立静态 JS。     |
+| `vitest.config.ts`、`scripts/docs-integration/local-dev.test.mjs`                                                             | Website Vitest 不收集 scripts 的 node:test 或 Outline；验收必须分别执行。            |
 
 实施前继续读取各模块 `.ai/` 和 Outline 子仓库的实际指令；仓库若新增 `TESTING.md`，先读取再测试。当前根目录不存在该文件。
 
@@ -38,13 +38,13 @@
 
 建议新增 `scripts/runtime/` 作为根入口适配层，复用已有受控基础模块：
 
-| 拟新增模块 | 责任 |
-| --- | --- |
-| `scripts/runtime/configuration.mjs` | 读取、校验根配置，生成按服务划分的环境映射与 target/fingerprint。 |
-| `scripts/runtime/command.mjs` | 严格解析 start/stop/infra 动作；不自行实现数据库业务。 |
-| `scripts/runtime/dependencies.mjs` | start/stop 生命周期、独立依赖 receipts 和归属检查，复用 Foundation。 |
-| `scripts/runtime/server.mjs` | Website 包入口，按操作映射根配置后启动 server 或显式 CLI，避免再次加载包内 `.env.local`。 |
-| `scripts/runtime/build.mjs` | 无数据库连接的完整构建，分别在根和 Outline cwd 调用原包管理器。 |
+| 拟新增模块                          | 责任                                                                                      |
+| ----------------------------------- | ----------------------------------------------------------------------------------------- |
+| `scripts/runtime/configuration.mjs` | 读取、校验根配置，生成按服务划分的环境映射与 target/fingerprint。                         |
+| `scripts/runtime/command.mjs`       | 严格解析 start/stop/infra 动作；不自行实现数据库业务。                                    |
+| `scripts/runtime/dependencies.mjs`  | start/stop 生命周期、独立依赖 receipts 和归属检查，复用 Foundation。                      |
+| `scripts/runtime/server.mjs`        | Website 包入口，按操作映射根配置后启动 server 或显式 CLI，避免再次加载包内 `.env.local`。 |
+| `scripts/runtime/build.mjs`         | 无数据库连接的完整构建，分别在根和 Outline cwd 调用原包管理器。                           |
 
 旧 `scripts/docs-integration/command.mjs`、legacy 编排和恢复证据保留，退出正常根命令表；内部恢复仍能按原 mode 处理历史资源。不要复制 Foundation 或另建仅按容器名授权的生命周期实现。
 
@@ -64,18 +64,18 @@ stopDependencies(configuration, dependencies): Promise<void>
 
 根 scripts 最终公开 `start`、`dev`、`build`、`stop`、`infra`、`api:lint`、`api:generate`、`typecheck`、`test`、`db:migrate`、`db:reset`。
 
-| 命令 | 前置条件 | 允许的副作用 | 禁止的副作用 |
-| --- | --- | --- | --- |
-| `start` | root 配置有效，已初始化文档目标和受管卷，Docker 可用 | 启动 postgres/redis/hydra，写依赖归属 journal | 启动应用、构建、迁移、创建 client/admin |
-| `dev` | bootstrap-ready，依赖已运行且真实 schema/client/issuer 就绪，应用工具链完整 | 启动 Website Server/Web、Outline，写应用 run journal | Docker create/start/stop，迁移、修复准备阶段 |
-| `stop` | 无活跃应用或准备命令，依赖归属可证 | 停止受管依赖，写已证实 stopped 状态 | 终止应用、删除卷、删除附件、停止未知资源 |
-| `build` | 两套应用依赖与 ExUI 产物完整 | 构建输出及原工具规定的生成资源 | Docker 启动、数据库连接、迁移、账号初始化 |
-| `infra configure` | root 配置有效、工具和原 Website 数据源可核验 | 保存配置 receipt；新安装可生成缺少的文档秘密 | 覆盖已有秘密、创建 Website 数据库 |
-| `infra configure --import-existing` | 旧完整 local 配置/秘密存在，旧 owner 及 children 已退出 | 显式导入、验证并转换配置 receipt | 采样当前容器反造旧授权、轮换秘密、静默合并不同值 |
-| `infra init` | configure-ready，资源可证或全新空目标 | 显式准备 Outline/Hydra、迁移并构建必要 Outline server | 创建 exre、创建 Website 账号、隐式 bootstrap |
-| `infra migrate` | 已核验 local 目标与依赖 | 仅 Outline/Hydra 显式迁移 | 迁移 Website、reset |
-| `infra bootstrap --admin-user-id <UUID>` | init-ready、指定已有 active 账号 | 原受控 bootstrap/client 注册及必要临时 inspect | 选择或创建账号、恢复已撤销的管理员角色 |
-| `infra test` | 专项测试工具可用 | 调用已有隔离 Outline 测试入口 | 使用本机开发业务数据库作为夹具 |
+| 命令                                     | 前置条件                                                                    | 允许的副作用                                          | 禁止的副作用                                     |
+| ---------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------ |
+| `start`                                  | root 配置有效，已初始化文档目标和受管卷，Docker 可用                        | 启动 postgres/redis/hydra，写依赖归属 journal         | 启动应用、构建、迁移、创建 client/admin          |
+| `dev`                                    | bootstrap-ready，依赖已运行且真实 schema/client/issuer 就绪，应用工具链完整 | 启动 Website Server/Web、Outline，写应用 run journal  | Docker create/start/stop，迁移、修复准备阶段     |
+| `stop`                                   | 无活跃应用或准备命令，依赖归属可证                                          | 停止受管依赖，写已证实 stopped 状态                   | 终止应用、删除卷、删除附件、停止未知资源         |
+| `build`                                  | 两套应用依赖与 ExUI 产物完整                                                | 构建输出及原工具规定的生成资源                        | Docker 启动、数据库连接、迁移、账号初始化        |
+| `infra configure`                        | root 配置有效、工具和原 Website 数据源可核验                                | 保存配置 receipt；新安装可生成缺少的文档秘密          | 覆盖已有秘密、创建 Website 数据库                |
+| `infra configure --import-existing`      | 旧完整 local 配置/秘密存在，旧 owner 及 children 已退出                     | 显式导入、验证并转换配置 receipt                      | 采样当前容器反造旧授权、轮换秘密、静默合并不同值 |
+| `infra init`                             | configure-ready，资源可证或全新空目标                                       | 显式准备 Outline/Hydra、迁移并构建必要 Outline server | 创建 exre、创建 Website 账号、隐式 bootstrap     |
+| `infra migrate`                          | 已核验 local 目标与依赖                                                     | 仅 Outline/Hydra 显式迁移                             | 迁移 Website、reset                              |
+| `infra bootstrap --admin-user-id <UUID>` | init-ready、指定已有 active 账号                                            | 原受控 bootstrap/client 注册及必要临时 inspect        | 选择或创建账号、恢复已撤销的管理员角色           |
+| `infra test`                             | 专项测试工具可用                                                            | 调用已有隔离 Outline 测试入口                         | 使用本机开发业务数据库作为夹具                   |
 
 入口剥离一个 pnpm 转发的 `--`，严格拒绝未知 action、重复 flag、缺值和多余位置参数。新日常入口不接受 `--mode dev/full`；旧 CLI 的恢复 mode 不更名、不自动映射到新部署环境。帮助和错误提示显示当前根命令。
 
@@ -89,24 +89,24 @@ stopDependencies(configuration, dependencies): Promise<void>
 
 拟议根配置键如下：
 
-| 键/组 | 契约 |
-| --- | --- |
-| `RUNTIME_CONFIG_VERSION`、`RUNTIME_PROFILE` | 必须为支持版本和明确 profile，不推断 profile。 |
-| `DATABASE_URL` | Website 原连接串，路径为 `exre`，保留其连接参数和凭据；真实连接身份沿用 Server 验证。 |
-| `AUTH_CODE_HMAC_KEY`、原 storage/COS 配置 | 按当前 Server parser 校验，不生成或替换已有业务秘密。 |
-| `PUBLIC_ORIGIN` | 无 credentials/path/query/hash 的 origin；local 为精确回环 HTTP，deployment 为 HTTPS。 |
-| `HYDRA_PUBLIC_URL` | 精确 issuer 根 URL，local 为回环 HTTP，deployment 为 HTTPS；不从请求 Host 派生。 |
-| `LOCAL_PUBLIC_PORT`、`LOCAL_WEB_PORT`、`LOCAL_API_PORT` | 默认 8080、8081、8082。 |
-| `LOCAL_OUTLINE_PORT`、`LOCAL_OUTLINE_VITE_PORT` | 默认 3102、3101。 |
-| `LOCAL_POSTGRES_PORT`、`LOCAL_REDIS_PORT` | 默认 17432、17379。 |
-| `LOCAL_HYDRA_PUBLIC_PORT`、`LOCAL_HYDRA_ADMIN_PORT` | 默认 14444、14447。 |
-| `POSTGRES_PASSWORD`、`OUTLINE_PASSWORD`、`HYDRA_PASSWORD` | 沿用现有秘密格式和 owner 规则；独立文档 PG 不包含 exre。 |
-| 其余现有 `secretNames` | 沿用 `scripts/docs-integration/local-config.mjs` 的精确清单和 64 hex 校验；显式 configure 只在全新安装补齐缺少值。 |
-| `OUTLINE_STORAGE_DIRECTORY` | local 导入既有附件绝对路径，默认原 local data 路径；必须由配置明示，不能依赖子进程 cwd。 |
-| `SERVER_AVATAR_DIRECTORY`、原本地上传配置 | 保留已有目录，公开 URL 按原规则配置或派生；不移动文件。 |
-| `IDENTITY_OUTBOX_TARGETS_JSON` | 保留当前严格 schema，显式导入完整历史 cleanup targets，不扩大 approvedClients。 |
-| `VITE_API_BASE_URL` | 唯一 API 构建地址，默认 `/api`；后端密钥不得以 VITE 前缀进入 Web。 |
-| `INTEGRATION_NODE_BIN`、`INTEGRATION_COREPACK_JS`、`EXUI_SOURCE_DIR` | 沿用现有显式工具覆盖，只用于构建/应用准备，不作为依赖启动所需条件。 |
+| 键/组                                                                | 契约                                                                                                               |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `RUNTIME_CONFIG_VERSION`、`RUNTIME_PROFILE`                          | 必须为支持版本和明确 profile，不推断 profile。                                                                     |
+| `DATABASE_URL`                                                       | Website 原连接串，路径为 `exre`，保留其连接参数和凭据；真实连接身份沿用 Server 验证。                              |
+| `AUTH_CODE_HMAC_KEY`、原 storage/COS 配置                            | 按当前 Server parser 校验，不生成或替换已有业务秘密。                                                              |
+| `PUBLIC_ORIGIN`                                                      | 无 credentials/path/query/hash 的 origin；local 为精确回环 HTTP，deployment 为 HTTPS。                             |
+| `HYDRA_PUBLIC_URL`                                                   | 精确 issuer 根 URL，local 为回环 HTTP，deployment 为 HTTPS；不从请求 Host 派生。                                   |
+| `LOCAL_PUBLIC_PORT`、`LOCAL_WEB_PORT`、`LOCAL_API_PORT`              | 默认 8080、8081、8082。                                                                                            |
+| `LOCAL_OUTLINE_PORT`、`LOCAL_OUTLINE_VITE_PORT`                      | 默认 3102、3101。                                                                                                  |
+| `LOCAL_POSTGRES_PORT`、`LOCAL_REDIS_PORT`                            | 默认 17432、17379。                                                                                                |
+| `LOCAL_HYDRA_PUBLIC_PORT`、`LOCAL_HYDRA_ADMIN_PORT`                  | 默认 14444、14447。                                                                                                |
+| `POSTGRES_PASSWORD`、`OUTLINE_PASSWORD`、`HYDRA_PASSWORD`            | 沿用现有秘密格式和 owner 规则；独立文档 PG 不包含 exre。                                                           |
+| 其余现有 `secretNames`                                               | 沿用 `scripts/docs-integration/local-config.mjs` 的精确清单和 64 hex 校验；显式 configure 只在全新安装补齐缺少值。 |
+| `OUTLINE_STORAGE_DIRECTORY`                                          | local 导入既有附件绝对路径，默认原 local data 路径；必须由配置明示，不能依赖子进程 cwd。                           |
+| `SERVER_AVATAR_DIRECTORY`、原本地上传配置                            | 保留已有目录，公开 URL 按原规则配置或派生；不移动文件。                                                            |
+| `IDENTITY_OUTBOX_TARGETS_JSON`                                       | 保留当前严格 schema，显式导入完整历史 cleanup targets，不扩大 approvedClients。                                    |
+| `VITE_API_BASE_URL`                                                  | 唯一 API 构建地址，默认 `/api`；后端密钥不得以 VITE 前缀进入 Web。                                                 |
+| `INTEGRATION_NODE_BIN`、`INTEGRATION_COREPACK_JS`、`EXUI_SOURCE_DIR` | 沿用现有显式工具覆盖，只用于构建/应用准备，不作为依赖启动所需条件。                                                |
 
 local 九个端口均为 1024–65535 的整数、互不重复。`PUBLIC_ORIGIN` 和 issuer 必须与对应 local 端口一致。原 `INTEGRATION_*` 等派生变量若由调用方提供，则只作为断言：与新配置不同即拒绝，不作为第二份 authority。
 
@@ -169,16 +169,16 @@ v1 import 若存在未完成 preparing/cleanup-failed 状态，则新入口拒�
 
 新增 identity mode `deployment`，Website 与 Outline 同步实现、同时交付；旧 local/dev/full 行为与 client IDs 保持。deployment 不是“放宽 full”：是无默认公开地址、必须显式配置的分支。
 
-| 项目 | deployment 规则 |
-| --- | --- |
-| publicOrigin | 必须显式 HTTPS origin，无 credentials、query、fragment 或 path。 |
-| issuer | 必须显式 HTTPS 根 URL；精确 discovery issuer 比较；不自动回退 8090。 |
-| Outline URL/Website URL | 分别为 publicOrigin + `/docs` 与站点根，必须同源。 |
-| clientId | 固定 `ex-outline`，只注册精确 callback；不允许用户任意命名或通配 client。 |
-| callback/logout | 精确 publicOrigin + `/docs/auth/oidc.callback` 与 `/identity/signed-out`。 |
-| approved clients | 仅当前 Docs client，不增加 legacy OIDC probe。 |
-| internal endpoints | 显式私有 HTTP(S) 根 URL，禁止 credentials/query/hash，容器网络内可达；不提供 public proxy。 |
-| 历史 cleanup | 仍限现有三个 client IDs 和完整目标 schema；不得新增授权 client 来补 cleanup。 |
+| 项目                    | deployment 规则                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| publicOrigin            | 必须显式 HTTPS origin，无 credentials、query、fragment 或 path。                            |
+| issuer                  | 必须显式 HTTPS 根 URL；精确 discovery issuer 比较；不自动回退 8090。                        |
+| Outline URL/Website URL | 分别为 publicOrigin + `/docs` 与站点根，必须同源。                                          |
+| clientId                | 固定 `ex-outline`，只注册精确 callback；不允许用户任意命名或通配 client。                   |
+| callback/logout         | 精确 publicOrigin + `/docs/auth/oidc.callback` 与 `/identity/signed-out`。                  |
+| approved clients        | 仅当前 Docs client，不增加 legacy OIDC probe。                                              |
+| internal endpoints      | 显式私有 HTTP(S) 根 URL，禁止 credentials/query/hash，容器网络内可达；不提供 public proxy。 |
+| 历史 cleanup            | 仍限现有三个 client IDs 和完整目标 schema；不得新增授权 client 来补 cleanup。               |
 
 deployment 必须同步覆盖 Website/Outline config、Hydra client provisioning/readiness、初始化与运行状态校验、公开 SSR 环境和容器参数。不改 OIDC state/nonce/PKCE/browser proof、内部请求密钥、CSRF、会话撤销与匿名阅读策略。
 
@@ -196,12 +196,12 @@ build 不要求 `.env.local`、prepared.json 或数据库在线。Website 只使
 
 镜像在 Linux build stage 安装依赖与原生扩展，固定可追溯的基础镜像和 lockfile。Website 与 Outline 保持各自依赖树及本地 ExUI 消费约束，不能把两个 React 实例混成一份安装。
 
-| 产物 | 必需内容 |
-| --- | --- |
-| Website 静态产物 | `apps/web/dist/`，含 SPA 文件；默认 API `/api`。 |
+| 产物                | 必需内容                                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Website 静态产物    | `apps/web/dist/`，含 SPA 文件；默认 API `/api`。                                                                                |
 | Website server 镜像 | `apps/server/dist/`、生产运行依赖、`api/openapi.yaml`、`apps/server/drizzle/` 与 runtime manifest；启动 `node dist/server.js`。 |
-| 定制 Outline 镜像 | 自己完整的 build/static/public、plugin metadata 与生产依赖；启动保留 `--no-migrate`。 |
-| Hydra | 原锁定镜像，运行配置独立注入；deployment 不使用 `--dev` 作为公网配置。 |
+| 定制 Outline 镜像   | 自己完整的 build/static/public、plugin metadata 与生产依赖；启动保留 `--no-migrate`。                                           |
+| Hydra               | 原锁定镜像，运行配置独立注入；deployment 不使用 `--dev` 作为公网配置。                                                          |
 
 Website Dockerfile 的后端 target 不需要再次构建一个 Website nginx Web 镜像。已有 web target 可作为 legacy 兼容保留，不加入新部署服务集合。镜像不复制 `.env.local` 或本机持久数据。
 
@@ -233,16 +233,16 @@ Compose 按服务 `environment` 显式映射配置，不向每个服务加载整
 
 ## 12. 验证矩阵
 
-| 层级 | 必须验证 | 失败判定 |
-| --- | --- | --- |
-| scripts node:test | parser、root precedence、精确白名单、v1 hash 保持、部分转换拒绝、journal 恢复、无秘密日志 | 错误目标被接受、root/旧文件静默混读或授权 proof 被改写即失败。 |
-| fake lifecycle | start 服务清单、重复启动、失败只清本次 owned、dev 不启停容器、live 应用拒绝 stop、数据卷保留 | 任何跨职责 mutation 或未知资源 stop 即失败。 |
-| Website Vitest/Contract | 原 SSO/账号语义、identity local/dev/full 不变、新 deployment HTTPS/callback 拒绝路径、outbox 历史 target | 不得把响应序列化后的绿灯当原 handler 无漂移证据。 |
-| Outline 自己的 tests | deployment parser、root injected loader、public env 无秘密、OIDC 与 public mount | Website tests 不能代替此层。 |
-| 隔离 Docker | PG/Redis/Hydra ready，重复 start/stop；dev 后依赖持续；数据库错误/缺 migration/UUID 拒绝 | 不允许使用本机开发库作为测试 fallback。 |
-| 构建 | 根完整 build 无 DB/root secrets；两个 Linux 镜像资源与运行依赖完整；两种运行 origin 的相同 Outline 镜像 | 缺 Contract/migration、秘密进入镜像/Web、fixed legacy URL 或隐式迁移即失败。 |
-| 开发浏览器 | 主页/API、docs 深链接、资源/HMR、匿名阅读、登录、协作 WS、退出撤销 | HTTP 200 不替代页面和交互断言。 |
-| 部署材料浏览器 | 隔离 HTTPS 代理、精确 issuer/callback、SSR/API/WS、内部路径不可达、数据持久化 | localhost HTTP 或仅 image build 不替代此层。 |
+| 层级                    | 必须验证                                                                                                 | 失败判定                                                                     |
+| ----------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| scripts node:test       | parser、root precedence、精确白名单、v1 hash 保持、部分转换拒绝、journal 恢复、无秘密日志                | 错误目标被接受、root/旧文件静默混读或授权 proof 被改写即失败。               |
+| fake lifecycle          | start 服务清单、重复启动、失败只清本次 owned、dev 不启停容器、live 应用拒绝 stop、数据卷保留             | 任何跨职责 mutation 或未知资源 stop 即失败。                                 |
+| Website Vitest/Contract | 原 SSO/账号语义、identity local/dev/full 不变、新 deployment HTTPS/callback 拒绝路径、outbox 历史 target | 不得把响应序列化后的绿灯当原 handler 无漂移证据。                            |
+| Outline 自己的 tests    | deployment parser、root injected loader、public env 无秘密、OIDC 与 public mount                         | Website tests 不能代替此层。                                                 |
+| 隔离 Docker             | PG/Redis/Hydra ready，重复 start/stop；dev 后依赖持续；数据库错误/缺 migration/UUID 拒绝                 | 不允许使用本机开发库作为测试 fallback。                                      |
+| 构建                    | 根完整 build 无 DB/root secrets；两个 Linux 镜像资源与运行依赖完整；两种运行 origin 的相同 Outline 镜像  | 缺 Contract/migration、秘密进入镜像/Web、fixed legacy URL 或隐式迁移即失败。 |
+| 开发浏览器              | 主页/API、docs 深链接、资源/HMR、匿名阅读、登录、协作 WS、退出撤销                                       | HTTP 200 不替代页面和交互断言。                                              |
+| 部署材料浏览器          | 隔离 HTTPS 代理、精确 issuer/callback、SSR/API/WS、内部路径不可达、数据持久化                            | localhost HTTP 或仅 image build 不替代此层。                                 |
 
 scripts 新测试用 Node test runner 单独执行，例如 `node --test scripts/runtime/*.test.mjs`，既有 scripts regression 列出并分别执行。按原真实资源测试入口运行，保持 explicit opt-in 和隔离目标。Website 执行 api:lint/generate 一致性、typecheck、相关 Vitest 和 build；Outline 单独执行自己的 typecheck/tests。
 
@@ -250,15 +250,15 @@ scripts 新测试用 Node test runner 单独执行，例如 `node --test scripts
 
 ## 13. 风险、检测与回退
 
-| 风险 | 防范与检测 | 回退 |
-| --- | --- | --- |
-| v2 指纹导致旧卷被当未知 | 保持 resourceFingerprint；fixtures 证明原 IDs/proofs/卷/阶段逐项不变 | 停止新 app，按 upgrade journal 验证后恢复原配置文件；不重建卷。 |
-| root 导入冲突或半写入 | 先验证、atomic file 替换、commit receipt 最后、普通运行拒绝 incomplete | 同显式 import 恢复；不删除未完成 journal 绕过。 |
-| dev finally 停止依赖 | dependencies receipt 与 app cleanup 分开；故障/信号测试 | 暂缓移除旧入口，保留新依赖 receipt 供受控 stop。 |
-| 同 client ID 旧 outbox 指向不同 issuer | 部署 preflight 检查历史、拒绝覆盖；不增加隐式 client alias | 保持原 issuer/targets，显式完成撤销后再切换。 |
-| Outline build 内置错误地址 | inspect public env/presenter 与产物；相同镜像不同 origin 的浏览器验证 | 回到原构建版本和明确旧配置，不对旧 workspace 改 issuer。 |
-| 把整个 root env 注入 Web | 精确服务清单、sentinel secret 产物/进程环境测试 | 移除该分发路径，停止进入部署阶段。 |
-| 误把本地部署材料当公网验收 | 专项 HTTPS/browser 标记，未执行明确报告 | 不部署公网；生产运维作为后续独立工作。 |
+| 风险                                   | 防范与检测                                                             | 回退                                                            |
+| -------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------- |
+| v2 指纹导致旧卷被当未知                | 保持 resourceFingerprint；fixtures 证明原 IDs/proofs/卷/阶段逐项不变   | 停止新 app，按 upgrade journal 验证后恢复原配置文件；不重建卷。 |
+| root 导入冲突或半写入                  | 先验证、atomic file 替换、commit receipt 最后、普通运行拒绝 incomplete | 同显式 import 恢复；不删除未完成 journal 绕过。                 |
+| dev finally 停止依赖                   | dependencies receipt 与 app cleanup 分开；故障/信号测试                | 暂缓移除旧入口，保留新依赖 receipt 供受控 stop。                |
+| 同 client ID 旧 outbox 指向不同 issuer | 部署 preflight 检查历史、拒绝覆盖；不增加隐式 client alias             | 保持原 issuer/targets，显式完成撤销后再切换。                   |
+| Outline build 内置错误地址             | inspect public env/presenter 与产物；相同镜像不同 origin 的浏览器验证  | 回到原构建版本和明确旧配置，不对旧 workspace 改 issuer。        |
+| 把整个 root env 注入 Web               | 精确服务清单、sentinel secret 产物/进程环境测试                        | 移除该分发路径，停止进入部署阶段。                              |
+| 误把本地部署材料当公网验收             | 专项 HTTPS/browser 标记，未执行明确报告                                | 不部署公网；生产运维作为后续独立工作。                          |
 
 应用和配置回退与数据恢复分开。镜像切回旧 tag 不回滚 schema；任何已经执行的新迁移须评估旧应用兼容性，不能自动 downgrade/reset。正常停止和回退均不删除头像、上传对象、Outline 附件或 PG/Redis 卷。
 

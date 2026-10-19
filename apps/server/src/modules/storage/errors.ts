@@ -18,10 +18,16 @@ export type StorageErrorCode =
   | 'INTERNAL_ERROR'
 
 const STORAGE_ERROR_DETAILS: Record<StorageErrorCode, { statusCode: number; message: string }> = {
-  STORAGE_INVALID_INPUT: { statusCode: 400, message: '存储请求的 key、字段、内容类型或上传凭据不合法。' },
+  STORAGE_INVALID_INPUT: {
+    statusCode: 400,
+    message: '存储请求的 key、字段、内容类型或上传凭据不合法。',
+  },
   STORAGE_TICKET_FORBIDDEN: { statusCode: 403, message: '上传凭据不属于当前用户。' },
   STORAGE_NOT_FOUND: { statusCode: 404, message: '对象不存在。' },
-  STORAGE_CONFLICT: { statusCode: 409, message: '存储路径与已有文件冲突，或确认大小与申报大小不一致。' },
+  STORAGE_CONFLICT: {
+    statusCode: 409,
+    message: '存储路径与已有文件冲突，或确认大小与申报大小不一致。',
+  },
   STORAGE_TOO_LARGE: { statusCode: 413, message: '内容超过允许的大小。' },
   STORAGE_UNSUPPORTED_MEDIA_TYPE: { statusCode: 415, message: '不支持该请求或内容类型。' },
   STORAGE_TIMEOUT: { statusCode: 408, message: '上传或读取超时，请重试。' },
@@ -61,7 +67,10 @@ export function storageBusy(): StorageError {
  * 把本地 I/O、云 SDK 与超时异常收敛成安全分类。
  * 原始 error 只用于分支判断，不进入对外消息。
  */
-export function toStorageError(error: unknown, fallback: StorageErrorCode = 'INTERNAL_ERROR'): StorageError {
+export function toStorageError(
+  error: unknown,
+  fallback: StorageErrorCode = 'INTERNAL_ERROR',
+): StorageError {
   if (error instanceof StorageError) return error
   return new StorageError(fallback)
 }

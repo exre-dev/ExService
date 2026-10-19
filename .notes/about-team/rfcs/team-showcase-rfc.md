@@ -22,19 +22,19 @@
 
 以下新增路径为建议落点，责任必须保持分离：
 
-| 路径 | 责任 |
-| --- | --- |
-| `apps/web/src/config/team.ts` | 纯配置 schema、类型、默认值和 URL 语义检查；无浏览器或文件系统依赖。 |
-| `apps/web/src/config/team-config.ts` | 导入公开 JSON，提供解析后的团队展示配置。 |
-| `apps/web/build/team-config.ts` | Node 文件和资源校验，以及 Vite 开发／构建接入。 |
-| `apps/web/src/pages/AboutUs/TeamPage.tsx` | 组合两屏，持有当前选择，接入现有正文状态和锚点。 |
-| `TeamShowcase.tsx`、`TeamShowcase.module.scss` | 头像选择、人物及资料、成员主题与切换动画。 |
-| `TeamRecruitment.tsx`、`TeamRecruitment.module.scss` | 左侧宣传、右侧唯一入口、Web 黑白主题。 |
-| `TeamBackgrounds.tsx` | 两种 Shader 的懒加载、就绪、失败回退及资源清理。 |
-| `AboutUs.tsx` | 为团队页选择独立模板；继续持有旧简介 Modal 的其他入口。 |
-| `build/about/schema.ts`、`definition.ts`、`source.config.ts`、`content/about/types.ts` | 团队页专用内容契约、公开投影及 `join` 锚点校验。 |
-| `content/about/team.mdx`、`public/config.json` | 招募文案、页面文案、四份占位和可选招募 URL。 |
-| `useReadingPosition.ts` | 保留既有滚动语义，增加团队 hash 目标的可选焦点能力。 |
+| 路径                                                                                   | 责任                                                                 |
+| -------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `apps/web/src/config/team.ts`                                                          | 纯配置 schema、类型、默认值和 URL 语义检查；无浏览器或文件系统依赖。 |
+| `apps/web/src/config/team-config.ts`                                                   | 导入公开 JSON，提供解析后的团队展示配置。                            |
+| `apps/web/build/team-config.ts`                                                        | Node 文件和资源校验，以及 Vite 开发／构建接入。                      |
+| `apps/web/src/pages/AboutUs/TeamPage.tsx`                                              | 组合两屏，持有当前选择，接入现有正文状态和锚点。                     |
+| `TeamShowcase.tsx`、`TeamShowcase.module.scss`                                         | 头像选择、人物及资料、成员主题与切换动画。                           |
+| `TeamRecruitment.tsx`、`TeamRecruitment.module.scss`                                   | 左侧宣传、右侧唯一入口、Web 黑白主题。                               |
+| `TeamBackgrounds.tsx`                                                                  | 两种 Shader 的懒加载、就绪、失败回退及资源清理。                     |
+| `AboutUs.tsx`                                                                          | 为团队页选择独立模板；继续持有旧简介 Modal 的其他入口。              |
+| `build/about/schema.ts`、`definition.ts`、`source.config.ts`、`content/about/types.ts` | 团队页专用内容契约、公开投影及 `join` 锚点校验。                     |
+| `content/about/team.mdx`、`public/config.json`                                         | 招募文案、页面文案、四份占位和可选招募 URL。                         |
+| `useReadingPosition.ts`                                                                | 保留既有滚动语义，增加团队 hash 目标的可选焦点能力。                 |
 
 本工作树已有 About、内容编译器、Vite 和其他未提交变更。实施前重读实际 diff，局部补丁只添加本 RFC 所需行为，不能回退这些改动。
 
@@ -135,9 +135,9 @@ recruitment: {
 
 两个背景遵循不同契约：
 
-| 背景 | 约束 |
-| --- | --- |
-| 人物面板 DotGrid | 用户参数原样：size 2、gapX/Y 32、strokeWidth 0、sizeRange/opacityRange 1、circle；主题只改变颜色。保持 speed 0，同一个实例更新颜色。 |
+| 背景                  | 约束                                                                                                                                                                                                              |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 人物面板 DotGrid      | 用户参数原样：size 2、gapX/Y 32、strokeWidth 0、sizeRange/opacityRange 1、circle；主题只改变颜色。保持 speed 0，同一个实例更新颜色。                                                                              |
 | 招募右侧 MeshGradient | 黑白 colors、distortion 1、swirl 0.2、grainMixer/Overlay 0、rotation 90；可见且正常动态模式 speed 1。实际布局源容器 240×264，minPixelRatio 1、maxPixelCount 64,000。通过 border-box 尺寸计算 CSS scale 铺满区域。 |
 
 低分辨率 Mesh 的 CSS scale 不提高 Canvas backing store 尺寸，ResizeObserver 只更新两个缩放比例，不重建组件。像素预算允许整数舍入后的少量误差，但本预览实际为 63,865 像素。库已具备后台和离屏暂停；减少动态效果显式设 speed 0，卸载由 React 组件释放 Shader，并清理本地 resize／媒体查询监听。
@@ -175,14 +175,14 @@ recruitment: {
 
 ## 风险、取舍与回退
 
-| 风险或取舍 | 控制与验证 |
-| --- | --- |
-| 展示配置与旧 MDX 名录并存 | 按用途分开，不自动关联；验证旧项目／Media 引用，后续统一名录另行设计。 |
-| 极短视口无法一屏容纳 | min-height 和内容增长，不强制翻页；验证手机、长文案和缩放。 |
-| 延迟加载导致 hash 漂移 | 正文 ready 后定位、图片稳定尺寸、真实浏览器刷新验收。 |
-| 多 Shader 与高 DPR 的成本 | Mesh 固定小源与像素预算，实例稳定，离屏／后台暂停；测真实 canvas。 |
+| 风险或取舍                     | 控制与验证                                                             |
+| ------------------------------ | ---------------------------------------------------------------------- |
+| 展示配置与旧 MDX 名录并存      | 按用途分开，不自动关联；验证旧项目／Media 引用，后续统一名录另行设计。 |
+| 极短视口无法一屏容纳           | min-height 和内容增长，不强制翻页；验证手机、长文案和缩放。            |
+| 延迟加载导致 hash 漂移         | 正文 ready 后定位、图片稳定尺寸、真实浏览器刷新验收。                  |
+| 多 Shader 与高 DPR 的成本      | Mesh 固定小源与像素预算，实例稳定，离屏／后台暂停；测真实 canvas。     |
 | 库异步初始化不能直接被边界捕获 | 就绪标记、局部超时和 context lost 回退，注入真实失败；不隐瞒未验证项。 |
-| 招募地址缺失 | 明确禁用状态，不输出伪链接；用户补充后启用。 |
+| 招募地址缺失                   | 明确禁用状态，不输出伪链接；用户补充后启用。                           |
 
 保留单一普通文档滚动；没有采用 nested scroll／mandatory snap，因为会增加长内容、锚点及辅助技术风险。没有把 JSON 成员资料塞进通用内容编译器，因为当前需求是独立人物展示，而旧引用已有明确边界。
 

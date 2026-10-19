@@ -1,6 +1,47 @@
-.content { display: flex; flex-direction: column; width: min(calc(100vw - 2rem), 42rem); max-width: 42rem; max-height: calc(100dvh - 2rem); min-height: 0; overflow: hidden; padding: 1.5rem; gap: 1.25rem; }
-.tabs { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; gap: 1rem; }
-.tabList { flex: none; width: 100%; }
-.scroll { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; min-height: 0; padding: 0.125rem; }
-.footer { flex: none; flex-wrap: wrap; gap: 0.5rem; }
-@media (max-width: 35rem) { .content { padding: 1.25rem; gap: 1rem; } .footer { flex-direction: column; } .footer > button { width: 100%; } }
+.content {
+  display: flex;
+  flex-direction: column;
+  width: min(calc(100vw - 2rem), 42rem);
+  max-width: 42rem;
+  max-height: calc(100dvh - 2rem);
+  min-height: 0;
+  overflow: hidden;
+  padding: 1.5rem;
+  gap: 1.25rem;
+}
+.tabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  gap: 1rem;
+}
+.tabList {
+  flex: none;
+  width: 100%;
+}
+.scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+  padding: 0.125rem;
+}
+.footer {
+  flex: none;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+@media (max-width: 35rem) {
+  .content {
+    padding: 1.25rem;
+    gap: 1rem;
+  }
+  .footer {
+    flex-direction: column;
+  }
+  .footer > button {
+    width: 100%;
+  }
+}

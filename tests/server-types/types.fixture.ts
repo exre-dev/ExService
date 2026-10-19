@@ -17,7 +17,10 @@ declare const options: CreateAppOptions
 
 const token: Promise<ApiJsonResult<'login'>> = app.authServices.login(loginRequest.body)
 const services: AuthPluginOptions = { authServices: options.authServices }
-const join: JoinPluginOptions = { joinServices: options.joinServices, invitationServices: options.invitationServices }
+const join: JoinPluginOptions = {
+  joinServices: options.joinServices,
+  invitationServices: options.invitationServices,
+}
 const optionalIdentity: IdentityPluginOptions = {}
 const namedIdentity: IdentityPluginOptions = { oidcServices: options.oidcServices }
 const profile: ProfilePluginOptions = { profileServices: options.profileServices }

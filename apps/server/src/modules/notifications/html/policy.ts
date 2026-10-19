@@ -63,7 +63,8 @@ export function classifyHref(rawHref: string): UrlDecision {
     if (withoutFragment.startsWith('//')) return { kind: 'rejected', reason: 'protocol-relative' }
     const normalized = normalizePath(withoutFragment)
     if (normalized === null) return { kind: 'rejected', reason: 'path-traversal' }
-    if (!INTERNAL_READ_ONLY_PATHS.has(normalized)) return { kind: 'rejected', reason: 'not-allowlisted' }
+    if (!INTERNAL_READ_ONLY_PATHS.has(normalized))
+      return { kind: 'rejected', reason: 'not-allowlisted' }
     return { kind: 'internal', path: normalized }
   }
 
@@ -77,10 +78,12 @@ export function classifyHref(rawHref: string): UrlDecision {
   if (url.username || url.password) return { kind: 'rejected', reason: 'credentials' }
   if (url.hash) return { kind: 'rejected', reason: 'fragment' }
   if (url.search) return { kind: 'rejected', reason: 'query' }
-  const approved = APPROVED_EXTERNAL_TARGETS.some(target =>
-    target.host === url.hostname &&
-    target.port === (url.port === '' ? null : Number(url.port)) &&
-    target.path === url.pathname)
+  const approved = APPROVED_EXTERNAL_TARGETS.some(
+    (target) =>
+      target.host === url.hostname &&
+      target.port === (url.port === '' ? null : Number(url.port)) &&
+      target.path === url.pathname,
+  )
   if (!approved) return { kind: 'rejected', reason: 'not-allowlisted' }
   return { kind: 'external', url: url.href }
 }

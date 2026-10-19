@@ -1,122 +1,118 @@
 {
-    "candidate":  "application-readiness-v1.1",
-    "date":  "2026-10-11",
-    "source_baseline":  "cf6a81ac5b814faac40dd1ccee3f793a42c83b20",
-    "recommendation":  "keep_current",
-    "status":  "DESIGN_REVIEW_REQUIRED",
-    "implementation_authorized":  false,
-    "design_approval_source":  "none",
-    "spec":  {
-                 "path":  ".notes/application-readiness/specs/2026-10-11-application-readiness-v1.1.md",
-                 "sha256":  "7b71bae00d29bd4c6edf2fd73fc6c694b7bc41aec05c4cf8fa93ddc8bcdfcd3d"
-             },
-    "prior_candidate":  {
-                            "candidate":  "application-readiness-v1",
-                            "spec":  {
-                                         "path":  ".notes/application-readiness/specs/2026-10-11-application-readiness-v1.md",
-                                         "sha256":  "bad34c061c91b498c1770bedcfd6ef1657aa88c5d92583c7ac597494d8f5c213"
-                                     },
-                            "evidence_path":  ".notes/application-readiness/specs/evidence-v1.json",
-                            "evidence_sha256":  "9dbb3b646b2723944a4a438c857b30ac95be7e9493a31605c6f48e53b8c7e848",
-                            "review_comment_id":  "01a12b5c-e506-7306-b37f-703c715d0f80",
-                            "review_verdict":  "keep_current_supported",
-                            "review_scope_retained":  "Unchanged v1 evidence; v1.1 corrections and added source require independent review"
-                        },
-    "revision_findings":  [
-                              "Three read-only dual-CLI sequences; explicit prepare sequence excluded",
-                              "C0 stage, conditional rollback and successful native-start coverage gaps",
-                              "Local initialization source citation"
-                          ],
-    "source_changes_from_v1":  [
-
-                               ],
-    "added_evidence":  [
-                           "scripts/runtime/infrastructure.mjs"
-                       ],
-    "scan_attachment":  {
-                            "id":  "01a12b00-e012-74c9-ae15-6f1d3fe5d0ab",
-                            "sha256":  "a7a37758c72386a6ba729ade02e2f722e990965fde26a2a9887a2432e22ef80a"
-                        },
-    "files":  [
-                  {
-                      "path":  "scripts/runtime/applications.mjs",
-                      "sha256":  "0c7c6b5a9d73ebf7ab3f3eb992b48f849173eb1322a707f7aa887eb61db8983e"
-                  },
-                  {
-                      "path":  "scripts/runtime/native.mjs",
-                      "sha256":  "776289c7e0ff48ce4f03bdb60d86d855a2b936cbfdcdce79534af62704caf6c7"
-                  },
-                  {
-                      "path":  "scripts/runtime/deployment.mjs",
-                      "sha256":  "fa3130009499bb44c0cc348a4f19a10123c6995f61540cdb6d11750e2457b4bb"
-                  },
-                  {
-                      "path":  "scripts/runtime/settings.test.mjs",
-                      "sha256":  "ee433e8c84b292ffc4fe2541c61aea2caa7183420dfaf8063f303fdd801f964e"
-                  },
-                  {
-                      "path":  "scripts/runtime/deployment.test.mjs",
-                      "sha256":  "cea0e01e1fc69e99f85958ba97ead14ce317b7e5da47bd64031ba83b0e155f76"
-                  },
-                  {
-                      "path":  "tests/runtime/native-health.test.ts",
-                      "sha256":  "7ee8198560804f39bd21b5c859971f19f6bbf7be03258359e45a639d99f02db3"
-                  },
-                  {
-                      "path":  "scripts/runtime/entry.mjs",
-                      "sha256":  "48dce4600b392f3b88f5bef56bc6f83a90c0d8a5b370b222c94156aed373c0e3"
-                  },
-                  {
-                      "path":  "scripts/runtime/output.mjs",
-                      "sha256":  "bb1a13c027276c521d13be4f436ce0117b53124389b62859ad0e54c2728580a2"
-                  },
-                  {
-                      "path":  "scripts/runtime/services.mjs",
-                      "sha256":  "608682e10684a6fe1de5c874a50969b17f8d85362e918f03e00f1cc02628a3a1"
-                  },
-                  {
-                      "path":  "scripts/runtime/pm2-process.mjs",
-                      "sha256":  "1c7b4c0bc42cf70c6144f6200d297305634f9e14b4c2ff0c488caf49944df498"
-                  },
-                  {
-                      "path":  "scripts/docs-integration/local-dev.mjs",
-                      "sha256":  "ba45d0384840c56608b2f5b9c97753b1f63d64a18c901f1dacc60312243fd23a"
-                  },
-                  {
-                      "path":  "scripts/docs-integration/hydra-client.mjs",
-                      "sha256":  "ba193ad6ba876c1c740a89148cd033ff531ce1f839905d91a5a0cd3ea13a62d6"
-                  },
-                  {
-                      "path":  "scripts/docs-integration/ownership.mjs",
-                      "sha256":  "b6507d440296d110aa45c9bfb50f75ef8b551d673882ea26955943f418200557"
-                  },
-                  {
-                      "path":  "apps/server/src/integration-readiness.ts",
-                      "sha256":  "5af7bd56254b815b9bdb1bf54e6f33059e2df9b0d9ce642df737c4c0851cdcea"
-                  },
-                  {
-                      "path":  "apps/server/src/cli/integration-check.ts",
-                      "sha256":  "b0e2cece9b705afbd830e874d1a856728484c0ca90c21a5d797c8b649ce121dd"
-                  },
-                  {
-                      "path":  "apps/outline/server/identity/readiness.ts",
-                      "sha256":  "8d42e58888b2ca8155448c3b0f21188d60103844334ad8be655785b4afa30143"
-                  },
-                  {
-                      "path":  "apps/outline/server/scripts/integration-check.ts",
-                      "sha256":  "04f7d31a191511863bd9142bb54db0f2ede23b555cc3d7b052ddeedd2015e07e"
-                  },
-                  {
-                      "path":  "scripts/runtime/tests.mjs",
-                      "sha256":  "80fd2e1e2d7076de7944d2085b354d190e4b8a3399cd8f6203bf7d771b7f2f48"
-                  },
-                  {
-                      "path":  "scripts/runtime/test-manifest.mjs",
-                      "sha256":  "b364600a237db902e7dab4ac0d3be6c1b8657e5d3e94fb45e278eb36bdc8b571"
-                  },
-                  {
-                      "path":  "scripts/runtime/infrastructure.mjs",
-                      "sha256":  "921cbe21ebe7e5ccf77d10bcc82a7e7ad9eb38a204f1894028435f3b7c43d7d9"
-                  }
-              ]
+  "candidate": "application-readiness-v1.1",
+  "date": "2026-10-11",
+  "source_baseline": "cf6a81ac5b814faac40dd1ccee3f793a42c83b20",
+  "recommendation": "keep_current",
+  "status": "DESIGN_REVIEW_REQUIRED",
+  "implementation_authorized": false,
+  "design_approval_source": "none",
+  "spec": {
+    "path": ".notes/application-readiness/specs/2026-10-11-application-readiness-v1.1.md",
+    "sha256": "7b71bae00d29bd4c6edf2fd73fc6c694b7bc41aec05c4cf8fa93ddc8bcdfcd3d"
+  },
+  "prior_candidate": {
+    "candidate": "application-readiness-v1",
+    "spec": {
+      "path": ".notes/application-readiness/specs/2026-10-11-application-readiness-v1.md",
+      "sha256": "bad34c061c91b498c1770bedcfd6ef1657aa88c5d92583c7ac597494d8f5c213"
+    },
+    "evidence_path": ".notes/application-readiness/specs/evidence-v1.json",
+    "evidence_sha256": "9dbb3b646b2723944a4a438c857b30ac95be7e9493a31605c6f48e53b8c7e848",
+    "review_comment_id": "01a12b5c-e506-7306-b37f-703c715d0f80",
+    "review_verdict": "keep_current_supported",
+    "review_scope_retained": "Unchanged v1 evidence; v1.1 corrections and added source require independent review"
+  },
+  "revision_findings": [
+    "Three read-only dual-CLI sequences; explicit prepare sequence excluded",
+    "C0 stage, conditional rollback and successful native-start coverage gaps",
+    "Local initialization source citation"
+  ],
+  "source_changes_from_v1": [],
+  "added_evidence": ["scripts/runtime/infrastructure.mjs"],
+  "scan_attachment": {
+    "id": "01a12b00-e012-74c9-ae15-6f1d3fe5d0ab",
+    "sha256": "a7a37758c72386a6ba729ade02e2f722e990965fde26a2a9887a2432e22ef80a"
+  },
+  "files": [
+    {
+      "path": "scripts/runtime/applications.mjs",
+      "sha256": "0c7c6b5a9d73ebf7ab3f3eb992b48f849173eb1322a707f7aa887eb61db8983e"
+    },
+    {
+      "path": "scripts/runtime/native.mjs",
+      "sha256": "776289c7e0ff48ce4f03bdb60d86d855a2b936cbfdcdce79534af62704caf6c7"
+    },
+    {
+      "path": "scripts/runtime/deployment.mjs",
+      "sha256": "fa3130009499bb44c0cc348a4f19a10123c6995f61540cdb6d11750e2457b4bb"
+    },
+    {
+      "path": "scripts/runtime/settings.test.mjs",
+      "sha256": "ee433e8c84b292ffc4fe2541c61aea2caa7183420dfaf8063f303fdd801f964e"
+    },
+    {
+      "path": "scripts/runtime/deployment.test.mjs",
+      "sha256": "cea0e01e1fc69e99f85958ba97ead14ce317b7e5da47bd64031ba83b0e155f76"
+    },
+    {
+      "path": "tests/runtime/native-health.test.ts",
+      "sha256": "7ee8198560804f39bd21b5c859971f19f6bbf7be03258359e45a639d99f02db3"
+    },
+    {
+      "path": "scripts/runtime/entry.mjs",
+      "sha256": "48dce4600b392f3b88f5bef56bc6f83a90c0d8a5b370b222c94156aed373c0e3"
+    },
+    {
+      "path": "scripts/runtime/output.mjs",
+      "sha256": "bb1a13c027276c521d13be4f436ce0117b53124389b62859ad0e54c2728580a2"
+    },
+    {
+      "path": "scripts/runtime/services.mjs",
+      "sha256": "608682e10684a6fe1de5c874a50969b17f8d85362e918f03e00f1cc02628a3a1"
+    },
+    {
+      "path": "scripts/runtime/pm2-process.mjs",
+      "sha256": "1c7b4c0bc42cf70c6144f6200d297305634f9e14b4c2ff0c488caf49944df498"
+    },
+    {
+      "path": "scripts/docs-integration/local-dev.mjs",
+      "sha256": "ba45d0384840c56608b2f5b9c97753b1f63d64a18c901f1dacc60312243fd23a"
+    },
+    {
+      "path": "scripts/docs-integration/hydra-client.mjs",
+      "sha256": "ba193ad6ba876c1c740a89148cd033ff531ce1f839905d91a5a0cd3ea13a62d6"
+    },
+    {
+      "path": "scripts/docs-integration/ownership.mjs",
+      "sha256": "b6507d440296d110aa45c9bfb50f75ef8b551d673882ea26955943f418200557"
+    },
+    {
+      "path": "apps/server/src/integration-readiness.ts",
+      "sha256": "5af7bd56254b815b9bdb1bf54e6f33059e2df9b0d9ce642df737c4c0851cdcea"
+    },
+    {
+      "path": "apps/server/src/cli/integration-check.ts",
+      "sha256": "b0e2cece9b705afbd830e874d1a856728484c0ca90c21a5d797c8b649ce121dd"
+    },
+    {
+      "path": "apps/outline/server/identity/readiness.ts",
+      "sha256": "8d42e58888b2ca8155448c3b0f21188d60103844334ad8be655785b4afa30143"
+    },
+    {
+      "path": "apps/outline/server/scripts/integration-check.ts",
+      "sha256": "04f7d31a191511863bd9142bb54db0f2ede23b555cc3d7b052ddeedd2015e07e"
+    },
+    {
+      "path": "scripts/runtime/tests.mjs",
+      "sha256": "80fd2e1e2d7076de7944d2085b354d190e4b8a3399cd8f6203bf7d771b7f2f48"
+    },
+    {
+      "path": "scripts/runtime/test-manifest.mjs",
+      "sha256": "b364600a237db902e7dab4ac0d3be6c1b8657e5d3e94fb45e278eb36bdc8b571"
+    },
+    {
+      "path": "scripts/runtime/infrastructure.mjs",
+      "sha256": "921cbe21ebe7e5ccf77d10bcc82a7e7ad9eb38a204f1894028435f3b7c43d7d9"
+    }
+  ]
 }

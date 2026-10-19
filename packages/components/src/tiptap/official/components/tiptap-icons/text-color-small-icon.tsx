@@ -1,6 +1,6 @@
-﻿import { memo } from "react"
+﻿import { memo } from 'react'
 
-type SvgProps = React.ComponentPropsWithoutRef<"svg">
+type SvgProps = React.ComponentPropsWithoutRef<'svg'>
 
 export const TextColorSmallIcon = memo(({ className, ...props }: SvgProps) => {
   return (
@@ -23,4 +23,4 @@ export const TextColorSmallIcon = memo(({ className, ...props }: SvgProps) => {
   )
 })
 
-TextColorSmallIcon.displayName = "TextColorSmallIcon"
+TextColorSmallIcon.displayName = 'TextColorSmallIcon'

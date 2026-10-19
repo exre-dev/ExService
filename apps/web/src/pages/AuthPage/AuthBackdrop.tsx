@@ -21,10 +21,15 @@ function isSystemDark() {
 export function AuthBackdrop({ contained = false }: { contained?: boolean }) {
   const { theme } = useTheme()
   const systemDark = useSyncExternalStore(subscribeSystemTheme, isSystemDark, () => false)
-  const colors = backgroundColors[theme === 'dark' || (theme === 'system' && systemDark) ? 'dark' : 'light']
+  const colors =
+    backgroundColors[theme === 'dark' || (theme === 'system' && systemDark) ? 'dark' : 'light']
 
   return (
-    <div className={`${styles.background}${contained ? ` ${styles.containedBackground}` : ''}`} style={{ backgroundColor: colors[0] }} aria-hidden="true">
+    <div
+      className={`${styles.background}${contained ? ` ${styles.containedBackground}` : ''}`}
+      style={{ backgroundColor: colors[0] }}
+      aria-hidden="true"
+    >
       <MeshGradient
         width={1280}
         height={720}

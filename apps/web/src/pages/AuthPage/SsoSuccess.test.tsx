@@ -30,10 +30,13 @@ afterEach(() => {
 describe('SsoSuccess', () => {
   it('shows the shared visual treatment and attempts to close after five seconds', () => {
     vi.useFakeTimers()
-    window.sessionStorage.setItem(SSO_SUCCESS_KEY, JSON.stringify({
-      ssoRequestId: 'a'.repeat(43),
-      confirmedAt: Date.now(),
-    }))
+    window.sessionStorage.setItem(
+      SSO_SUCCESS_KEY,
+      JSON.stringify({
+        ssoRequestId: 'a'.repeat(43),
+        confirmedAt: Date.now(),
+      }),
+    )
     const close = vi.spyOn(window, 'close').mockImplementation(() => {})
 
     const { container } = render(<SsoSuccess />)

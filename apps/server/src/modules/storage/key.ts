@@ -12,11 +12,14 @@ export const STORAGE_KEY_PATTERN =
 export const STORAGE_KEY_MAX_LENGTH = 240
 
 /** Windows 设备名在任何目录、任何扩展名下都是保留名。 */
-const RESERVED_DEVICE_NAMES = new Set(
-  ['con', 'prn', 'aux', 'nul',
-    ...Array.from({ length: 9 }, (_, index) => `com${index + 1}`),
-    ...Array.from({ length: 9 }, (_, index) => `lpt${index + 1}`)],
-)
+const RESERVED_DEVICE_NAMES = new Set([
+  'con',
+  'prn',
+  'aux',
+  'nul',
+  ...Array.from({ length: 9 }, (_, index) => `com${index + 1}`),
+  ...Array.from({ length: 9 }, (_, index) => `lpt${index + 1}`),
+])
 
 /**
  * 校验并返回规范化 key。

@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 const [directory, extension, probe] = process.argv.slice(2)
-const load = path => import(pathToFileURL(join(directory, `${path}.${extension}`)).href)
+const load = (path) => import(pathToFileURL(join(directory, `${path}.${extension}`)).href)
 const { createApp } = await load('app')
 const { createAuthServices } = await load('create-services')
 const { ProfileService } = await load('modules/profile/service')
@@ -16,11 +16,16 @@ const { createClickUpServices } = await load('modules/clickup/factory')
 const { createSupportServices } = await load('domains/support/service')
 const { BusinessPluginLoadError, formatBusinessPluginError } = await load('business-plugin-errors')
 const owned = mkdtempSync(join(tmpdir(), 'exwebsite-env-'))
-let closes = 0, starts = 0
+let closes = 0,
+  starts = 0
 const database = {
-  query: async () => { throw new Error('NO_DATABASE_QUERIES_ALLOWED') },
-  transaction: async run => run(database),
-  close: async () => { closes++ },
+  query: async () => {
+    throw new Error('NO_DATABASE_QUERIES_ALLOWED')
+  },
+  transaction: async (run) => run(database),
+  close: async () => {
+    closes++
+  },
 }
 const services = {
   ...createAuthServices({ db: database, codeHmacKey: Buffer.alloc(32, 7) }),
@@ -29,12 +34,23 @@ const services = {
   notifications: createNotificationModule({ db: database, tokenKey: Buffer.alloc(32, 3) }),
 }
 services.clickupServices = createClickUpServices({ kind: 'disabled' })
-services.supportServices = createSupportServices({ db: database, clickup: services.clickupServices, profile: services.profileServices })
+services.supportServices = createSupportServices({
+  db: database,
+  clickup: services.clickupServices,
+  profile: services.profileServices,
+})
 try {
   const app = await startApplication({
-    createApp: () => createApp(services), database,
+    createApp: () => createApp(services),
+    database,
     listen: { port: 0, host: '127.0.0.1' },
-    startProjection: () => { starts++; const timer = setInterval(() => { throw new Error('WORKER_RETRY_SENTINEL') }, 100); return () => clearInterval(timer) },
+    startProjection: () => {
+      starts++
+      const timer = setInterval(() => {
+        throw new Error('WORKER_RETRY_SENTINEL')
+      }, 100)
+      return () => clearInterval(timer)
+    },
     reportCleanupFailure: console.error,
   })
   if (probe && !app.hasDecorator(probe)) throw new Error('EXPECTED_PROBE_MISSING')
@@ -47,4 +63,6 @@ try {
   console.error(formatBusinessPluginError(error))
   console.log(JSON.stringify({ closes, starts }))
   process.exitCode = 1
-} finally { rmSync(owned, { recursive: true, force: true }) }
+} finally {
+  rmSync(owned, { recursive: true, force: true })
+}

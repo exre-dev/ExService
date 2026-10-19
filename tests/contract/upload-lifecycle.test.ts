@@ -5,7 +5,11 @@ import { createApp, serviceHandlers } from '@workspace/server'
 import { StorageError, type StorageErrorCode } from '@server/src/modules/storage/errors'
 import { createTestAuth, type TestAuth } from '@tests/helpers/auth'
 import { multipartBody, type TestPart } from '@tests/helpers/multipart'
-import { createAppWithStorage, fileStorageFixture, type StorageTestFixture } from '@tests/helpers/storage'
+import {
+  createAppWithStorage,
+  fileStorageFixture,
+  type StorageTestFixture,
+} from '@tests/helpers/storage'
 
 /**
  * 共用 multipart 上传生命周期的 Contract 层验收。
@@ -23,8 +27,8 @@ const fixtures: TestAuth[] = []
 const storages: StorageTestFixture[] = []
 const apps: Array<ReturnType<typeof createApp>> = []
 afterEach(async () => {
-  await Promise.all(apps.splice(0).map(app => app.close()))
-  await Promise.all(fixtures.splice(0).map(fixture => fixture.close()))
+  await Promise.all(apps.splice(0).map((app) => app.close()))
+  await Promise.all(fixtures.splice(0).map((fixture) => fixture.close()))
   for (const storage of storages.splice(0)) storage.cleanup()
 })
 
@@ -39,7 +43,8 @@ function observeRoute(operationId: string) {
   return {
     observed,
     hook: (route: RouteOptions) => {
-      const schema = route.schema as { operationId?: string; response?: Record<string, unknown> } | undefined
+      const schema = route.schema as
+        { operationId?: string; response?: Record<string, unknown> } | undefined
       if (schema?.operationId !== operationId) return
       observed.statuses = Object.keys(schema.response ?? {}).sort()
       observed.route = route
@@ -48,7 +53,8 @@ function observeRoute(operationId: string) {
 }
 
 /** 提前终结适配只能输出数值状态码；Contract 的 `default` 不是可输出状态。 */
-const numericStatuses = (statuses: readonly string[]): string[] => statuses.filter(status => /^[1-9]\d{2}$/.test(status))
+const numericStatuses = (statuses: readonly string[]): string[] =>
+  statuses.filter((status) => /^[1-9]\d{2}$/.test(status))
 
 const STORAGE_UPLOAD_STATUSES = ['200', '400', '401', '408', '409', '413', '415', '500', '503']
 
@@ -63,16 +69,19 @@ describe('takeover status guard', () => {
   const declared = (statuses: readonly string[]): number[] => statuses.map(Number)
 
   it('covers every status the storage upload lifecycle can emit', () => {
-    const codes: StorageErrorCode[] = ['STORAGE_TIMEOUT', 'STORAGE_TOO_LARGE', 'STORAGE_INVALID_INPUT', 'STORAGE_UNSUPPORTED_MEDIA_TYPE']
+    const codes: StorageErrorCode[] = [
+      'STORAGE_TIMEOUT',
+      'STORAGE_TOO_LARGE',
+      'STORAGE_INVALID_INPUT',
+      'STORAGE_UNSUPPORTED_MEDIA_TYPE',
+    ]
     for (const code of codes) {
       expect(declared(STORAGE_UPLOAD_STATUSES), code).toContain(new StorageError(code).statusCode)
     }
   })
-
 })
 
 describe('declared response statuses and body limit', () => {
-
   it('binds the takeover guard to the storage upload statuses declared by the contract', async () => {
     const f = await createTestAuth()
     fixtures.push(f)
@@ -89,14 +98,24 @@ describe('declared response statuses and body limit', () => {
 })
 
 describe('early takeover envelope', () => {
-
   it('accepts the contract ErrorEnvelope and rejects extra, missing and mistyped fields', () => {
     const envelope = { error: { code: 'STORAGE_TIMEOUT', message: 'x', requestId: 'y' } }
     expect(validateEnvelope(envelope)).toBe(true)
-    expect(validateEnvelope({ error: { code: 'STORAGE_TIMEOUT', message: 'x', requestId: 'y', extra: true } })).toBe(false)
+    expect(
+      validateEnvelope({
+        error: { code: 'STORAGE_TIMEOUT', message: 'x', requestId: 'y', extra: true },
+      }),
+    ).toBe(false)
     expect(validateEnvelope({ error: { code: 'STORAGE_TIMEOUT', message: 'x' } })).toBe(false)
-    expect(validateEnvelope({ error: { code: 'STORAGE_TIMEOUT', message: 'x', requestId: 42 } })).toBe(false)
-    expect(validateEnvelope({ error: { code: 'STORAGE_TIMEOUT', message: 'x', requestId: 'y' }, extra: 1 })).toBe(false)
+    expect(
+      validateEnvelope({ error: { code: 'STORAGE_TIMEOUT', message: 'x', requestId: 42 } }),
+    ).toBe(false)
+    expect(
+      validateEnvelope({
+        error: { code: 'STORAGE_TIMEOUT', message: 'x', requestId: 'y' },
+        extra: 1,
+      }),
+    ).toBe(false)
   })
 })
 
@@ -104,7 +123,12 @@ function textPart(name: string, value: string): TestPart {
   return { name, contentType: 'text/plain', bytes: Buffer.from(value, 'utf8') }
 }
 function dataPart(bytes: Uint8Array): TestPart {
-  return { name: 'data', filename: 'upload.bin', contentType: 'application/octet-stream', bytes: Buffer.from(bytes) }
+  return {
+    name: 'data',
+    filename: 'upload.bin',
+    contentType: 'application/octet-stream',
+    bytes: Buffer.from(bytes),
+  }
 }
 
 /**
@@ -120,9 +144,17 @@ function captureHandlerOutput(operationId: string) {
     hook: (route: RouteOptions) => {
       const schema = route.schema as { operationId?: string } | undefined
       if (schema?.operationId !== operationId) return
-      const handler = route.handler as (this: unknown, request: FastifyRequest, reply: FastifyReply) => unknown
+      const handler = route.handler as (
+        this: unknown,
+        request: FastifyRequest,
+        reply: FastifyReply,
+      ) => unknown
       // 保留 Fastify 传给 handler 的 `this`，不替换成 route 对象。
-      route.handler = async function capturedHandler(this: unknown, request: FastifyRequest, reply: FastifyReply) {
+      route.handler = async function capturedHandler(
+        this: unknown,
+        request: FastifyRequest,
+        reply: FastifyReply,
+      ) {
         calls++
         const result = await handler.call(this, request, reply)
         captured.push(result)
@@ -133,7 +165,6 @@ function captureHandlerOutput(operationId: string) {
 }
 
 describe('raw upload handler output', () => {
-
   it('returns the contract shape from the real storage parser context before serialization', async () => {
     const f = await createTestAuth()
     fixtures.push(f)
@@ -144,12 +175,28 @@ describe('raw upload handler output', () => {
     app.addHook('onRoute', capture.hook)
     apps.push(app)
     await app.ready()
-    await f.seedUser({ email: 'raw-storage@example.com', nickname: 'Raw', password: 'valid password' })
-    const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'raw-storage@example.com', password: 'valid password' } })
+    await f.seedUser({
+      email: 'raw-storage@example.com',
+      nickname: 'Raw',
+      password: 'valid password',
+    })
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { email: 'raw-storage@example.com', password: 'valid password' },
+    })
     const token = (login.json() as { token: string }).token
 
-    const { payload, headers } = multipartBody([textPart('key', 'raw.bin'), dataPart(new Uint8Array([1, 2, 3]))])
-    const accepted = await app.inject({ method: 'POST', url: '/api/storage/uploads', headers: { ...headers, authorization: `Bearer ${token}` }, payload })
+    const { payload, headers } = multipartBody([
+      textPart('key', 'raw.bin'),
+      dataPart(new Uint8Array([1, 2, 3])),
+    ])
+    const accepted = await app.inject({
+      method: 'POST',
+      url: '/api/storage/uploads',
+      headers: { ...headers, authorization: `Bearer ${token}` },
+      payload,
+    })
     expect(accepted.statusCode, accepted.body).toBe(200)
     expect(capture.calls()).toBe(1)
     const raw = capture.captured[0] as { url: string }
@@ -173,14 +220,27 @@ describe('raw upload handler output', () => {
     const app = createAppWithStorage(f, storage.storage)
     apps.push(app)
     await app.ready()
-    await f.seedUser({ email: 'forged-storage@example.com', nickname: 'Forged', password: 'valid password' })
-    const token = await f.authServices.login({ email: 'forged-storage@example.com', password: 'valid password' }).then(result => result.token)
+    await f.seedUser({
+      email: 'forged-storage@example.com',
+      nickname: 'Forged',
+      password: 'valid password',
+    })
+    const token = await f.authServices
+      .login({ email: 'forged-storage@example.com', password: 'valid password' })
+      .then((result) => result.token)
     const session = await f.authServices.authenticateToken(token)
     const reply = { header: () => reply, code: () => reply } as unknown as FastifyReply
     // 直接调用 handler：没有真实解析上下文，伪造的 data 占位标识必须被拒绝。
     // `storage.test.ts` 的 HTTP 用例只断言 >=400，这条把分类钉死为 STORAGE_INVALID_INPUT。
-    await expect(serviceHandlers.uploadStorageContent({
-      server: f, authSession: session, body: { key: 'a.bin', data: 'storage-content' },
-    } as unknown as FastifyRequest, reply)).rejects.toMatchObject({ code: 'STORAGE_INVALID_INPUT' })
+    await expect(
+      serviceHandlers.uploadStorageContent(
+        {
+          server: f,
+          authSession: session,
+          body: { key: 'a.bin', data: 'storage-content' },
+        } as unknown as FastifyRequest,
+        reply,
+      ),
+    ).rejects.toMatchObject({ code: 'STORAGE_INVALID_INPUT' })
   })
 })

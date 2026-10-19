@@ -16,15 +16,15 @@
 
 ## 验证结果
 
-| 验证 | 结果 |
-| --- | --- |
-| `pnpm --filter @workspace/web content:check` | PASS，10 篇公开正文；Support 合法空集合。 |
-| `pnpm typecheck` | PASS，完整根流程退出 0；追加失效会话修复后 Web typecheck 再次 PASS。 |
-| `pnpm test` | PASS，完整根流程退出 0，包括 Website、runtime/Docs 脚本、三个 Outline 前端项目与九组指定 Outline Server 测试。 |
-| 最终受影响定向测试 | PASS，24 个文件、204 项，覆盖内容、路由、认证、Client 和 SiteHeader。 |
-| `pnpm build` | PASS，Website SDK/Web/Server 和 Outline 全部构建阶段退出 0；最后 Client 修复后 Web build 再次 PASS。 |
-| `git diff --check` | PASS。 |
-| 真实浏览器 | 已验证匿名深链接、弹窗关闭焦点、认证后首页/空列表/404、跨标签退出、失效 token 清除及 query/hash 保留、390/850/900/1280px、明暗 token、临时案例 Enter/空格展开与独立展开、长联系人文字换行。 |
+| 验证                                         | 结果                                                                                                                                                                                        |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm --filter @workspace/web content:check` | PASS，10 篇公开正文；Support 合法空集合。                                                                                                                                                   |
+| `pnpm typecheck`                             | PASS，完整根流程退出 0；追加失效会话修复后 Web typecheck 再次 PASS。                                                                                                                        |
+| `pnpm test`                                  | PASS，完整根流程退出 0，包括 Website、runtime/Docs 脚本、三个 Outline 前端项目与九组指定 Outline Server 测试。                                                                              |
+| 最终受影响定向测试                           | PASS，24 个文件、204 项，覆盖内容、路由、认证、Client 和 SiteHeader。                                                                                                                       |
+| `pnpm build`                                 | PASS，Website SDK/Web/Server 和 Outline 全部构建阶段退出 0；最后 Client 修复后 Web build 再次 PASS。                                                                                        |
+| `git diff --check`                           | PASS。                                                                                                                                                                                      |
+| 真实浏览器                                   | 已验证匿名深链接、弹窗关闭焦点、认证后首页/空列表/404、跨标签退出、失效 token 清除及 query/hash 保留、390/850/900/1280px、明暗 token、临时案例 Enter/空格展开与独立展开、长联系人文字换行。 |
 
 最终失效会话修复发生在完整根测试的 Website 阶段结束之后；其真实 HTTP 回归、认证组合、24 文件定向测试及 Web 编译/类型检查在该修复后执行。其余根测试阶段不依赖该 Web 回调。
 

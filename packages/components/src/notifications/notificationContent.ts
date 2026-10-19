@@ -29,7 +29,23 @@ export const NOTIFICATION_CONTENT_POLICY_VERSION = 'notification-html-v1'
 export const NOTIFICATION_CONTENT_SCHEMA_VERSION = 1
 
 /** 元素白名单：与服务端 `sanitize.ts` 的 `ALLOWED` 完全一致。 */
-const FLOW_TAGS = ['p', 'br', 'h2', 'h3', 'strong', 'em', 's', 'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'hr', 'a'] as const
+const FLOW_TAGS = [
+  'p',
+  'br',
+  'h2',
+  'h3',
+  'strong',
+  'em',
+  's',
+  'ul',
+  'ol',
+  'li',
+  'blockquote',
+  'code',
+  'pre',
+  'hr',
+  'a',
+] as const
 const TABLE_TAGS = ['table', 'caption', 'thead', 'tbody', 'tr', 'th', 'td'] as const
 
 export type SafeContentTag = (typeof FLOW_TAGS)[number] | (typeof TABLE_TAGS)[number]
@@ -68,16 +84,26 @@ const VOID_TAGS = new Set(['br', 'hr'])
 
 /** 与服务端一致：正文不带任何属性，只有 `a[href]` 与 `th[scope]` 例外。 */
 const DANGEROUS_ATTRIBUTE_NAMES = new Set([
-  'style', 'srcdoc', 'src', 'srcset', 'formaction', 'action', 'background', 'poster', 'ping',
-  'http-equiv', 'content', 'sandbox', 'allow', 'allowfullscreen', 'xlink:href', 'autofocus',
+  'style',
+  'srcdoc',
+  'src',
+  'srcset',
+  'formaction',
+  'action',
+  'background',
+  'poster',
+  'ping',
+  'http-equiv',
+  'content',
+  'sandbox',
+  'allow',
+  'allowfullscreen',
+  'xlink:href',
+  'autofocus',
 ])
 
 /** 现有站内只读页面：与服务端 `policy.ts` 的 `INTERNAL_READ_ONLY_PATHS` 一致。 */
-const INTERNAL_READ_ONLY_PATHS = new Set([
-  '/',
-  '/communities/rifling-911',
-  '/communities/caep',
-])
+const INTERNAL_READ_ONLY_PATHS = new Set(['/', '/communities/rifling-911', '/communities/caep'])
 
 /**
  * 运营批准的精确外部目标。N1 为空，与外部 HTTPS 一律拒绝的政策保持一致：
@@ -192,10 +218,12 @@ function classifyHref(rawHref: string): string | null {
   if (url.protocol !== 'https:') return null
   if (url.username || url.password) return null
   if (url.hash || url.search) return null
-  const approved = APPROVED_EXTERNAL_TARGETS.some(target =>
-    target.host === url.hostname
-    && target.port === (url.port === '' ? null : Number(url.port))
-    && target.path === url.pathname)
+  const approved = APPROVED_EXTERNAL_TARGETS.some(
+    (target) =>
+      target.host === url.hostname &&
+      target.port === (url.port === '' ? null : Number(url.port)) &&
+      target.path === url.pathname,
+  )
   return approved ? url.href : null
 }
 
@@ -205,7 +233,9 @@ function classifyHref(rawHref: string): string | null {
  * 返回 `null` 表示**不可用**，调用方必须改用纯文本回退。任何一项校验失败都以 `null`
  * 结束，不做「部分渲染」：半截正文会让「格式不可用」这条信息失效。
  */
-export function parseNotificationContent(content: NotificationContentInput | null | undefined): SafeContentNode[] | null {
+export function parseNotificationContent(
+  content: NotificationContentInput | null | undefined,
+): SafeContentNode[] | null {
   if (!content) return null
   if (content.format !== 'html') return null
   if (content.schemaVersion !== NOTIFICATION_CONTENT_SCHEMA_VERSION) return null
@@ -289,11 +319,13 @@ function convertChildren(
     if (tag === 'tr') {
       budget.rowColumns = 0
       budget.tableRows += 1
-      if (budget.tableRows > MAX_TABLE_ROWS) throw new Error('notification-html-v1 table row limit exceeded')
+      if (budget.tableRows > MAX_TABLE_ROWS)
+        throw new Error('notification-html-v1 table row limit exceeded')
     }
     if (tag === 'th' || tag === 'td') {
       budget.rowColumns += 1
-      if (budget.rowColumns > MAX_TABLE_COLUMNS) throw new Error('notification-html-v1 table column limit exceeded')
+      if (budget.rowColumns > MAX_TABLE_COLUMNS)
+        throw new Error('notification-html-v1 table column limit exceeded')
       budget.tableColumns = Math.max(budget.tableColumns, budget.rowColumns)
     }
 
@@ -318,7 +350,8 @@ function convertChildren(
  */
 function collectAttributes(element: Element, tag: string): Record<string, string> | null {
   const result: Record<string, string> = {}
-  const permitted = tag === 'a' ? new Set(['href']) : tag === 'th' ? new Set(['scope']) : new Set<string>()
+  const permitted =
+    tag === 'a' ? new Set(['href']) : tag === 'th' ? new Set(['scope']) : new Set<string>()
   for (const name of element.getAttributeNames()) {
     const lower = name.toLowerCase()
     if (lower.startsWith('on')) return null

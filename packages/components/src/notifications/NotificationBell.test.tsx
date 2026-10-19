@@ -2,16 +2,28 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { NotificationBell, type NotificationBellProps } from '@components/src/notifications/NotificationBell'
+import {
+  NotificationBell,
+  type NotificationBellProps,
+} from '@components/src/notifications/NotificationBell'
 import type { NotificationItemView } from '@components/src/notifications/notificationsView'
 
 afterEach(() => cleanup())
 
 function item(overrides: Partial<NotificationItemView> = {}): NotificationItemView {
   return {
-    receiptId: 'receipt-1', title: '社区公告', summaryText: '摘要', scope: 'community',
-    category: 'announcement', necessity: 'optional', sequence: 3, deliveredAt: Date.UTC(2026, 9, 8),
-    readAt: null, expired: false, stateRevision: 1, ...overrides,
+    receiptId: 'receipt-1',
+    title: '社区公告',
+    summaryText: '摘要',
+    scope: 'community',
+    category: 'announcement',
+    necessity: 'optional',
+    sequence: 3,
+    deliveredAt: Date.UTC(2026, 9, 8),
+    readAt: null,
+    expired: false,
+    stateRevision: 1,
+    ...overrides,
   }
 }
 
@@ -59,7 +71,9 @@ describe('NotificationBell', () => {
 
   it('renders no badge node for confirmed zero and remains clickable with history', async () => {
     const onOpenChange = vi.fn()
-    render(<NotificationBell {...props({ countState: { kind: 'ready', count: 0 }, onOpenChange })} />)
+    render(
+      <NotificationBell {...props({ countState: { kind: 'ready', count: 0 }, onOpenChange })} />,
+    )
     const bell = screen.getByRole('button', { name: '未读通知，0 条' })
     expect(bell.querySelector('span')).toBeNull()
     await userEvent.click(bell)
@@ -68,10 +82,17 @@ describe('NotificationBell', () => {
 
   it('opens the popup on View all focus and shows at most five unread rows', async () => {
     const onOpenChange = vi.fn()
-    render(<NotificationBell {...props({
-      open: true, onOpenChange,
-      items: Array.from({ length: 7 }, (_, index) => item({ receiptId: `r-${index}`, title: `通知 ${index}` })),
-    })} />)
+    render(
+      <NotificationBell
+        {...props({
+          open: true,
+          onOpenChange,
+          items: Array.from({ length: 7 }, (_, index) =>
+            item({ receiptId: `r-${index}`, title: `通知 ${index}` }),
+          ),
+        })}
+      />,
+    )
     expect(document.activeElement).toHaveProperty('textContent', '查看全部')
     expect(screen.getByRole('heading', { name: '未读通知' })).toBeTruthy()
     expect(screen.getAllByRole('listitem')).toHaveLength(5)

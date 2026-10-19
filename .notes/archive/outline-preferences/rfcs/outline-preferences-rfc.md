@@ -14,19 +14,19 @@
 
 ## 2. 验证事实与范围细化
 
-| 来源 | 事实与约束 |
-| --- | --- |
-| `apps/web/src/main.tsx`、`packages/components/src/ThemeToggle.tsx` | 主站由 ExUI provider 驱动三态主题。安装实现使用原始字符串 `theme`，支持其他文档的该键存储事件。 |
-| `apps/web/src/styles/index.scss` | 主站另有黑白品牌覆盖：主色、交互状态、链接、placeholder、次级文字、焦点边框/阴影和侧栏别名。 |
-| 两边的公开 `@exre/exui/tokens` 和 CSS 入口 | 本次只读比较中，浅色/深色 token 差异数量为零；组件样式表、token 样式表内容也完全相同。仍需在实施时复核。 |
-| `apps/outline/shared/styles/exuiTheme.ts` | 标准 token 的主色是蓝色；已有适配器会将其映射到 legacy 字段、语义对象和 recipe。只取消工作区覆盖仍不足以匹配主站黑白配色。 |
-| `apps/outline/app/stores/UiStore.ts` | 当前主题来自 `UI_STORE.theme`，有独立存储事件处理和系统媒体查询。 |
-| `apps/outline/app/hooks/useBuildTheme.ts` | 手机深色选择 `pitchBlack`；查询参数覆盖会进入 `themeOverride`。 |
-| `apps/outline/server/static/index.html` | 首屏脚本已读 `theme`，但使用旧硬编码背景，未完整解析跟随系统。 |
-| `apps/outline/app/components/Authenticated.tsx` | 当前账号语言切换仅在受保护路由的包装器里执行，公共页不能依赖它。 |
-| `apps/outline/app/scenes/WebsitePublic.tsx` | 导航、搜索、评论、错误、空结果和身份状态提示包含英文常量。 |
-| `apps/outline/i18next-parser.config.js`、`apps/outline/shared/i18n/README.md` | 英文 catalog 由提取工具生成，locale 文件禁止手改。 |
-| 当前安装的 i18next | 只读探针确认：英文 fallback 会先于中文 `defaultValue` 命中；调用选项 `fallbackLng: []` 可保证缺失中文键使用中文回退。 |
+| 来源                                                                          | 事实与约束                                                                                                                 |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web/src/main.tsx`、`packages/components/src/ThemeToggle.tsx`            | 主站由 ExUI provider 驱动三态主题。安装实现使用原始字符串 `theme`，支持其他文档的该键存储事件。                            |
+| `apps/web/src/styles/index.scss`                                              | 主站另有黑白品牌覆盖：主色、交互状态、链接、placeholder、次级文字、焦点边框/阴影和侧栏别名。                               |
+| 两边的公开 `@exre/exui/tokens` 和 CSS 入口                                    | 本次只读比较中，浅色/深色 token 差异数量为零；组件样式表、token 样式表内容也完全相同。仍需在实施时复核。                   |
+| `apps/outline/shared/styles/exuiTheme.ts`                                     | 标准 token 的主色是蓝色；已有适配器会将其映射到 legacy 字段、语义对象和 recipe。只取消工作区覆盖仍不足以匹配主站黑白配色。 |
+| `apps/outline/app/stores/UiStore.ts`                                          | 当前主题来自 `UI_STORE.theme`，有独立存储事件处理和系统媒体查询。                                                          |
+| `apps/outline/app/hooks/useBuildTheme.ts`                                     | 手机深色选择 `pitchBlack`；查询参数覆盖会进入 `themeOverride`。                                                            |
+| `apps/outline/server/static/index.html`                                       | 首屏脚本已读 `theme`，但使用旧硬编码背景，未完整解析跟随系统。                                                             |
+| `apps/outline/app/components/Authenticated.tsx`                               | 当前账号语言切换仅在受保护路由的包装器里执行，公共页不能依赖它。                                                           |
+| `apps/outline/app/scenes/WebsitePublic.tsx`                                   | 导航、搜索、评论、错误、空结果和身份状态提示包含英文常量。                                                                 |
+| `apps/outline/i18next-parser.config.js`、`apps/outline/shared/i18n/README.md` | 英文 catalog 由提取工具生成，locale 文件禁止手改。                                                                         |
+| 当前安装的 i18next                                                            | 只读探针确认：英文 fallback 会先于中文 `defaultValue` 命中；调用选项 `fallbackLng: []` 可保证缺失中文键使用中文回退。      |
 
 共享 CSS 是对“配色与主站一致”的实施细化：移动主站已有覆盖，不增加第二份颜色常量、不改变主站当前视觉、不新建命名 token 层。来源 spec 保留原文，本 RFC 补充此前未完整核对的主站覆盖事实。
 
@@ -43,14 +43,14 @@
 
 以下为拟新增内部接口，不是已有导出。代码遵守 Outline 的类型、JSDoc 与既有格式约定。
 
-| 拟新增位置 | 责任及接口契约 |
-| --- | --- |
-| `apps/outline/app/utils/websiteThemePreference.ts` | 定义共享键；`readWebsiteThemePreference()` 返回三态，异常/缺失/非法为 `system`；`writeWebsiteThemePreference(theme)` 返回写入是否成功；`subscribeWebsiteThemePreference(onChange)` 返回清理函数。 |
-| `apps/outline/app/components/WebsiteThemePreferenceSync.tsx` | 集成模式挂载一次订阅，变化时调用只更新内存的 UiStore action；StrictMode 清理及重复挂载必须安全。 |
-| `apps/outline/shared/styles/websiteTheme.css` | 主站已有黑白覆盖的唯一 CSS 源；只使用现有公开 ExUI 变量与别名。 |
-| `apps/outline/app/utils/websiteThemePalette.ts` | 读取共享 CSS 中受覆盖的语义变量，输出有类型的浅色/深色覆盖对象，供纯主题构建函数使用。 |
-| `apps/outline/app/components/WebsiteLanguageProjection.tsx` | 根级语言投影：观察已验证登录态/账号语言，统一切换 i18n，覆盖公共页、工作区和退出后的匿名页。 |
-| `apps/outline/app/utils/websitePublicTranslation.ts` | 为项目特有英文 literal key 提供当前 locale 的回退选项；复用已有翻译时不经过该辅助模块。 |
+| 拟新增位置                                                   | 责任及接口契约                                                                                                                                                                                    |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/outline/app/utils/websiteThemePreference.ts`           | 定义共享键；`readWebsiteThemePreference()` 返回三态，异常/缺失/非法为 `system`；`writeWebsiteThemePreference(theme)` 返回写入是否成功；`subscribeWebsiteThemePreference(onChange)` 返回清理函数。 |
+| `apps/outline/app/components/WebsiteThemePreferenceSync.tsx` | 集成模式挂载一次订阅，变化时调用只更新内存的 UiStore action；StrictMode 清理及重复挂载必须安全。                                                                                                  |
+| `apps/outline/shared/styles/websiteTheme.css`                | 主站已有黑白覆盖的唯一 CSS 源；只使用现有公开 ExUI 变量与别名。                                                                                                                                   |
+| `apps/outline/app/utils/websiteThemePalette.ts`              | 读取共享 CSS 中受覆盖的语义变量，输出有类型的浅色/深色覆盖对象，供纯主题构建函数使用。                                                                                                            |
+| `apps/outline/app/components/WebsiteLanguageProjection.tsx`  | 根级语言投影：观察已验证登录态/账号语言，统一切换 i18n，覆盖公共页、工作区和退出后的匿名页。                                                                                                      |
+| `apps/outline/app/utils/websitePublicTranslation.ts`         | 为项目特有英文 literal key 提供当前 locale 的回退选项；复用已有翻译时不经过该辅助模块。                                                                                                           |
 
 主题适配器不依赖认证资料或服务端请求。语言投影只读当前 auth 状态，不保存资料或改变登录流程。共享 CSS 不 import React、API client 或路由，不要求 Outline 安装 `@workspace/components`。
 
@@ -135,15 +135,15 @@ Outline 在 `apps/outline/app/index.tsx` 以公开入口导入一次 ExUI token 
 
 ## 9. 落地顺序与精确变更
 
-| 顺序 | 变更路径 | 落地责任与前置条件 |
-| --- | --- | --- |
-| 1 | `apps/outline/app/utils/websiteThemePreference.ts`、`apps/outline/app/stores/UiStore.ts`、`apps/outline/app/components/WebsiteThemePreferenceSync.tsx`、`apps/outline/app/index.tsx` | 建立偏好协议和根级生命周期；先证明旧存储不会覆盖共享值。 |
-| 2 | `apps/outline/shared/styles/websiteTheme.css`、`apps/web/src/styles/index.scss`、`apps/web/src/main.tsx`、两边 Vite 配置中必要的精确允许范围 | 移动已有覆盖，主站视觉保持；不改依赖或 lockfile。 |
-| 3 | `apps/outline/app/utils/websiteThemePalette.ts`、`apps/outline/shared/styles/exuiTheme.ts`、`apps/outline/app/hooks/useBuildTheme.ts`、`apps/outline/app/components/Theme.tsx`、`apps/outline/app/components/PageTheme.ts` | 解析共享覆盖、统一主题优先级和打印；无纯黑集成路径。 |
-| 4 | `apps/outline/server/static/index.html`、`apps/outline/server/routes/app.ts` | 首屏配色、语言与 CSP；既有非集成分支保持。 |
-| 5 | `apps/outline/server/env.ts`、`apps/outline/server/identity/websiteProvisioner.ts`、`apps/outline/app/components/WebsiteLanguageProjection.tsx`、`apps/outline/app/utils/language.ts`、`apps/outline/app/components/Authenticated.tsx`、相关 Login/Shared 入口 | 新账号中文与唯一语言投影，防止匿名浏览器覆盖。 |
-| 6 | `apps/outline/app/scenes/WebsitePublic.tsx`、`apps/outline/app/utils/websitePublicTranslation.ts`、工具生成的英文 catalog | 公开界面与完整状态文案翻译；只由工具生成 catalog。 |
-| 7 | 上述新文件的相邻测试及已有 `apps/outline/app/utils/i18n.test.ts`、`apps/outline/shared/styles/exuiTheme.test.ts`、`apps/outline/app/scenes/WebsitePublic.test.tsx`；必要的主站主题补偿文件和相邻测试 | 自动验证、类型/构建、真实浏览器验收。 |
+| 顺序 | 变更路径                                                                                                                                                                                                                                                       | 落地责任与前置条件                                       |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| 1    | `apps/outline/app/utils/websiteThemePreference.ts`、`apps/outline/app/stores/UiStore.ts`、`apps/outline/app/components/WebsiteThemePreferenceSync.tsx`、`apps/outline/app/index.tsx`                                                                           | 建立偏好协议和根级生命周期；先证明旧存储不会覆盖共享值。 |
+| 2    | `apps/outline/shared/styles/websiteTheme.css`、`apps/web/src/styles/index.scss`、`apps/web/src/main.tsx`、两边 Vite 配置中必要的精确允许范围                                                                                                                   | 移动已有覆盖，主站视觉保持；不改依赖或 lockfile。        |
+| 3    | `apps/outline/app/utils/websiteThemePalette.ts`、`apps/outline/shared/styles/exuiTheme.ts`、`apps/outline/app/hooks/useBuildTheme.ts`、`apps/outline/app/components/Theme.tsx`、`apps/outline/app/components/PageTheme.ts`                                     | 解析共享覆盖、统一主题优先级和打印；无纯黑集成路径。     |
+| 4    | `apps/outline/server/static/index.html`、`apps/outline/server/routes/app.ts`                                                                                                                                                                                   | 首屏配色、语言与 CSP；既有非集成分支保持。               |
+| 5    | `apps/outline/server/env.ts`、`apps/outline/server/identity/websiteProvisioner.ts`、`apps/outline/app/components/WebsiteLanguageProjection.tsx`、`apps/outline/app/utils/language.ts`、`apps/outline/app/components/Authenticated.tsx`、相关 Login/Shared 入口 | 新账号中文与唯一语言投影，防止匿名浏览器覆盖。           |
+| 6    | `apps/outline/app/scenes/WebsitePublic.tsx`、`apps/outline/app/utils/websitePublicTranslation.ts`、工具生成的英文 catalog                                                                                                                                      | 公开界面与完整状态文案翻译；只由工具生成 catalog。       |
+| 7    | 上述新文件的相邻测试及已有 `apps/outline/app/utils/i18n.test.ts`、`apps/outline/shared/styles/exuiTheme.test.ts`、`apps/outline/app/scenes/WebsitePublic.test.tsx`；必要的主站主题补偿文件和相邻测试                                                           | 自动验证、类型/构建、真实浏览器验收。                    |
 
 变更是一组协同交付，不在中间版本声称主题一致已完成。代码改动后按仓库规则更新证据支持的持久知识；设计阶段尚未批准向 `.ai/` 提炼，本 RFC 不写入 `.ai/`。
 
@@ -151,16 +151,16 @@ Outline 在 `apps/outline/app/index.tsx` 以公开入口导入一次 ExUI token 
 
 本次没有执行产品测试；下表定义实施后的必需证据。根与 Outline 当前均未找到 `TESTING.md`，实施开始前再次检查，若新增则以其为准。Outline 使用现有 Vitest app/shared 项目和相邻测试，不创建新测试目录，不运行整个 server suite。
 
-| 层 | 断言 |
-| --- | --- |
-| 偏好单元/UiStore | 无值、非法值、删除、清空、读写异常；原始字符串格式；不迁移 UI_STORE；延迟事件重读最新值；只更新内存不回写；恢复事件与清理；独立模式保留。 |
-| 主题适配 | 共享覆盖作用于 legacy、semantic、recipe；浅/深 primary、foreground、hover、active、link、focus、placeholder 与主站有效 CSS 相同；局部导出与打印不写存储。 |
-| 模式/viewport | 集成手机无 pitchBlack；查询和 CustomTheme 不覆盖集成主题；独立模式原行为仍在。 |
-| 首屏 | 真实模板执行在缺失/浅/深/system 情况选择正确背景；存储抛错不阻断； nonce 保留、注入安全；首屏背景等于挂载后的 token。 |
-| 语言 | 新集成账号默认中文；资料更新不改已有 language；匿名英文浏览器中文；已有英文账号英文；退出中文；并发切换收敛；HTML lang/dir 同步。 |
-| 公共页面 | 真正载入中英资源；菜单/搜索/阅读/评论及错误提示中文；切英文后无中文残留；缺失中文键即使有英文 fallback 也能显示中文回退；功能/权限分支不变。 |
-| 提取 | 英文 literal key 可提取；英文 catalog 没有中文 defaultValue；中文 catalog 没有手工 diff；提取只影响本次新增键，广泛删键时停止调查。 |
-| 跨应用浏览器 | 同源两个标签页双向三态、系统偏好、刷新/导航/恢复、手机和打印；以实际 computed style 与截图证明配色，不只比较源码值。 |
+| 层               | 断言                                                                                                                                                      |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 偏好单元/UiStore | 无值、非法值、删除、清空、读写异常；原始字符串格式；不迁移 UI_STORE；延迟事件重读最新值；只更新内存不回写；恢复事件与清理；独立模式保留。                 |
+| 主题适配         | 共享覆盖作用于 legacy、semantic、recipe；浅/深 primary、foreground、hover、active、link、focus、placeholder 与主站有效 CSS 相同；局部导出与打印不写存储。 |
+| 模式/viewport    | 集成手机无 pitchBlack；查询和 CustomTheme 不覆盖集成主题；独立模式原行为仍在。                                                                            |
+| 首屏             | 真实模板执行在缺失/浅/深/system 情况选择正确背景；存储抛错不阻断； nonce 保留、注入安全；首屏背景等于挂载后的 token。                                     |
+| 语言             | 新集成账号默认中文；资料更新不改已有 language；匿名英文浏览器中文；已有英文账号英文；退出中文；并发切换收敛；HTML lang/dir 同步。                         |
+| 公共页面         | 真正载入中英资源；菜单/搜索/阅读/评论及错误提示中文；切英文后无中文残留；缺失中文键即使有英文 fallback 也能显示中文回退；功能/权限分支不变。              |
+| 提取             | 英文 literal key 可提取；英文 catalog 没有中文 defaultValue；中文 catalog 没有手工 diff；提取只影响本次新增键，广泛删键时停止调查。                       |
+| 跨应用浏览器     | 同源两个标签页双向三态、系统偏好、刷新/导航/恢复、手机和打印；以实际 computed style 与截图证明配色，不只比较源码值。                                      |
 
 定向 app/shared 测试从 `apps/outline/` 执行 `corepack yarn test <具体测试文件>`；类型检查用该应用的 `corepack yarn tsc --noEmit`。前端构建用 `corepack yarn vite:build`，服务模板/环境改动另执行 `corepack yarn build:server`。生成英文 catalog 使用现有 i18next CLI 的参数和配置；不因为生成翻译而执行 Unix `cp` 脚本或全量不必要 build，Windows 下沿用项目可用的构建入口。
 
@@ -172,14 +172,14 @@ Outline 在 `apps/outline/app/index.tsx` 以公开入口导入一次 ExUI token 
 
 ## 11. 风险、上线和回滚
 
-| 风险 | 处理与发现方式 |
-| --- | --- |
-| token 相同但主站有覆盖 | 共享现有覆盖源；浏览器比较实际变量及控件状态。 |
-| 跨 submodule CSS 消费遗漏 | CSS 位于 Outline 自身上下文；主站构建前核对 submodule 文件；验证宿主和真实 full 构建输入。 |
-| 根类、CSS 镜像和 styled-components 打架 | 专用标记/精确选择器、纯 token 输入；不从镜像读取源；测试浅深切换与打印。 |
-| 翻译请求竞争或英文 fallback 遮蔽 | 唯一语言投影、最新目标收敛、局部 fallbackLng 空数组；覆盖退出和错误状态。 |
-| StrictMode 或页面恢复重复订阅 | effect 清理和重读当前值；测试挂载/卸载、恢复及无循环写入。 |
-| 本地 token 产物变化 | 实施时复核公开导出与 CSS；不自动重写链接或升级 ExUI。 |
+| 风险                                    | 处理与发现方式                                                                             |
+| --------------------------------------- | ------------------------------------------------------------------------------------------ |
+| token 相同但主站有覆盖                  | 共享现有覆盖源；浏览器比较实际变量及控件状态。                                             |
+| 跨 submodule CSS 消费遗漏               | CSS 位于 Outline 自身上下文；主站构建前核对 submodule 文件；验证宿主和真实 full 构建输入。 |
+| 根类、CSS 镜像和 styled-components 打架 | 专用标记/精确选择器、纯 token 输入；不从镜像读取源；测试浅深切换与打印。                   |
+| 翻译请求竞争或英文 fallback 遮蔽        | 唯一语言投影、最新目标收敛、局部 fallbackLng 空数组；覆盖退出和错误状态。                  |
+| StrictMode 或页面恢复重复订阅           | effect 清理和重读当前值；测试挂载/卸载、恢复及无循环写入。                                 |
+| 本地 token 产物变化                     | 实施时复核公开导出与 CSS；不自动重写链接或升级 ExUI。                                      |
 
 当前只交付设计，不部署上线。将来实施须作为同一变更集同时交付主站 CSS 接线与 Outline 适配；主站 `theme` 格式不变，滚动期间旧 Outline 仍可能使用自己的主题，完成后必须刷新旧页面。
 

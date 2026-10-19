@@ -70,8 +70,10 @@ draft: true
 正文从二级标题开始，不重复模板 h1。支持标准 Markdown、表格和 fenced code；Lua、JavaScript、TypeScript、JSON、YAML、Bash 在构建时高亮，未知语言保留名称并按纯文本展示。
 
 ```mdx
-<Callout title="阅读提示" kind="note">说明文字。</Callout>
-<ContentImage image={{src: "assets/example.webp", alt: "图片说明", width: 1200, height: 800}} />
+<Callout title="阅读提示" kind="note">
+  说明文字。
+</Callout>
+<ContentImage image={{ src: 'assets/example.webp', alt: '图片说明', width: 1200, height: 800 }} />
 <AboutLink target="page:communities">查看社区</AboutLink>
 <MemberButton slug="example-contributor">查看贡献者</MemberButton>
 ```

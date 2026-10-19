@@ -33,7 +33,17 @@ export interface VerifyUploadTicketInput {
   nowSeconds: number
 }
 
-const PAYLOAD_KEYS = ['v', 'userId', 'bucket', 'region', 'key', 'size', 'contentType', 'iat', 'exp'] as const
+const PAYLOAD_KEYS = [
+  'v',
+  'userId',
+  'bucket',
+  'region',
+  'key',
+  'size',
+  'contentType',
+  'iat',
+  'exp',
+] as const
 const BASE64URL = /^[A-Za-z0-9_-]+$/
 const MAX_FIELD_LENGTH = 512
 
@@ -57,11 +67,19 @@ function safeNonNegativeInteger(value: unknown): number | undefined {
 export function verifyUploadTicket(input: VerifyUploadTicketInput): UploadTicketPayload {
   const { ticket, hmacKey, userId, bucket, region, maxBytes, nowSeconds } = input
 
-  if (typeof ticket !== 'string' || ticket.length === 0 || ticket.length > UPLOAD_TICKET_MAX_LENGTH) {
+  if (
+    typeof ticket !== 'string' ||
+    ticket.length === 0 ||
+    ticket.length > UPLOAD_TICKET_MAX_LENGTH
+  ) {
     throw new StorageError('STORAGE_INVALID_INPUT')
   }
   const separator = ticket.indexOf('.')
-  if (separator <= 0 || separator === ticket.length - 1 || ticket.indexOf('.', separator + 1) !== -1) {
+  if (
+    separator <= 0 ||
+    separator === ticket.length - 1 ||
+    ticket.indexOf('.', separator + 1) !== -1
+  ) {
     throw new StorageError('STORAGE_INVALID_INPUT')
   }
   const encoded = ticket.slice(0, separator)
@@ -88,7 +106,7 @@ export function verifyUploadTicket(input: VerifyUploadTicketInput): UploadTicket
   }
   const candidate = parsed as Record<string, unknown>
   const keys = Object.keys(candidate)
-  if (keys.length !== PAYLOAD_KEYS.length || PAYLOAD_KEYS.some(key => !(key in candidate))) {
+  if (keys.length !== PAYLOAD_KEYS.length || PAYLOAD_KEYS.some((key) => !(key in candidate))) {
     throw new StorageError('STORAGE_INVALID_INPUT')
   }
 
@@ -97,7 +115,8 @@ export function verifyUploadTicket(input: VerifyUploadTicketInput): UploadTicket
   if (candidate.v !== UPLOAD_TICKET_VERSION || iat === undefined || exp === undefined) {
     throw new StorageError('STORAGE_INVALID_INPUT')
   }
-  if (exp <= iat || exp - iat > UPLOAD_TICKET_MAX_TTL_SECONDS) throw new StorageError('STORAGE_INVALID_INPUT')
+  if (exp <= iat || exp - iat > UPLOAD_TICKET_MAX_TTL_SECONDS)
+    throw new StorageError('STORAGE_INVALID_INPUT')
   if (nowSeconds < iat || nowSeconds >= exp) throw new StorageError('STORAGE_INVALID_INPUT')
 
   const size = safeNonNegativeInteger(candidate.size)
@@ -113,6 +132,7 @@ export function verifyUploadTicket(input: VerifyUploadTicketInput): UploadTicket
   const payload = candidate as unknown as UploadTicketPayload
   if (payload.userId !== userId) throw new StorageError('STORAGE_TICKET_FORBIDDEN')
   // 只信任当前配置的 bucket/region；凭据中的值仅用于比对。
-  if (payload.bucket !== bucket || payload.region !== region) throw new StorageError('STORAGE_INVALID_INPUT')
+  if (payload.bucket !== bucket || payload.region !== region)
+    throw new StorageError('STORAGE_INVALID_INPUT')
   return payload
 }

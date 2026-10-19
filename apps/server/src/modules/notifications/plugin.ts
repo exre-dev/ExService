@@ -3,7 +3,9 @@ import fp from 'fastify-plugin'
 import type { NotificationModule } from './factory.js'
 import { requireBusinessServices } from '../../business-plugin-errors.js'
 
-export interface NotificationsPluginOptions { notifications: NotificationModule }
+export interface NotificationsPluginOptions {
+  notifications: NotificationModule
+}
 
 const plugin: FastifyPluginAsync<NotificationsPluginOptions> = async (app, options) => {
   requireBusinessServices('business-notifications', { notifications: options.notifications })
@@ -11,5 +13,6 @@ const plugin: FastifyPluginAsync<NotificationsPluginOptions> = async (app, optio
 }
 
 export default fp(plugin, {
-  name: 'business-notifications', fastify: '5.x',
+  name: 'business-notifications',
+  fastify: '5.x',
 })

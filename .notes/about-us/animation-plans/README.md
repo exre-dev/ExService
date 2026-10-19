@@ -1,15 +1,15 @@
 # About animation plans
 
-| Plan | Severity | Status | Dependencies |
-| --- | --- | --- | --- |
-| `001-hero-scroll-cue.md` — Separate Hero artwork and animated scroll cue | LOW | DONE | Existing background Hero implementation |
+| Plan                                                                     | Severity | Status | Dependencies                            |
+| ------------------------------------------------------------------------ | -------- | ------ | --------------------------------------- |
+| `001-hero-scroll-cue.md` — Separate Hero artwork and animated scroll cue | LOW      | DONE   | Existing background Hero implementation |
 
 Plan 001 was executed in the existing isolated `feat/about-us` worktree. The mistakenly requested member/solution redesign was cancelled and is outside this work.
 
 ## Motion review
 
-| Before | After | Why |
-| --- | --- | --- |
+| Before                                     | After                                                               | Why                                                                                                            |
+| ------------------------------------------ | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | Opacity floor .65 on RGB 115 against white | Floor .85 in `apps/web/src/pages/AboutUs/AboutHomeHero.module.scss` | Keep the functional arrow legible throughout its cycle; approximate minimum contrast increases from 2.5 to 3.5 |
 
 **Approve.** This occasional marketing cue explains the downward reading direction. Its 2400ms CSS cycle changes only wrapper transform and opacity, uses `cubic-bezier(0.77, 0, 0.175, 1)`, and pauses offscreen, in background tabs, on hover and on keyboard focus. Reduced motion removes positional movement while preserving color/focus feedback. No remaining blocking motion findings were found in this scope.

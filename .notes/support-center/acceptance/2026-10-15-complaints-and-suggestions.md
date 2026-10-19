@@ -16,17 +16,17 @@
 
 ## 自动验证
 
-| 检查 | 结果 |
-| --- | --- |
-| Contract lint / generate | 通过；lint 保留既有 Join 的 3 条 oneOf 警告 |
-| 根目录 `pnpm typecheck` | 通过，日志 `.local/community-typecheck.log` |
-| 根目录 `pnpm build` | 通过，日志 `.local/community-build.log` |
-| 最后界面调整后的 Web typecheck / build | 通过，日志 `.local/community-web-final.log`、`.local/community-web-layout-build.log` |
-| 后端支持流程、适配器、Contract 定向测试 | 115/115 通过 |
-| 前端反馈与支持路由定向测试 | 54/54 通过 |
-| 最终数据库迁移与前端定向复测 | 5 文件、76/76 通过，日志 `.local/community-final-focused.log` |
-| 后续完整 Outline 测试阶段 | 12/12 组通过，前端 141 项、服务端 15 个指定场景通过，退出码 0；日志 `.local/community-outline-test.log` |
-| 独立复核 | 架构、后端、前端、最终及最后三处小调整的增量复核通过；已确认问题均修复 |
+| 检查                                    | 结果                                                                                                    |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Contract lint / generate                | 通过；lint 保留既有 Join 的 3 条 oneOf 警告                                                             |
+| 根目录 `pnpm typecheck`                 | 通过，日志 `.local/community-typecheck.log`                                                             |
+| 根目录 `pnpm build`                     | 通过，日志 `.local/community-build.log`                                                                 |
+| 最后界面调整后的 Web typecheck / build  | 通过，日志 `.local/community-web-final.log`、`.local/community-web-layout-build.log`                    |
+| 后端支持流程、适配器、Contract 定向测试 | 115/115 通过                                                                                            |
+| 前端反馈与支持路由定向测试              | 54/54 通过                                                                                              |
+| 最终数据库迁移与前端定向复测            | 5 文件、76/76 通过，日志 `.local/community-final-focused.log`                                           |
+| 后续完整 Outline 测试阶段               | 12/12 组通过，前端 141 项、服务端 15 个指定场景通过，退出码 0；日志 `.local/community-outline-test.log` |
+| 独立复核                                | 架构、后端、前端、最终及最后三处小调整的增量复核通过；已确认问题均修复                                  |
 
 完整 `pnpm test` 首轮的 Website 阶段为 148 文件通过、1 文件失败，1680 项通过、3 项失败。失败均来自迁移测试写死旧 journal 数量 5；新增 0005 后为 6。测试已改为读取 journal 条目数，三个历史迁移场景在最终 76 项复测中通过。
 

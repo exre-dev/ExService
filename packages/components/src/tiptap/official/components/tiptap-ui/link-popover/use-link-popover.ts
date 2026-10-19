@@ -1,20 +1,27 @@
-import * as React from "react"
-import type { Editor } from "@tiptap/react"
+import * as React from 'react'
+import type { Editor } from '@tiptap/react'
 
 // --- Hooks ---
-import { useTiptapEditor } from "../../../hooks/use-tiptap-editor"
+import { useTiptapEditor } from '../../../hooks/use-tiptap-editor'
 
 // --- Icons ---
-import { LinkIcon } from "../../tiptap-icons/link-icon"
+import { LinkIcon } from '../../tiptap-icons/link-icon'
 
 // --- Lib ---
-import { isMarkInSchema } from "../../../lib/tiptap-utils"
+import { isMarkInSchema } from '../../../lib/tiptap-utils'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { isSafeTiptapUrl } from '../../../../conversion'
 import { useOfficialIntegration } from '../../../integration'
-const linkSchema = /*#__PURE__*/ z.object({ href: z.string().refine(value => isSafeTiptapUrl(value, 'link'), '请输入安全的 http、https、mailto 或站内地址。') })
+const linkSchema = /*#__PURE__*/ z.object({
+  href: z
+    .string()
+    .refine(
+      (value) => isSafeTiptapUrl(value, 'link'),
+      '请输入安全的 http、https、mailto 或站内地址。',
+    ),
+})
 
 /**
  * Configuration for the link popover functionality
@@ -54,7 +61,7 @@ export interface LinkHandlerProps {
  */
 export function canSetLink(editor: Editor | null): boolean {
   if (!editor || editor.isDestroyed || !editor.isEditable) return false
-  return editor.can().setMark("link")
+  return editor.can().setMark('link')
 }
 
 /**
@@ -62,7 +69,7 @@ export function canSetLink(editor: Editor | null): boolean {
  */
 export function isLinkActive(editor: Editor | null): boolean {
   if (!editor || editor.isDestroyed || !editor.isEditable) return false
-  return editor.isActive("link")
+  return editor.isActive('link')
 }
 
 /**
@@ -74,13 +81,13 @@ export function shouldShowLinkButton(props: {
 }): boolean {
   const { editor, hideWhenUnavailable } = props
 
-  const linkInSchema = isMarkInSchema("link", editor)
+  const linkInSchema = isMarkInSchema('link', editor)
 
   if (!linkInSchema || !editor) {
     return false
   }
 
-  if (hideWhenUnavailable && !editor.isActive("code")) {
+  if (hideWhenUnavailable && !editor.isActive('code')) {
     return canSetLink(editor)
   }
 
@@ -92,24 +99,37 @@ export function shouldShowLinkButton(props: {
  */
 export function useLinkHandler({ editor, onSetLink }: LinkHandlerProps) {
   const integration = useOfficialIntegration()
-  const form = useForm<{ href: string }>({ resolver: zodResolver(linkSchema), defaultValues: { href: String(editor?.getAttributes('link').href ?? '') } })
+  const form = useForm<{ href: string }>({
+    resolver: zodResolver(linkSchema),
+    defaultValues: { href: String(editor?.getAttributes('link').href ?? '') },
+  })
   React.useEffect(() => {
     if (!editor || editor.isDestroyed) return
     const refresh = () => form.reset({ href: String(editor.getAttributes('link').href ?? '') })
     editor.on('selectionUpdate', refresh)
-    return () => { editor.off('selectionUpdate', refresh) }
+    return () => {
+      editor.off('selectionUpdate', refresh)
+    }
   }, [editor, form])
   const setLink = React.useCallback(async () => {
     let accepted = false
-    await form.handleSubmit(values => {
-      accepted = integration.run(instance => instance.chain().extendMarkRange('link').setLink({ href: values.href, target: null, rel: null }).run())
+    await form.handleSubmit((values) => {
+      accepted = integration.run((instance) =>
+        instance
+          .chain()
+          .extendMarkRange('link')
+          .setLink({ href: values.href, target: null, rel: null })
+          .run(),
+      )
       if (accepted) onSetLink?.()
       else form.setError('root', { message: '链接未能应用，请检查选区或文档大小后重试。' })
     })()
     return accepted
   }, [form, integration, onSetLink])
   const removeLink = React.useCallback(() => {
-    const accepted = integration.run(instance => instance.chain().extendMarkRange('link').unsetLink().setMeta('preventAutolink', true).run())
+    const accepted = integration.run((instance) =>
+      instance.chain().extendMarkRange('link').unsetLink().setMeta('preventAutolink', true).run(),
+    )
     if (!accepted) form.setError('root', { message: '链接未能移除，请选择已有链接后重试。' })
     return accepted
   }, [form, integration])
@@ -123,10 +143,7 @@ export function useLinkHandler({ editor, onSetLink }: LinkHandlerProps) {
 /**
  * Custom hook for link popover state management
  */
-export function useLinkState(props: {
-  editor: Editor | null
-  hideWhenUnavailable: boolean
-}) {
+export function useLinkState(props: { editor: Editor | null; hideWhenUnavailable: boolean }) {
   const { editor, hideWhenUnavailable = false } = props
 
   const canSet = canSetLink(editor)
@@ -142,16 +159,16 @@ export function useLinkState(props: {
         shouldShowLinkButton({
           editor,
           hideWhenUnavailable,
-        })
+        }),
       )
     }
 
     handleSelectionUpdate()
 
-    editor.on("selectionUpdate", handleSelectionUpdate)
+    editor.on('selectionUpdate', handleSelectionUpdate)
 
     return () => {
-      editor.off("selectionUpdate", handleSelectionUpdate)
+      editor.off('selectionUpdate', handleSelectionUpdate)
     }
   }, [editor, hideWhenUnavailable])
 
@@ -200,11 +217,7 @@ export function useLinkState(props: {
  * ```
  */
 export function useLinkPopover(config?: UseLinkPopoverConfig) {
-  const {
-    editor: providedEditor,
-    hideWhenUnavailable = false,
-    onSetLink,
-  } = config || {}
+  const { editor: providedEditor, hideWhenUnavailable = false, onSetLink } = config || {}
 
   const { editor } = useTiptapEditor(providedEditor)
 
@@ -222,7 +235,7 @@ export function useLinkPopover(config?: UseLinkPopoverConfig) {
     isVisible,
     canSet,
     isActive,
-    label: "Link",
+    label: 'Link',
     Icon: LinkIcon,
     ...linkHandler,
   }

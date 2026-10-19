@@ -4,14 +4,20 @@ import { afterEach, expect, it } from 'vitest'
 import type { FastifyInstance } from 'fastify'
 import { createTestAuth, type TestAuth } from '@tests/helpers/auth'
 import { multipartBody, type TestPart } from '@tests/helpers/multipart'
-import { createAppWithStorage, fileStorageFixture, type StorageTestFixture } from '@tests/helpers/storage'
+import {
+  createAppWithStorage,
+  fileStorageFixture,
+  type StorageTestFixture,
+} from '@tests/helpers/storage'
 import type { FileAdapter, StoredFileRead } from '@server/src/modules/storage/adapters/file'
 import type { StorageServices } from '@server/src/modules/storage/factory'
 
-const fixtures: TestAuth[] = [], apps: FastifyInstance[] = [], storages: StorageTestFixture[] = []
+const fixtures: TestAuth[] = [],
+  apps: FastifyInstance[] = [],
+  storages: StorageTestFixture[] = []
 afterEach(async () => {
-  await Promise.all(apps.splice(0).map(app => app.close()))
-  await Promise.all(fixtures.splice(0).map(fixture => fixture.close()))
+  await Promise.all(apps.splice(0).map((app) => app.close()))
+  await Promise.all(fixtures.splice(0).map((fixture) => fixture.close()))
   for (const storage of storages.splice(0)) storage.cleanup()
 })
 
@@ -27,34 +33,53 @@ async function setup(options: SetupOptions = {}) {
   fixtures.push(f)
   const storage = fileStorageFixture()
   storages.push(storage)
-  const services: StorageServices = options.fileAdapter === undefined
-    ? storage.storage
-    : { ...storage.storage, fileAdapter: options.fileAdapter }
+  const services: StorageServices =
+    options.fileAdapter === undefined
+      ? storage.storage
+      : { ...storage.storage, fileAdapter: options.fileAdapter }
   const app = createAppWithStorage(f, services)
   apps.push(app)
 
   let restoreUpload: (() => void) | undefined, restoreDownload: (() => void) | undefined
-  app.addHook('onRoute', route => {
-    const config = (route.config ?? {}) as { storageUpload?: Record<string, number>; storageDownload?: Record<string, number> }
+  app.addHook('onRoute', (route) => {
+    const config = (route.config ?? {}) as {
+      storageUpload?: Record<string, number>
+      storageDownload?: Record<string, number>
+    }
     if (config.storageUpload !== undefined && options.upload !== undefined) {
       const deadlineMs = config.storageUpload.deadlineMs!
       Object.assign(config.storageUpload, options.upload)
-      restoreUpload = () => { config.storageUpload!.deadlineMs = deadlineMs }
+      restoreUpload = () => {
+        config.storageUpload!.deadlineMs = deadlineMs
+      }
     }
     if (config.storageDownload !== undefined && options.download !== undefined) {
       const deadlineMs = config.storageDownload.deadlineMs!
       Object.assign(config.storageDownload, options.download)
-      restoreDownload = () => { config.storageDownload!.deadlineMs = deadlineMs }
+      restoreDownload = () => {
+        config.storageDownload!.deadlineMs = deadlineMs
+      }
     }
   })
   let observed = 0
   const observers: Array<() => void> = []
-  app.addHook('preValidation', async request => {
-    if (request.url === '/api/storage/uploads') { observed++; observers.splice(0).forEach(resolve => resolve()) }
+  app.addHook('preValidation', async (request) => {
+    if (request.url === '/api/storage/uploads') {
+      observed++
+      observers.splice(0).forEach((resolve) => resolve())
+    }
   })
 
-  await f.seedUser({ email: 'sockets@example.com', nickname: 'Sockets', password: 'valid password' })
-  const login = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'sockets@example.com', password: 'valid password' } })
+  await f.seedUser({
+    email: 'sockets@example.com',
+    nickname: 'Sockets',
+    password: 'valid password',
+  })
+  const login = await app.inject({
+    method: 'POST',
+    url: '/api/auth/login',
+    payload: { email: 'sockets@example.com', password: 'valid password' },
+  })
   expect(login.statusCode).toBe(200)
 
   await app.listen({ host: '127.0.0.1', port: 0 })
@@ -63,19 +88,35 @@ async function setup(options: SetupOptions = {}) {
   return {
     port: address.port,
     token: (login.json() as { token: string }).token,
-    entered: (count: number) => observed >= count ? Promise.resolve() : new Promise<void>(resolve => observers.push(resolve)),
-    restoreUpload: () => { if (restoreUpload === undefined) throw new Error('Storage upload route was not registered'); restoreUpload() },
-    restoreDownload: () => { if (restoreDownload === undefined) throw new Error('Storage download route was not registered'); restoreDownload() },
+    entered: (count: number) =>
+      observed >= count
+        ? Promise.resolve()
+        : new Promise<void>((resolve) => observers.push(resolve)),
+    restoreUpload: () => {
+      if (restoreUpload === undefined) throw new Error('Storage upload route was not registered')
+      restoreUpload()
+    },
+    restoreDownload: () => {
+      if (restoreDownload === undefined)
+        throw new Error('Storage download route was not registered')
+      restoreDownload()
+    },
   }
 }
 
 function client(port: number, path: string, method = 'GET', headers: Record<string, string> = {}) {
   let req: ClientRequest
-  const result = new Promise<{ status: number; headers: Record<string, string | string[] | undefined>; body: Buffer }>((resolve, reject) => {
-    req = httpRequest({ host: '127.0.0.1', port, path, method, headers, agent: false }, res => {
+  const result = new Promise<{
+    status: number
+    headers: Record<string, string | string[] | undefined>
+    body: Buffer
+  }>((resolve, reject) => {
+    req = httpRequest({ host: '127.0.0.1', port, path, method, headers, agent: false }, (res) => {
       const chunks: Buffer[] = []
-      res.on('data', chunk => chunks.push(chunk))
-      res.on('end', () => resolve({ status: res.statusCode!, headers: res.headers, body: Buffer.concat(chunks) }))
+      res.on('data', (chunk) => chunks.push(chunk))
+      res.on('end', () =>
+        resolve({ status: res.statusCode!, headers: res.headers, body: Buffer.concat(chunks) }),
+      )
       res.on('error', reject)
     })
     req.on('error', reject)
@@ -89,7 +130,12 @@ function textPart(name: string, value: string): TestPart {
   return { name, contentType: 'text/plain', bytes: Buffer.from(value, 'utf8') }
 }
 function dataPart(bytes: Uint8Array): TestPart {
-  return { name: 'data', filename: 'upload.bin', contentType: 'application/octet-stream', bytes: Buffer.from(bytes) }
+  return {
+    name: 'data',
+    filename: 'upload.bin',
+    contentType: 'application/octet-stream',
+    bytes: Buffer.from(bytes),
+  }
 }
 
 /**
@@ -101,13 +147,18 @@ function hold(port: number, token: string) {
     'content-type': 'multipart/form-data; boundary=storage-hold-boundary',
     authorization: `Bearer ${token}`,
   })
-  connection.req.write('--storage-hold-boundary\r\nContent-Disposition: form-data; name="key"\r\n\r\nstall')
+  connection.req.write(
+    '--storage-hold-boundary\r\nContent-Disposition: form-data; name="key"\r\n\r\nstall',
+  )
   return connection
 }
 
 function upload(port: number, token: string, key: string, bytes: Uint8Array) {
   const body = multipartBody([textPart('key', key), dataPart(bytes)])
-  const connection = client(port, '/api/storage/uploads', 'POST', { ...body.headers, authorization: `Bearer ${token}` })
+  const connection = client(port, '/api/storage/uploads', 'POST', {
+    ...body.headers,
+    authorization: `Bearer ${token}`,
+  })
   connection.req.end(body.payload)
   return connection.result
 }
@@ -121,12 +172,21 @@ function stalledRead(announced: number): StoredFileRead & { released: () => numb
   let releases = 0
   const stream = new Readable({ read() {} })
   stream.push(Buffer.from('partial-bytes'))
-  return { stream, bytes: announced, released: () => releases, release: async () => { releases++; stream.destroy() } }
+  return {
+    stream,
+    bytes: announced,
+    released: () => releases,
+    release: async () => {
+      releases++
+      stream.destroy()
+    },
+  }
 }
 
 it('cancels stalled uploads with 408 and releases their slots', async () => {
   const { port, token, entered, restoreUpload } = await setup({ upload: { deadlineMs: 150 } })
-  const first = hold(port, token), second = hold(port, token)
+  const first = hold(port, token),
+    second = hold(port, token)
   await entered(2)
   for (const response of await Promise.all([first.result, second.result])) {
     expect(response.status).toBe(408)
@@ -141,19 +201,24 @@ it('cancels stalled uploads with 408 and releases their slots', async () => {
 
 it('rejects the third live upload with 503, Retry-After and no stored bytes', async () => {
   const { port, token, entered } = await setup()
-  const first = hold(port, token), second = hold(port, token)
+  const first = hold(port, token),
+    second = hold(port, token)
   await entered(2)
   // 配额在 Bearer 校验之后才占用，因此等两个挂起的请求都走到解析阶段再发第三个。
-  await new Promise(resolve => setTimeout(resolve, 300))
+  await new Promise((resolve) => setTimeout(resolve, 300))
   // 完整请求体：配额耗尽时立即被拒，不会停在等 body 上。
   const body = multipartBody([textPart('key', 'busy-c.bin'), dataPart(new Uint8Array([1]))])
-  const third = client(port, '/api/storage/uploads', 'POST', { ...body.headers, authorization: `Bearer ${token}` })
+  const third = client(port, '/api/storage/uploads', 'POST', {
+    ...body.headers,
+    authorization: `Bearer ${token}`,
+  })
   third.req.end(body.payload)
   const busy = await third.result
   expect(busy.status).toBe(503)
   expect(JSON.parse(busy.body.toString()).error.code).toBe('STORAGE_BUSY')
   expect(busy.headers['retry-after']).toBe('5')
-  first.req.destroy(); second.req.destroy()
+  first.req.destroy()
+  second.req.destroy()
   await Promise.all([first.result.catch(() => undefined), second.result.catch(() => undefined)])
 }, 60000)
 
@@ -166,15 +231,22 @@ it('terminates a stalled download after its headers were sent and releases the r
       return completeRead(Buffer.from('later'))
     },
   } as unknown as FileAdapter
-  const { port, restoreDownload } = await setup({ download: { deadlineMs: 200 }, fileAdapter: adapter })
+  const { port, restoreDownload } = await setup({
+    download: { deadlineMs: 200 },
+    fileAdapter: adapter,
+  })
 
   const connection = client(port, '/api/storage/files?key=stalled.bin')
   connection.req.end()
-  const failure = await connection.result.then(() => undefined, error => error as NodeJS.ErrnoException)
+  const failure = await connection.result.then(
+    () => undefined,
+    (error) => error as NodeJS.ErrnoException,
+  )
   // 响应头已发出后只能终止连接：不能把 JSON 追加到半截字节后面。
   expect(failure?.code).toBe('ECONNRESET')
   // 连接终止必须同时释放读取句柄。
-  for (let waited = 0; waited < 100 && stalled.released() === 0; waited++) await new Promise(resolve => setTimeout(resolve, 10))
+  for (let waited = 0; waited < 100 && stalled.released() === 0; waited++)
+    await new Promise((resolve) => setTimeout(resolve, 10))
   expect(stalled.released()).toBe(1)
 
   restoreDownload()
@@ -192,7 +264,10 @@ it('answers a download that never opens with the 408 envelope', async () => {
       return completeRead(Buffer.from('later'))
     },
   } as unknown as FileAdapter
-  const { port, restoreDownload } = await setup({ download: { deadlineMs: 200 }, fileAdapter: adapter })
+  const { port, restoreDownload } = await setup({
+    download: { deadlineMs: 200 },
+    fileAdapter: adapter,
+  })
 
   const first = client(port, '/api/storage/files?key=hanging.bin')
   first.req.end()
@@ -215,7 +290,9 @@ it('releases a real read that opens after the download timed out', async () => {
   storages.push(storage)
   await storage.storage.service.upload('late.bin', new Uint8Array([1, 2, 3]))
   let resume!: () => void
-  const pending = new Promise<void>(resolve => { resume = resolve })
+  const pending = new Promise<void>((resolve) => {
+    resume = resolve
+  })
   let lateRead: StoredFileRead | undefined
   let releases = 0
   const adapter = {
@@ -223,7 +300,13 @@ it('releases a real read that opens after the download timed out', async () => {
       await pending
       lateRead = await storage.storage.fileAdapter.openRead(key)
       const read = lateRead
-      return { ...read, release: async () => { await read.release(); releases++ } }
+      return {
+        ...read,
+        release: async () => {
+          await read.release()
+          releases++
+        },
+      }
     },
   } as unknown as FileAdapter
   const { port } = await setup({ download: { deadlineMs: 200 }, fileAdapter: adapter })

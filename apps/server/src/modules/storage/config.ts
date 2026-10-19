@@ -38,7 +38,12 @@ export class StorageConfigError extends Error {
 export const DEFAULT_STORAGE_MAX_BYTES = 20 * 1024 * 1024
 export const DEFAULT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8080/api'
 
-const COS_ENV_NAMES = ['TENCENT_COS_SECRET_ID', 'TENCENT_COS_SECRET_KEY', 'TENCENT_COS_REGION', 'TENCENT_COS_BUCKET'] as const
+const COS_ENV_NAMES = [
+  'TENCENT_COS_SECRET_ID',
+  'TENCENT_COS_SECRET_KEY',
+  'TENCENT_COS_REGION',
+  'TENCENT_COS_BUCKET',
+] as const
 const HEX_64 = /^[0-9a-f]{64}$/
 const BUCKET_WITH_APP_ID = /^[a-z0-9][a-z0-9-]{0,62}-(\d{4,20})$/
 
@@ -54,7 +59,8 @@ function positiveSafeInteger(raw: string | undefined, name: string, fallback: nu
   if (raw === undefined || raw === '') return fallback
   if (!/^[0-9]+$/.test(raw)) throw new StorageConfigError([`${name} 必须是正整数`])
   const value = Number(raw)
-  if (!Number.isSafeInteger(value) || value < 1) throw new StorageConfigError([`${name} 必须是正整数`])
+  if (!Number.isSafeInteger(value) || value < 1)
+    throw new StorageConfigError([`${name} 必须是正整数`])
   return value
 }
 
@@ -77,10 +83,10 @@ function publicApiBaseUrl(raw: string | undefined): string {
 }
 
 function cosConfig(env: NodeJS.ProcessEnv): CosConfig | undefined {
-  const values = COS_ENV_NAMES.map(name => env[name])
-  const present = values.filter(value => typeof value === 'string' && value !== '')
+  const values = COS_ENV_NAMES.map((name) => env[name])
+  const present = values.filter((value) => typeof value === 'string' && value !== '')
   if (present.length === 0) return undefined
-  const missing = COS_ENV_NAMES.filter(name => typeof env[name] !== 'string' || env[name] === '')
+  const missing = COS_ENV_NAMES.filter((name) => typeof env[name] !== 'string' || env[name] === '')
   if (missing.length > 0) {
     throw new StorageConfigError([`COS 配置不完整，缺少 ${missing.join('、')}`])
   }
@@ -116,7 +122,11 @@ export function parseStorageConfig(
     throw new StorageConfigError(['STORAGE_DEFAULT_ADAPTER 只能是 file 或 cos'])
   }
 
-  const maxBytes = positiveSafeInteger(env.STORAGE_MAX_BYTES, 'STORAGE_MAX_BYTES', DEFAULT_STORAGE_MAX_BYTES)
+  const maxBytes = positiveSafeInteger(
+    env.STORAGE_MAX_BYTES,
+    'STORAGE_MAX_BYTES',
+    DEFAULT_STORAGE_MAX_BYTES,
+  )
   const cos = cosConfig(env)
   const root = options.dataRoot ?? resolve(serverPackageRoot(), 'data')
 

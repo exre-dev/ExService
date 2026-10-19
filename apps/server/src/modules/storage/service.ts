@@ -32,18 +32,26 @@ const CONTENT_TYPE_PATTERN = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+\/[A-Za-z0-9!#$%&'*+.^
 const CONTENT_TYPE_MAX_LENGTH = 127
 
 export function assertContentType(value: string): string {
-  if (value.length === 0 || value.length > CONTENT_TYPE_MAX_LENGTH || !CONTENT_TYPE_PATTERN.test(value)) {
+  if (
+    value.length === 0 ||
+    value.length > CONTENT_TYPE_MAX_LENGTH ||
+    !CONTENT_TYPE_PATTERN.test(value)
+  ) {
     throw new StorageError('STORAGE_INVALID_INPUT')
   }
   return value
 }
 
 /** 有效 MIME 优先级：显式 options.contentType、非空 Blob.type、application/octet-stream。 */
-export function resolveContentType(explicit: string | undefined, blobType: string | undefined): string {
+export function resolveContentType(
+  explicit: string | undefined,
+  blobType: string | undefined,
+): string {
   if (explicit !== undefined) return assertContentType(explicit)
   if (typeof blobType === 'string' && blobType !== '') {
     // Blob.type 来自调用方，可能携带参数或非法字符；不通过时回退而不是报错。
-    if (blobType.length <= CONTENT_TYPE_MAX_LENGTH && CONTENT_TYPE_PATTERN.test(blobType)) return blobType
+    if (blobType.length <= CONTENT_TYPE_MAX_LENGTH && CONTENT_TYPE_PATTERN.test(blobType))
+      return blobType
   }
   return FALLBACK_CONTENT_TYPE
 }
@@ -68,7 +76,12 @@ async function toBytes(data: UploadData, maxBytes: number): Promise<Uint8Array> 
     if (data.byteLength > maxBytes) throw new StorageError('STORAGE_TOO_LARGE')
     return copyBytes(data)
   }
-  if (typeof data === 'object' && data !== null && typeof data.size === 'number' && typeof data.arrayBuffer === 'function') {
+  if (
+    typeof data === 'object' &&
+    data !== null &&
+    typeof data.size === 'number' &&
+    typeof data.arrayBuffer === 'function'
+  ) {
     if (!Number.isSafeInteger(data.size)) throw new StorageError('STORAGE_INVALID_INPUT')
     if (data.size > maxBytes) throw new StorageError('STORAGE_TOO_LARGE')
     const buffer = await (data as Blob).arrayBuffer()
@@ -108,7 +121,10 @@ export class DefaultStorageService implements StorageService {
     const validatedKey = assertStorageKey(key)
     const medium = resolveMedium(options.medium, this.config.defaultMedium)
     const adapter = this.adapter(medium)
-    const contentType = resolveContentType(options.contentType, data instanceof Uint8Array ? undefined : data.type)
+    const contentType = resolveContentType(
+      options.contentType,
+      data instanceof Uint8Array ? undefined : data.type,
+    )
     const bytes = await toBytes(data, this.config.maxBytes)
     await adapter.put(validatedKey, bytes, contentType)
     return adapter.getUrl(validatedKey)

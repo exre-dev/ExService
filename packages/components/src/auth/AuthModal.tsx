@@ -1,11 +1,5 @@
 import type { ReactNode } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@exre/exui'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@exre/exui'
 import type { AuthMode } from '@components/src/auth/AuthForm'
 import styles from '@components/src/auth/AuthModal.module.scss'
 
@@ -17,7 +11,13 @@ export interface AuthModalProps {
   onCloseAutoFocus?: (event: Event) => void
 }
 
-export function AuthModal({ open, mode, onOpenChange, children, onCloseAutoFocus }: AuthModalProps) {
+export function AuthModal({
+  open,
+  mode,
+  onOpenChange,
+  children,
+  onCloseAutoFocus,
+}: AuthModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={styles.content} onCloseAutoFocus={onCloseAutoFocus}>

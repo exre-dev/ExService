@@ -5,13 +5,26 @@ import { AuthArea } from '@components/src/AuthArea'
 import { Home } from '@web/src/pages/Home'
 
 vi.mock('@paper-design/shaders-react', () => ({
-  LiquidMetal: ({ width, height, image, colorTint, colorBack }: {
+  LiquidMetal: ({
+    width,
+    height,
+    image,
+    colorTint,
+    colorBack,
+  }: {
     width: number
     height: number
     image: string
     colorTint: string
     colorBack: string
-  }) => <div style={{ width, height }} data-image={image} data-color-tint={colorTint} data-color-back={colorBack} />,
+  }) => (
+    <div
+      style={{ width, height }}
+      data-image={image}
+      data-color-tint={colorTint}
+      data-color-back={colorBack}
+    />
+  ),
 }))
 
 describe('Home', () => {

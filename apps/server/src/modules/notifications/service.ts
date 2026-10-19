@@ -2,8 +2,14 @@ import { randomUUID } from 'node:crypto'
 import type { AppDatabase, SqlExecutor } from '@server/src/db/client.js'
 import { NotificationError } from './errors.js'
 import {
-  CLEAR_TOKEN_TTL_MS, DEFAULT_PREFERENCES, NECESSARY_CATEGORIES, READ_THROUGH_TOKEN_TTL_MS,
-  isNotificationCategory, isNotificationScope, type NotificationCategory, type NotificationScope,
+  CLEAR_TOKEN_TTL_MS,
+  DEFAULT_PREFERENCES,
+  NECESSARY_CATEGORIES,
+  READ_THROUGH_TOKEN_TTL_MS,
+  isNotificationCategory,
+  isNotificationScope,
+  type NotificationCategory,
+  type NotificationScope,
 } from './catalog.js'
 import { resolveActions, parseStoredActions } from './actions.js'
 import { sanitizeNotificationHtml } from './html/sanitize.js'
@@ -70,7 +76,13 @@ export interface NotificationDetailResult {
   stateRevision: number
   clearRevision: number
   contentAvailable: boolean
-  content: { format: 'html'; schemaVersion: 1; policyVersion: 'notification-html-v1'; html: string; text: string } | null
+  content: {
+    format: 'html'
+    schemaVersion: 1
+    policyVersion: 'notification-html-v1'
+    html: string
+    text: string
+  } | null
   contentFallbackText: string | null
   actions: Array<{
     actionId: string
@@ -151,8 +163,12 @@ export class NotificationService {
     let afterSequence: number | null = null
     if (params.cursor !== null) {
       const claims = verifyCursor(this.options.tokenKey, params.cursor, params.userId, now)
-      if (claims.v !== params.view || claims.s !== (scope ?? '') || claims.c !== (category ?? '') ||
-        claims.up !== upperSequence) {
+      if (
+        claims.v !== params.view ||
+        claims.s !== (scope ?? '') ||
+        claims.c !== (category ?? '') ||
+        claims.up !== upperSequence
+      ) {
         throw new NotificationError('NOTIFICATION_TOKEN_INVALID')
       }
       afterSequence = typeof claims.a === 'number' ? claims.a : null
@@ -161,21 +177,32 @@ export class NotificationService {
 
     // 比 limit 多读一条，用来判断是否还有下一页。
     const rows = await this.options.repository.listReceipts({
-      userId: params.userId, now, view: params.view, scope, category,
-      limit: limit + 1, afterSequence, upperSequence,
+      userId: params.userId,
+      now,
+      view: params.view,
+      scope,
+      category,
+      limit: limit + 1,
+      afterSequence,
+      upperSequence,
     })
     const page = rows.slice(0, limit)
     const last = page.at(-1)
     const hasMore = rows.length > limit
-    const nextCursor = hasMore && last !== undefined
-      ? signCursor(this.options.tokenKey, params.userId, now, {
-        v: params.view, s: scope ?? '', c: category ?? '', up: upperSequence, a: last.sequence,
-      })
-      : null
+    const nextCursor =
+      hasMore && last !== undefined
+        ? signCursor(this.options.tokenKey, params.userId, now, {
+            v: params.view,
+            s: scope ?? '',
+            c: category ?? '',
+            up: upperSequence,
+            a: last.sequence,
+          })
+        : null
 
     const unreadCount = await this.options.repository.countUnread(params.userId, now)
     return {
-      items: page.map(row => ({
+      items: page.map((row) => ({
         receiptId: row.receipt_id,
         title: row.title,
         summaryText: row.summary_text,
@@ -219,12 +246,21 @@ export class NotificationService {
     return this.toDetail(receipt, now)
   }
 
-  async updateState(userId: string, notificationId: string, read: boolean,
-    expectedRevision: number): Promise<NotificationStateResult> {
+  async updateState(
+    userId: string,
+    notificationId: string,
+    read: boolean,
+    expectedRevision: number,
+  ): Promise<NotificationStateResult> {
     const now = this.options.now()
-    return await this.options.db.transaction(async tx => {
+    return await this.options.db.transaction(async (tx) => {
       await this.options.repository.lockUser(userId, tx)
-      const receipt = await this.options.repository.findReceiptForUpdate(notificationId, userId, now, tx)
+      const receipt = await this.options.repository.findReceiptForUpdate(
+        notificationId,
+        userId,
+        now,
+        tx,
+      )
       if (receipt === undefined) throw new NotificationError('NOTIFICATION_NOT_FOUND')
       if (receipt.state_revision !== expectedRevision) {
         throw new NotificationError('NOTIFICATION_STATE_CONFLICT')
@@ -234,10 +270,22 @@ export class NotificationService {
       const revision = already
         ? receipt.state_revision
         : await this.options.repository.setStateRevision(
-          notificationId, userId, read, expectedRevision, now, tx)
+            notificationId,
+            userId,
+            read,
+            expectedRevision,
+            now,
+            tx,
+          )
       if (revision === null) throw new NotificationError('NOTIFICATION_STATE_CONFLICT')
       const unreadCount = await this.options.repository.countUnread(userId, now, tx)
-      return { receiptId: notificationId, read, stateRevision: revision, unreadCount, serverTime: now }
+      return {
+        receiptId: notificationId,
+        read,
+        stateRevision: revision,
+        unreadCount,
+        serverTime: now,
+      }
     })
   }
 
@@ -248,31 +296,50 @@ export class NotificationService {
     if (upperSequence === null) throw new NotificationError('NOTIFICATION_TOKEN_INVALID')
     const digest = normalizeDigest({ kind: 'read_through', upperSequence })
 
-    return await this.options.db.transaction(async tx => {
+    return await this.options.db.transaction(async (tx) => {
       // 先锁用户行再查重放：并发提交同一个 requestId 时，锁把第二条排到第一条提交之后，
       // 它才会看到去重记录而不是重复执行。
       await this.options.repository.lockUser(userId, tx)
       const replay = await this.claimMutation(userId, requestId, 'read_through', digest, tx)
-      if (replay !== null) return { ...(JSON.parse(replay) as ReadThroughResult), replayed: true, serverTime: now }
+      if (replay !== null)
+        return { ...(JSON.parse(replay) as ReadThroughResult), replayed: true, serverTime: now }
 
       await this.options.repository.lockStream(userId, tx)
-      const affectedCount = await this.options.repository.markReadThrough(userId, now, upperSequence, tx)
+      const affectedCount = await this.options.repository.markReadThrough(
+        userId,
+        now,
+        upperSequence,
+        tx,
+      )
       await this.options.repository.bumpStream(userId, tx)
       const unreadCount = await this.options.repository.countUnread(userId, now, tx)
       const result: ReadThroughResult = {
-        requestId, affectedCount, watermarkSequence: upperSequence, unreadCount, replayed: false, serverTime: now,
+        requestId,
+        affectedCount,
+        watermarkSequence: upperSequence,
+        unreadCount,
+        replayed: false,
+        serverTime: now,
       }
-      await this.options.repository.insertMutation({
-        userId, requestId, kind: 'read_through', digest, resultJson: JSON.stringify(result),
-        clearBatchId: null, createdAt: now,
-      }, tx)
+      await this.options.repository.insertMutation(
+        {
+          userId,
+          requestId,
+          kind: 'read_through',
+          digest,
+          resultJson: JSON.stringify(result),
+          clearBatchId: null,
+          createdAt: now,
+        },
+        tx,
+      )
       return result
     })
   }
 
   async previewClear(userId: string): Promise<ClearPreviewResult> {
     const now = this.options.now()
-    return await this.options.db.transaction(async tx => {
+    return await this.options.db.transaction(async (tx) => {
       await this.options.repository.lockUser(userId, tx)
       const stream = await this.options.repository.lockStream(userId, tx)
       const snapshot = await this.options.repository.unclearedSnapshot(userId, now, tx)
@@ -282,28 +349,41 @@ export class NotificationService {
       const batchId = this.options.createId?.() ?? randomUUID()
       const snapshotId = this.options.createId?.() ?? randomUUID()
       const expiresAt = now + CLEAR_TOKEN_TTL_MS
-      await this.options.repository.insertClearBatch({
-        batch_id: batchId,
-        user_id: userId,
-        snapshot_id: snapshotId,
-        upper_sequence: stream.lastSequence,
-        preview_expires_at: expiresAt,
-        status: 'preview',
-        request_id: null,
-        item_count: snapshot.length,
-        affected_count: null,
-        skipped_count: null,
-        created_at: now,
-        applied_at: null,
-        restored_at: null,
-      }, snapshot, tx)
+      await this.options.repository.insertClearBatch(
+        {
+          batch_id: batchId,
+          user_id: userId,
+          snapshot_id: snapshotId,
+          upper_sequence: stream.lastSequence,
+          preview_expires_at: expiresAt,
+          status: 'preview',
+          request_id: null,
+          item_count: snapshot.length,
+          affected_count: null,
+          skipped_count: null,
+          created_at: now,
+          applied_at: null,
+          restored_at: null,
+        },
+        snapshot,
+        tx,
+      )
       return {
         batchId,
         itemCount: snapshot.length,
         upperSequence: stream.lastSequence,
-        clearSnapshotToken: signToken(this.options.tokenKey, 'clear_snapshot', userId, now, CLEAR_TOKEN_TTL_MS, {
-          b: batchId, n: snapshot.length, s: stream.lastSequence,
-        }),
+        clearSnapshotToken: signToken(
+          this.options.tokenKey,
+          'clear_snapshot',
+          userId,
+          now,
+          CLEAR_TOKEN_TTL_MS,
+          {
+            b: batchId,
+            n: snapshot.length,
+            s: stream.lastSequence,
+          },
+        ),
         expiresAt,
         serverTime: now,
       }
@@ -317,10 +397,11 @@ export class NotificationService {
     if (batchId === null) throw new NotificationError('NOTIFICATION_TOKEN_INVALID')
     const digest = normalizeDigest({ kind: 'clear', batchId })
 
-    return await this.options.db.transaction(async tx => {
+    return await this.options.db.transaction(async (tx) => {
       await this.options.repository.lockUser(userId, tx)
       const replay = await this.claimMutation(userId, requestId, 'clear', digest, tx)
-      if (replay !== null) return { ...(JSON.parse(replay) as ClearResult), replayed: true, serverTime: now }
+      if (replay !== null)
+        return { ...(JSON.parse(replay) as ClearResult), replayed: true, serverTime: now }
 
       await this.options.repository.lockStream(userId, tx)
       const batch = await this.options.repository.findClearBatchForUpdate(batchId, userId, tx)
@@ -328,20 +409,40 @@ export class NotificationService {
       if (batch.status !== 'preview') throw new NotificationError('NOTIFICATION_TOKEN_INVALID')
       if (batch.preview_expires_at <= now) throw new NotificationError('NOTIFICATION_TOKEN_EXPIRED')
 
-      const { affected, skipped } = await this.options.repository.applyClearBatch(batchId, userId, now, tx)
-      await tx.query(`UPDATE notification_clear_batches SET status = 'applied', request_id = $3,
+      const { affected, skipped } = await this.options.repository.applyClearBatch(
+        batchId,
+        userId,
+        now,
+        tx,
+      )
+      await tx.query(
+        `UPDATE notification_clear_batches SET status = 'applied', request_id = $3,
         affected_count = $4, skipped_count = $5, applied_at = $6 WHERE batch_id = $1 AND user_id = $2`,
-      [batchId, userId, requestId, affected, skipped, now])
+        [batchId, userId, requestId, affected, skipped, now],
+      )
       await this.options.repository.bumpStream(userId, tx)
       const unreadCount = await this.options.repository.countUnread(userId, now, tx)
       const result: ClearResult = {
-        requestId, batchId, affectedCount: affected, skippedCount: skipped, unreadCount,
-        replayed: false, serverTime: now,
+        requestId,
+        batchId,
+        affectedCount: affected,
+        skippedCount: skipped,
+        unreadCount,
+        replayed: false,
+        serverTime: now,
       }
-      await this.options.repository.insertMutation({
-        userId, requestId, kind: 'clear', digest, resultJson: JSON.stringify(result),
-        clearBatchId: batchId, createdAt: now,
-      }, tx)
+      await this.options.repository.insertMutation(
+        {
+          userId,
+          requestId,
+          kind: 'clear',
+          digest,
+          resultJson: JSON.stringify(result),
+          clearBatchId: batchId,
+          createdAt: now,
+        },
+        tx,
+      )
       return result
     })
   }
@@ -359,15 +460,24 @@ export class NotificationService {
     }
   }
 
-  async updatePreferences(userId: string, expectedRevision: number,
-    optionalCategories: { announcement: boolean; personal_update: boolean }): Promise<PreferencesResult> {
+  async updatePreferences(
+    userId: string,
+    expectedRevision: number,
+    optionalCategories: { announcement: boolean; personal_update: boolean },
+  ): Promise<PreferencesResult> {
     const now = this.options.now()
-    return await this.options.db.transaction(async tx => {
+    return await this.options.db.transaction(async (tx) => {
       await this.options.repository.lockUser(userId, tx)
-      const revision = await this.options.repository.savePreferences(userId, {
-        announcementEnabled: optionalCategories.announcement,
-        personalUpdateEnabled: optionalCategories.personal_update,
-      }, expectedRevision, now, tx)
+      const revision = await this.options.repository.savePreferences(
+        userId,
+        {
+          announcementEnabled: optionalCategories.announcement,
+          personalUpdateEnabled: optionalCategories.personal_update,
+        },
+        expectedRevision,
+        now,
+        tx,
+      )
       if (revision === null) throw new NotificationError('NOTIFICATION_PREFERENCES_CONFLICT')
       return {
         revision,
@@ -382,9 +492,16 @@ export class NotificationService {
   }
 
   private readThroughToken(userId: string, now: number, upperSequence: number): string {
-    return signToken(this.options.tokenKey, 'read_through', userId, now, READ_THROUGH_TOKEN_TTL_MS, {
-      s: upperSequence,
-    })
+    return signToken(
+      this.options.tokenKey,
+      'read_through',
+      userId,
+      now,
+      READ_THROUGH_TOKEN_TTL_MS,
+      {
+        s: upperSequence,
+      },
+    )
   }
 
   /**
@@ -394,8 +511,13 @@ export class NotificationService {
    * 两条命令都会先查到「没有记录」而重复执行；锁把第二条排到第一条提交之后，
    * 它才会看到去重记录，而不会重复修改收件状态。
    */
-  private async claimMutation(userId: string, requestId: string, kind: 'read_through' | 'clear',
-    digest: string, tx: SqlExecutor): Promise<string | null> {
+  private async claimMutation(
+    userId: string,
+    requestId: string,
+    kind: 'read_through' | 'clear',
+    digest: string,
+    tx: SqlExecutor,
+  ): Promise<string | null> {
     const existing = await this.options.repository.findMutation(userId, requestId, tx)
     if (existing === undefined) return null
     // 主键是 (user_id, request_id)：换 kind 提交同一个 key 时去重记录会被静默丢弃，
@@ -407,7 +529,9 @@ export class NotificationService {
 
   private async stateVersion(userId: string): Promise<number> {
     const result = await this.options.repository.db.query<{ state_version: number }>(
-      'SELECT state_version FROM notification_user_streams WHERE user_id = $1', [userId])
+      'SELECT state_version FROM notification_user_streams WHERE user_id = $1',
+      [userId],
+    )
     return result.rows[0]?.state_version ?? 0
   }
 

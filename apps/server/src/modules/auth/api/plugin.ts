@@ -8,7 +8,8 @@ const plugin: FastifyPluginAsync = async (app) => {
 }
 
 export default fp(plugin, {
-  name: 'api-auth', fastify: '5.x',
-  dependencies: ["business-auth","business-profile"],
-  decorators: { fastify: ["authServices","profileServices"], request: [] },
+  name: 'api-auth',
+  fastify: '5.x',
+  dependencies: ['business-auth', 'business-profile'],
+  decorators: { fastify: ['authServices', 'profileServices'], request: [] },
 })

@@ -1,14 +1,54 @@
-.field { min-width: 0; border: 1px solid var(--exui-component-form-control-base-border); border-radius: var(--exui-component-form-control-base-radius); background: var(--exui-component-form-control-base-background); }
-.field:focus-within { outline: 2px solid var(--exui-border-focus, var(--exui-text-primary)); outline-offset: 2px; }
-.field[data-invalid] { border-color: var(--exui-feedback-error); }
-.field[data-readonly] { background: var(--exui-surface-secondary); }
-.content { padding: var(--exui-component-form-control-base-padding-block) var(--exui-component-form-control-base-padding-inline); font-size: .875rem; }
-.field .content :global(.tiptap) { padding: 0; }
-.legacy { min-height: 5rem; white-space: pre-wrap; overflow-wrap: anywhere; }
-.legacy.primary { min-height: 12rem; }
-.content :global(.tiptap) { min-height: 5rem; outline: none; overflow-wrap: anywhere; }
-.primary :global(.tiptap) { min-height: 12rem; }
-.content :global(.tiptap) > :first-child { margin-top: 0; }
-.content :global(.tiptap) > :last-child { margin-bottom: 0; }
-.error { padding: 0 1rem .5rem; color: var(--exui-feedback-error); font-size: .8125rem; }
-.error p { margin: .25rem 0; }
+.field {
+  min-width: 0;
+  border: 1px solid var(--exui-component-form-control-base-border);
+  border-radius: var(--exui-component-form-control-base-radius);
+  background: var(--exui-component-form-control-base-background);
+}
+.field:focus-within {
+  outline: 2px solid var(--exui-border-focus, var(--exui-text-primary));
+  outline-offset: 2px;
+}
+.field[data-invalid] {
+  border-color: var(--exui-feedback-error);
+}
+.field[data-readonly] {
+  background: var(--exui-surface-secondary);
+}
+.content {
+  padding: var(--exui-component-form-control-base-padding-block)
+    var(--exui-component-form-control-base-padding-inline);
+  font-size: 0.875rem;
+}
+.field .content :global(.tiptap) {
+  padding: 0;
+}
+.legacy {
+  min-height: 5rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.legacy.primary {
+  min-height: 12rem;
+}
+.content :global(.tiptap) {
+  min-height: 5rem;
+  outline: none;
+  overflow-wrap: anywhere;
+}
+.primary :global(.tiptap) {
+  min-height: 12rem;
+}
+.content :global(.tiptap) > :first-child {
+  margin-top: 0;
+}
+.content :global(.tiptap) > :last-child {
+  margin-bottom: 0;
+}
+.error {
+  padding: 0 1rem 0.5rem;
+  color: var(--exui-feedback-error);
+  font-size: 0.8125rem;
+}
+.error p {
+  margin: 0.25rem 0;
+}

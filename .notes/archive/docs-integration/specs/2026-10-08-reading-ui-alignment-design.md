@@ -16,16 +16,16 @@
 
 ## 2. 现状证据
 
-| 区域 | 当前事实 | 来源 |
-| --- | --- | --- |
-| 布局 | 公共与成员分支已共用 DocsLayout；成员分支另挂身份、拖拽与工作区行为。 | `apps/outline/app/components/DocsLayout.tsx`、`apps/outline/app/components/AuthenticatedLayout.tsx` |
-| Sidebar | 成员向 DocsNavigation 传入空条目，再通过插槽挂原 Collections；公共条目由 NavigationRow 单独呈现。 | `apps/outline/app/components/Sidebar/App.tsx`、`apps/outline/app/components/Sidebar/DocsNavigation.tsx` |
-| 树行几何 | 公共展开按钮占用独立横向空间，树深度逐级加一；成员直属文档使用 Math.max(depth + 1, 2)，行几何由 SidebarLink 控制。 | `apps/outline/app/components/Sidebar/components/SidebarLink.tsx`、`apps/outline/app/components/Sidebar/components/CollectionLinkChildren.tsx` |
-| 正文 | 两分支最终使用同一个 Editor wrapper；成员页与公共页分别组合标题和正文，已经共用 ReadingMain、ReadingBody、标题样式与目录列表。 | `apps/outline/app/scenes/Document/components/Document.tsx`、`apps/outline/app/scenes/Document/components/Editor.tsx`、`apps/outline/app/scenes/WebsitePublic/PublicDocument.tsx` |
-| 导航 | 成员页将面包屑、目录及收藏放入左侧 Glass；公共页的面包屑及目录按钮放在正文标题区域。 | `apps/outline/app/scenes/Document/components/Header.tsx`、`apps/outline/app/scenes/Document/components/DocumentReadingFrame.tsx` |
-| 文档集 | 公共总览及集合详情直接使用普通链接列表；成员 DocumentListItem 已复用 DocsSearchResultLink 与 DocsSearchResultContent。 | `apps/outline/app/scenes/WebsitePublic/PublicDirectory.tsx`、`apps/outline/app/components/DocumentListItem.tsx`、`apps/outline/app/components/DocsSearch.tsx` |
-| 字段 | 公共集合有名称、描述与地址；公共文档详情有标题、正文与更新时间，缺少 icon、color、fullWidth。 | `apps/outline/shared/types/websiteIntegration.ts` |
-| 身份 | 登录 publicOnly 读者仍进入 PublicDocumentView，可按授权接入公共评论。 | `apps/outline/app/scenes/Document/components/PublicOnlyGate.tsx` |
+| 区域     | 当前事实                                                                                                                       | 来源                                                                                                                                                                             |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 布局     | 公共与成员分支已共用 DocsLayout；成员分支另挂身份、拖拽与工作区行为。                                                          | `apps/outline/app/components/DocsLayout.tsx`、`apps/outline/app/components/AuthenticatedLayout.tsx`                                                                              |
+| Sidebar  | 成员向 DocsNavigation 传入空条目，再通过插槽挂原 Collections；公共条目由 NavigationRow 单独呈现。                              | `apps/outline/app/components/Sidebar/App.tsx`、`apps/outline/app/components/Sidebar/DocsNavigation.tsx`                                                                          |
+| 树行几何 | 公共展开按钮占用独立横向空间，树深度逐级加一；成员直属文档使用 Math.max(depth + 1, 2)，行几何由 SidebarLink 控制。             | `apps/outline/app/components/Sidebar/components/SidebarLink.tsx`、`apps/outline/app/components/Sidebar/components/CollectionLinkChildren.tsx`                                    |
+| 正文     | 两分支最终使用同一个 Editor wrapper；成员页与公共页分别组合标题和正文，已经共用 ReadingMain、ReadingBody、标题样式与目录列表。 | `apps/outline/app/scenes/Document/components/Document.tsx`、`apps/outline/app/scenes/Document/components/Editor.tsx`、`apps/outline/app/scenes/WebsitePublic/PublicDocument.tsx` |
+| 导航     | 成员页将面包屑、目录及收藏放入左侧 Glass；公共页的面包屑及目录按钮放在正文标题区域。                                           | `apps/outline/app/scenes/Document/components/Header.tsx`、`apps/outline/app/scenes/Document/components/DocumentReadingFrame.tsx`                                                 |
+| 文档集   | 公共总览及集合详情直接使用普通链接列表；成员 DocumentListItem 已复用 DocsSearchResultLink 与 DocsSearchResultContent。         | `apps/outline/app/scenes/WebsitePublic/PublicDirectory.tsx`、`apps/outline/app/components/DocumentListItem.tsx`、`apps/outline/app/components/DocsSearch.tsx`                    |
+| 字段     | 公共集合有名称、描述与地址；公共文档详情有标题、正文与更新时间，缺少 icon、color、fullWidth。                                  | `apps/outline/shared/types/websiteIntegration.ts`                                                                                                                                |
+| 身份     | 登录 publicOnly 读者仍进入 PublicDocumentView，可按授权接入公共评论。                                                          | `apps/outline/app/scenes/Document/components/PublicOnlyGate.tsx`                                                                                                                 |
 
 本轮先前已查看真实成员文档页。匿名布局结论来自当前源码；未完成两种身份的真实浏览器对照，不能视为完整视觉验收。
 
@@ -37,13 +37,13 @@
 
 本期不新增通用文档树引擎，不建立第二套主题 token，不重命名已有共用组件，不跨 Website 与 Outline 共享 React 实例。新增辅助组件放在现有公共阅读或 Docs 组件边界内，避免为目录整齐移动大量现有文件。
 
-| 层次 | 复用或适配方式 | 成员业务改动目标 |
-| --- | --- | --- |
-| 布局 | 继续使用 DocsLayout、Header、Scene 与 CenteredContent。 | 无新增业务改动。 |
-| Glass | 复用 GlassToolbar、GlassNavigationToolbar 与既有按钮。 | 无新增业务改动。 |
-| Sidebar | 公共行复用 SidebarLink、现有展开控件及 ExUI 行 token；公共 adapter 负责组合、深度与选中状态。 | 不改成员树加载、排序、拖拽与菜单。 |
-| 文档列表 | 公共列表复用 DocsSearchResultLink 和 DocsSearchResultContent。 | 不拆成员 DocumentListItem。 |
-| 正文 | 继续使用 Editor、ReadingMain、ReadingBody、readingTitleStyles 与 ReadingContentsView。 | 不重构成员 Editor wrapper。 |
+| 层次     | 复用或适配方式                                                                                | 成员业务改动目标                   |
+| -------- | --------------------------------------------------------------------------------------------- | ---------------------------------- |
+| 布局     | 继续使用 DocsLayout、Header、Scene 与 CenteredContent。                                       | 无新增业务改动。                   |
+| Glass    | 复用 GlassToolbar、GlassNavigationToolbar 与既有按钮。                                        | 无新增业务改动。                   |
+| Sidebar  | 公共行复用 SidebarLink、现有展开控件及 ExUI 行 token；公共 adapter 负责组合、深度与选中状态。 | 不改成员树加载、排序、拖拽与菜单。 |
+| 文档列表 | 公共列表复用 DocsSearchResultLink 和 DocsSearchResultContent。                                | 不拆成员 DocumentListItem。        |
+| 正文     | 继续使用 Editor、ReadingMain、ReadingBody、readingTitleStyles 与 ReadingContentsView。        | 不重构成员 Editor wrapper。        |
 
 如实施发现必须改变上游基础组件的公共接口，RFC 必须记录原因、受影响消费者及替代方案。不能把这项设计扩展成顺手重构成员组件。
 
@@ -138,17 +138,17 @@
 
 ## 9. 预期变更范围
 
-| 文件或边界 | 预期工作 |
-| --- | --- |
-| `apps/outline/app/components/Sidebar/DocsNavigation.tsx` | 公共分组标题、公共行几何与独立展开控件组合。成员空条目插槽路径不得新增空分组或重复标题。 |
-| `apps/outline/app/scenes/WebsitePublic/PublicNavigation.tsx` | 公共导航状态及已有 Sidebar 接入。 |
-| `apps/outline/app/stores/PublicDocsStore.ts` | 如需修改，仅收窄当前行选中投影；不改请求、排序或权限生命周期。 |
-| `apps/outline/app/scenes/WebsitePublic.tsx` | 收敛配置状态与就绪场景的 Header owner。 |
-| `apps/outline/app/scenes/WebsitePublic/PublicDocument.tsx` | Glass 导航、公开更新时间、移动目录与现有 Reader 组合。 |
-| `apps/outline/app/scenes/WebsitePublic/PublicDirectory.tsx` | Scene、集合描述与共用列表展示。 |
-| `apps/outline/app/scenes/Document/components/DocumentReadingFrame.tsx` | 公共组合移出正文内导航；保留成员已消费的样式与目录导出，不移动或重命名。 |
-| `apps/outline/app/scenes/Document/components/PublicOnlyGate.tsx` | 仅在 Header 调用契约需要时调整公共 Reader 接入。 |
-| 公共辅助组件与相关现有测试 | 必要时局部拆分导航或目录展示，避免把逻辑继续堆入场景文件。 |
+| 文件或边界                                                             | 预期工作                                                                                 |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `apps/outline/app/components/Sidebar/DocsNavigation.tsx`               | 公共分组标题、公共行几何与独立展开控件组合。成员空条目插槽路径不得新增空分组或重复标题。 |
+| `apps/outline/app/scenes/WebsitePublic/PublicNavigation.tsx`           | 公共导航状态及已有 Sidebar 接入。                                                        |
+| `apps/outline/app/stores/PublicDocsStore.ts`                           | 如需修改，仅收窄当前行选中投影；不改请求、排序或权限生命周期。                           |
+| `apps/outline/app/scenes/WebsitePublic.tsx`                            | 收敛配置状态与就绪场景的 Header owner。                                                  |
+| `apps/outline/app/scenes/WebsitePublic/PublicDocument.tsx`             | Glass 导航、公开更新时间、移动目录与现有 Reader 组合。                                   |
+| `apps/outline/app/scenes/WebsitePublic/PublicDirectory.tsx`            | Scene、集合描述与共用列表展示。                                                          |
+| `apps/outline/app/scenes/Document/components/DocumentReadingFrame.tsx` | 公共组合移出正文内导航；保留成员已消费的样式与目录导出，不移动或重命名。                 |
+| `apps/outline/app/scenes/Document/components/PublicOnlyGate.tsx`       | 仅在 Header 调用契约需要时调整公共 Reader 接入。                                         |
+| 公共辅助组件与相关现有测试                                             | 必要时局部拆分导航或目录展示，避免把逻辑继续堆入场景文件。                               |
 
 复用而非重构的目标文件：成员 CollectionRow、DocumentRow、DocumentListItem、Document 场景及其 Editor、成员 Header，以及共用 Header、Scene、GlassToolbar、DocsSearch。生产实现若需要改变这些边界，应先在 RFC 中明确必要性。
 
@@ -168,16 +168,16 @@
 
 ### 11.1 视觉与交互
 
-| 编号 | 场景与通过条件 |
-| --- | --- |
-| V01 | 同一公开文档，匿名、登录 publicOnly、成员三种读取路径使用同一品牌、Sidebar 容器、基础行样式、标题排版及 Glass 材质；允许本规格列出的数据与能力差异。 |
-| V02 | 桌面面包屑及目录按钮位于主区域左上角 Header，不在居中正文标题区域；每个页面只有一个 Header。 |
-| V03 | 公共集合及至少三层文档的缩进、箭头区域和文字起点符合成员几何；点击箭头不导航，点击链接不误展开，当前页面高亮唯一。 |
-| V04 | 公共总览和集合详情呈现正式列表；长名称、无描述、空集合及分页均可用，根文档与全部文档的含义不混淆。 |
-| V05 | 桌面目录可开关；移动目录入口在顶部，选择后正确跳转并关闭；无标题文档隐藏目录按钮；打印无交互导航。 |
-| V06 | Sidebar 展开及折叠、宽屏及手机窄屏、浅色及深色、长面包屑及 200% 缩放下无遮挡、重复控件或整页横向溢出。 |
-| V07 | 退出到同一公开文档后，导航仍在同一布局区域，旧成员数据与操作清除；状态提示不造成双 Header。 |
-| V08 | 成员重命名、新建子文档、拖拽、收藏、菜单、保存及协作路径保持既有功能；独立 Outline 模式完成受影响区域回归。 |
+| 编号 | 场景与通过条件                                                                                                                                       |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| V01  | 同一公开文档，匿名、登录 publicOnly、成员三种读取路径使用同一品牌、Sidebar 容器、基础行样式、标题排版及 Glass 材质；允许本规格列出的数据与能力差异。 |
+| V02  | 桌面面包屑及目录按钮位于主区域左上角 Header，不在居中正文标题区域；每个页面只有一个 Header。                                                         |
+| V03  | 公共集合及至少三层文档的缩进、箭头区域和文字起点符合成员几何；点击箭头不导航，点击链接不误展开，当前页面高亮唯一。                                   |
+| V04  | 公共总览和集合详情呈现正式列表；长名称、无描述、空集合及分页均可用，根文档与全部文档的含义不混淆。                                                   |
+| V05  | 桌面目录可开关；移动目录入口在顶部，选择后正确跳转并关闭；无标题文档隐藏目录按钮；打印无交互导航。                                                   |
+| V06  | Sidebar 展开及折叠、宽屏及手机窄屏、浅色及深色、长面包屑及 200% 缩放下无遮挡、重复控件或整页横向溢出。                                               |
+| V07  | 退出到同一公开文档后，导航仍在同一布局区域，旧成员数据与操作清除；状态提示不造成双 Header。                                                          |
+| V08  | 成员重命名、新建子文档、拖拽、收藏、菜单、保存及协作路径保持既有功能；独立 Outline 模式完成受影响区域回归。                                          |
 
 ### 11.2 自动验证与证据分层
 

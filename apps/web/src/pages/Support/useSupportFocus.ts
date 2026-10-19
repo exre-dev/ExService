@@ -4,7 +4,11 @@ import { useLocation } from 'react-router'
 function hashTarget(root: HTMLElement, hash: string): HTMLElement | null {
   if (!hash) return null
   let id: string
-  try { id = decodeURIComponent(hash.slice(1)) } catch { return null }
+  try {
+    id = decodeURIComponent(hash.slice(1))
+  } catch {
+    return null
+  }
   const target = document.getElementById(id)
   return target && root.contains(target) ? target : null
 }

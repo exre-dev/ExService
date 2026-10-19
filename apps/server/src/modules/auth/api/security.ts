@@ -16,7 +16,10 @@ export function readBearerToken(request: FastifyRequest): string | undefined {
  * 既被 Glue 的 securityHandler 使用，也被 storage transport 在消费请求体之前复用；
  * 这里只移动既有 token 格式与 authenticateToken 行为，不另建认证协议。
  */
-export async function authenticateBearer(request: FastifyRequest, authServices: AuthService): Promise<SessionIdentity> {
+export async function authenticateBearer(
+  request: FastifyRequest,
+  authServices: AuthService,
+): Promise<SessionIdentity> {
   const token = readBearerToken(request)
   if (token === undefined) throw new AuthError('SESSION_INVALID')
   const identity = await authServices.authenticateToken(token)

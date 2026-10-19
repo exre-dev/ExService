@@ -10,6 +10,7 @@
 - `/docs` 和 `/docs/` 是主站公开建设中页面；保留旧深路径的 404，不恢复已退役文档服务。身份客户端与 Hydra 边界见 `.ai/architectures/identity/integration-boundaries.md`。
 
 <!-- codebase-worker:start -->
+
 ## Project AI documentation rules
 
 - Before design, development, debugging, or a major decision, read the relevant content in `.ai/`.
@@ -27,22 +28,24 @@
 - Contribution rules: `@CONTRIBUTING.md`. Read this file before creating a commit or Pull Request; it is the single source of truth for contribution, commit, and PR rules.
 
 ### How to Commit
+
 - If a code-commiter skill is available, commits must be made using this SKILL.
+
 <!-- codebase-worker:end -->
 
 ## 架构与目录边界
 
 本仓库采用 Contract-first 架构：`api/openapi.yaml` 是唯一 HTTP Contract，`apps/server/` 是唯一 Website Fastify Server，业务数据使用独立 PostgreSQL `exre`。完整架构见 `.ai/architectures/overview.md`。
 
-| 路径 | 责任与边界 |
-| --- | --- |
-| `api/` | HTTP 路径、operation、请求/响应/错误 schema；不放实现。 |
-| `packages/sdk/` | 从 Contract 生成类型，公开 Browser/Node 单例 `instance({...})`、配置 setter 与 `storage`；不定义第二份 endpoint。 |
-| `packages/components/` | 基于 ExUI 的共享 UI；不访问 API、不定义路由表、不导入 ExUI 全局样式。 |
-| `packages/common/` | 按模块子入口公开跨应用共享的纯逻辑；消费规则见 `.agents/rules/package-common.md`。 |
-| `apps/web/` | 前端路由、主题、构建配置与 SDK 适配；本站业务 HTTP 调用只经 `@workspace/sdk`，不复制 DTO。 |
-| `apps/server/` | 加载 Contract、映射 handler、执行受控数据库访问；不绕过 Contract 注册 HTTP 路由或静态 JSON mock，不反向生成 OpenAPI，不连接 `hydra` 等其他数据库。 |
-| `tests/contract/` | 从 Contract 读取 schema，验证真实 Fastify 路由、原始 handler 输出和双向 operation 覆盖。 |
+| 路径                   | 责任与边界                                                                                                                                         |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `api/`                 | HTTP 路径、operation、请求/响应/错误 schema；不放实现。                                                                                            |
+| `packages/sdk/`        | 从 Contract 生成类型，公开 Browser/Node 单例 `instance({...})`、配置 setter 与 `storage`；不定义第二份 endpoint。                                  |
+| `packages/components/` | 基于 ExUI 的共享 UI；不访问 API、不定义路由表、不导入 ExUI 全局样式。                                                                              |
+| `packages/common/`     | 按模块子入口公开跨应用共享的纯逻辑；消费规则见 `.agents/rules/package-common.md`。                                                                 |
+| `apps/web/`            | 前端路由、主题、构建配置与 SDK 适配；本站业务 HTTP 调用只经 `@workspace/sdk`，不复制 DTO。                                                         |
+| `apps/server/`         | 加载 Contract、映射 handler、执行受控数据库访问；不绕过 Contract 注册 HTTP 路由或静态 JSON mock，不反向生成 OpenAPI，不连接 `hydra` 等其他数据库。 |
+| `tests/contract/`      | 从 Contract 读取 schema，验证真实 Fastify 路由、原始 handler 输出和双向 operation 覆盖。                                                           |
 
 Browser 和 Node 的本站业务 HTTP 调用统一使用 `@workspace/sdk` 的 `instance({...})`；上传使用同包 `storage`，其本站阶段经过同一请求管线。方法、路径、请求和响应类型从唯一 OpenAPI Contract 推导。第三方业务请求可自行选择 `fetch` 或其他工具，本站 token 不用于第三方请求。
 

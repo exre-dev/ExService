@@ -15,9 +15,9 @@
 
 **先开发本 RFC 的反馈功能，不等待另一分支的 Tiptap 支持。** 当前分支不安装 `@tiptap/*`、不实现编辑器或富文本工具栏，不重复建设该分支的 Tiptap 支持。
 
-| 阶段 | 范围与交付条件 |
-| --- | --- |
-| 本期：优先开发 | 普通输入框、共同字段与 Bug 字段、校验、附件、持久记录、ClickUp 同步、核对／恢复；按本 RFC 的纯文本版本验收 |
+| 阶段              | 范围与交付条件                                                                                                        |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------- |
+| 本期：优先开发    | 普通输入框、共同字段与 Bug 字段、校验、附件、持久记录、ClickUp 同步、核对／恢复；按本 RFC 的纯文本版本验收            |
 | 后续：Tiptap 接入 | 另一分支支持完成并可复用后，单独更新 Spec／RFC，再替换 Request 输入控件、细化正文 Contract 与规则版本、补齐富文本验收 |
 
 后续富文本方向继续采用 Tiptap，具体依赖版本与接入接口以支持分支成果为依据。富文本格式、工具栏、链接弹窗和编辑器桥接不属于本期范围或交付门槛。
@@ -30,15 +30,15 @@
 
 ## 2. 已批准的产品规则
 
-| 项目 | Request | Bug |
-| --- | --- | --- |
-| Title | 必填 | 必填 |
-| Category | 选填 | 不显示控件；服务端固定修复 |
-| Type、部门、额外大文件链接 | 选填 | 选填 |
-| 正文 | 普通多行文本 Content，必填；后续再接入 Tiptap | 问题描述必填；复现步骤、预期结果、实际结果、发生频率选填 |
-| 附件 | 0–5 个，每个 1–20 MiB | 同左 |
-| 状态 | 新增 | 新增 |
-| 用户字段 | 服务端昵称＋本站 UUID | 同左 |
+| 项目                       | Request                                       | Bug                                                      |
+| -------------------------- | --------------------------------------------- | -------------------------------------------------------- |
+| Title                      | 必填                                          | 必填                                                     |
+| Category                   | 选填                                          | 不显示控件；服务端固定修复                               |
+| Type、部门、额外大文件链接 | 选填                                          | 选填                                                     |
+| 正文                       | 普通多行文本 Content，必填；后续再接入 Tiptap | 问题描述必填；复现步骤、预期结果、实际结果、发生频率选填 |
+| 附件                       | 0–5 个，每个 1–20 MiB                         | 同左                                                     |
+| 状态                       | 新增                                          | 新增                                                     |
+| 用户字段                   | 服务端昵称＋本站 UUID                         | 同左                                                     |
 
 频率值与文案固定映射为 `always=每次`、`often=经常`、`sometimes=偶尔`、`once=仅一次`。不选时为 null。Task 的 Request／Bug 类型与名为 Type 的自定义字段严格分开。
 
@@ -48,14 +48,14 @@ Title trim 后 1–200 个 Unicode 码点，禁止换行和控制字符。Reques
 
 ## 3. 单元与依赖边界
 
-| 单元 | 职责与公开接口 |
-| --- | --- |
+| 单元                                                 | 职责与公开接口                                                                                                              |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `packages/feedback-content/`，新增纯 TS workspace 包 | 纯文本分析与 Markdown 安全转义、Bug 编排、正文大小计算及远端正文核对；不定义 HTTP DTO、引入 React、Tiptap、访问网络或数据库 |
-| `apps/web/src/pages/Support/feedback/` | 模态表单、Zod／RHF、普通文本输入、附件选择、API 适配及进度恢复 |
-| `apps/server/src/modules/clickup/` | 普通 ClickUp 服务／传输适配器：getList、getFields、getTaskTypes、getTask、listTasks、createTask、uploadAttachment |
-| `apps/server/src/domains/support/` | 表单接收、归属与选项校验、持久化、认领、同步状态与维护核对 |
-| `apps/server/src/domains/support/api/` | operation 登记、HTTP handler、受控 multipart 传输 hook |
-| `api/paths/support.yaml`、`api/schemas/support.yaml` | 本 RFC 的唯一 Website HTTP Contract 定义 |
+| `apps/web/src/pages/Support/feedback/`               | 模态表单、Zod／RHF、普通文本输入、附件选择、API 适配及进度恢复                                                              |
+| `apps/server/src/modules/clickup/`                   | 普通 ClickUp 服务／传输适配器：getList、getFields、getTaskTypes、getTask、listTasks、createTask、uploadAttachment           |
+| `apps/server/src/domains/support/`                   | 表单接收、归属与选项校验、持久化、认领、同步状态与维护核对                                                                  |
+| `apps/server/src/domains/support/api/`               | operation 登记、HTTP handler、受控 multipart 传输 hook                                                                      |
+| `api/paths/support.yaml`、`api/schemas/support.yaml` | 本 RFC 的唯一 Website HTTP Contract 定义                                                                                    |
 
 纯内容包是本 RFC 对“前后端使用相同内容规则”的技术细化。包名使用 `@workspace/feedback-content`，导出纯文本规则版本、正文分析、安全转义及纯编排函数；前端 Zod refine 与服务端业务校验消费同一分析结果。HTTP 输入／响应类型仍只从生成的 `@workspace/api-client` 导入。
 
@@ -87,14 +87,14 @@ Tiptap 支持在另一分支开发。待可复用后，再确定版本、公开�
 
 以下均为新增 Contract 路径，运行 URL 显式加 `/api` 前缀。全部使用 bearerAuth，并返回 Cache-Control: no-store；POST／PUT 成功不等于整份提交完成。
 
-| Method／Contract path | operationId | 请求 | 成功返回 |
-| --- | --- | --- | --- |
-| GET `/support/feedback/options` | getSupportFeedbackOptions | 无 | 200 FeedbackOptions |
-| POST `/support/feedback/submissions` | prepareSupportFeedback | FeedbackPrepare | 新记录 201、幂等重放 200；FeedbackSnapshot |
-| GET `/support/feedback/submissions/{submissionId}` | getSupportFeedback | UUID path | 200 FeedbackSnapshot |
-| GET `/support/feedback/submissions/lookup` | lookupSupportFeedback | submissionKey UUID query | 200 FeedbackSnapshot；不存在或他人记录为404 |
-| PUT `/support/feedback/submissions/{submissionId}/attachments/{attachmentId}` | uploadSupportFeedbackAttachment | 两个 UUID path＋单文件 multipart | 200 FeedbackSnapshot |
-| POST `/support/feedback/submissions/{submissionId}/advance` | advanceSupportFeedback | FeedbackAdvance | 完成／不写入重放 200，已处理但未完成／已在途 202；FeedbackSnapshot |
+| Method／Contract path                                                         | operationId                     | 请求                             | 成功返回                                                           |
+| ----------------------------------------------------------------------------- | ------------------------------- | -------------------------------- | ------------------------------------------------------------------ |
+| GET `/support/feedback/options`                                               | getSupportFeedbackOptions       | 无                               | 200 FeedbackOptions                                                |
+| POST `/support/feedback/submissions`                                          | prepareSupportFeedback          | FeedbackPrepare                  | 新记录 201、幂等重放 200；FeedbackSnapshot                         |
+| GET `/support/feedback/submissions/{submissionId}`                            | getSupportFeedback              | UUID path                        | 200 FeedbackSnapshot                                               |
+| GET `/support/feedback/submissions/lookup`                                    | lookupSupportFeedback           | submissionKey UUID query         | 200 FeedbackSnapshot；不存在或他人记录为404                        |
+| PUT `/support/feedback/submissions/{submissionId}/attachments/{attachmentId}` | uploadSupportFeedbackAttachment | 两个 UUID path＋单文件 multipart | 200 FeedbackSnapshot                                               |
+| POST `/support/feedback/submissions/{submissionId}/advance`                   | advanceSupportFeedback          | FeedbackAdvance                  | 完成／不写入重放 200，已处理但未完成／已在途 202；FeedbackSnapshot |
 
 GET／HEAD 均只读；HEAD 不得执行接收确认、认领、过期清理或外部写入。PUT 的不变附件 ID与摘要使重放幂等；advance 的 expectedRevision 防止丢失响应后把重放误作下一次外部写入。
 
@@ -104,33 +104,44 @@ GET／HEAD 均只读；HEAD 不得执行接收确认、认领、过期清理或�
 
 ```typescript
 type FeedbackPrepare = {
-  submissionKey: Uuid;
+  submissionKey: Uuid
   form:
     | {
-        kind: "request"; title: string; categoryOptionId: Uuid | null;
-        typeOptionId: Uuid | null; departmentOptionId: Uuid | null;
-        largeFileUrl: string | null; contentText: string;
+        kind: 'request'
+        title: string
+        categoryOptionId: Uuid | null
+        typeOptionId: Uuid | null
+        departmentOptionId: Uuid | null
+        largeFileUrl: string | null
+        contentText: string
       }
     | {
-        kind: "bug"; title: string;
-        typeOptionId: Uuid | null; departmentOptionId: Uuid | null;
-        largeFileUrl: string | null;
+        kind: 'bug'
+        title: string
+        typeOptionId: Uuid | null
+        departmentOptionId: Uuid | null
+        largeFileUrl: string | null
         details: {
-          description: string; reproductionSteps: string | null;
-          expectedResult: string | null; actualResult: string | null;
-          frequency: "always" | "often" | "sometimes" | "once" | null;
-        };
-      };
+          description: string
+          reproductionSteps: string | null
+          expectedResult: string | null
+          actualResult: string | null
+          frequency: 'always' | 'often' | 'sometimes' | 'once' | null
+        }
+      }
   attachments: Array<{
-    id: Uuid; originalName: string; contentType: string;
-    byteLength: number; sha256: string;
-  }>;
-};
+    id: Uuid
+    originalName: string
+    contentType: string
+    byteLength: number
+    sha256: string
+  }>
+}
 
 type FeedbackAdvance = {
-  expectedRevision: number;
-  intent: "continue" | "retry";
-};
+  expectedRevision: number
+  intent: 'continue' | 'retry'
+}
 ```
 
 上述为 Contract 的规范形状，实施后不另手写这份 DTO。submissionKey 和附件 id 由浏览器 crypto.randomUUID() 生成；数组顺序为 ordinal 0–4。SHA-256 为 64 位小写十六进制，逐文件计算，byteLength 为 1–20,971,520。清单不允许重复 id；附件字节不是 JSON／base64。
@@ -147,31 +158,31 @@ FeedbackOptions 固定包含 available:boolean、reason:null 或 not_configured�
 
 FeedbackSnapshot 的必需字段为：
 
-| 字段 | 类型与语义 |
-| --- | --- |
-| id、submissionKey | UUID；id 为服务端创建的提交标识 |
-| revision | 0–MAX_SAFE_INTEGER，所有已持久化状态改变递增 |
-| form | 已归一化的上述 form，允许恢复正文；不含 token／邮箱 |
-| createdAt、receiveExpiresAt | 复用 SafeTimestamp |
-| status | receiving／ready／creating／uploading／failed／verification_required／completed |
-| nextAction | upload／continue／wait／retry／verify／done／restart |
-| taskId、taskUrl | string 或 null；URL 由任务 ID 按固定 ClickUp 主机生成 |
-| failure | null 或 {code,phase,attachmentId,retryAfterSeconds}，只有固定安全分类 |
-| attachments | {id,ordinal,originalName,contentType,byteLength,sha256,status,remoteAttachmentId}[]；无 bytea |
+| 字段                        | 类型与语义                                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------- |
+| id、submissionKey           | UUID；id 为服务端创建的提交标识                                                               |
+| revision                    | 0–MAX_SAFE_INTEGER，所有已持久化状态改变递增                                                  |
+| form                        | 已归一化的上述 form，允许恢复正文；不含 token／邮箱                                           |
+| createdAt、receiveExpiresAt | 复用 SafeTimestamp                                                                            |
+| status                      | receiving／ready／creating／uploading／failed／verification_required／completed               |
+| nextAction                  | upload／continue／wait／retry／verify／done／restart                                          |
+| taskId、taskUrl             | string 或 null；URL 由任务 ID 按固定 ClickUp 主机生成                                         |
+| failure                     | null 或 {code,phase,attachmentId,retryAfterSeconds}，只有固定安全分类                         |
+| attachments                 | {id,ordinal,originalName,contentType,byteLength,sha256,status,remoteAttachmentId}[]；无 bytea |
 
 附件状态为 expected／received／uploading／failed／verification_required／uploaded。phase 为 create_task／upload_attachment。所有 nullable 字段必须明确返回 null；status 与 nextAction 必须按以下规则成对返回。
 
-| 状态／条件 | nextAction |
-| --- | --- |
-| receiving 未过期 | upload；零附件同样需 advance 固化提交 |
-| receiving 已过期 | restart，不改变数据库状态 |
-| ready | continue |
-| creating，或 uploading 且有未过期的活动尝试 | wait |
-| creating／uploading 且活动尝试已过期 | verify；只派生提示，不在 GET／HEAD 中写状态 |
-| uploading，无活动尝试且有 received 附件 | continue |
-| failed | retry |
-| verification_required | verify |
-| completed | done |
+| 状态／条件                                  | nextAction                                  |
+| ------------------------------------------- | ------------------------------------------- |
+| receiving 未过期                            | upload；零附件同样需 advance 固化提交       |
+| receiving 已过期                            | restart，不改变数据库状态                   |
+| ready                                       | continue                                    |
+| creating，或 uploading 且有未过期的活动尝试 | wait                                        |
+| creating／uploading 且活动尝试已过期        | verify；只派生提示，不在 GET／HEAD 中写状态 |
+| uploading，无活动尝试且有 received 附件     | continue                                    |
+| failed                                      | retry                                       |
+| verification_required                       | verify                                      |
+| completed                                   | done                                        |
 
 failure code 只包括 UPSTREAM_REJECTED／UPSTREAM_RATE_LIMITED／UPSTREAM_CONFIGURATION／UPSTREAM_UNKNOWN；retryAfterSeconds 为 null 或正安全整数。返回 retry 不保证当前配置已经恢复，但只能继续已证明未写入的步骤。所有者恢复过程不暴露尝试 UUID、维护证据、token 或第三方用户信息。
 
@@ -179,19 +190,19 @@ failure code 只包括 UPSTREAM_REJECTED／UPSTREAM_RATE_LIMITED／UPSTREAM_CONF
 
 请求级错误统一由 FeedbackError 实现现有公共错误字段，并经 `apps/server/src/errors.ts` 输出；扩展 ErrorCode 类型，不新增错误 envelope 格式。
 
-| HTTP／code | 触发 |
-| --- | --- |
-| 400 BAD_REQUEST／FEEDBACK_INVALID_INPUT | schema、纯文本非空或选项非法 |
-| 401 既有认证错误 | 会话无效 |
-| 404 NOT_FOUND | 记录不存在或不属于当前用户 |
-| 408 FEEDBACK_UPLOAD_TIMEOUT | Website 文件接收超时 |
-| 409 FEEDBACK_PAYLOAD_CONFLICT | 同幂等键不同归一化载荷，或同附件 ID 不同字节 |
-| 409 FEEDBACK_STATE_CONFLICT | 未来 revision、不可执行 intent、缺失附件、过期接收或已开始后的编辑 |
-| 413 FEEDBACK_TOO_LARGE | 实际文件／清单／wire／JSON／正文超限 |
-| 415 FEEDBACK_UNSUPPORTED_MEDIA | 非 multipart |
-| 429 FEEDBACK_RATE_LIMITED／FEEDBACK_BUSY | 新提交频率、接收数、接收／同步槽不足 |
-| 503 FEEDBACK_UNAVAILABLE | 没有 token、配置或只读元数据不可用 |
-| 500 INTERNAL_ERROR | 数据不变量损坏及未知本地错误 |
+| HTTP／code                               | 触发                                                               |
+| ---------------------------------------- | ------------------------------------------------------------------ |
+| 400 BAD_REQUEST／FEEDBACK_INVALID_INPUT  | schema、纯文本非空或选项非法                                       |
+| 401 既有认证错误                         | 会话无效                                                           |
+| 404 NOT_FOUND                            | 记录不存在或不属于当前用户                                         |
+| 408 FEEDBACK_UPLOAD_TIMEOUT              | Website 文件接收超时                                               |
+| 409 FEEDBACK_PAYLOAD_CONFLICT            | 同幂等键不同归一化载荷，或同附件 ID 不同字节                       |
+| 409 FEEDBACK_STATE_CONFLICT              | 未来 revision、不可执行 intent、缺失附件、过期接收或已开始后的编辑 |
+| 413 FEEDBACK_TOO_LARGE                   | 实际文件／清单／wire／JSON／正文超限                               |
+| 415 FEEDBACK_UNSUPPORTED_MEDIA           | 非 multipart                                                       |
+| 429 FEEDBACK_RATE_LIMITED／FEEDBACK_BUSY | 新提交频率、接收数、接收／同步槽不足                               |
+| 503 FEEDBACK_UNAVAILABLE                 | 没有 token、配置或只读元数据不可用                                 |
+| 500 INTERNAL_ERROR                       | 数据不变量损坏及未知本地错误                                       |
 
 外部写入已经发生或可能发生时，先保存 safe failure／verification_required，然后以 202 返回 snapshot；不把它包装成无上下文的 502 而诱导客户端重新 prepare。保存结果失败时可返回 500，但旧 active attempt 仍能保护重试。回包无论是否成功，客户端都不能把任意 2xx 显示为最终成功。
 
@@ -261,14 +272,14 @@ advance 首先认证并读取本人记录：
 
 写响应的结果分类为：
 
-| 外部结果 | 处置 |
-| --- | --- |
-| 合法 2xx，必要 ID可核验 | 固化成功，不以整个原始 JSON 作为 API 响应 |
-| 已收到且语义明确的 400／401／403／404／413／422 拒绝 | failed，保留步骤和字节；配置／选项修正后由用户重试 |
-| 明确 429 拒绝 | failed，按 Retry-After／x-ratelimit-reset 固化 retry_not_before |
-| timeout、连接中断、5xx、异常重定向、无法解析成功响应 | verification_required |
-| 调用前的只读 preflight 故障 | 没有外部写入；503，不新增未知尝试 |
-| 外部完成但 DB 结果提交失败／进程退出 | 持久化的 active attempt 保持在途；恢复后核对 |
+| 外部结果                                             | 处置                                                            |
+| ---------------------------------------------------- | --------------------------------------------------------------- |
+| 合法 2xx，必要 ID可核验                              | 固化成功，不以整个原始 JSON 作为 API 响应                       |
+| 已收到且语义明确的 400／401／403／404／413／422 拒绝 | failed，保留步骤和字节；配置／选项修正后由用户重试              |
+| 明确 429 拒绝                                        | failed，按 Retry-After／x-ratelimit-reset 固化 retry_not_before |
+| timeout、连接中断、5xx、异常重定向、无法解析成功响应 | verification_required                                           |
+| 调用前的只读 preflight 故障                          | 没有外部写入；503，不新增未知尝试                               |
+| 外部完成但 DB 结果提交失败／进程退出                 | 持久化的 active attempt 保持在途；恢复后核对                    |
 
 没有幂等保证的第三方写入无法严格保证 exactly-once；不依据“查不到任务”自动再次创建，不依据“没收到附件响应”自动再次上传。
 
@@ -278,18 +289,18 @@ API handler 即使浏览器断线，也等待当前已发出的调用结束并�
 
 ### 7.3 时限与容量
 
-| 资源 | 限制 |
-| --- | --- |
-| 单文件 wire | 21037056 字节，20 MiB＋64 KiB |
-| 文件 parts／fields | 1／0 |
-| multipart headerPairs／headerBytes／fieldNameBytes | 32／16384／64 |
-| 单文件接收 | 120 秒，同时最多 2 个 |
-| task create／metadata read | 30 秒／10 秒 |
-| 单附件外部上传 | 60 秒 |
-| 单次 advance | 90 秒，同时最多 2 个 |
-| 外部 JSON 响应 | 最多 2 MiB，超过或结构不明按操作阶段安全归类 |
-| 接收期限 | 24 小时，仅 receiving |
-| 新记录额度 | 同用户 10 次／10 分钟，最多 2 个未过期 receiving |
+| 资源                                               | 限制                                             |
+| -------------------------------------------------- | ------------------------------------------------ |
+| 单文件 wire                                        | 21037056 字节，20 MiB＋64 KiB                    |
+| 文件 parts／fields                                 | 1／0                                             |
+| multipart headerPairs／headerBytes／fieldNameBytes | 32／16384／64                                    |
+| 单文件接收                                         | 120 秒，同时最多 2 个                            |
+| task create／metadata read                         | 30 秒／10 秒                                     |
+| 单附件外部上传                                     | 60 秒                                            |
+| 单次 advance                                       | 90 秒，同时最多 2 个                             |
+| 外部 JSON 响应                                     | 最多 2 MiB，超过或结构不明按操作阶段安全归类     |
+| 接收期限                                           | 24 小时，仅 receiving                            |
+| 新记录额度                                         | 同用户 10 次／10 分钟，最多 2 个未过期 receiving |
 
 multipart hook 使用现有 MultipartUploadLifecycle，认证／归属前置，wire 计数、连接断线及超时清理不能另写简化版本。按 operation 的 x-fastify-config 登记限额；GET 不安装上传 hook。
 
@@ -299,16 +310,16 @@ multipart hook 使用现有 MultipartUploadLifecycle，认证／归属前置，w
 
 固定 API origin 为 https://api.clickup.com/api/v2，redirect:error。token 按正式配置读取；测试通过构造参数注入 fake transport，生产不可由用户请求改变 origin。外部 DTO 是适配器内部类型，不作为 Website endpoint 定义。
 
-| 输入 | 目标 ID／参数 |
-| --- | --- |
-| Request／Bug | custom_item_id=1005／1001 |
-| Title／最终正文／状态 | name／markdown_content／新增 |
-| Category | 4acf848b-2a8d-4404-8cda-36156e0f066d |
-| 修复 option | d8b4afde-d586-40ae-93d4-0b6923ba6bb9 |
-| Type | 4c3befc0-5146-43a2-8610-86efe4e8124a |
-| 部门 | 9b3d2027-2162-42e2-81b9-d907592cdb5b |
-| 额外文件链接 | 4f7eb8a3-5de7-4f3b-87bb-8be5dc2d573f |
-| 用户 | 346759da-1bc8-4ae7-aa0c-020102bc287b；值为「昵称 (UUID)」 |
+| 输入                  | 目标 ID／参数                                             |
+| --------------------- | --------------------------------------------------------- |
+| Request／Bug          | custom_item_id=1005／1001                                 |
+| Title／最终正文／状态 | name／markdown_content／新增                              |
+| Category              | 4acf848b-2a8d-4404-8cda-36156e0f066d                      |
+| 修复 option           | d8b4afde-d586-40ae-93d4-0b6923ba6bb9                      |
+| Type                  | 4c3befc0-5146-43a2-8610-86efe4e8124a                      |
+| 部门                  | 9b3d2027-2162-42e2-81b9-d907592cdb5b                      |
+| 额外文件链接          | 4f7eb8a3-5de7-4f3b-87bb-8be5dc2d573f                      |
+| 用户                  | 346759da-1bc8-4ae7-aa0c-020102bc287b；值为「昵称 (UUID)」 |
 
 Workspace 固定 90181517066，List 固定 901810170816。目标 ID与映射位于支持域只读配置，不接收客户端覆盖。getFields 使用 include_applied_objects=true；无 applied_objects 视为无该任务类型限制，存在时必须匹配 object_type=19 及对应 custom_item_id。
 
@@ -326,14 +337,14 @@ task ID 必须符合 `^[A-Za-z0-9_-]{1,128}$`，taskUrl 从其编码后的 ID构
 
 新增 `apps/server/src/domains/support/maintenance.ts`，普通 factory 使用 db／ClickUp 服务；CLI 位于 `apps/server/src/cli/support-feedback.ts`，只由显式脚本调用，不 import CLI。Website 数据身份、配置读取、退出与连接释放遵守现有数据库 CLI 规则。
 
-| CLI 命令契约 | 行为 |
-| --- | --- |
-| inspect --submission-id UUID | 只读本地状态与尝试，输出安全元数据，不输出正文、bytea 或 token |
-| inspect --submission-id UUID --remote-task-id ID | 只读验证远端 List、类型、用户字段、提交编号及附件元数据 |
-| resolve-task --submission-id UUID --attempt-id UUID --remote-task-id ID --confirm | 核验后事务回填唯一任务 ID；不能创建或删除任务 |
+| CLI 命令契约                                                                                                                              | 行为                                                                     |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| inspect --submission-id UUID                                                                                                              | 只读本地状态与尝试，输出安全元数据，不输出正文、bytea 或 token           |
+| inspect --submission-id UUID --remote-task-id ID                                                                                          | 只读验证远端 List、类型、用户字段、提交编号及附件元数据                  |
+| resolve-task --submission-id UUID --attempt-id UUID --remote-task-id ID --confirm                                                         | 核验后事务回填唯一任务 ID；不能创建或删除任务                            |
 | resolve-attachment --submission-id UUID --attachment-id UUID --attempt-id UUID --remote-attachment-id ID --downloaded-file PATH --confirm | 本地用户明确提供的远端下载文件核验长度和 SHA-256；事务回填并释放暂存字节 |
-| confirm-not-written --submission-id UUID --attempt-id UUID --evidence-file PATH --confirm | 维护者提供明确未写入证据后恢复同一步骤为 failed；不是查不到后的自动重试 |
-| cleanup-expired --before TIMESTAMP [--apply --confirm] | 默认只读计划；显式应用时仅清理期限已过且无任务／尝试的 receiving 记录 |
+| confirm-not-written --submission-id UUID --attempt-id UUID --evidence-file PATH --confirm                                                 | 维护者提供明确未写入证据后恢复同一步骤为 failed；不是查不到后的自动重试  |
+| cleanup-expired --before TIMESTAMP [--apply --confirm]                                                                                    | 默认只读计划；显式应用时仅清理期限已过且无任务／尝试的 receiving 记录    |
 
 维护写命令只能操作待核对或明确过期接收记录；对已过期的在途尝试，先在父行锁下将其标记 verification_required，再按原 attempt ID核对。inspect 可只读查看任意已明确指定的本地记录。行锁下复核当前 attempt ID、revision 与任务归属；已知成功结果不能被覆盖，没有候选、多个候选或无法证明附件内容一致时保持 verification_required。
 
@@ -394,18 +405,18 @@ Prepare／PUT／advance 的 route config 在统一 HTTP scope 安装，hook 只�
 
 ## 13. 验证与交付门槛
 
-| 类别 | 必须覆盖 |
-| --- | --- |
-| 内容 | Request 纯文本转义与换行、Bug 文本转义与顺序、空白无效而 Markdown 标记保留为文字、原文／转义后64及最终65 KiB边界、HTML／代码围栏作为文字、额外链接HTTPS限制 |
-| Contract | 六个 operation 的真实 Fastify 响应、原始 handler 返回值、oneOf 分支、封闭字段、nullable、状态／nextAction 配对、无凭据、双向覆盖 |
-| 接收 | 20 MiB 精确边界、第 6 个文件、100 MiB 清单、零文件、长度／摘要／MIME 不一致、超量 parts、重复 id、断线和120秒超时、2槽释放 |
-| 数据 | 同键同载荷、同键冲突、两个用户同 key、prepare 竞争、父行锁与上传竞争、已成功字节释放、损坏数据拒绝、额度和期限 |
-| 同步 | 每次最多一次外部 POST、revision 重放不跨步骤、并发认领、已成功任务／附件不重做、429 冷却、异常／5xx／响应不明进入核对 |
-| 恢复 | 创建成功后 DB 保存失败、附件响应丢失、boot 恢复、expired attempt、迟到响应 fencing、关闭后再打开、丢失 prepare 响应重放 |
-| 权限 | 所有 API 认证、上传认证先于字节消费、跨用户404、伪造用户／List／Category拒绝、GET／HEAD不写入 |
-| 维护 | 只读 inspect、错误目标拒绝、附件内容摘要证明、同远端ID重复绑定拒绝、confirm-not-written 不自动推断、cleanup dry-run及适用范围 |
-| runtime | token 正式注入、进程变量优先、web／Outline／Hydra 无泄漏、固定无配置空态、启动 readiness、关闭等待、gateway PUT 转发 |
-| 浏览器 | 明暗主题、桌面／移动／虚拟键盘、键盘与焦点、中文 composition、表单 reset／恢复、滚动 footer、文件移除、失败重试、成功清空 |
+| 类别     | 必须覆盖                                                                                                                                                    |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 内容     | Request 纯文本转义与换行、Bug 文本转义与顺序、空白无效而 Markdown 标记保留为文字、原文／转义后64及最终65 KiB边界、HTML／代码围栏作为文字、额外链接HTTPS限制 |
+| Contract | 六个 operation 的真实 Fastify 响应、原始 handler 返回值、oneOf 分支、封闭字段、nullable、状态／nextAction 配对、无凭据、双向覆盖                            |
+| 接收     | 20 MiB 精确边界、第 6 个文件、100 MiB 清单、零文件、长度／摘要／MIME 不一致、超量 parts、重复 id、断线和120秒超时、2槽释放                                  |
+| 数据     | 同键同载荷、同键冲突、两个用户同 key、prepare 竞争、父行锁与上传竞争、已成功字节释放、损坏数据拒绝、额度和期限                                              |
+| 同步     | 每次最多一次外部 POST、revision 重放不跨步骤、并发认领、已成功任务／附件不重做、429 冷却、异常／5xx／响应不明进入核对                                       |
+| 恢复     | 创建成功后 DB 保存失败、附件响应丢失、boot 恢复、expired attempt、迟到响应 fencing、关闭后再打开、丢失 prepare 响应重放                                     |
+| 权限     | 所有 API 认证、上传认证先于字节消费、跨用户404、伪造用户／List／Category拒绝、GET／HEAD不写入                                                               |
+| 维护     | 只读 inspect、错误目标拒绝、附件内容摘要证明、同远端ID重复绑定拒绝、confirm-not-written 不自动推断、cleanup dry-run及适用范围                               |
+| runtime  | token 正式注入、进程变量优先、web／Outline／Hydra 无泄漏、固定无配置空态、启动 readiness、关闭等待、gateway PUT 转发                                        |
+| 浏览器   | 明暗主题、桌面／移动／虚拟键盘、键盘与焦点、中文 composition、表单 reset／恢复、滚动 footer、文件移除、失败重试、成功清空                                   |
 
 根自动命令为 pnpm api:lint、pnpm api:generate、pnpm typecheck、pnpm test、pnpm build。本仓库当前无 TESTING.md，按现有 Vitest／runtime 脚本流程；数据库测试用 PostgreSQL Testcontainers 和每例隔离 schema，Docker 不可用明确失败，不回退开发库。
 
@@ -417,16 +428,16 @@ Prepare／PUT／advance 的 route config 在统一 HTTP scope 安装，hook 只�
 
 ## 14. 风险、取舍与未完成门槛
 
-| 风险 | 处理／检测 |
-| --- | --- |
-| 外部写入结果未知 | 本地预先固化 attempt＋revision；未知停止写入，维护核对；不承诺 exactly-once |
-| 纯文本转义或 ClickUp 显示差异 | 共享内容规则、文字与换行 fixtures＋真实目标桶验收 |
-| 后续 Tiptap 接入影响旧记录 | 复用支持分支，先评审 Contract／规则版本与恢复影响；保留原纯文本载荷及固化正文 |
-| 附件暂存增加 DB／备份容量 | 逐文件与2槽、每记录100MiB、同用户额度；成功字节释放，失败数据保留，显式过期清理 |
-| 浏览器关闭导致未发出的步骤停顿 | 保存恢复指针与服务端数据；再次打开继续；不伪装后台自动完成 |
-| 元数据变化导致字段被忽略 | 缓存有期限，创建前核验类型／适用范围／option，写入必要ID校验与真实测试 |
-| 未知结果需人工证据 | 明确接受这一限制；没有唯一匹配或未写入证据时保持待核对 |
-| token 或提交内容泄漏 | 固定 API origin、无重定向、服务端配置、有限日志、只读归属检查与无前端持久正文 |
+| 风险                           | 处理／检测                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------- |
+| 外部写入结果未知               | 本地预先固化 attempt＋revision；未知停止写入，维护核对；不承诺 exactly-once     |
+| 纯文本转义或 ClickUp 显示差异  | 共享内容规则、文字与换行 fixtures＋真实目标桶验收                               |
+| 后续 Tiptap 接入影响旧记录     | 复用支持分支，先评审 Contract／规则版本与恢复影响；保留原纯文本载荷及固化正文   |
+| 附件暂存增加 DB／备份容量      | 逐文件与2槽、每记录100MiB、同用户额度；成功字节释放，失败数据保留，显式过期清理 |
+| 浏览器关闭导致未发出的步骤停顿 | 保存恢复指针与服务端数据；再次打开继续；不伪装后台自动完成                      |
+| 元数据变化导致字段被忽略       | 缓存有期限，创建前核验类型／适用范围／option，写入必要ID校验与真实测试          |
+| 未知结果需人工证据             | 明确接受这一限制；没有唯一匹配或未写入证据时保持待核对                          |
+| token 或提交内容泄漏           | 固定 API origin、无重定向、服务端配置、有限日志、只读归属检查与无前端持久正文   |
 
 直接转发省去本地记录但不满足恢复要求；后台队列改善离线继续能力，但用户已选择立即同步。Tiptap 保留为后续编辑方向；本期普通输入框占位，先交付反馈链路，后续复用另一分支成果。
 

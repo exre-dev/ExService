@@ -6,14 +6,14 @@ OidcChallenge:
 OidcInspectRequest:
   type: object
   additionalProperties: false
-  required: [ phase, challenge ]
+  required: [phase, challenge]
   properties:
-    phase: { type: string, enum: [ login, consent ] }
+    phase: { type: string, enum: [login, consent] }
     challenge: { $ref: '../openapi.yaml#/components/schemas/OidcChallenge' }
 OidcInspectResponse:
   type: object
   additionalProperties: false
-  required: [ clientName, scopes ]
+  required: [clientName, scopes]
   properties:
     clientName: { type: string }
     scopes:
@@ -22,26 +22,26 @@ OidcInspectResponse:
 OidcChallengeRequest:
   type: object
   additionalProperties: false
-  required: [ challenge ]
+  required: [challenge]
   properties:
     challenge: { $ref: '../openapi.yaml#/components/schemas/OidcChallenge' }
 OidcRedirectResponse:
   type: object
   additionalProperties: false
-  required: [ redirectUrl ]
+  required: [redirectUrl]
   properties:
     redirectUrl: { type: string, minLength: 1 }
 LinkedSessionRef:
   type: object
   additionalProperties: false
-  required: [ hydraSid, subject ]
+  required: [hydraSid, subject]
   properties:
     hydraSid: { type: string, minLength: 1, maxLength: 255 }
     subject: { $ref: '../openapi.yaml#/components/schemas/Uuid' }
 LinkedSessionRevokeRequest:
   type: object
   additionalProperties: false
-  required: [ hydraSid, subject, requestId ]
+  required: [hydraSid, subject, requestId]
   properties:
     hydraSid: { type: string, minLength: 1, maxLength: 255 }
     subject: { $ref: '../openapi.yaml#/components/schemas/Uuid' }
@@ -49,7 +49,7 @@ LinkedSessionRevokeRequest:
 LinkedSessionRevokeResponse:
   type: object
   additionalProperties: false
-  required: [ revoked ]
+  required: [revoked]
   properties:
     revoked: { type: boolean, const: true }
 SessionCheckResult:
@@ -59,7 +59,7 @@ SessionCheckResult:
 ActiveLinkedSession:
   type: object
   additionalProperties: false
-  required: [ active, sessionId, userId, expiresAt, profile ]
+  required: [active, sessionId, userId, expiresAt, profile]
   properties:
     active: { type: boolean, const: true }
     sessionId: { $ref: '../openapi.yaml#/components/schemas/Uuid' }
@@ -68,32 +68,32 @@ ActiveLinkedSession:
     profile:
       type: object
       additionalProperties: false
-      required: [ nickname, email, avatarUrl, version ]
+      required: [nickname, email, avatarUrl, version]
       properties:
         nickname: { $ref: '../openapi.yaml#/components/schemas/Nickname' }
         email: { $ref: '../openapi.yaml#/components/schemas/Email' }
-        avatarUrl: { type: [ string, 'null' ] }
+        avatarUrl: { type: [string, 'null'] }
         version: { type: integer, minimum: 0 }
 InactiveLinkedSession:
   type: object
   additionalProperties: false
-  required: [ active, reason ]
+  required: [active, reason]
   properties:
     active: { type: boolean, const: false }
-    reason: { type: string, enum: [ unknown, revoked, expired, disabled ] }
+    reason: { type: string, enum: [unknown, revoked, expired, disabled] }
 IdentityUserRef:
   type: object
   additionalProperties: false
-  required: [ userId ]
+  required: [userId]
   properties:
     userId: { $ref: '../openapi.yaml#/components/schemas/Uuid' }
 IdentityUserInfo:
   type: object
   additionalProperties: false
-  required: [ id, nickname, email, avatarUrl, profileVersion ]
+  required: [id, nickname, email, avatarUrl, profileVersion]
   properties:
     id: { $ref: '../openapi.yaml#/components/schemas/Uuid' }
     nickname: { $ref: '../openapi.yaml#/components/schemas/Nickname' }
     email: { $ref: '../openapi.yaml#/components/schemas/Email' }
-    avatarUrl: { type: [ string, 'null' ] }
+    avatarUrl: { type: [string, 'null'] }
     profileVersion: { type: integer, minimum: 0 }

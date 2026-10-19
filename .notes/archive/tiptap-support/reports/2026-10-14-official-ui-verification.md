@@ -4,15 +4,15 @@
 
 ## 结果
 
-| 检查 | 结果 |
-| --- | --- |
-| `pnpm exec vitest run packages/components/src/tiptap` | 11 个文件、196 项通过；最终包含跨段操作、StrictMode、链接/颜色与旧文件选择器回归 |
-| `pnpm typecheck` | 全仓通过 |
-| `pnpm test` | 完整流程通过，包括 Website、runtime/Docs 脚本和清单中的 Outline 前后端及隔离数据库身份测试 |
-| `pnpm build` | Website、SDK、Server 与 Outline 构建通过 |
-| `pnpm --filter @workspace/components typecheck` | 最终候选通过 |
-| `pnpm --filter @workspace/web build` | 最终候选通过 |
-| 独立源码复核 | 修复跨段选区缩为首段问题后，第二位 reviewer 对最终候选未发现已证实的 P2 及以上问题；复核没有独立重跑自动或浏览器测试 |
+| 检查                                                  | 结果                                                                                                                 |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `pnpm exec vitest run packages/components/src/tiptap` | 11 个文件、196 项通过；最终包含跨段操作、StrictMode、链接/颜色与旧文件选择器回归                                     |
+| `pnpm typecheck`                                      | 全仓通过                                                                                                             |
+| `pnpm test`                                           | 完整流程通过，包括 Website、runtime/Docs 脚本和清单中的 Outline 前后端及隔离数据库身份测试                           |
+| `pnpm build`                                          | Website、SDK、Server 与 Outline 构建通过                                                                             |
+| `pnpm --filter @workspace/components typecheck`       | 最终候选通过                                                                                                         |
+| `pnpm --filter @workspace/web build`                  | 最终候选通过                                                                                                         |
+| 独立源码复核                                          | 修复跨段选区缩为首段问题后，第二位 reviewer 对最终候选未发现已证实的 P2 及以上问题；复核没有独立重跑自动或浏览器测试 |
 
 API 生成文件曾因工作区字节状态未通过检查，使用官方生成命令更新后核对 Git blob 与 HEAD 完全一致，没有 HTTP Contract 或生成类型内容变更。测试和构建仍有既有 Contract `oneOf`、Vite 配置加载与 chunk 大小等非失败警告。
 

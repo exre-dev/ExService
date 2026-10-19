@@ -9,6 +9,11 @@ export { ExAxiosError } from './http/errors.js'
 export type { ExAxiosErrorKind } from './http/errors.js'
 export { StorageSdkError } from './errors.js'
 export type { StorageSdkErrorCode } from './errors.js'
-export type { RequestConfig, SdkInstance, SessionExpiredContext, SessionExpiredHandler } from './request-types.js'
+export type {
+  RequestConfig,
+  SdkInstance,
+  SessionExpiredContext,
+  SessionExpiredHandler,
+} from './request-types.js'
 export type { Storage, UploadOptions, UploadData, Medium } from './storage/types.js'
 export type { paths, operations, components } from './generated/schema.js'

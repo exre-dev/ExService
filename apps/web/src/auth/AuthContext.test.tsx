@@ -2,12 +2,20 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ExAxiosError, setAccessToken } from '@workspace/sdk'
-import { AUTH_TOKEN_KEY, SSO_SUCCESS_KEY, readToken, syncSessionToken, writeToken } from '@web/src/auth/storage'
+import {
+  AUTH_TOKEN_KEY,
+  SSO_SUCCESS_KEY,
+  readToken,
+  syncSessionToken,
+  writeToken,
+} from '@web/src/auth/storage'
 import { bindSettingsToken, settingsConfig } from '@web/src/settings/settingsConfig'
 
 const get = vi.hoisted(() => vi.fn())
 const post = vi.hoisted(() => vi.fn())
-vi.mock('@workspace/sdk', async importOriginal => ({ ...await importOriginal<object>(), setAccessToken: vi.fn(),
+vi.mock('@workspace/sdk', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  setAccessToken: vi.fn(),
   instance: (config: { method?: string }) => {
     const handlers = { GET: get, POST: post }
     return handlers[(config.method ?? 'GET') as keyof typeof handlers](config)
@@ -18,10 +26,24 @@ import { AuthProvider, useAuth } from '@web/src/auth/AuthContext'
 
 function CurrentState() {
   const auth = useAuth()
-  return <><p>{auth.state.status}</p><button onClick={auth.logout}>退出登录</button></>
+  return (
+    <>
+      <p>{auth.state.status}</p>
+      <button onClick={auth.logout}>退出登录</button>
+    </>
+  )
 }
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); get.mockReset(); post.mockReset(); window.localStorage.clear(); window.sessionStorage.clear(); syncSessionToken(); bindSettingsToken(null) })
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+  get.mockReset()
+  post.mockReset()
+  window.localStorage.clear()
+  window.sessionStorage.clear()
+  syncSessionToken()
+  bindSettingsToken(null)
+})
 
 describe('explicit logout', () => {
   it.each([
@@ -29,12 +51,16 @@ describe('explicit logout', () => {
     new ExAxiosError('http', 'SESSION_INVALID', 'Invalid session', { status: 401 }),
     new ExAxiosError('timeout', 'TIMEOUT', 'Timed out'),
     new Error('offline'),
-  ])('clears browser authentication when revocation fails: $message', async error => {
+  ])('clears browser authentication when revocation fails: $message', async (error) => {
     window.localStorage.setItem(AUTH_TOKEN_KEY, 'current-token')
     window.sessionStorage.setItem(SSO_SUCCESS_KEY, 'cached-sso-result')
     get.mockResolvedValue({ nickname: 'Member', avatarUrl: null })
     post.mockRejectedValue(error)
-    render(<AuthProvider><CurrentState /></AuthProvider>)
+    render(
+      <AuthProvider>
+        <CurrentState />
+      </AuthProvider>,
+    )
     await screen.findByText('authenticated')
 
     fireEvent.click(screen.getByRole('button', { name: '退出登录' }))
@@ -42,38 +68,75 @@ describe('explicit logout', () => {
     await waitFor(() => expect(window.localStorage.getItem(AUTH_TOKEN_KEY)).toBeNull())
     expect(window.sessionStorage.getItem(SSO_SUCCESS_KEY)).toBeNull()
     expect(screen.getByText('anonymous')).toBeTruthy()
-    expect(post).toHaveBeenCalledWith({ url: '/auth/logout', method: 'POST', headers: { Authorization: 'Bearer current-token' }, alert: false })
+    expect(post).toHaveBeenCalledWith({
+      url: '/auth/logout',
+      method: 'POST',
+      headers: { Authorization: 'Bearer current-token' },
+      alert: false,
+    })
   })
 
-  it.each(['success', 'failure'] as const)('exits before a pending request settles and ignores its late %s after a new login', async result => {
-    writeToken(window.localStorage, 'old-token')
-    bindSettingsToken('old-token')
-    settingsConfig.profile.snapshot = { id: 'user-one', email: 'private@example.com', nickname: 'Member', qq: null, fivemId: null, avatarUrl: null }
-    settingsConfig.profile.status = 'ready'
-    get.mockResolvedValue({ nickname: 'Member', avatarUrl: null })
-    let resolve!: (value: unknown) => void, reject!: (error: unknown) => void
-    post.mockImplementation(() => new Promise((done, fail) => { resolve = done; reject = fail }))
-    render(<AuthProvider><CurrentState /></AuthProvider>)
-    await screen.findByText('authenticated')
-    fireEvent.click(screen.getByRole('button', { name: '退出登录' }))
+  it.each(['success', 'failure'] as const)(
+    'exits before a pending request settles and ignores its late %s after a new login',
+    async (result) => {
+      writeToken(window.localStorage, 'old-token')
+      bindSettingsToken('old-token')
+      settingsConfig.profile.snapshot = {
+        id: 'user-one',
+        email: 'private@example.com',
+        nickname: 'Member',
+        qq: null,
+        fivemId: null,
+        avatarUrl: null,
+      }
+      settingsConfig.profile.status = 'ready'
+      get.mockResolvedValue({ nickname: 'Member', avatarUrl: null })
+      let resolve!: (value: unknown) => void, reject!: (error: unknown) => void
+      post.mockImplementation(
+        () =>
+          new Promise((done, fail) => {
+            resolve = done
+            reject = fail
+          }),
+      )
+      render(
+        <AuthProvider>
+          <CurrentState />
+        </AuthProvider>,
+      )
+      await screen.findByText('authenticated')
+      fireEvent.click(screen.getByRole('button', { name: '退出登录' }))
 
-    expect(window.localStorage.getItem(AUTH_TOKEN_KEY)).toBeNull()
-    expect(setAccessToken).toHaveBeenLastCalledWith(null)
-    expect(settingsConfig.profile.snapshot).toBeNull()
-    expect(screen.getByText('anonymous')).toBeTruthy()
-    act(() => writeToken(window.localStorage, 'new-token'))
-    await screen.findByText('authenticated')
-    await act(async () => { if (result === 'success') resolve({ status: 'signed-out' }); else reject(new Error('offline')) })
-    expect(window.localStorage.getItem(AUTH_TOKEN_KEY)).toBe('new-token')
-    expect(screen.getByText('authenticated')).toBeTruthy()
-  })
+      expect(window.localStorage.getItem(AUTH_TOKEN_KEY)).toBeNull()
+      expect(setAccessToken).toHaveBeenLastCalledWith(null)
+      expect(settingsConfig.profile.snapshot).toBeNull()
+      expect(screen.getByText('anonymous')).toBeTruthy()
+      act(() => writeToken(window.localStorage, 'new-token'))
+      await screen.findByText('authenticated')
+      await act(async () => {
+        if (result === 'success') resolve({ status: 'signed-out' })
+        else reject(new Error('offline'))
+      })
+      expect(window.localStorage.getItem(AUTH_TOKEN_KEY)).toBe('new-token')
+      expect(screen.getByText('authenticated')).toBeTruthy()
+    },
+  )
 
   it('does not let an in-flight profile request restore identity after logout', async () => {
     window.localStorage.setItem(AUTH_TOKEN_KEY, 'current-token')
     let resolve!: (value: unknown) => void
-    get.mockImplementation(() => new Promise(done => { resolve = done }))
+    get.mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve = done
+        }),
+    )
     post.mockResolvedValue({ status: 'signed-out' })
-    render(<AuthProvider><CurrentState /></AuthProvider>)
+    render(
+      <AuthProvider>
+        <CurrentState />
+      </AuthProvider>,
+    )
     fireEvent.click(screen.getByRole('button', { name: '退出登录' }))
     await act(async () => resolve({ nickname: 'Old profile', avatarUrl: null }))
     expect(screen.getByText('anonymous')).toBeTruthy()
@@ -81,7 +144,11 @@ describe('explicit logout', () => {
 
   it('cleans SSO state and becomes anonymous even without a persisted token', async () => {
     window.sessionStorage.setItem(SSO_SUCCESS_KEY, 'cached-sso-result')
-    render(<AuthProvider><CurrentState /></AuthProvider>)
+    render(
+      <AuthProvider>
+        <CurrentState />
+      </AuthProvider>,
+    )
     fireEvent.click(screen.getByRole('button', { name: '退出登录' }))
     expect(window.sessionStorage.getItem(SSO_SUCCESS_KEY)).toBeNull()
     expect(screen.getByText('anonymous')).toBeTruthy()
@@ -91,16 +158,26 @@ describe('explicit logout', () => {
   it('clears local storage even when reading it and clearing session storage throw', () => {
     window.localStorage.setItem(AUTH_TOKEN_KEY, 'current-token')
     const original = Storage.prototype.getItem
-    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key: string) {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (
+      this: Storage,
+      key: string,
+    ) {
       if (this === window.localStorage) throw new Error('blocked read')
       return original.call(this, key)
     })
     const remove = Storage.prototype.removeItem
-    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(function (this: Storage, key: string) {
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(function (
+      this: Storage,
+      key: string,
+    ) {
       if (this === window.sessionStorage) throw new Error('blocked session storage')
       remove.call(this, key)
     })
-    render(<AuthProvider><CurrentState /></AuthProvider>)
+    render(
+      <AuthProvider>
+        <CurrentState />
+      </AuthProvider>,
+    )
     fireEvent.click(screen.getByRole('button', { name: '退出登录' }))
     expect(original.call(window.localStorage, AUTH_TOKEN_KEY)).toBeNull()
     expect(screen.getByText('anonymous')).toBeTruthy()
@@ -111,8 +188,17 @@ describe('auth session restore', () => {
   it('ignores an invalid response for an old token after a replacement token is stored', async () => {
     window.localStorage.setItem(AUTH_TOKEN_KEY, 'old-token')
     let reject: ((error: unknown) => void) | undefined
-    get.mockImplementation(() => new Promise((_resolve, fail) => { reject = fail }))
-    render(<AuthProvider><CurrentState /></AuthProvider>)
+    get.mockImplementation(
+      () =>
+        new Promise((_resolve, fail) => {
+          reject = fail
+        }),
+    )
+    render(
+      <AuthProvider>
+        <CurrentState />
+      </AuthProvider>,
+    )
     await waitFor(() => expect(reject).toBeDefined())
     window.localStorage.setItem(AUTH_TOKEN_KEY, 'new-token')
     reject?.(new ExAxiosError('http', 'SESSION_INVALID', 'Invalid session', { status: 401 }))
@@ -123,8 +209,17 @@ describe('auth session restore', () => {
   it('does not restore a profile for an old token after a replacement token is stored', async () => {
     window.localStorage.setItem(AUTH_TOKEN_KEY, 'old-token')
     let finish: ((value: unknown) => void) | undefined
-    get.mockImplementation(() => new Promise(resolve => { finish = resolve }))
-    render(<AuthProvider><CurrentState /></AuthProvider>)
+    get.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+    )
+    render(
+      <AuthProvider>
+        <CurrentState />
+      </AuthProvider>,
+    )
     await waitFor(() => expect(finish).toBeDefined())
     window.localStorage.setItem(AUTH_TOKEN_KEY, 'new-token')
     finish?.({ nickname: 'Old user', avatarUrl: null })
@@ -137,13 +232,21 @@ it('does not restore UI from a retained token after explicit logout fails to del
   writeToken(window.localStorage, 'retained-token')
   get.mockResolvedValue({ nickname: 'Member', avatarUrl: null })
   post.mockRejectedValue(new Error('offline'))
-  render(<AuthProvider><CurrentState /></AuthProvider>)
+  render(
+    <AuthProvider>
+      <CurrentState />
+    </AuthProvider>,
+  )
   await screen.findByText('authenticated')
-  const remove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => { throw new Error('denied') })
+  const remove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+    throw new Error('denied')
+  })
   fireEvent.click(screen.getByRole('button', { name: '退出登录' }))
   expect(window.localStorage.getItem(AUTH_TOKEN_KEY)).toBe('retained-token')
   expect(readToken(window.localStorage)).toBeNull()
-  act(() => { syncSessionToken() })
+  act(() => {
+    syncSessionToken()
+  })
   await screen.findByText('anonymous')
   expect(get).toHaveBeenCalledTimes(1)
   remove.mockRestore()

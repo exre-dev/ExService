@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { assertSafeNotificationHtml, deriveSummary, deriveText, sanitizeNotificationHtml } from './sanitize.js'
+import {
+  assertSafeNotificationHtml,
+  deriveSummary,
+  deriveText,
+  sanitizeNotificationHtml,
+} from './sanitize.js'
 import { classifyHref } from './policy.js'
 import { buildHtmlTree } from './tree.js'
 import { tokenizeHtml } from './tokenizer.js'
@@ -9,38 +14,46 @@ const safe = (html: string) => sanitizeNotificationHtml(html)
 describe('tokenizer', () => {
   it('keeps a quoted ">" inside an attribute value', () => {
     const tokens = tokenizeHtml('<p title="a>b">x</p>')
-    expect(tokens.filter(token => token.kind === 'start')).toHaveLength(1)
-    expect(tokens.some(token => token.kind === 'text' && token.value === 'x')).toBe(true)
+    expect(tokens.filter((token) => token.kind === 'start')).toHaveLength(1)
+    expect(tokens.some((token) => token.kind === 'text' && token.value === 'x')).toBe(true)
   })
 
   it('treats script content as raw text until the matching end tag', () => {
     const tokens = tokenizeHtml('<script>if (a < b) { }</script><p>after</p>')
-    expect(tokens.some(token => token.kind === 'start' && token.name === 'script')).toBe(true)
-    expect(tokens.some(token => token.kind === 'text' && token.value.includes('a < b'))).toBe(true)
-    expect(tokens.some(token => token.kind === 'start' && token.name === 'p')).toBe(true)
+    expect(tokens.some((token) => token.kind === 'start' && token.name === 'script')).toBe(true)
+    expect(tokens.some((token) => token.kind === 'text' && token.value.includes('a < b'))).toBe(
+      true,
+    )
+    expect(tokens.some((token) => token.kind === 'start' && token.name === 'p')).toBe(true)
   })
 
   it('handles comments, doctype and character references', () => {
     const tokens = tokenizeHtml('<!doctype html><!-- c --><p>a &amp; b &#60; c &#x41;</p>')
-    expect(tokens.some(token => token.kind === 'doctype')).toBe(true)
-    expect(tokens.some(token => token.kind === 'comment')).toBe(true)
-    expect(tokens.some(token => token.kind === 'text' && token.value === 'a & b < c A')).toBe(true)
+    expect(tokens.some((token) => token.kind === 'doctype')).toBe(true)
+    expect(tokens.some((token) => token.kind === 'comment')).toBe(true)
+    expect(tokens.some((token) => token.kind === 'text' && token.value === 'a & b < c A')).toBe(
+      true,
+    )
   })
 
   it('does not loop on a malformed attribute fragment', () => {
     const tokens = tokenizeHtml('<p =x>y')
-    expect(tokens.some(token => token.kind === 'text' && token.value.includes('y'))).toBe(true)
+    expect(tokens.some((token) => token.kind === 'text' && token.value.includes('y'))).toBe(true)
   })
 })
 
 describe('notification-html-v1 allowlist', () => {
   it('normalizes supported rich content', () => {
-    const outcome = safe('<h2>标题</h2><p>带 <strong>强调</strong> 与 <em>斜体</em>。</p>' +
-      '<ul><li>第一</li><li>第二</li></ul><blockquote>引用</blockquote><p><code>code</code></p><hr>')
+    const outcome = safe(
+      '<h2>标题</h2><p>带 <strong>强调</strong> 与 <em>斜体</em>。</p>' +
+        '<ul><li>第一</li><li>第二</li></ul><blockquote>引用</blockquote><p><code>code</code></p><hr>',
+    )
     expect(outcome.ok).toBe(true)
     if (!outcome.ok) return
-    expect(outcome.result.html).toBe('<h2>标题</h2><p>带 <strong>强调</strong> 与 <em>斜体</em>。</p>' +
-      '<ul><li>第一</li><li>第二</li></ul><blockquote>引用</blockquote><p><code>code</code></p><hr>')
+    expect(outcome.result.html).toBe(
+      '<h2>标题</h2><p>带 <strong>强调</strong> 与 <em>斜体</em>。</p>' +
+        '<ul><li>第一</li><li>第二</li></ul><blockquote>引用</blockquote><p><code>code</code></p><hr>',
+    )
     expect(outcome.result.text).toContain('标题')
     expect(outcome.result.text).toContain('第一')
   })
@@ -49,12 +62,16 @@ describe('notification-html-v1 allowlist', () => {
     const outcome = safe('<p>详见 <a href="/communities/rifling-911">社区主页</a>。</p>')
     expect(outcome.ok).toBe(true)
     if (!outcome.ok) return
-    expect(outcome.result.html).toBe('<p>详见 <a href="/communities/rifling-911">社区主页</a>。</p>')
+    expect(outcome.result.html).toBe(
+      '<p>详见 <a href="/communities/rifling-911">社区主页</a>。</p>',
+    )
   })
 
   it('accepts a small table with a caption', () => {
-    const outcome = safe('<table><caption>名额</caption><thead><tr><th scope="col">分队</th><th scope="col">人数</th>' +
-      '</tr></thead><tbody><tr><td>LEO</td><td>12</td></tr></tbody></table>')
+    const outcome = safe(
+      '<table><caption>名额</caption><thead><tr><th scope="col">分队</th><th scope="col">人数</th>' +
+        '</tr></thead><tbody><tr><td>LEO</td><td>12</td></tr></tbody></table>',
+    )
     expect(outcome.ok).toBe(true)
     if (!outcome.ok) return
     expect(outcome.result.html).toContain('<th scope="col">分队</th>')
@@ -131,7 +148,9 @@ describe('notification-html-v1 rejections', () => {
 
   it('rejects a table with more than six columns', () => {
     const cells = Array.from({ length: 7 }, (_, index) => `<td>${index}</td>`).join('')
-    expect(safe(`<table><caption>x</caption><tbody><tr>${cells}</tr></tbody></table>`).ok).toBe(false)
+    expect(safe(`<table><caption>x</caption><tbody><tr>${cells}</tr></tbody></table>`).ok).toBe(
+      false,
+    )
   })
 
   it('rejects a table with more than twenty rows', () => {
@@ -140,11 +159,18 @@ describe('notification-html-v1 rejections', () => {
   })
 
   it('rejects a non-text table cell', () => {
-    expect(safe('<table><caption>x</caption><tbody><tr><td><ul><li>a</li></ul></td></tr></tbody></table>').ok).toBe(false)
+    expect(
+      safe(
+        '<table><caption>x</caption><tbody><tr><td><ul><li>a</li></ul></td></tr></tbody></table>',
+      ).ok,
+    ).toBe(false)
   })
 
   it('rejects an invalid th scope', () => {
-    expect(safe('<table><caption>x</caption><tbody><tr><th scope="colgroup">a</th></tr></tbody></table>').ok).toBe(false)
+    expect(
+      safe('<table><caption>x</caption><tbody><tr><th scope="colgroup">a</th></tr></tbody></table>')
+        .ok,
+    ).toBe(false)
   })
 
   it('rejects an empty link', () => {
@@ -183,20 +209,40 @@ describe('tree limits', () => {
 describe('URL policy', () => {
   it('accepts only allowlisted read-only internal pages', () => {
     expect(classifyHref('/')).toEqual({ kind: 'internal', path: '/' })
-    expect(classifyHref('/communities/caep')).toEqual({ kind: 'internal', path: '/communities/caep' })
-    expect(classifyHref('/communities/caep/')).toEqual({ kind: 'internal', path: '/communities/caep' })
+    expect(classifyHref('/communities/caep')).toEqual({
+      kind: 'internal',
+      path: '/communities/caep',
+    })
+    expect(classifyHref('/communities/caep/')).toEqual({
+      kind: 'internal',
+      path: '/communities/caep',
+    })
   })
 
   it('rejects traversal, encoding tricks and protocol-relative addresses', () => {
-    for (const href of ['/../admin', '/%2e%2e/admin', '//evil.example.com', '/communities/../admin',
-      '/login', '/identity/logout', '/account/profile', '/admin/join-applications']) {
+    for (const href of [
+      '/../admin',
+      '/%2e%2e/admin',
+      '//evil.example.com',
+      '/communities/../admin',
+      '/login',
+      '/identity/logout',
+      '/account/profile',
+      '/admin/join-applications',
+    ]) {
       expect(classifyHref(href).kind).toBe('rejected')
     }
   })
 
   it('rejects every non-https scheme', () => {
-    for (const href of ['javascript:alert(1)', 'data:text/html,x', 'blob:https://x/y', 'file:///etc/passwd',
-      'http://example.com/', 'vbscript:x']) {
+    for (const href of [
+      'javascript:alert(1)',
+      'data:text/html,x',
+      'blob:https://x/y',
+      'file:///etc/passwd',
+      'http://example.com/',
+      'vbscript:x',
+    ]) {
       expect(classifyHref(href).kind).toBe('rejected')
     }
   })

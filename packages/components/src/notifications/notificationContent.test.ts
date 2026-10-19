@@ -1,11 +1,16 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 import {
-  NOTIFICATION_CONTENT_POLICY_VERSION, NOTIFICATION_CONTENT_SCHEMA_VERSION,
-  parseNotificationContent, type NotificationContentInput,
+  NOTIFICATION_CONTENT_POLICY_VERSION,
+  NOTIFICATION_CONTENT_SCHEMA_VERSION,
+  parseNotificationContent,
+  type NotificationContentInput,
 } from '@components/src/notifications/notificationContent'
 
-function content(html: string, overrides: Partial<NotificationContentInput> = {}): NotificationContentInput {
+function content(
+  html: string,
+  overrides: Partial<NotificationContentInput> = {},
+): NotificationContentInput {
   return {
     format: 'html',
     schemaVersion: NOTIFICATION_CONTENT_SCHEMA_VERSION,
@@ -18,14 +23,16 @@ function content(html: string, overrides: Partial<NotificationContentInput> = {}
 
 describe('notification-html-v1 rendering policy', () => {
   it('accepts the canonical allowlisted body', () => {
-    const tree = parseNotificationContent(content(
-      '<h2>标题</h2><p>段落 <strong>粗</strong> <em>斜</em> <s>删</s> <code>码</code> '
-      + '<a href="/communities/rifling-911">社区主页</a></p>'
-      + '<ul><li>一</li><li>二</li></ul>'
-      + '<blockquote><p>引用</p></blockquote><pre><code>code</code></pre><hr>'
-      + '<table><caption>表</caption><thead><tr><th scope="col">列</th></tr></thead>'
-      + '<tbody><tr><th scope="row">行</th><td>值</td></tr></tbody></table>',
-    ))
+    const tree = parseNotificationContent(
+      content(
+        '<h2>标题</h2><p>段落 <strong>粗</strong> <em>斜</em> <s>删</s> <code>码</code> ' +
+          '<a href="/communities/rifling-911">社区主页</a></p>' +
+          '<ul><li>一</li><li>二</li></ul>' +
+          '<blockquote><p>引用</p></blockquote><pre><code>code</code></pre><hr>' +
+          '<table><caption>表</caption><thead><tr><th scope="col">列</th></tr></thead>' +
+          '<tbody><tr><th scope="row">行</th><td>值</td></tr></tbody></table>',
+      ),
+    )
     expect(tree).not.toBeNull()
     const tags = collectTags(tree!)
     expect(tags).toContain('h2')
@@ -38,7 +45,9 @@ describe('notification-html-v1 rendering policy', () => {
   it('rejects a format, schema or policy it does not implement', () => {
     expect(parseNotificationContent(content('<p>x</p>', { format: 'mdx' }))).toBeNull()
     expect(parseNotificationContent(content('<p>x</p>', { schemaVersion: 2 }))).toBeNull()
-    expect(parseNotificationContent(content('<p>x</p>', { policyVersion: 'notification-html-v2' }))).toBeNull()
+    expect(
+      parseNotificationContent(content('<p>x</p>', { policyVersion: 'notification-html-v2' })),
+    ).toBeNull()
     expect(parseNotificationContent(null)).toBeNull()
     expect(parseNotificationContent(content(''))).toBeNull()
   })
@@ -103,43 +112,62 @@ describe('notification-html-v1 rendering policy', () => {
     const rows = Array.from({ length: 21 }, (_, index) => `<tr><td>${index}</td></tr>`).join('')
     expect(parseNotificationContent(content(`<table><tbody>${rows}</tbody></table>`))).toBeNull()
     const cells = Array.from({ length: 7 }, () => '<td>x</td>').join('')
-    expect(parseNotificationContent(content(`<table><tbody><tr>${cells}</tr></tbody></table>`))).toBeNull()
+    expect(
+      parseNotificationContent(content(`<table><tbody><tr>${cells}</tr></tbody></table>`)),
+    ).toBeNull()
   })
 
   it('accepts a table at the full 6-column x 20-row budget', () => {
     // 列数按行、行数按表：整份正文累计计数会把这张合法表格判成超限。
-    const rows = Array.from({ length: 20 }, (_, row) =>
-      `<tr>${Array.from({ length: 6 }, (_, column) => `<td>${row}-${column}</td>`).join('')}</tr>`).join('')
+    const rows = Array.from(
+      { length: 20 },
+      (_, row) =>
+        `<tr>${Array.from({ length: 6 }, (_, column) => `<td>${row}-${column}</td>`).join('')}</tr>`,
+    ).join('')
     const tree = parseNotificationContent(content(`<table><caption>表</caption>${rows}</table>`))
     expect(tree).not.toBeNull()
-    expect(collectTags(tree!).filter(tag => tag === 'tr')).toHaveLength(20)
+    expect(collectTags(tree!).filter((tag) => tag === 'tr')).toHaveLength(20)
   })
 
   it('does not accumulate the row budget across tables', () => {
-    const build = (rows: number) => `<table><caption>表</caption>${
-      Array.from({ length: rows }, (_, row) => `<tr><td>${row}</td></tr>`).join('')}</table>`
+    const build = (rows: number) =>
+      `<table><caption>表</caption>${Array.from(
+        { length: rows },
+        (_, row) => `<tr><td>${row}</td></tr>`,
+      ).join('')}</table>`
     const tree = parseNotificationContent(content(`<h2>标题</h2>${build(11)}${build(11)}`))
     expect(tree).not.toBeNull()
-    expect(collectTags(tree!).filter(tag => tag === 'table')).toHaveLength(2)
+    expect(collectTags(tree!).filter((tag) => tag === 'table')).toHaveLength(2)
   })
 
   it('rejects a table without any row or cell', () => {
-    expect(parseNotificationContent(content('<h2>标题</h2><table><caption>表</caption></table>'))).toBeNull()
-    expect(parseNotificationContent(content(
-      '<h2>标题</h2><table><caption>表</caption><tbody><tr></tr></tbody></table>'))).toBeNull()
+    expect(
+      parseNotificationContent(content('<h2>标题</h2><table><caption>表</caption></table>')),
+    ).toBeNull()
+    expect(
+      parseNotificationContent(
+        content('<h2>标题</h2><table><caption>表</caption><tbody><tr></tr></tbody></table>'),
+      ),
+    ).toBeNull()
   })
 
   it('rejects a body beyond the node or depth limit', () => {
-    expect(parseNotificationContent(content(`<p>${'<strong>x</strong>'.repeat(600)}</p>`))).toBeNull()
+    expect(
+      parseNotificationContent(content(`<p>${'<strong>x</strong>'.repeat(600)}</p>`)),
+    ).toBeNull()
     let deep = 'x'
     for (let index = 0; index < 20; index += 1) deep = `<blockquote>${deep}</blockquote>`
     expect(parseNotificationContent(content(deep))).toBeNull()
   })
 
   it('rejects a th scope other than row or col', () => {
-    expect(parseNotificationContent(content(
-      '<table><thead><tr><th scope="colgroup">x</th></tr></thead><tbody><tr><td>y</td></tr></tbody></table>',
-    ))).toBeNull()
+    expect(
+      parseNotificationContent(
+        content(
+          '<table><thead><tr><th scope="colgroup">x</th></tr></thead><tbody><tr><td>y</td></tr></tbody></table>',
+        ),
+      ),
+    ).toBeNull()
   })
 
   it('keeps text content escaped as text nodes instead of markup', () => {

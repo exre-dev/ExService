@@ -31,41 +31,75 @@ export { ErrorPanel } from '@components/src/ErrorPanel'
 export type { ErrorPanelItem, ErrorPanelProps } from '@components/src/ErrorPanel'
 export { SettingsPanel } from '@components/src/SettingsPanel'
 export type {
-  SettingsPanelProps, SettingsCategory, SettingsTheme, SettingsField, SettingsNotificationsSlice,
+  SettingsPanelProps,
+  SettingsCategory,
+  SettingsTheme,
+  SettingsField,
+  SettingsNotificationsSlice,
 } from '@components/src/SettingsPanel'
 
 // 持久通知：共享 UI 只收 props/callback，API 与状态归 `apps/web`。
 export { NotificationBell } from '@components/src/notifications/NotificationBell'
-export type { NotificationBellProps, NotificationPopupStatus } from '@components/src/notifications/NotificationBell'
-export { NotificationBody, hasRenderableNotificationBody } from '@components/src/notifications/NotificationBody'
+export type {
+  NotificationBellProps,
+  NotificationPopupStatus,
+} from '@components/src/notifications/NotificationBell'
+export {
+  NotificationBody,
+  hasRenderableNotificationBody,
+} from '@components/src/notifications/NotificationBody'
 export type { NotificationBodyProps } from '@components/src/notifications/NotificationBody'
 export { NotificationItemList } from '@components/src/notifications/NotificationItemList'
 export type { NotificationItemListProps } from '@components/src/notifications/NotificationItemList'
 export { NotificationHistoryModal } from '@components/src/notifications/NotificationHistoryModal'
 export type {
-  NotificationHistoryModalProps, NotificationAsyncStatus, NotificationListSlice,
-  NotificationDetailSlice, NotificationBulkSlice,
+  NotificationHistoryModalProps,
+  NotificationAsyncStatus,
+  NotificationListSlice,
+  NotificationDetailSlice,
+  NotificationBulkSlice,
   NotificationConfirmSlice,
 } from '@components/src/notifications/NotificationHistoryModal'
 export { NotificationPreferencesForm } from '@components/src/notifications/NotificationPreferencesForm'
 export type {
-  NotificationPreferencesFormProps, NotificationPreferencesDraft, PreferenceCanonicalValues,
-  PreferenceField, PreferenceFormBinding, PreferenceSaveFailure,
+  NotificationPreferencesFormProps,
+  NotificationPreferencesDraft,
+  PreferenceCanonicalValues,
+  PreferenceField,
+  PreferenceFormBinding,
+  PreferenceSaveFailure,
 } from '@components/src/notifications/NotificationPreferencesForm'
 export {
-  parseNotificationContent, NOTIFICATION_CONTENT_POLICY_VERSION, NOTIFICATION_CONTENT_SCHEMA_VERSION,
+  parseNotificationContent,
+  NOTIFICATION_CONTENT_POLICY_VERSION,
+  NOTIFICATION_CONTENT_SCHEMA_VERSION,
 } from '@components/src/notifications/notificationContent'
 export type {
-  NotificationContentInput, SafeContentNode, SafeElementNode, SafeTextNode, SafeContentTag,
+  NotificationContentInput,
+  SafeContentNode,
+  SafeElementNode,
+  SafeTextNode,
+  SafeContentTag,
 } from '@components/src/notifications/notificationContent'
 export {
-  formatNotificationTime, formatUnreadBadge, isNotificationUnread,
-  notificationActionReasonLabel, notificationCategoryLabel, notificationStateLabel,
+  formatNotificationTime,
+  formatUnreadBadge,
+  isNotificationUnread,
+  notificationActionReasonLabel,
+  notificationCategoryLabel,
+  notificationStateLabel,
 } from '@components/src/notifications/notificationsView'
 export type {
-  NotificationActionView, NotificationCategory, NotificationCountState,
-  NotificationDetailView, NotificationHistoryFilter, NotificationItemView, NotificationLifecycle,
-  NotificationNecessity, NotificationScope, NotificationActionUnavailableReason,
+  NotificationActionView,
+  NotificationCategory,
+  NotificationCountState,
+  NotificationDetailView,
+  NotificationHistoryFilter,
+  NotificationItemView,
+  NotificationLifecycle,
+  NotificationNecessity,
+  NotificationScope,
+  NotificationActionUnavailableReason,
 } from '@components/src/notifications/notificationsView'
 export { AuthForm } from '@components/src/auth/AuthForm'
 export type {
@@ -78,24 +112,82 @@ export type {
 } from '@components/src/auth/AuthForm'
 export { AuthModal } from '@components/src/auth/AuthModal'
 export type { AuthModalProps } from '@components/src/auth/AuthModal'
-export { InvitationEmailForm, InvitationCodeForm, InvitationProfileForm, invitationEmailSchema } from '@components/src/auth/InvitationForms'
+export {
+  InvitationEmailForm,
+  InvitationCodeForm,
+  InvitationProfileForm,
+  invitationEmailSchema,
+} from '@components/src/auth/InvitationForms'
 export type { InvitationProfileValues } from '@components/src/auth/InvitationForms'
-export type { InvitationFormErrorKind, InvitationFormErrors, InvitationFormHandle } from '@components/src/auth/invitationFeedback'
+export type {
+  InvitationFormErrorKind,
+  InvitationFormErrors,
+  InvitationFormHandle,
+} from '@components/src/auth/invitationFeedback'
 export { JoinReviewDialog } from '@components/src/join/JoinReviewDialog'
 export { CompleteJoinApplicationModal } from '@components/src/join/CompleteJoinApplicationModal'
-export type { CompleteJoinApplicationModalHandle, CompleteJoinApplicationModalProps } from '@components/src/join/CompleteJoinApplicationModal'
-export type { JoinApplicationDraft, JoinApplicationType, NewJoinApplicationDraft, ExperiencedJoinApplicationDraft } from '@components/src/join/applicationSchemas'
-export { newJoinApplicationSchema, experiencedJoinApplicationSchema } from '@components/src/join/applicationSchemas'
-export { joinApplicationFields, joinApplicationCommitments, joinApplicationSteps, applicantCategoryOptions, departmentOptions, discoveryChannelOptions } from '@components/src/join/applicationFields'
+export type {
+  CompleteJoinApplicationModalHandle,
+  CompleteJoinApplicationModalProps,
+} from '@components/src/join/CompleteJoinApplicationModal'
+export type {
+  JoinApplicationDraft,
+  JoinApplicationType,
+  NewJoinApplicationDraft,
+  ExperiencedJoinApplicationDraft,
+} from '@components/src/join/applicationSchemas'
+export {
+  newJoinApplicationSchema,
+  experiencedJoinApplicationSchema,
+} from '@components/src/join/applicationSchemas'
+export {
+  joinApplicationFields,
+  joinApplicationCommitments,
+  joinApplicationSteps,
+  applicantCategoryOptions,
+  departmentOptions,
+  discoveryChannelOptions,
+} from '@components/src/join/applicationFields'
 
 export { TiptapEditor } from './tiptap/TiptapEditor'
 export { TiptapViewer } from './tiptap/TiptapViewer'
 export { parseTiptapContent, serializeTiptapMarkdown } from './tiptap/conversion'
-export { createMarkdownExtensions, parseMarkdownContent, serializeMarkdownContent, MarkdownEmojiPicker } from './tiptap/markdown'
+export {
+  createMarkdownExtensions,
+  parseMarkdownContent,
+  serializeMarkdownContent,
+  MarkdownEmojiPicker,
+} from './tiptap/markdown'
 export { tiptapContentClassName } from './tiptap/content-styles'
-export type { MarkdownExtensionOptions, MarkdownEmojiAnchor, MarkdownEmojiPickerProps } from './tiptap/markdown'
-export type { TiptapInput, TiptapIssueCode, TiptapIssue, TiptapResult, TiptapContentPolicy, TiptapMentionItem, TiptapUploadedImage, TiptapEditorHandle, TiptapEditorProps, TiptapViewerProps } from './tiptap/types'
+export type {
+  MarkdownExtensionOptions,
+  MarkdownEmojiAnchor,
+  MarkdownEmojiPickerProps,
+} from './tiptap/markdown'
+export type {
+  TiptapInput,
+  TiptapIssueCode,
+  TiptapIssue,
+  TiptapResult,
+  TiptapContentPolicy,
+  TiptapMentionItem,
+  TiptapUploadedImage,
+  TiptapEditorHandle,
+  TiptapEditorProps,
+  TiptapViewerProps,
+} from './tiptap/types'
 
 export { useMarkdownPreset, useTiptapPreset } from './tiptap/presets'
 export { useTiptapEditor } from './tiptap/useTiptapEditor'
-export type { TiptapPlaceholder, MarkdownPresetOptions, TiptapPresetOptions, MarkdownPreset, FullTiptapPreset, TiptapPreset, TiptapEditorSessionOptions, TiptapServiceCallbacks, UseTiptapEditorOptions, UseTiptapEditorResult } from './tiptap/types'
+export type {
+  TiptapPlaceholder,
+  MarkdownPresetOptions,
+  TiptapPresetOptions,
+  MarkdownPreset,
+  FullTiptapPreset,
+  TiptapPreset,
+  TiptapEditorSessionOptions,
+  TiptapServiceCallbacks,
+  UseTiptapEditorOptions,
+  UseTiptapEditorResult,
+} from './tiptap/types'

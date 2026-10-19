@@ -36,10 +36,10 @@
 
 首页增加以下可选字段，类型与 strict schema 同步；字段名均为本 RFC 提议的新契约：
 
-| 字段 | 类型 | 缺省行为 |
-| --- | --- | --- |
-| `entryHeadlines` | 仅允许 communities、projects、team、media、story 五个可选非空字符串的 strict object | 使用对应栏目 title |
-| `cardImages` | 仅允许 communities、projects、belief、team、media、story 六个可选 ImageRef 的 strict object | 渲染普通图片占位 |
+| 字段             | 类型                                                                                        | 缺省行为           |
+| ---------------- | ------------------------------------------------------------------------------------------- | ------------------ |
+| `entryHeadlines` | 仅允许 communities、projects、team、media、story 五个可选非空字符串的 strict object         | 使用对应栏目 title |
+| `cardImages`     | 仅允许 communities、projects、belief、team、media、story 六个可选 ImageRef 的 strict object | 渲染普通图片占位   |
 
 `entryDescriptions` 沿用现有规则，缺省使用栏目 description。理念标题使用现有 `introHeading`；正文直接复用当前 `AboutBody` 与首页 MDX，不新增一份理念描述字段。这样保留两段作者说明和整理中 Callout，并消除独立长介绍区。理念卡允许按正文自然增高，不固定高度裁掉内容；其最终高度可能大于视觉示例。
 
@@ -81,14 +81,14 @@ DOM 顺序固定为社区、项目、理念、团队、Media、历程。建议 1
 
 ## 验证
 
-| 层级 | 验证内容 |
-| --- | --- |
-| 内容构建 | 新字段缺省、合法图片、非法卡片 key、缺失图片文件；使用实际 About 定义与编译器验证公开投影 |
-| 页面组件 | 首页只有一个 h1；无 About 栏目导航、Hero 操作按钮、Canvas；五个入口目标正确；理念正文、loading/error/retry 仍显示 |
-| 图片 | 未提供及加载失败均为稳定占位，不出现自绘 SVG/Canvas；有效素材按指定槽位显示 |
-| 导航回归 | 首页进入焦点、子页导航、返回恢复、旧 about-content hash、成员 Modal 与 Media 筛选 |
-| 真实浏览器 | 320px、390px、768px、1440px；浅深色、200% 缩放、长文案、键盘、reduced motion；检查横向溢出及图片遮挡 |
-| 运行证据 | 首页访问不加载旧 renderer chunk、不创建 WebGL；检查网络与实际页面，不能仅靠移除 Canvas 的 mock 得出结论 |
+| 层级       | 验证内容                                                                                                          |
+| ---------- | ----------------------------------------------------------------------------------------------------------------- |
+| 内容构建   | 新字段缺省、合法图片、非法卡片 key、缺失图片文件；使用实际 About 定义与编译器验证公开投影                         |
+| 页面组件   | 首页只有一个 h1；无 About 栏目导航、Hero 操作按钮、Canvas；五个入口目标正确；理念正文、loading/error/retry 仍显示 |
+| 图片       | 未提供及加载失败均为稳定占位，不出现自绘 SVG/Canvas；有效素材按指定槽位显示                                       |
+| 导航回归   | 首页进入焦点、子页导航、返回恢复、旧 about-content hash、成员 Modal 与 Media 筛选                                 |
+| 真实浏览器 | 320px、390px、768px、1440px；浅深色、200% 缩放、长文案、键盘、reduced motion；检查横向溢出及图片遮挡              |
+| 运行证据   | 首页访问不加载旧 renderer chunk、不创建 WebGL；检查网络与实际页面，不能仅靠移除 Canvas 的 mock 得出结论           |
 
 实施时运行 Web 内容检查、类型检查、相关 Vitest 用例与 Web build；具体命令以当时 package scripts 和测试配置为准。无需启动数据库来验证静态 About；完整仓库检查是否需要按实际改动与项目规则判断。分别报告自动检查、浏览器检查和未执行项。
 

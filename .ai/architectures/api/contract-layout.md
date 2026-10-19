@@ -8,16 +8,16 @@ _最后更新：2026-10-19_
 
 `api/openapi.yaml` 声明顶层结构并引用 `api/paths/` 和 `api/schemas/`；`scripts/api/generate.mjs` 将它们打包成单份 JSON：
 
-| 段落 | 作用 |
-| --- | --- |
-| `openapi` / `info` | 规范版本与 Contract 适用范围。 |
-| `servers[].url: /api` | 描述客户端 API base URL；服务端路由前缀另由 Glue 注册。 |
-| `tags` | operation 的归类。 |
-| `paths` | 引用 `api/paths/` 中的 HTTP 方法、`operationId`、请求、响应与逐操作 security。 |
-| `components.securitySchemes` | 声明 HTTP Bearer `bearerAuth`；受保护操作显式引用它。 |
-| `components.headers` | 复用 `Cache-Control` 与 `Retry-After` header 规则。 |
-| `components.responses` | 复用普通安全错误与带重试延迟的错误响应。 |
-| `components.schemas` | 引用 `api/schemas/` 中的共享 schema。 |
+| 段落                         | 作用                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------ |
+| `openapi` / `info`           | 规范版本与 Contract 适用范围。                                                 |
+| `servers[].url: /api`        | 描述客户端 API base URL；服务端路由前缀另由 Glue 注册。                        |
+| `tags`                       | operation 的归类。                                                             |
+| `paths`                      | 引用 `api/paths/` 中的 HTTP 方法、`operationId`、请求、响应与逐操作 security。 |
+| `components.securitySchemes` | 声明 HTTP Bearer `bearerAuth`；受保护操作显式引用它。                          |
+| `components.headers`         | 复用 `Cache-Control` 与 `Retry-After` header 规则。                            |
+| `components.responses`       | 复用普通安全错误与带重试延迟的错误响应。                                       |
+| `components.schemas`         | 引用 `api/schemas/` 中的共享 schema。                                          |
 
 每个 operation 都以 `operationId` 绑定 Server handler；缺失或重复会破坏映射。部分公开操作显式写 `security: []`，受保护操作声明 `bearerAuth`。当前没有 API 版本策略或兼容层；破坏性 Contract 变更须单独评审。
 
@@ -31,13 +31,13 @@ _最后更新：2026-10-19_
 
 ## 消费路径
 
-| 消费者 | 使用方式 |
-| --- | --- |
-| `pnpm api:lint` | 用 Redocly 检查源入口、引用和项目规则。 |
-| `pnpm api:bundle` / `pnpm api:generate` | 生成统一 JSON；后者还用 `openapi-typescript` 生成 SDK 类型。 |
-| `pnpm api:check` | 无写入核对 JSON 与 SDK 类型是否与源一致。 |
-| `apps/server/src/contract/document.ts` | 无副作用读取 JSON，解析内部 JSON Pointer 与 path item 引用，枚举 operation。 |
-| `apps/server/src/http/plugin.ts` | 检查 handler 覆盖后注册一次带 `/api` 前缀的 Glue。 |
+| 消费者                                         | 使用方式                                                                        |
+| ---------------------------------------------- | ------------------------------------------------------------------------------- |
+| `pnpm api:lint`                                | 用 Redocly 检查源入口、引用和项目规则。                                         |
+| `pnpm api:bundle` / `pnpm api:generate`        | 生成统一 JSON；后者还用 `openapi-typescript` 生成 SDK 类型。                    |
+| `pnpm api:check`                               | 无写入核对 JSON 与 SDK 类型是否与源一致。                                       |
+| `apps/server/src/contract/document.ts`         | 无副作用读取 JSON，解析内部 JSON Pointer 与 path item 引用，枚举 operation。    |
+| `apps/server/src/http/plugin.ts`               | 检查 handler 覆盖后注册一次带 `/api` 前缀的 Glue。                              |
 | `tests/helpers/contract.ts`、`tests/contract/` | 复用 reader，从 JSON 提取 schema，检查路由、原始输出和双向 `operationId` 覆盖。 |
 
 `apps/server/src/domains/join/applications/form-validation.ts`、`apps/server/src/http/cors.ts` 与 `scripts/runtime/nginx.mjs` 也读取统一 JSON。`redocly.yaml` 的规则开关属于仓库 lint 配置，不改变 Contract 中已存在的 Bearer scheme、显式错误响应或 schema。

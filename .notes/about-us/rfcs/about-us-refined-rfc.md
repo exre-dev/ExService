@@ -12,11 +12,11 @@
 
 在 `apps/web/build/about/schema.ts` 与 `apps/web/src/content/about/types.ts` 同步新增：
 
-| 字段 | 类型与缺省 |
-| --- | --- |
-| `hero.lead` | 可选非空字符串，未提供时不渲染额外短引言 |
+| 字段             | 类型与缺省                                                                                    |
+| ---------------- | --------------------------------------------------------------------------------------------- |
+| `hero.lead`      | 可选非空字符串，未提供时不渲染额外短引言                                                      |
 | `entryHeadlines` | strict object，communities、projects、team、media、story 五个可选非空字符串；缺省用栏目 title |
-| `cardImages` | strict object，同样五个可选 ImageRef；缺省或加载失败用占位 |
+| `cardImages`     | strict object，同样五个可选 ImageRef；缺省或加载失败用占位                                    |
 
 理念没有图片槽位，不接受 `cardImages.belief`；这替代早期 RFC 的六图片字段提案。ImageRef 沿用共享 schema 的 alt、width、height、caption、position，实际图片保留 alt，object-fit 为 cover，position 映射为 object-position。注册表已使用 homeSchema 解析后展开投影；通用编译器已递归检查 ImageRef，无需修改它们，只通过真实定义与编译器测试新增字段。
 

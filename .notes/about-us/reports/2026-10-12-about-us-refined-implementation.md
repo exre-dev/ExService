@@ -39,17 +39,17 @@
 
 ## 验证
 
-| 检查 | 结果 |
-| --- | --- |
-| `pnpm exec vitest run tests/content apps/web/src/content apps/web/src/pages/AboutUs` | PASS，11 个测试文件、63 项测试 |
-| `pnpm --filter @workspace/web content:check` | PASS，10 篇公开正文 |
-| `pnpm --filter @workspace/web typecheck` | PASS |
-| `pnpm --filter @workspace/web build` | PASS，产物不包含旧 renderer chunk；保留既有大 chunk 警告 |
-| `playwright-cli -s=about-live-acceptance run-code --filename=tests/browser/about-home-refined.mjs` | PASS，1440/768/390/320px 浅深色、无横向溢出、移动端顺序、长文案/根字号、reduced motion、五入口、焦点、hash、后退滚动、成员弹窗、Media 筛选；无旧 renderer 请求、WebGL 调用为 0 |
-| `playwright-cli -s=about-live-acceptance run-code --filename=tests/browser/about-home-failures.mjs` | PASS，真实生产组件加载有效测试图片、图片失败后同尺寸占位；真实正文 chunk 失败、重试与文档重新加载恢复 |
-| `git diff --check` | PASS |
-| 原生浏览器工具栏 200% 缩放 | NOT_EXECUTED；双倍根字号和长文案已检查，二者不能等同 |
-| 根目录完整测试/构建、数据库、Outline、部署 | NOT_EXECUTED；本次只修改静态 About/Web 内容 |
+| 检查                                                                                                | 结果                                                                                                                                                                           |
+| --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm exec vitest run tests/content apps/web/src/content apps/web/src/pages/AboutUs`                | PASS，11 个测试文件、63 项测试                                                                                                                                                 |
+| `pnpm --filter @workspace/web content:check`                                                        | PASS，10 篇公开正文                                                                                                                                                            |
+| `pnpm --filter @workspace/web typecheck`                                                            | PASS                                                                                                                                                                           |
+| `pnpm --filter @workspace/web build`                                                                | PASS，产物不包含旧 renderer chunk；保留既有大 chunk 警告                                                                                                                       |
+| `playwright-cli -s=about-live-acceptance run-code --filename=tests/browser/about-home-refined.mjs`  | PASS，1440/768/390/320px 浅深色、无横向溢出、移动端顺序、长文案/根字号、reduced motion、五入口、焦点、hash、后退滚动、成员弹窗、Media 筛选；无旧 renderer 请求、WebGL 调用为 0 |
+| `playwright-cli -s=about-live-acceptance run-code --filename=tests/browser/about-home-failures.mjs` | PASS，真实生产组件加载有效测试图片、图片失败后同尺寸占位；真实正文 chunk 失败、重试与文档重新加载恢复                                                                          |
+| `git diff --check`                                                                                  | PASS                                                                                                                                                                           |
+| 原生浏览器工具栏 200% 缩放                                                                          | NOT_EXECUTED；双倍根字号和长文案已检查，二者不能等同                                                                                                                           |
+| 根目录完整测试/构建、数据库、Outline、部署                                                          | NOT_EXECUTED；本次只修改静态 About/Web 内容                                                                                                                                    |
 
 失败态浏览器脚本只替换测试输入和网络边界，不替换生产 registry adapter、组件或 useContent。正式内容没有填入测试图片、Apple 素材或现有社区照片。
 

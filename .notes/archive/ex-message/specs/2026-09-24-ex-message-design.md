@@ -19,7 +19,7 @@
 ## 公开接口
 
 ```tsx
-<ExMessage duration={3000} placement="top-right" maxCount={3} />
+;<ExMessage duration={3000} placement="top-right" maxCount={3} />
 
 ExMessage.info('资料已更新')
 ExMessage.warn('请检查输入', { duration: 6000 })
@@ -32,15 +32,15 @@ onSuccess('保存成功')
 ExMessage.loading('正在同步', { duration: 10000 })
 ```
 
-| 参数 | 语义 |
-| --- | --- |
-| `duration` 组件属性 | 普通消息及 loading 完成态的默认显示时长，单位毫秒，默认 `3000`。 |
-| `placement` 组件属性 | 全站位置，默认 `top-right`；允许 `top-left`、`top-center`、`top-right`、`bottom-left`、`bottom-center`、`bottom-right`。 |
-| `maxCount` 组件属性 | 同时活动的最大消息数，默认 `3`，包含 loading 和完成态。 |
-| 普通消息的 `options.duration` | 覆盖该条消息的全站默认时长。 |
-| loading 的 `options.duration` | loading 阶段的最长显示时长；省略时 loading 持续显示，不继承全站 3 秒。到期仅关闭消息，不自动调用 `onError`。 |
-| `onSuccess(content, options?)` / `onError(content, options?)` | 将同一条 loading 更新为成功或失败消息，并从更新时开始按全站默认时长计时；`options.duration` 可覆盖完成态时长。 |
-| `dismiss()` | 主动关闭该条 loading 或其完成态。 |
+| 参数                                                          | 语义                                                                                                                     |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `duration` 组件属性                                           | 普通消息及 loading 完成态的默认显示时长，单位毫秒，默认 `3000`。                                                         |
+| `placement` 组件属性                                          | 全站位置，默认 `top-right`；允许 `top-left`、`top-center`、`top-right`、`bottom-left`、`bottom-center`、`bottom-right`。 |
+| `maxCount` 组件属性                                           | 同时活动的最大消息数，默认 `3`，包含 loading 和完成态。                                                                  |
+| 普通消息的 `options.duration`                                 | 覆盖该条消息的全站默认时长。                                                                                             |
+| loading 的 `options.duration`                                 | loading 阶段的最长显示时长；省略时 loading 持续显示，不继承全站 3 秒。到期仅关闭消息，不自动调用 `onError`。             |
+| `onSuccess(content, options?)` / `onError(content, options?)` | 将同一条 loading 更新为成功或失败消息，并从更新时开始按全站默认时长计时；`options.duration` 可覆盖完成态时长。           |
+| `dismiss()`                                                   | 主动关闭该条 loading 或其完成态。                                                                                        |
 
 提示内容为 React 可渲染内容，完成方法必须提供新的完成文案。普通消息方法返回底层消息 ID，供调用方识别；公开面不直接暴露 Sonner 的其他选项。`warn` 映射 ExUI 的 `toast.warning`。时长接受正的有限毫秒数，`maxCount` 接受正整数；无效数值抛出明确错误，不静默产生无限显示或无上限队列。
 

@@ -41,20 +41,20 @@
 
 ## 验证
 
-| 检查 | 结果 |
-| --- | --- |
-| 改动前相关测试 | PASS，63 项 |
-| `pnpm exec vitest run tests/content apps/web/src/content apps/web/src/pages/AboutUs` | PASS，13 文件、79 项测试 |
-| `pnpm --filter @workspace/web content:check` | PASS，11 篇公开正文 |
-| `pnpm --filter @workspace/web typecheck` | PASS |
-| `pnpm --filter @workspace/web build` | PASS；保留既有大 chunk 警告 |
-| `playwright-cli -s=about-donations --raw run-code --filename=tests/browser/about-home-refined.mjs` | PASS，六入口、首页进入捐赠页、导航状态、既有焦点/hash/返回滚动/成员/Media 行为和四宽度浅深色 |
-| `playwright-cli -s=about-donations --raw run-code --filename=tests/browser/about-donations.mjs` | PASS，生产组件展示测试昵称/日期、HTTPS 链接、有效二维码，1440/768/390/320px 浅深色无溢出，恢复实际空清单 |
-| `playwright-cli -s=about-donations --raw run-code --filename=tests/browser/about-home-failures.mjs` | PASS，首页图片失败和正文恢复，六入口保持可用 |
-| `git diff --check` | PASS |
-| 实际捐赠渠道与名单验收 | NOT_EXECUTED，资料未提供 |
-| 原生浏览器工具栏 200% 缩放 | NOT_EXECUTED；仅既有双倍根字号与长文案检查已通过 |
-| 全仓库、数据库、Outline、部署 | NOT_EXECUTED，本次静态 About 修改无此运行依赖 |
+| 检查                                                                                                | 结果                                                                                                     |
+| --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 改动前相关测试                                                                                      | PASS，63 项                                                                                              |
+| `pnpm exec vitest run tests/content apps/web/src/content apps/web/src/pages/AboutUs`                | PASS，13 文件、79 项测试                                                                                 |
+| `pnpm --filter @workspace/web content:check`                                                        | PASS，11 篇公开正文                                                                                      |
+| `pnpm --filter @workspace/web typecheck`                                                            | PASS                                                                                                     |
+| `pnpm --filter @workspace/web build`                                                                | PASS；保留既有大 chunk 警告                                                                              |
+| `playwright-cli -s=about-donations --raw run-code --filename=tests/browser/about-home-refined.mjs`  | PASS，六入口、首页进入捐赠页、导航状态、既有焦点/hash/返回滚动/成员/Media 行为和四宽度浅深色             |
+| `playwright-cli -s=about-donations --raw run-code --filename=tests/browser/about-donations.mjs`     | PASS，生产组件展示测试昵称/日期、HTTPS 链接、有效二维码，1440/768/390/320px 浅深色无溢出，恢复实际空清单 |
+| `playwright-cli -s=about-donations --raw run-code --filename=tests/browser/about-home-failures.mjs` | PASS，首页图片失败和正文恢复，六入口保持可用                                                             |
+| `git diff --check`                                                                                  | PASS                                                                                                     |
+| 实际捐赠渠道与名单验收                                                                              | NOT_EXECUTED，资料未提供                                                                                 |
+| 原生浏览器工具栏 200% 缩放                                                                          | NOT_EXECUTED；仅既有双倍根字号与长文案检查已通过                                                         |
+| 全仓库、数据库、Outline、部署                                                                       | NOT_EXECUTED，本次静态 About 修改无此运行依赖                                                            |
 
 浏览器测试仅拦截测试输入与网络边界，不替换生产内容适配器或展示组件；测试资料不会写入正式内容。现有 Server 8080 未启动导致的 API 502 为既有环境限制，与静态捐赠页分开报告。
 

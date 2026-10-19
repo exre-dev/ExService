@@ -5,7 +5,10 @@ import type { FastifyInstance } from 'fastify'
 import { createApp } from '@workspace/server'
 import { createStorageModule, type StorageServices } from '@server/src/modules/storage/factory'
 import { parseStorageConfig, type StorageConfig } from '@server/src/modules/storage/config'
-import type { CosDependencies, CosTemporaryCredentials } from '@server/src/modules/storage/adapters/cos'
+import type {
+  CosDependencies,
+  CosTemporaryCredentials,
+} from '@server/src/modules/storage/adapters/cos'
 import type { TestAuth } from './auth'
 
 /** 严格 64 位十六进制，满足 STORAGE_UPLOAD_HMAC_KEY 的格式要求。 */
@@ -25,7 +28,14 @@ export interface StoredCosObject {
 export interface FakeCos extends CosDependencies {
   objects: Map<string, StoredCosObject>
   calls: {
-    putObject: Array<{ key: string; contentType: string; byteLength: number; contentLength: number | undefined; contentDisposition: string; cacheControl: string }>
+    putObject: Array<{
+      key: string
+      contentType: string
+      byteLength: number
+      contentLength: number | undefined
+      contentDisposition: string
+      cacheControl: string
+    }>
     headObject: string[]
     signDownloadUrl: Array<{ key: string }>
     issueCredentials: Array<{ key: string }>
@@ -45,7 +55,14 @@ export function createFakeCos(bucket = TEST_BUCKET, region = TEST_REGION): FakeC
     fail: {},
     async putObject({ key, bytes, contentType }) {
       if (fake.fail.putObject !== undefined) throw fake.fail.putObject
-      fake.calls.putObject.push({ key, contentType, byteLength: bytes.byteLength, contentLength: bytes.byteLength, contentDisposition: 'attachment', cacheControl: 'no-store' })
+      fake.calls.putObject.push({
+        key,
+        contentType,
+        byteLength: bytes.byteLength,
+        contentLength: bytes.byteLength,
+        contentDisposition: 'attachment',
+        cacheControl: 'no-store',
+      })
       objects.set(key, {
         bytes: new Uint8Array(bytes),
         contentType,
@@ -58,7 +75,8 @@ export function createFakeCos(bucket = TEST_BUCKET, region = TEST_REGION): FakeC
       if (fake.fail.headObject !== undefined) throw fake.fail.headObject
       fake.calls.headObject.push(key)
       const object = objects.get(key)
-      if (object === undefined) throw Object.assign(new Error('NoSuchKey'), { statusCode: 404, code: 'NoSuchKey' })
+      if (object === undefined)
+        throw Object.assign(new Error('NoSuchKey'), { statusCode: 404, code: 'NoSuchKey' })
       return { bytes: object.bytes.byteLength }
     },
     signDownloadUrl({ key }) {
@@ -105,16 +123,19 @@ export function fileStorageFixture(env: NodeJS.ProcessEnv = {}): StorageTestFixt
 /** COS 介质：启用 cos 默认介质并注入 fake 云端依赖。 */
 export function cosStorageFixture(cos: FakeCos, env: NodeJS.ProcessEnv = {}): StorageTestFixture {
   const dataRoot = mkdtempSync(resolve(tmpdir(), 'exwebsite-storage-cos-'))
-  const config = storageConfig({
-    STORAGE_DEFAULT_ADAPTER: 'cos',
-    STORAGE_MAX_BYTES: '1024',
-    STORAGE_UPLOAD_HMAC_KEY: TEST_HMAC_KEY,
-    TENCENT_COS_SECRET_ID: 'test-secret-id',
-    TENCENT_COS_SECRET_KEY: 'test-secret-key',
-    TENCENT_COS_REGION: TEST_REGION,
-    TENCENT_COS_BUCKET: TEST_BUCKET,
-    ...env,
-  }, dataRoot)
+  const config = storageConfig(
+    {
+      STORAGE_DEFAULT_ADAPTER: 'cos',
+      STORAGE_MAX_BYTES: '1024',
+      STORAGE_UPLOAD_HMAC_KEY: TEST_HMAC_KEY,
+      TENCENT_COS_SECRET_ID: 'test-secret-id',
+      TENCENT_COS_SECRET_KEY: 'test-secret-key',
+      TENCENT_COS_REGION: TEST_REGION,
+      TENCENT_COS_BUCKET: TEST_BUCKET,
+      ...env,
+    },
+    dataRoot,
+  )
   return {
     dataRoot,
     storage: createStorageModule({ config, cosDependencies: cos }),
@@ -130,14 +151,23 @@ export function createAppWithStorage(fixture: TestAuth, storage: StorageServices
     joinServices: fixture.joinServices,
     invitationServices: fixture.invitationServices,
     storageServices: storage,
-    notifications: fixture.notifications, clickupServices: fixture.clickupServices, supportServices: fixture.supportServices,
+    notifications: fixture.notifications,
+    clickupServices: fixture.clickupServices,
+    supportServices: fixture.supportServices,
   })
 }
 
 /** 构造 multipart 请求体的最小辅助：不手写 Content-Type boundary，交给 FormData。 */
-export function uploadForm(fields: Record<string, string>, file: { name: string; bytes: Uint8Array; type?: string }): FormData {
+export function uploadForm(
+  fields: Record<string, string>,
+  file: { name: string; bytes: Uint8Array; type?: string },
+): FormData {
   const form = new FormData()
   for (const [name, value] of Object.entries(fields)) form.append(name, value)
-  form.append('data', new Blob([file.bytes], { type: file.type ?? 'application/octet-stream' }), file.name)
+  form.append(
+    'data',
+    new Blob([file.bytes], { type: file.type ?? 'application/octet-stream' }),
+    file.name,
+  )
   return form
 }

@@ -1,7 +1,7 @@
-import { forwardRef, useId, useImperativeHandle, useRef } from "react";
-import { Controller, useForm, type GlobalError } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { forwardRef, useId, useImperativeHandle, useRef } from 'react'
+import { Controller, useForm, type GlobalError } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import {
   Button,
   Field,
@@ -12,80 +12,103 @@ import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
-} from "@exre/exui";
-import { ErrorPanel } from "@components/src/ErrorPanel";
-import { invitationFeedback, type InvitationFormHandle } from "@components/src/auth/invitationFeedback";
-import { nicknameSchema } from "@components/src/profileValidation";
-import { ExIcon } from "@components/src/ExIcon";
-import styles from "@components/src/auth/AuthForm.module.scss";
+} from '@exre/exui'
+import { ErrorPanel } from '@components/src/ErrorPanel'
+import {
+  invitationFeedback,
+  type InvitationFormHandle,
+} from '@components/src/auth/invitationFeedback'
+import { nicknameSchema } from '@components/src/profileValidation'
+import { ExIcon } from '@components/src/ExIcon'
+import styles from '@components/src/auth/AuthForm.module.scss'
 
 export const invitationEmailSchema = z
   .string()
   .trim()
   .toLowerCase()
   .refine(
-    (value) =>
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) &&
-      Array.from(value).length <= 254,
-    "请输入有效的邮箱地址",
-  );
-const emailSchema = z.object({ email: invitationEmailSchema });
+    (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && Array.from(value).length <= 254,
+    '请输入有效的邮箱地址',
+  )
+const emailSchema = z.object({ email: invitationEmailSchema })
 const codeSchema = z.object({
-  code: z.string().regex(/^[0-9]{6}$/, "请输入 6 位验证码"),
-});
+  code: z.string().regex(/^[0-9]{6}$/, '请输入 6 位验证码'),
+})
 const profileSchema = z.object({
   nickname: nicknameSchema,
   password: z
     .string()
     .refine(
-      (value) =>
-        Array.from(value).length >= 8 && Array.from(value).length <= 64,
-      "密码必须为 8 至 64 个字符",
+      (value) => Array.from(value).length >= 8 && Array.from(value).length <= 64,
+      '密码必须为 8 至 64 个字符',
     ),
-});
-export type InvitationProfileValues = z.infer<typeof profileSchema>;
+})
+export type InvitationProfileValues = z.infer<typeof profileSchema>
 
-function InvitationRootError({ error, id, onJoin }: {
-  error?: GlobalError; id: string; onJoin?: () => void;
+function InvitationRootError({
+  error,
+  id,
+  onJoin,
+}: {
+  error?: GlobalError
+  id: string
+  onJoin?: () => void
 }) {
-  const feedback = invitationFeedback(error);
-  return feedback && <ErrorPanel id={id} errors={feedback.errors} title={feedback.title}
-    action={feedback.join && onJoin ? <Button type="button" variant="ghost" onClick={onJoin}>申请加入</Button> : undefined} />;
+  const feedback = invitationFeedback(error)
+  return (
+    feedback && (
+      <ErrorPanel
+        id={id}
+        errors={feedback.errors}
+        title={feedback.title}
+        action={
+          feedback.join && onJoin ? (
+            <Button type="button" variant="ghost" onClick={onJoin}>
+              申请加入
+            </Button>
+          ) : undefined
+        }
+      />
+    )
+  )
 }
 
 interface EmailProps {
-  initialEmail: string;
-  busy: boolean;
-  onSubmit: (email: string) => Promise<void>;
-  onEmailChange: () => void;
-  onLogin: () => void;
-  onJoin: () => void;
+  initialEmail: string
+  busy: boolean
+  onSubmit: (email: string) => Promise<void>
+  onEmailChange: () => void
+  onLogin: () => void
+  onJoin: () => void
 }
 export const InvitationEmailForm = forwardRef<InvitationFormHandle, EmailProps>(
   function InvitationEmailForm(
     { initialEmail, busy, onSubmit, onEmailChange, onLogin, onJoin },
     ref,
   ) {
-    const id = useId();
+    const id = useId()
     const form = useForm({
       resolver: zodResolver(emailSchema),
       defaultValues: { email: initialEmail },
-    });
+    })
     useImperativeHandle(ref, () => ({
       setServerErrors: (e) => {
-        if (e.email) form.setError("email", { message: e.email });
-        if (e.form) form.setError("root.server", { type: e.formKind ?? "server", message: e.form });
+        if (e.email) form.setError('email', { message: e.email })
+        if (e.form) form.setError('root.server', { type: e.formKind ?? 'server', message: e.form })
       },
       clearServerErrors: () => form.clearErrors(),
-    }));
-    const disabled = busy || form.formState.isSubmitting;
-    const email = form.register("email");
+    }))
+    const disabled = busy || form.formState.isSubmitting
+    const email = form.register('email')
     return (
       <form
         className={`${styles.form} ${styles.loginForm}`}
         noValidate
         aria-busy={disabled}
-        onSubmit={form.handleSubmit(({ email }) => { form.clearErrors(); return onSubmit(email); })}
+        onSubmit={form.handleSubmit(({ email }) => {
+          form.clearErrors()
+          return onSubmit(email)
+        })}
       >
         <div className={`${styles.intro} ${styles.loginIntro}`}>
           <ExIcon size="6rem" className={styles.authIcon} />
@@ -112,9 +135,9 @@ export const InvitationEmailForm = forwardRef<InvitationFormHandle, EmailProps>(
             <Input
               {...email}
               onChange={(event) => {
-                email.onChange(event);
-                onEmailChange();
-                form.clearErrors();
+                email.onChange(event)
+                onEmailChange()
+                form.clearErrors()
               }}
               id={id}
               type="email"
@@ -122,76 +145,73 @@ export const InvitationEmailForm = forwardRef<InvitationFormHandle, EmailProps>(
               autoFocus
               aria-invalid={!!form.formState.errors.email}
               aria-describedby={
-                [form.formState.errors.email ? `${id}-error` : null,
-                  form.formState.errors.root?.server?.message ? `${id}-panel` : null].filter(Boolean).join(" ") || undefined
+                [
+                  form.formState.errors.email ? `${id}-error` : null,
+                  form.formState.errors.root?.server?.message ? `${id}-panel` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' ') || undefined
               }
             />
             {form.formState.errors.email && (
-              <FieldError id={`${id}-error`}>
-                {form.formState.errors.email.message}
-              </FieldError>
+              <FieldError id={`${id}-error`}>{form.formState.errors.email.message}</FieldError>
             )}
           </FieldContent>
         </Field>
-        <InvitationRootError error={form.formState.errors.root?.server} id={`${id}-panel`} onJoin={onJoin} />
+        <InvitationRootError
+          error={form.formState.errors.root?.server}
+          id={`${id}-panel`}
+          onJoin={onJoin}
+        />
         <Button type="submit" disabled={disabled}>
-          {disabled ? "检查中" : "继续"}
+          {disabled ? '检查中' : '继续'}
         </Button>
       </form>
-    );
+    )
   },
-);
+)
 
 interface CodeProps {
-  email: string;
-  busy: boolean;
-  retry: boolean;
-  resendSeconds: number;
-  lockedSeconds: number;
-  onVerify: (code: string) => Promise<void>;
-  onResend: () => Promise<boolean>;
-  onBack: () => void;
+  email: string
+  busy: boolean
+  retry: boolean
+  resendSeconds: number
+  lockedSeconds: number
+  onVerify: (code: string) => Promise<void>
+  onResend: () => Promise<boolean>
+  onBack: () => void
 }
 export const InvitationCodeForm = forwardRef<InvitationFormHandle, CodeProps>(
   function InvitationCodeForm(
-    {
-      email,
-      busy,
-      retry,
-      resendSeconds,
-      lockedSeconds,
-      onVerify,
-      onResend,
-      onBack,
-    },
+    { email, busy, retry, resendSeconds, lockedSeconds, onVerify, onResend, onBack },
     ref,
   ) {
-    const id = useId();
+    const id = useId()
     const form = useForm({
       resolver: zodResolver(codeSchema),
-      defaultValues: { code: "" },
-    });
-    const lastAttempt = useRef<string | null>(null);
-    const submitting = useRef(false);
+      defaultValues: { code: '' },
+    })
+    const lastAttempt = useRef<string | null>(null)
+    const submitting = useRef(false)
     useImperativeHandle(ref, () => ({
       setServerErrors: (e) => {
-        if (e.code) form.setError("code", { message: e.code });
-        if (e.form) form.setError("root.server", { type: e.formKind ?? "server", message: e.form });
+        if (e.code) form.setError('code', { message: e.code })
+        if (e.form) form.setError('root.server', { type: e.formKind ?? 'server', message: e.form })
       },
       clearServerErrors: () => form.clearErrors(),
-    }));
-    const disabled = busy || form.formState.isSubmitting || lockedSeconds > 0;
+    }))
+    const disabled = busy || form.formState.isSubmitting || lockedSeconds > 0
     const submit = form.handleSubmit(async ({ code }) => {
-      if (busy || lockedSeconds > 0 || submitting.current) return;
-      submitting.current = true;
-      lastAttempt.current = code;
-      form.clearErrors();
+      if (busy || lockedSeconds > 0 || submitting.current) return
+      submitting.current = true
+      lastAttempt.current = code
+      form.clearErrors()
       try {
-        await onVerify(code);
+        await onVerify(code)
       } finally {
-        submitting.current = false;
+        submitting.current = false
       }
-    });
+    })
     return (
       <form
         className={`${styles.form} ${styles.loginForm}`}
@@ -219,22 +239,20 @@ export const InvitationCodeForm = forwardRef<InvitationFormHandle, CodeProps>(
                   autoFocus
                   disabled={disabled}
                   aria-invalid={!!form.formState.errors.code}
-                  aria-describedby={
-                    form.formState.errors.code ? `${id}-error` : undefined
-                  }
+                  aria-describedby={form.formState.errors.code ? `${id}-error` : undefined}
                   onChange={(value) => {
-                    const digits = value.replace(/\D/g, "").slice(0, 6);
-                    field.onChange(digits);
-                    form.clearErrors();
-                    if (digits.length < 6) lastAttempt.current = null;
+                    const digits = value.replace(/\D/g, '').slice(0, 6)
+                    field.onChange(digits)
+                    form.clearErrors()
+                    if (digits.length < 6) lastAttempt.current = null
                     if (
                       digits.length === 6 &&
                       lastAttempt.current !== digits &&
                       !disabled &&
                       !submitting.current
                     ) {
-                      lastAttempt.current = digits;
-                      void submit();
+                      lastAttempt.current = digits
+                      void submit()
                     }
                   }}
                 >
@@ -247,16 +265,12 @@ export const InvitationCodeForm = forwardRef<InvitationFormHandle, CodeProps>(
               )}
             />
             {form.formState.errors.code && (
-              <FieldError id={`${id}-error`}>
-                {form.formState.errors.code.message}
-              </FieldError>
+              <FieldError id={`${id}-error`}>{form.formState.errors.code.message}</FieldError>
             )}
           </FieldContent>
         </Field>
         <InvitationRootError error={form.formState.errors.root?.server} id={`${id}-panel`} />
-        {lockedSeconds > 0 && (
-          <p role="status">验证暂时锁定，{lockedSeconds} 秒后重试</p>
-        )}
+        {lockedSeconds > 0 && <p role="status">验证暂时锁定，{lockedSeconds} 秒后重试</p>}
         {retry && (
           <Button type="submit" disabled={disabled}>
             重试验证
@@ -267,80 +281,76 @@ export const InvitationCodeForm = forwardRef<InvitationFormHandle, CodeProps>(
           variant="outline"
           disabled={disabled || resendSeconds > 0}
           onClick={async () => {
-            form.clearErrors();
+            form.clearErrors()
             if (await onResend()) {
-              form.reset({ code: "" });
-              lastAttempt.current = null;
+              form.reset({ code: '' })
+              lastAttempt.current = null
             }
           }}
         >
-          {resendSeconds > 0 ? `${resendSeconds} 秒后重发` : "重新发送验证码"}
+          {resendSeconds > 0 ? `${resendSeconds} 秒后重发` : '重新发送验证码'}
         </Button>
         <Button type="button" variant="link" onClick={onBack}>
           返回修改邮箱
         </Button>
       </form>
-    );
+    )
   },
-);
+)
 
 interface ProfileProps {
-  email: string;
-  nickname: string;
-  busy: boolean;
-  onSubmit: (values: InvitationProfileValues) => Promise<void>;
-  onBack: () => void;
+  email: string
+  nickname: string
+  busy: boolean
+  onSubmit: (values: InvitationProfileValues) => Promise<void>
+  onBack: () => void
 }
 export const InvitationProfileForm = forwardRef<InvitationFormHandle, ProfileProps>(
-  function InvitationProfileForm(
-    { email, nickname, busy, onSubmit, onBack },
-    ref,
-  ) {
-    const id = useId();
+  function InvitationProfileForm({ email, nickname, busy, onSubmit, onBack }, ref) {
+    const id = useId()
     const form = useForm({
       resolver: zodResolver(profileSchema),
-      defaultValues: { nickname, password: "" },
-    });
+      defaultValues: { nickname, password: '' },
+    })
     useImperativeHandle(ref, () => ({
       setServerErrors: (e) => {
-        if (e.nickname) form.setError("nickname", { message: e.nickname });
-        if (e.password) form.setError("password", { message: e.password });
-        if (e.form) form.setError("root.server", { type: e.formKind ?? "server", message: e.form });
+        if (e.nickname) form.setError('nickname', { message: e.nickname })
+        if (e.password) form.setError('password', { message: e.password })
+        if (e.form) form.setError('root.server', { type: e.formKind ?? 'server', message: e.form })
       },
       clearServerErrors: () => form.clearErrors(),
-    }));
-    const disabled = busy || form.formState.isSubmitting;
+    }))
+    const disabled = busy || form.formState.isSubmitting
     return (
       <form
         className={`${styles.form} ${styles.loginForm}`}
         noValidate
         aria-busy={disabled}
-        onSubmit={form.handleSubmit((values) => { form.clearErrors(); return onSubmit(values); })}
+        onSubmit={form.handleSubmit((values) => {
+          form.clearErrors()
+          return onSubmit(values)
+        })}
       >
         <div className={`${styles.intro} ${styles.loginIntro}`}>
           <ExIcon size="6rem" className={styles.authIcon} />
           <h2>完善账号</h2>
           <p>{email}</p>
         </div>
-        {(["nickname", "password"] as const).map((name) => (
+        {(['nickname', 'password'] as const).map((name) => (
           <Field key={name} data-invalid={!!form.formState.errors[name]}>
             <FieldContent>
               <FieldLabel htmlFor={`${id}-${name}`}>
-                {name === "nickname" ? "用户名" : "密码"}
+                {name === 'nickname' ? '用户名' : '密码'}
               </FieldLabel>
               <Input
                 {...form.register(name)}
                 id={`${id}-${name}`}
-                type={name === "password" ? "password" : "text"}
-                autoComplete={name === "password" ? "new-password" : "nickname"}
-                autoFocus={name === "nickname"}
+                type={name === 'password' ? 'password' : 'text'}
+                autoComplete={name === 'password' ? 'new-password' : 'nickname'}
+                autoFocus={name === 'nickname'}
                 disabled={disabled}
                 aria-invalid={!!form.formState.errors[name]}
-                aria-describedby={
-                  form.formState.errors[name]
-                    ? `${id}-${name}-error`
-                    : undefined
-                }
+                aria-describedby={form.formState.errors[name] ? `${id}-${name}-error` : undefined}
               />
               {form.formState.errors[name] && (
                 <FieldError id={`${id}-${name}-error`}>
@@ -352,12 +362,12 @@ export const InvitationProfileForm = forwardRef<InvitationFormHandle, ProfilePro
         ))}
         <InvitationRootError error={form.formState.errors.root?.server} id={`${id}-panel`} />
         <Button type="submit" disabled={disabled}>
-          {disabled ? "提交中" : "完成注册"}
+          {disabled ? '提交中' : '完成注册'}
         </Button>
         <Button type="button" variant="link" onClick={onBack}>
           返回修改邮箱
         </Button>
       </form>
-    );
+    )
   },
-);
+)

@@ -10,17 +10,17 @@
 
 ## 自动验证
 
-| 检查 | 结果 |
-| --- | --- |
-| `pnpm api:lint` | 退出 0；既有 Join Contract 的 3 条警告保留。 |
-| `pnpm api:generate` | 退出 0；两份生成产物 SHA-256 前后相同。 |
-| `pnpm typecheck` | 退出 0。 |
-| `pnpm test` | 退出 1；API 与 Website 阶段通过，runtime / Docs 为 92 / 93，Outline 因 fail-fast 未执行。 |
-| runtime / Docs 相同清单独立重跑 | 退出 0，93 / 93；没有修改源码或测试。 |
-| Outline 原清单独立补跑 | 退出 0，12 / 12 阶段（前端 3、服务器 9）通过。 |
-| 首次 `pnpm test --verbose` | 退出 1；Website 148 / 148 文件、1650 / 1650 测试通过，runtime / Docs 为 92 / 93，精确定位 Windows Job 测试竞态。 |
-| `pnpm build` | 退出 0；含 SDK、Website Web / Server、Outline 前端 / 国际化 / Server。 |
-| 候选 4 `pnpm test --verbose` | 按用户要求在 Website 阶段 Ctrl-C 中断，退出 1 属人为停止；本轮没有完整汇总，不能报告全量通过。 |
+| 检查                            | 结果                                                                                                             |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `pnpm api:lint`                 | 退出 0；既有 Join Contract 的 3 条警告保留。                                                                     |
+| `pnpm api:generate`             | 退出 0；两份生成产物 SHA-256 前后相同。                                                                          |
+| `pnpm typecheck`                | 退出 0。                                                                                                         |
+| `pnpm test`                     | 退出 1；API 与 Website 阶段通过，runtime / Docs 为 92 / 93，Outline 因 fail-fast 未执行。                        |
+| runtime / Docs 相同清单独立重跑 | 退出 0，93 / 93；没有修改源码或测试。                                                                            |
+| Outline 原清单独立补跑          | 退出 0，12 / 12 阶段（前端 3、服务器 9）通过。                                                                   |
+| 首次 `pnpm test --verbose`      | 退出 1；Website 148 / 148 文件、1650 / 1650 测试通过，runtime / Docs 为 92 / 93，精确定位 Windows Job 测试竞态。 |
+| `pnpm build`                    | 退出 0；含 SDK、Website Web / Server、Outline 前端 / 国际化 / Server。                                           |
+| 候选 4 `pnpm test --verbose`    | 按用户要求在 Website 阶段 Ctrl-C 中断，退出 1 属人为停止；本轮没有完整汇总，不能报告全量通过。                   |
 
 候选 4 使用原 runner 支持的 `pnpm test --verbose` 复验完整清单，保留逐例原始输出；不跳过用例、不改清单或超时。用户随后要求先停止测试，已中断本轮执行。测试进程和临时 Testcontainers 容器已退出，开发页面与 API 保持运行；未再启动测试或构建。最终全量验证尚未完成，等待用户明确恢复。
 

@@ -4,7 +4,9 @@ function configuredUrl(value: unknown) {
   try {
     const url = new URL(value)
     return url.protocol === 'https:' ? url.href : undefined
-  } catch { return undefined }
+  } catch {
+    return undefined
+  }
 }
 export const communityDestinations = [
   { label: 'QQ 社区', url: configuredUrl(import.meta.env.VITE_COMMUNITY_QQ_URL) },

@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import {
-  SUMMARY_POLLING, createSummaryScheduler,
-} from '@web/src/notifications/summaryPolling'
+import { SUMMARY_POLLING, createSummaryScheduler } from '@web/src/notifications/summaryPolling'
 
 /** 可控时钟：不依赖真实时间，也不需要 fake timers。 */
 function clock() {
   let current = 1_800_000_000_000
   return {
     now: () => current,
-    advance(ms: number) { current += ms },
+    advance(ms: number) {
+      current += ms
+    },
   }
 }
 
@@ -28,8 +28,11 @@ describe('summary polling scheduler', () => {
       delays.push(scheduler.nextDelay())
     }
     const { baseInterval, factor, maxInterval } = SUMMARY_POLLING
-    expect(delays.slice(0, 3)).toEqual([baseInterval * factor, baseInterval * factor ** 2,
-      baseInterval * factor ** 3])
+    expect(delays.slice(0, 3)).toEqual([
+      baseInterval * factor,
+      baseInterval * factor ** 2,
+      baseInterval * factor ** 3,
+    ])
     // 单调不减，且不会越过上限。
     for (let index = 1; index < delays.length; index += 1) {
       expect(delays[index]!).toBeGreaterThanOrEqual(delays[index - 1]!)

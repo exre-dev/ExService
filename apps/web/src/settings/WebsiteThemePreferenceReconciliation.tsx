@@ -11,7 +11,8 @@ export function WebsiteThemePreferenceReconciliation() {
       if (theme !== current) setTheme(current)
     }
     const handleStorage = (event: StorageEvent) => {
-      if (event.storageArea === localStorage && (event.key === 'theme' || event.key === null)) reconcile()
+      if (event.storageArea === localStorage && (event.key === 'theme' || event.key === null))
+        reconcile()
     }
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') reconcile()

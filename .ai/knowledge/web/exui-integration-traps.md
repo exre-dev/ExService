@@ -30,8 +30,12 @@ ExUI 的样式表**完全不声明** `color-scheme`；`ThemeProvider` 只做两�
 补法必须按同一组类选择器，且注意**特异性**：
 
 ```scss
-:root { color-scheme: light; }  /* 伪类，特异性 (0,1,0) */
-.dark { color-scheme: dark; }   /* 类，特异性 (0,1,0)，与 :root 相同 */
+:root {
+  color-scheme: light;
+} /* 伪类，特异性 (0,1,0) */
+.dark {
+  color-scheme: dark;
+} /* 类，特异性 (0,1,0)，与 :root 相同 */
 ```
 
 两者特异性相同，胜负由源码顺序决定，所以 `.dark` 必须写在 `:root` 之后。
@@ -54,7 +58,9 @@ ExUI 的 `NavigationMenu`（Radix）渲染出的是 `<nav aria-label="Main">`。
 
 ```tsx
 <div className={styles.nav}>
-  <NavigationMenu viewport={false} aria-label="主导航">…</NavigationMenu>
+  <NavigationMenu viewport={false} aria-label="主导航">
+    …
+  </NavigationMenu>
 </div>
 ```
 

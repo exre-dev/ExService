@@ -24,39 +24,39 @@
 
 ## 真实调用方与 module 边界
 
-| Module / interface | 真实调用方 | 所隐藏的知识 |
-| --- | --- | --- |
-| `applications.mjs` / `verifyApplications(state, options)` | `runDevelopment`，由 `entry.mjs` 的 dev 分支经生成 Contract 后进入 | foundation、Website CLI、Outline CLI、Hydra 校验与 local 安全诊断；支持受控依赖注入 |
-| `native.mjs` / `NativeApplications.start()` | `entry.mjs` 的 start 分支 | PM2 inventory、启动阶段、失败回收与最终 online 核对 |
-| `native.mjs` / `verifyNativePreflight`、`verifyNativeClient`、`verifyNativeHealth` | `NativeApplications` 默认 preflight/client/health seam；health 另有直接测试调用方 | 分别隐藏启动前身份/CLI、Hydra ready 后 client、启动后 HTTP/身份/CLI/client |
-| `deployment.mjs` / `validateDeployment(state, options)` | native preflight/health；直接 validate/prepare CLI；`infrastructure.mjs` 显式 init/migrate 的 prepare 路径 | identity pin、历史目标、数据库身份、Outline issuer marker；普通 validate 还校验 client |
-| `hydra-client.mjs` / `verifyHydraClient` | runtime 包装器、deployment validate 等 | 固定 client 的 grants/回调/issuer/metadata/secret 与协议可用性，禁止 provision |
+| Module / interface                                                                 | 真实调用方                                                                                                 | 所隐藏的知识                                                                           |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `applications.mjs` / `verifyApplications(state, options)`                          | `runDevelopment`，由 `entry.mjs` 的 dev 分支经生成 Contract 后进入                                         | foundation、Website CLI、Outline CLI、Hydra 校验与 local 安全诊断；支持受控依赖注入    |
+| `native.mjs` / `NativeApplications.start()`                                        | `entry.mjs` 的 start 分支                                                                                  | PM2 inventory、启动阶段、失败回收与最终 online 核对                                    |
+| `native.mjs` / `verifyNativePreflight`、`verifyNativeClient`、`verifyNativeHealth` | `NativeApplications` 默认 preflight/client/health seam；health 另有直接测试调用方                          | 分别隐藏启动前身份/CLI、Hydra ready 后 client、启动后 HTTP/身份/CLI/client             |
+| `deployment.mjs` / `validateDeployment(state, options)`                            | native preflight/health；直接 validate/prepare CLI；`infrastructure.mjs` 显式 init/migrate 的 prepare 路径 | identity pin、历史目标、数据库身份、Outline issuer marker；普通 validate 还校验 client |
+| `hydra-client.mjs` / `verifyHydraClient`                                           | runtime 包装器、deployment validate 等                                                                     | 固定 client 的 grants/回调/issuer/metadata/secret 与协议可用性，禁止 provision         |
 
 依赖方向保持：entry → local 或 PM2 adapter → 阶段检查 → 现有数据库、CLI、HTTP adapter。native 当前复用 applications 的 `cliSpecification` 与 `verifyRuntimeHydraClient`，并依赖 deployment；applications 不依赖 native/deployment。Services 独立拥有依赖资源的 proof、锁、历史证明和回收，已有 depth，本探索不改变它。
 
 ## local 顺序与只读范围
 
-| 阶段 | 顺序、来源 | 拒绝与重检理由 |
-| --- | --- | --- |
-| 配置与生成 | `entry.mjs` 读取根配置并为 dev 生成 Contract，再进入 `runDevelopment` | 配置拒绝与生成保持独立；生成不是 readiness 的只读承诺 |
-| 应用预检 | 应用锁/signal/log 初始化 → `verifyApplications`：foundation → Website `integration:check` → Outline `integration-check` → Hydra client；`applications.mjs:37–42,49–53,58` | foundation 校验 Outline/Hydra 库、owner/角色、migration、结构、marker；Website CLI 校验 exre 与本站结构/配置；Outline CLI 校验自身 marker、账号/工作区/provider 关联。Hydra 依赖已由显式 service:start 准备；不在本路径启动 Hydra |
-| 端口与交接 | public/web/api/outline/outlineVite 五个端口检查 → signal 检查 → supervise；`applications.mjs:59–62` | 任一占用拒绝，不接管已有 listener；预检失败释放锁 |
-| 启动后 HTTP | server `/api/health`；outline `/_health` 与 Vite client；web 公共 `/`；全量模式另核对公共 `/api/health`、`/docs/`；`applications.mjs:69–79` | 依 service 选择执行，单服务启动仍执行全套预检及端口检查。公共代理与内部应用是不同可达路径，不互相替代；local 没有 PM2 的启动后完整身份/CLI 重检 |
-| 成功/失败 | supervise readiness 成功、保存 ready 后才 onReady；失败清理本代 children | `httpReady` 默认 120 秒每地址，观察必需 child 退出；不停止后台依赖。监督与归属协议保持不变 |
+| 阶段        | 顺序、来源                                                                                                                                                                | 拒绝与重检理由                                                                                                                                                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 配置与生成  | `entry.mjs` 读取根配置并为 dev 生成 Contract，再进入 `runDevelopment`                                                                                                     | 配置拒绝与生成保持独立；生成不是 readiness 的只读承诺                                                                                                                                                                             |
+| 应用预检    | 应用锁/signal/log 初始化 → `verifyApplications`：foundation → Website `integration:check` → Outline `integration-check` → Hydra client；`applications.mjs:37–42,49–53,58` | foundation 校验 Outline/Hydra 库、owner/角色、migration、结构、marker；Website CLI 校验 exre 与本站结构/配置；Outline CLI 校验自身 marker、账号/工作区/provider 关联。Hydra 依赖已由显式 service:start 准备；不在本路径启动 Hydra |
+| 端口与交接  | public/web/api/outline/outlineVite 五个端口检查 → signal 检查 → supervise；`applications.mjs:59–62`                                                                       | 任一占用拒绝，不接管已有 listener；预检失败释放锁                                                                                                                                                                                 |
+| 启动后 HTTP | server `/api/health`；outline `/_health` 与 Vite client；web 公共 `/`；全量模式另核对公共 `/api/health`、`/docs/`；`applications.mjs:69–79`                               | 依 service 选择执行，单服务启动仍执行全套预检及端口检查。公共代理与内部应用是不同可达路径，不互相替代；local 没有 PM2 的启动后完整身份/CLI 重检                                                                                   |
+| 成功/失败   | supervise readiness 成功、保存 ready 后才 onReady；失败清理本代 children                                                                                                  | `httpReady` 默认 120 秒每地址，观察必需 child 退出；不停止后台依赖。监督与归属协议保持不变                                                                                                                                        |
 
 local 预检没有 deployment identity pin；不补入 deployment 语义。应用预检读数据库与身份状态，可能启动短命检查进程；锁、日志和监督记录仍会写入。所谓“只读”约束是不得改变持久业务/身份/准备状态，不是整个启动命令无文件写入。
 
 ## PM2 顺序与阶段契约
 
-| 阶段 | 顺序、来源 | 拒绝、只读规则与重检理由 |
-| --- | --- | --- |
-| 归属与 foundation | 取得应用锁 → configuration inventory/previous → foundation `{bootstrap:true}`；`native.mjs:53–58` | 同名/脚本/cwd/args/配置摘要冲突拒绝；不通过重启吸收配置。foundation 使用 READ ONLY，只检查 Outline/Hydra |
-| 启动前身份与 CLI | `verifyNativePreflight`：`validateDeployment` 注入 no-op client → Website CLI → Outline CLI；`native.mjs:59,99–103` | pin 必须已有并匹配；核验 exre/outline 库、Outline issuer。明确跳过此处 Hydra client，因为 Hydra 尚可能未启动；这不是 readiness 成功证明 |
-| 启动前 artifact | 两个应用编译入口 → Hydra binary 存在和版本 → 已有 process 都 online；`native.mjs:60–68` | 缺 artifact/binary 或原 process stopped 拒绝，不隐式 build/restart |
-| Hydra 就绪后的 client | 仅启动缺失 Hydra → `/health/ready`（30 秒）→ client 校验；`native.mjs:69–71,105–107` | C0 位于 Hydra 启动之后、缺失 Website/Outline 启动之前。静态控制流表明其失败不进入缺失应用启动；新 Hydra 的回收取决于 catch 中 inventory/删除成功，原进程不在删除选择中。这些 C0 行为尚无对应测试覆盖 |
-| 应用启动 | 只启动缺失 Website/Outline；`native.mjs:72–73` | 不重新启动已有应用，不停止后台依赖 |
-| 启动后真实健康 | Website HTTP → Outline HTTP → Hydra HTTP（各 30 秒）→ deployment identity/db/marker + client（H1）→ Website CLI → Outline CLI → client（H2）；`native.mjs:111–119` | pin/数据库/marker 在启动窗口后再观察；HTTP 成功不替代身份及 CLI。H1 是 deployment validate 的完整成功条件，H2 在两项 CLI 后再次观察 client |
-| 最终 process 核对 | health 成功后 configuration inventory，三个 process 都 online、有 pid；`native.mjs:75–79` | PM2 online 单独不能报成功；配置在启动窗口后再次核对。失败按 verified inventory 删除本轮新 pm_id；previous 保留；finally 释放锁 |
+| 阶段                  | 顺序、来源                                                                                                                                                         | 拒绝、只读规则与重检理由                                                                                                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 归属与 foundation     | 取得应用锁 → configuration inventory/previous → foundation `{bootstrap:true}`；`native.mjs:53–58`                                                                  | 同名/脚本/cwd/args/配置摘要冲突拒绝；不通过重启吸收配置。foundation 使用 READ ONLY，只检查 Outline/Hydra                                                                                             |
+| 启动前身份与 CLI      | `verifyNativePreflight`：`validateDeployment` 注入 no-op client → Website CLI → Outline CLI；`native.mjs:59,99–103`                                                | pin 必须已有并匹配；核验 exre/outline 库、Outline issuer。明确跳过此处 Hydra client，因为 Hydra 尚可能未启动；这不是 readiness 成功证明                                                              |
+| 启动前 artifact       | 两个应用编译入口 → Hydra binary 存在和版本 → 已有 process 都 online；`native.mjs:60–68`                                                                            | 缺 artifact/binary 或原 process stopped 拒绝，不隐式 build/restart                                                                                                                                   |
+| Hydra 就绪后的 client | 仅启动缺失 Hydra → `/health/ready`（30 秒）→ client 校验；`native.mjs:69–71,105–107`                                                                               | C0 位于 Hydra 启动之后、缺失 Website/Outline 启动之前。静态控制流表明其失败不进入缺失应用启动；新 Hydra 的回收取决于 catch 中 inventory/删除成功，原进程不在删除选择中。这些 C0 行为尚无对应测试覆盖 |
+| 应用启动              | 只启动缺失 Website/Outline；`native.mjs:72–73`                                                                                                                     | 不重新启动已有应用，不停止后台依赖                                                                                                                                                                   |
+| 启动后真实健康        | Website HTTP → Outline HTTP → Hydra HTTP（各 30 秒）→ deployment identity/db/marker + client（H1）→ Website CLI → Outline CLI → client（H2）；`native.mjs:111–119` | pin/数据库/marker 在启动窗口后再观察；HTTP 成功不替代身份及 CLI。H1 是 deployment validate 的完整成功条件，H2 在两项 CLI 后再次观察 client                                                           |
+| 最终 process 核对     | health 成功后 configuration inventory，三个 process 都 online、有 pid；`native.mjs:75–79`                                                                          | PM2 online 单独不能报成功；配置在启动窗口后再次核对。失败按 verified inventory 删除本轮新 pm_id；previous 保留；finally 释放锁                                                                       |
 
 identity pin 由 `deploymentBinding` 摘要比较网站目标、issuer、publicOrigin、client secret 和 delivery key；普通 validate 不写 pin。prepare 的排他写入以及 ensure client 属显式维护，不能被启动或重检调用。无 pin 时仍可能先做只读数据库检查，最后报 `DEPLOYMENT_BINDING_MISSING`；不为“尽早失败”改变顺序。历史旧身份/pending 查询发生于缺 pin 时，不应描述为每次健康都扫描历史。
 
@@ -86,21 +86,21 @@ H2 的时序位置支持上述防漂移解释；源码没有原始决策记录�
 
 ## 方案比较与收益判断
 
-| 方案 | Interface / depth | Leverage / locality | 决策 |
-| --- | --- | --- | --- |
-| A 维持现状 | local 一次预检调用；native 三个阶段 seam；deployment 已隐藏 SQL/pin/client 细节 | 阶段内已有集中点；各 adapter 拥有其特有启动顺序 | **推荐**。无生产迁移，避免把低收益候选转成重构任务 |
-| B 集中同阶段规则 | 新只读 module 提供 `verifyLocalPreparation`、`verifyDeploymentPreflight`、`verifyDeploymentClient`、`verifyDeploymentHealth`；deployment pin/prepare 仍独立；adapter 保留启动时序 | 约能共用 Website→Outline CLI 序列；local 额外 foundation/Hydra，native 额外 pin/重检/诊断，仍需不同入口 | 有实现集中收益，但未证实调用方阶段知识减少；不推荐实施 |
-| C 全部 readiness 编排合并 | 单入口以 profile/phase/service/children 驱动完整顺序 | 模式分支、生命周期与策略配置增长；启动边界跨 module，通用 probe 框架压力增大 | 不推荐，违反保留 adapter 独立顺序的方向 |
+| 方案                      | Interface / depth                                                                                                                                                                 | Leverage / locality                                                                                     | 决策                                                   |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| A 维持现状                | local 一次预检调用；native 三个阶段 seam；deployment 已隐藏 SQL/pin/client 细节                                                                                                   | 阶段内已有集中点；各 adapter 拥有其特有启动顺序                                                         | **推荐**。无生产迁移，避免把低收益候选转成重构任务     |
+| B 集中同阶段规则          | 新只读 module 提供 `verifyLocalPreparation`、`verifyDeploymentPreflight`、`verifyDeploymentClient`、`verifyDeploymentHealth`；deployment pin/prepare 仍独立；adapter 保留启动时序 | 约能共用 Website→Outline CLI 序列；local 额外 foundation/Hydra，native 额外 pin/重检/诊断，仍需不同入口 | 有实现集中收益，但未证实调用方阶段知识减少；不推荐实施 |
+| C 全部 readiness 编排合并 | 单入口以 profile/phase/service/children 驱动完整顺序                                                                                                                              | 模式分支、生命周期与策略配置增长；启动边界跨 module，通用 probe 框架压力增大                            | 不推荐，违反保留 adapter 独立顺序的方向                |
 
 B 是用于比较的具体 interface 草案，不是批准方案。若选择 B，依赖应是 adapter → readonly module → deployment identity interface、既有 CLI/HTTP/client adapter；readonly module 不依赖 applications/native 的生命周期。`cliSpecification`、`hydraOptions`、runtime client 安全分类须一并移到无生命周期依赖的内部位置，避免 readiness → applications → readiness 循环；不能仅换 import 名字就声称架构深化。保持现有入口作兼容委托会增加转发层，删入口则改变测试 seam；两者均有成本。
 
 ### 前后调用方所需知识
 
-| 调用方 | 当前必须知道 | B 之后仍必须知道 | 能删除的知识 |
-| --- | --- | --- | --- |
-| local adapter | 全套预检在端口/child spawn 前；service 选择的 HTTP 路径与 public proxy 核对 | 同样的启动边界与 service/children 条件；新预检入口 | 若连 HTTP 表迁入，只隐藏 local 专属路径表；未获得第二真实复用方 |
-| PM2 start adapter | foundation 在 mutation 前；preflight → artifact → Hydra start → client → apps start → health → final inventory | 所有这些 mutation 边界仍须保留；调用新阶段入口 | 没有删除关键阶段顺序知识；只是替换三个函数名 |
-| 阶段 implementation 的维护者 | 三处只读 readiness 的 Website→Outline 双 CLI 序列；local 与 native 诊断不同；deployment validator 含 client、preflight 用 no-op、health H1/H2 | 共享 CLI helper 及诊断选项；独立 pin/client 路径与重检原因；阶段条件 | 两条 CLI 的重复排序文本可以删除；错误与时序仍需多入口理解 |
+| 调用方                       | 当前必须知道                                                                                                                                  | B 之后仍必须知道                                                     | 能删除的知识                                                    |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------- |
+| local adapter                | 全套预检在端口/child spawn 前；service 选择的 HTTP 路径与 public proxy 核对                                                                   | 同样的启动边界与 service/children 条件；新预检入口                   | 若连 HTTP 表迁入，只隐藏 local 专属路径表；未获得第二真实复用方 |
+| PM2 start adapter            | foundation 在 mutation 前；preflight → artifact → Hydra start → client → apps start → health → final inventory                                | 所有这些 mutation 边界仍须保留；调用新阶段入口                       | 没有删除关键阶段顺序知识；只是替换三个函数名                    |
+| 阶段 implementation 的维护者 | 三处只读 readiness 的 Website→Outline 双 CLI 序列；local 与 native 诊断不同；deployment validator 含 client、preflight 用 no-op、health H1/H2 | 共享 CLI helper 及诊断选项；独立 pin/client 路径与重检原因；阶段条件 | 两条 CLI 的重复排序文本可以删除；错误与时序仍需多入口理解       |
 
 计数依据是控制流入口，不是 LOC 或性能承诺：local 已只调用一个预检 interface；native 已只调用三个阶段 interface（另有 foundation），B 不减少这三个阶段或其先后约束。当前三处只读 readiness 双 CLI 序列分别位于 local preparation（`scripts/runtime/applications.mjs:40–41`）、native preflight（`scripts/runtime/native.mjs:102–103`）、native health（`scripts/runtime/native.mjs:117–118`），最后一个跨启动窗口；它们不是三个可互换阶段。尚无第二 PM2 health 调用方、第二 local HTTP 模式或实际变更造成的跨文件维护故障。deployment CLI 与显式 prepare 是另一消费边界，不能为了减少文件数混入启动 module。
 
@@ -129,16 +129,16 @@ B 是用于比较的具体 interface 草案，不是批准方案。若选择 B�
 
 本轮只静态阅读，以下均为未来获准改动时的方案，不能报成已通过。根 `TESTING.md` 不存在；采用当前 `scripts/runtime/tests.mjs`、`test-manifest.mjs` 与隔离测试约定，Docker 不可用须失败，不回退开发库。
 
-| 验证项 | 已有源码覆盖 | 若改动阶段 interface，需要补充/保持的行为 |
-| --- | --- | --- |
-| 固定安全诊断 | `settings.test.mjs:80–113` 分类/脱敏；`output.test.mjs` 统一输出 | 各阶段未知秘密错误不泄露；local/native CLI 分类差异、H1/H2 分类差异；HTTP 未 ready 时固定服务/目标/下一步，无隐式修复 |
-| pin/配置身份冲突 | `deployment.test.mjs` 旧 pending、secret drift、并发 pin；`settings.test.mjs:446–451` preflight 拒绝无 PM2 start | pin issuer/key/target/publicOrigin 变化、missing pin、wrong db、Outline marker 冲突均拒绝；PM2 摘要/归属冲突不启动不接管；验证真实阶段函数，不能只有 stub 失败 |
-| client 顺序 | `native-health.test.ts:64–79` 仅直接测试 health 的 HTTP 列表、两次 client、两个 CLI，无全局交错 trace；未覆盖真实 C0 | C0 在 Hydra ready 后、apps start 前；H1 在 HTTP+identity 后、CLI 前；H2 在两个 CLI 后；H1 成功后外部 client 漂移让 H2 失败；保持原次数断言直到行为语义完整承接 |
-| 身份冲突测试名局限 | `settings.test.mjs:446` 标题含 client-before-app | 实际只让 preflight 抛错并断言 calls 空，未执行 client 或成功 start；不能将标题当顺序证据 |
-| HTTP 真实健康 | native health 测试 mock HTTP；local httpReady 的既有真实 HTTP deadline/child 退出测试位于 Docs 脚本测试 | PM2 online 但任一 HTTP/身份/client 失败不得成功；local 单服务与全量 public/internal 路径依原顺序；保持 Host、TLS、redirect、总 deadline 与 child 退出逻辑 |
-| 只读 | deployment prepare 的 pending 测试只断言 READ ONLY/ROLLBACK/SELECT；Website/Outline 的真实 readiness CLI 隔离测试 | ordinary validate/preflight/health 不写 pin、不调用 ensure、不迁移；成功及失败前后持久状态一致；HTTP token POST 仍仅无效 code，不能请求有效授权；锁/日志可写需区别业务写入 |
-| 失败回收/原进程保留 | `settings.test.mjs:432–443` online+health failure，删除新 pm_id 9/8，保留原 7；`470–479` 精确 stop IDs | 拟补充验证：新建 Hydra 后 C0 失败且回滚 inventory/删除成功时只删除本轮新 Hydra，保留 previous；C0 失败回收目前无测试覆盖。H1/H2/CLI/HTTP 失败保留 previous；部分 existing/missing 组合与无新进程时不删除；local 失败清理本代 children、不停 Services；归属失败时拒绝不强杀 |
-| Services 归属回归 | `settings.test.mjs:255–370` proof、DNS/mount 表示与真实漂移、启动期间变化；370 起 listener 阻止依赖 stop | 原样保留整个用例（listener 用例至 382），不得移动/精简以支持 readiness；相关 application-lock 回归保留 |
+| 验证项              | 已有源码覆盖                                                                                                         | 若改动阶段 interface，需要补充/保持的行为                                                                                                                                                                                                                                  |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 固定安全诊断        | `settings.test.mjs:80–113` 分类/脱敏；`output.test.mjs` 统一输出                                                     | 各阶段未知秘密错误不泄露；local/native CLI 分类差异、H1/H2 分类差异；HTTP 未 ready 时固定服务/目标/下一步，无隐式修复                                                                                                                                                      |
+| pin/配置身份冲突    | `deployment.test.mjs` 旧 pending、secret drift、并发 pin；`settings.test.mjs:446–451` preflight 拒绝无 PM2 start     | pin issuer/key/target/publicOrigin 变化、missing pin、wrong db、Outline marker 冲突均拒绝；PM2 摘要/归属冲突不启动不接管；验证真实阶段函数，不能只有 stub 失败                                                                                                             |
+| client 顺序         | `native-health.test.ts:64–79` 仅直接测试 health 的 HTTP 列表、两次 client、两个 CLI，无全局交错 trace；未覆盖真实 C0 | C0 在 Hydra ready 后、apps start 前；H1 在 HTTP+identity 后、CLI 前；H2 在两个 CLI 后；H1 成功后外部 client 漂移让 H2 失败；保持原次数断言直到行为语义完整承接                                                                                                             |
+| 身份冲突测试名局限  | `settings.test.mjs:446` 标题含 client-before-app                                                                     | 实际只让 preflight 抛错并断言 calls 空，未执行 client 或成功 start；不能将标题当顺序证据                                                                                                                                                                                   |
+| HTTP 真实健康       | native health 测试 mock HTTP；local httpReady 的既有真实 HTTP deadline/child 退出测试位于 Docs 脚本测试              | PM2 online 但任一 HTTP/身份/client 失败不得成功；local 单服务与全量 public/internal 路径依原顺序；保持 Host、TLS、redirect、总 deadline 与 child 退出逻辑                                                                                                                  |
+| 只读                | deployment prepare 的 pending 测试只断言 READ ONLY/ROLLBACK/SELECT；Website/Outline 的真实 readiness CLI 隔离测试    | ordinary validate/preflight/health 不写 pin、不调用 ensure、不迁移；成功及失败前后持久状态一致；HTTP token POST 仍仅无效 code，不能请求有效授权；锁/日志可写需区别业务写入                                                                                                 |
+| 失败回收/原进程保留 | `settings.test.mjs:432–443` online+health failure，删除新 pm_id 9/8，保留原 7；`470–479` 精确 stop IDs               | 拟补充验证：新建 Hydra 后 C0 失败且回滚 inventory/删除成功时只删除本轮新 Hydra，保留 previous；C0 失败回收目前无测试覆盖。H1/H2/CLI/HTTP 失败保留 previous；部分 existing/missing 组合与无新进程时不删除；local 失败清理本代 children、不停 Services；归属失败时拒绝不强杀 |
+| Services 归属回归   | `settings.test.mjs:255–370` proof、DNS/mount 表示与真实漂移、启动期间变化；370 起 listener 阻止依赖 stop             | 原样保留整个用例（listener 用例至 382），不得移动/精简以支持 readiness；相关 application-lock 回归保留                                                                                                                                                                     |
 
 若实施得到明确批准，先运行受影响的 Node runtime 测试及 `tests/runtime/native-health.test.ts`，再经根 `pnpm test` 隔离流程核对 readiness CLI；执行命令与实际环境记录由 Tester 按当时规则确认。自动测试、实际本机生命周期、真实浏览器和部署分别报告；本候选无需部署证据来作静态设计比较。
 
