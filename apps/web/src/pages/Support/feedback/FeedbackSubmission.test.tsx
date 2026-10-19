@@ -175,6 +175,7 @@ it('shows submission loading only in the original submit button', async () => {
   expect(screen.queryByText('正在处理反馈')).toBeNull()
   expect(screen.queryByText(/提交编号/)).toBeNull()
   expect(screen.getByRole('button', { name: '提交中' }).getAttribute('aria-busy')).toBe('true')
+  expect(screen.queryByRole('button', { name: '返回选择类型' })).toBeNull()
 })
 
 it('preserves the unsent current draft when SPA navigation hides its modal', async () => {

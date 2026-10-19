@@ -122,6 +122,8 @@ ExUI `Textarea` 启用 `field-sizing: content`，空值时按内容和最小高�
 
 ExUI 1.0 已移除 `Modal`。长正文使用 `DialogContent` 的直接子级 `DialogBody`，标题和底栏放在同级；不要继续选择 `.ex-modal-*` 私有类。成员简介采用快捷 `Dialog`，关闭文案、宽度与归还焦点通过 `contentProps` 提供。
 
+反馈填写阶段通过公开的 `DialogHeader.action` 提供标题左侧的返回入口，沿用控制器原有的类型草稿与锁定规则。正文需要建立局部定位上下文：表单中的 Radix Switch 会生成绝对定位的隐藏 checkbox；正文未定位时，该控件以外层 DialogContent 为定位参照，会扩大外层滚动范围，形成双层纵向滚动。反馈的正文业务类使用 `position: relative`，为开关扩展的点击区域预留内边距，并约束横向溢出。普通视口仅正文滚动，仍保留库在极矮视口下的外层可达性兜底；浏览器回归见 `tests/browser/exui-v1-experience.mjs --feedback-only`。
+
 `closeButtonDisabled` 仅禁用角落按钮。通知历史在批量操作期间同时拦截 Escape、外部交互与 `onOpenChange(false)`；反馈提交仍允许隐藏，继续由其业务 `changeOpen` 判断草稿与在途任务，不能共用关闭锁定策略。反馈生命周期归 `.ai/architectures/support-center/feedback-lifecycle.md`。
 
 通知历史使用公开 `useIsMobile` 与 `data-layout` 控制列表/正文布局，和 `responsiveFullscreen` 共用 48 个当前根 rem 的判断。CSS media query 的 rem 使用初始字号，不能替代这个动态阈值；跨阈值保留同一棵内容节点。浏览器验证脚本为 `tests/browser/notification-experience.mjs`。

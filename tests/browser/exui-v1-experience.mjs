@@ -585,6 +585,157 @@ const outcome = await runBrowserSuite({
         await context.close()
       }
     })
+    await scenario('feedback fixture: Bug body scrolling and header navigation', async () => {
+      const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+      await context.addInitScript(() =>
+        localStorage.setItem('exwebsite.auth.token', 'browser-token'),
+      )
+      const page = await context.newPage(),
+        rows = [],
+        errors = []
+      page.on('pageerror', (error) => errors.push(error.message))
+      await page.route('**/api/support/feedback/**', (route) => {
+        if (new URL(route.request().url()).pathname.endsWith('/options'))
+          return route.fulfill({
+            status: 200,
+            json: {
+              available: true,
+              reason: null,
+              fields: [],
+              kinds: [{ kind: 'bug', available: true, reason: null }],
+              actions: [],
+              limits: {},
+            },
+          })
+        return route.fulfill({ status: 404, json: { error: 'fixture endpoint unavailable' } })
+      })
+      try {
+        await page.goto(`${origin}/__exui_v1_fixture.html?mode=feedback`)
+        await page.getByRole('button', { name: '打开功能和需求' }).click()
+        await page.getByText('Bug 反馈', { exact: true }).click()
+        const dialog = page.getByRole('dialog', { name: 'Bug 反馈' }),
+          body = dialog.locator('[data-slot="dialog-body"]'),
+          header = dialog.locator('[data-slot="dialog-header"]'),
+          footer = dialog.locator('[data-slot="dialog-footer"]')
+        await dialog.getByRole('textbox', { name: '标题' }).fill('滚动与返回草稿')
+        await dialog.locator('input[type="file"]').setInputFiles({
+          name: 'scroll-proof.txt',
+          mimeType: 'text/plain',
+          buffer: Buffer.from('scroll proof'),
+        })
+        for (const [rootPx, viewport] of [
+          [16, { width: 1440, height: 900 }],
+          [16, { width: 390, height: 844 }],
+          [20, { width: 390, height: 844 }],
+          [24, { width: 390, height: 844 }],
+          [32, { width: 640, height: 320 }],
+        ]) {
+          await page.setViewportSize(viewport)
+          await page.evaluate((size) => {
+            document.documentElement.style.fontSize = `${size}px`
+          }, rootPx)
+          await settle(page)
+          await dialog.evaluate(async (element) => {
+            await Promise.all(
+              element.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+            )
+          })
+          const metrics = await dialog.evaluate((element) => {
+            const body = element.querySelector('[data-slot="dialog-body"]'),
+              header = element.querySelector('[data-slot="dialog-header"]'),
+              footer = element.querySelector('[data-slot="dialog-footer"]'),
+              style = getComputedStyle(element),
+              bodyStyle = getComputedStyle(body)
+            const fixedHeight =
+              header.getBoundingClientRect().height +
+              footer.getBoundingClientRect().height +
+              2 * parseFloat(style.rowGap) +
+              parseFloat(style.paddingTop) +
+              parseFloat(style.paddingBottom) +
+              parseFloat(bodyStyle.minHeight)
+            return {
+              outerX: element.scrollWidth - element.clientWidth,
+              outerY: element.scrollHeight - element.clientHeight,
+              bodyX: body.scrollWidth - body.clientWidth,
+              bodyY: body.scrollHeight - body.clientHeight,
+              needsOuterFallback: fixedHeight > element.clientHeight + 1,
+            }
+          })
+          rows.push({ rootPx, viewport, ...metrics })
+          assert(
+            metrics.outerX <= 1 && metrics.bodyX <= 1,
+            'Feedback has no horizontal scroll range',
+          )
+          if (!metrics.needsOuterFallback) {
+            assert(
+              metrics.outerY <= 1,
+              'Only the feedback body scrolls at ordinary viewport heights',
+            )
+            const headerTop = await header.evaluate(
+                (element) => element.getBoundingClientRect().top,
+              ),
+              footerBottom = await footer.evaluate(
+                (element) => element.getBoundingClientRect().bottom,
+              )
+            await body.evaluate((element) => {
+              element.scrollTop = 0
+            })
+            await body.hover()
+            await page.mouse.wheel(0, 450)
+            await page.waitForFunction(
+              () => document.querySelector('[data-slot="dialog-body"]').scrollTop > 0,
+            )
+            const headerAfter = (await header.boundingBox()).y,
+              outerScrollTop = await dialog.evaluate((element) => element.scrollTop)
+            assert(
+              Math.abs(headerAfter - headerTop) <= 1,
+              `Header stays fixed: ${JSON.stringify({ rootPx, viewport, headerTop, headerAfter, outerScrollTop, metrics })}`,
+            )
+            assert(
+              Math.abs(
+                (await footer.evaluate((element) => element.getBoundingClientRect().bottom)) -
+                  footerBottom,
+              ) <= 1,
+              'Submit area stays fixed',
+            )
+          } else {
+            assert(
+              await reachable(dialog.getByRole('heading', { name: 'Bug 反馈' })),
+              'Short viewport heading is reachable',
+            )
+            assert(
+              await reachable(dialog.getByRole('button', { name: '提交', exact: true })),
+              'Short viewport submit is reachable',
+            )
+          }
+          await page.screenshot({
+            path: resolve(
+              evidence,
+              `feedback-bug-scroll-root${rootPx}-${viewport.width}x${viewport.height}.png`,
+            ),
+          })
+        }
+        await page.setViewportSize({ width: 1440, height: 900 })
+        await page.evaluate(() => {
+          document.documentElement.style.fontSize = ''
+        })
+        await header.getByRole('button', { name: '返回选择类型' }).click()
+        await page.getByText('Bug 反馈', { exact: true }).click()
+        assert.equal(
+          await dialog.getByRole('textbox', { name: '标题' }).inputValue(),
+          '滚动与返回草稿',
+        )
+        assert(
+          await dialog.getByText(/scroll-proof\.txt/).isVisible(),
+          'Header navigation keeps the controlled attachment',
+        )
+        assert.equal(await body.getByRole('button', { name: '返回选择类型' }).count(), 0)
+        assert.deepEqual(errors, [])
+        return { geometryRows: rows, headerNavigationKeepsDraft: true }
+      } finally {
+        await context.close()
+      }
+    })
     await scenario('feedback fixture: draft, attachment, close and in-flight request', async () => {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
       await context.addInitScript(() =>

@@ -15,7 +15,13 @@
   padding-bottom: 0.25rem;
 }
 .formBody {
+  // Keep absolute form-control inputs inside this scroll container.
+  position: relative;
+  overflow-x: hidden;
   padding-top: 0.25rem;
+  // Reserve the Switch's extended pointer target within the body padding.
+  padding-inline: 0.75rem;
+  padding-bottom: 0.5rem;
 }
 .typeBody {
   padding-top: 0.75rem;
@@ -96,10 +102,6 @@
   font-size: 0.8125rem;
   line-height: 1.6;
   color: var(--exui-text-secondary);
-}
-.back {
-  justify-self: start;
-  margin-left: -0.5rem;
 }
 .optional {
   color: var(--exui-text-secondary);

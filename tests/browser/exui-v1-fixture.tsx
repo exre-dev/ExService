@@ -123,6 +123,9 @@ function FeedbackEntry() {
   const { openFeedback } = useFeedback()
   return (
     <main style={{ padding: '2rem' }}>
+      <button type="button" onClick={(event) => openFeedback('development', event.currentTarget)}>
+        打开功能和需求
+      </button>
       <button type="button" onClick={(event) => openFeedback('community', event.currentTarget)}>
         打开投诉和建议
       </button>

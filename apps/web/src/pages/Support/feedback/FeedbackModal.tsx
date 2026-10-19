@@ -27,7 +27,6 @@ import {
   Switch,
 } from '@exre/exui'
 import { ClickUpFieldInput, FileUploader } from '@workspace/components'
-import { ArrowLeft } from 'lucide-react'
 import type { components } from '@workspace/sdk/types'
 import { FEEDBACK_LIMITS, FREQUENCIES } from '@workspace/common/feedback-content'
 import { readToken, sessionScopeRevision, subscribeSessionChanges } from '../../../auth/storage'
@@ -644,7 +643,20 @@ export function FeedbackModal({
             }
           }}
         >
-          <DialogHeader>
+          <DialogHeader
+            action={
+              kind && !locked && !confirmation && !optionsLoading && (options || snapshot)
+                ? {
+                    tooltip: '返回选择类型',
+                    onClick: () => {
+                      drafts.current[kind] = form.getValues()
+                      setKind(null)
+                    },
+                  }
+                : undefined
+            }
+            actionLabel="返回选择类型"
+          >
             <DialogTitle>{dialogTitle}</DialogTitle>
             {dialogDescription && <DialogDescription>{dialogDescription}</DialogDescription>}
           </DialogHeader>
@@ -717,20 +729,6 @@ export function FeedbackModal({
                         className={styles.form}
                         aria-busy={busy}
                       >
-                        {!locked && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            className={styles.back}
-                            onClick={() => {
-                              drafts.current[kind] = form.getValues()
-                              setKind(null)
-                            }}
-                          >
-                            <ArrowLeft aria-hidden="true" />
-                            返回选择类型
-                          </Button>
-                        )}
                         {field('title', '标题')}
                         {options && classification && (
                           <div className={currentRule?.department ? styles.columns : undefined}>
