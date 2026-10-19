@@ -18,6 +18,12 @@ const SAFE_IDENTIFIER = /^[a-z_][a-z0-9_]*$/
 const DROP_ORDER = [
   'support_feedback_attachments',
   'support_feedback_submissions',
+  // Docs 先依赖者后被依赖者：附件/评论依附文档，模板与文档依附空间。
+  'docs_comments',
+  'docs_attachments',
+  'docs_templates',
+  'docs_documents',
+  'docs_spaces',
   'notification_clear_batch_items',
   'notification_clear_batches',
   'notification_mutations',
@@ -74,6 +80,11 @@ const BASELINE_NOT_NULL_COLUMNS = new Set(
     schemaTables.notificationClearBatchItems,
     schemaTables.supportFeedbackSubmissions,
     schemaTables.supportFeedbackAttachments,
+    schemaTables.docsSpaces,
+    schemaTables.docsDocuments,
+    schemaTables.docsTemplates,
+    schemaTables.docsAttachments,
+    schemaTables.docsComments,
   ]
     .map(getTableConfig)
     .flatMap((table) =>
@@ -205,7 +216,13 @@ export async function resetDatabase(options: DatabaseOptions, confirmation: stri
             (row.table_name === '__drizzle_migrations'
               ? ['id', 'hash'].includes(row.column_name)
               : BASELINE_NOT_NULL_COLUMNS.has(`${row.table_name}.${row.column_name}`))
-          return !expected || row.definition !== `NOT NULL ${row.column_name}`
+          // `position` 是保留字，PostgreSQL 的反解析会写成 `NOT NULL "position"`。
+          // 这里核对归属列名，因此两种书写形式都接受。
+          return (
+            !expected ||
+            (row.definition !== `NOT NULL ${row.column_name}` &&
+              row.definition !== `NOT NULL "${row.column_name}"`)
+          )
         }
         if (row.table_name === '__drizzle_migrations') {
           return (

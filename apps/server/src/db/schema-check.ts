@@ -30,13 +30,24 @@ const tableDefinitions = [
   schemaTables.notificationClearBatchItems,
   schemaTables.supportFeedbackSubmissions,
   schemaTables.supportFeedbackAttachments,
+  schemaTables.docsSpaces,
+  schemaTables.docsDocuments,
+  schemaTables.docsTemplates,
+  schemaTables.docsAttachments,
+  schemaTables.docsComments,
 ].map(getTableConfig)
 
 // PostgreSQL's stock NAMEDATALEN allows 63 bytes per identifier. Generated
 // foreign-key names can exceed that limit; the catalog stores the truncated name.
 const catalogName = (name: string) => Buffer.from(name, 'utf8').subarray(0, 63).toString('utf8')
 
-export const APPLICATION_TABLES = [
+/**
+ * 0000 基线：应用最初 12 张表。
+ *
+ * 每个历史阶段都冻结为各自的显式字面量快照，不通过 `APPLICATION_TABLES` 的下标 slice
+ * 推导——否则将来在数组中间追加新表会静默改变历史基线的成员。
+ */
+export const BASELINE_APPLICATION_TABLES = Object.freeze([
   'auth_users',
   'auth_sessions',
   'auth_sso_requests',
@@ -49,9 +60,19 @@ export const APPLICATION_TABLES = [
   'join_invitations',
   'join_email_controls',
   'join_delivery_attempts',
+] as const)
+
+/** 0001 完成后的完整表集合。 */
+export const MIGRATION_0001_TABLES = Object.freeze([
+  ...BASELINE_APPLICATION_TABLES,
   'auth_oidc_flows',
   'auth_oidc_bindings',
   'auth_identity_outbox',
+] as const)
+
+/** 0002 完成后的完整表集合。 */
+export const MIGRATION_0002_TABLES = Object.freeze([
+  ...MIGRATION_0001_TABLES,
   'notification_contents',
   'notification_events',
   'notification_event_recipients',
@@ -61,11 +82,33 @@ export const APPLICATION_TABLES = [
   'notification_mutations',
   'notification_clear_batches',
   'notification_clear_batch_items',
+] as const)
+
+/** 0003：上游 support 反馈表。升级源仍然有效，因此继续冻结。 */
+export const MIGRATION_0003_TABLES = Object.freeze([
+  ...MIGRATION_0002_TABLES,
   'support_feedback_submissions',
   'support_feedback_attachments',
-] as const
+] as const)
 
-export const BASELINE_APPLICATION_TABLES = APPLICATION_TABLES.slice(0, 12)
+/** 0004 与 0005 只改结构与索引，不新增表，因此沿用 0003 的表集合。 */
+export const MIGRATION_0004_TABLES = MIGRATION_0003_TABLES
+export const MIGRATION_0005_TABLES = MIGRATION_0003_TABLES
+
+/** 0006（Docs 核心）完成后的完整表集合。 */
+export const MIGRATION_0006_TABLES = Object.freeze([
+  ...MIGRATION_0005_TABLES,
+  'docs_spaces',
+  'docs_documents',
+] as const)
+
+/** 0007（Docs B 类预留）完成后的完整表集合，即当前集合。 */
+export const APPLICATION_TABLES = Object.freeze([
+  ...MIGRATION_0006_TABLES,
+  'docs_templates',
+  'docs_attachments',
+  'docs_comments',
+] as const)
 
 const expectedIndexes = tableDefinitions.flatMap((table) =>
   [
@@ -505,6 +548,144 @@ export const APPLICATION_CONSTRAINT_DEFINITIONS = new Map<string, string>([
     'notification_user_streams.notification_user_streams_user_id_fk',
     'FOREIGN KEY (user_id) REFERENCES auth_users(id) ON DELETE RESTRICT',
   ],
+  // Docs 的签名取自隔离 PostgreSQL 18 容器按 migration 0003 实际建库后的
+  // `pg_get_constraintdef(c.oid, true)` 输出，不是照抄建表 SQL。
+  // `docs_documents_parent_space_fk` 的 `DEFERRABLE INITIALLY DEFERRED` 后缀必须逐字保留：
+  // drizzle 不生成它，由 migration SQL 显式追加，readiness 与 reset 都据此判定漂移。
+  ['docs_documents.docs_documents_pkey', 'PRIMARY KEY (id)'],
+  [
+    'docs_documents.docs_documents_space_id_fk',
+    'FOREIGN KEY (space_id) REFERENCES docs_spaces(id) ON UPDATE RESTRICT ON DELETE RESTRICT',
+  ],
+  [
+    'docs_documents.docs_documents_parent_space_fk',
+    'FOREIGN KEY (parent_id, space_id) REFERENCES docs_documents(id, space_id) DEFERRABLE INITIALLY DEFERRED',
+  ],
+  [
+    'docs_documents.docs_documents_deletion_root_id_fk',
+    'FOREIGN KEY (deletion_root_id) REFERENCES docs_documents(id) ON UPDATE RESTRICT ON DELETE RESTRICT',
+  ],
+  [
+    'docs_documents.docs_documents_created_by_user_id_fk',
+    'FOREIGN KEY (created_by_user_id) REFERENCES auth_users(id) ON DELETE RESTRICT',
+  ],
+  [
+    'docs_documents.docs_documents_updated_by_user_id_fk',
+    'FOREIGN KEY (updated_by_user_id) REFERENCES auth_users(id) ON DELETE RESTRICT',
+  ],
+  [
+    'docs_documents.docs_documents_deleted_by_user_id_fk',
+    'FOREIGN KEY (deleted_by_user_id) REFERENCES auth_users(id) ON DELETE RESTRICT',
+  ],
+  ['docs_documents.docs_documents_not_self_parent_check', 'CHECK (id <> parent_id)'],
+  [
+    'docs_documents.docs_documents_title_check',
+    'CHECK (char_length(title) >= 1 AND char_length(title) <= 200)',
+  ],
+  ['docs_documents.docs_documents_position_check', 'CHECK ("position" >= 0)'],
+  [
+    'docs_documents.docs_documents_content_schema_version_check',
+    'CHECK (content_schema_version = 1)',
+  ],
+  [
+    'docs_documents.docs_documents_content_check',
+    "CHECK (jsonb_typeof(content) = 'object'::text AND (content ->> 'type'::text) = 'doc'::text)",
+  ],
+  [
+    'docs_documents.docs_documents_text_content_check',
+    'CHECK (octet_length(text_content) <= 8388608)',
+  ],
+  ['docs_documents.docs_documents_version_check', 'CHECK (version >= 1)'],
+  [
+    'docs_documents.docs_documents_deletion_tuple_check',
+    'CHECK (deleted_at IS NULL AND deleted_by_user_id IS NULL AND deletion_batch_id IS NULL AND deletion_root_id IS NULL OR deleted_at IS NOT NULL AND deleted_by_user_id IS NOT NULL AND deletion_batch_id IS NOT NULL AND deletion_root_id IS NOT NULL)',
+  ],
+  ['docs_spaces.docs_spaces_pkey', 'PRIMARY KEY (id)'],
+  [
+    'docs_spaces.docs_spaces_created_by_user_id_fk',
+    'FOREIGN KEY (created_by_user_id) REFERENCES auth_users(id) ON DELETE RESTRICT',
+  ],
+  [
+    'docs_spaces.docs_spaces_updated_by_user_id_fk',
+    'FOREIGN KEY (updated_by_user_id) REFERENCES auth_users(id) ON DELETE RESTRICT',
+  ],
+  [
+    'docs_spaces.docs_spaces_name_check',
+    'CHECK (char_length(name) >= 1 AND char_length(name) <= 100)',
+  ],
+  ['docs_spaces.docs_spaces_description_check', 'CHECK (char_length(description) <= 2000)'],
+  ['docs_spaces.docs_spaces_version_check', 'CHECK (version >= 1)'],
+  ['docs_spaces.docs_spaces_tree_version_check', 'CHECK (tree_version >= 1)'],
+  // 0007（Docs B 类预留）的签名同样取自隔离 PostgreSQL 18 容器按 migration 0007
+  // 实际建库后的 `pg_get_constraintdef(c.oid, true)` 输出。
+  // PG18 把 NOT NULL 也登记进 `pg_constraint`，这里不登记 `_not_null` 后缀：
+  // 可空性由列检查覆盖，签名表只钉住 drizzle 表达不出来的语义。
+  ['docs_templates.docs_templates_pkey', 'PRIMARY KEY (id)'],
+  [
+    'docs_templates.docs_templates_space_id_fk',
+    'FOREIGN KEY (space_id) REFERENCES docs_spaces(id) ON UPDATE RESTRICT ON DELETE RESTRICT',
+  ],
+  [
+    'docs_templates.docs_templates_created_by_user_id_fk',
+    'FOREIGN KEY (created_by_user_id) REFERENCES auth_users(id) ON DELETE RESTRICT',
+  ],
+  [
+    'docs_templates.docs_templates_updated_by_user_id_fk',
+    'FOREIGN KEY (updated_by_user_id) REFERENCES auth_users(id) ON DELETE RESTRICT',
+  ],
+  [
+    'docs_templates.docs_templates_name_check',
+    'CHECK (char_length(name) >= 1 AND char_length(name) <= 100)',
+  ],
+  [
+    'docs_templates.docs_templates_content_schema_version_check',
+    'CHECK (content_schema_version = 1)',
+  ],
+  [
+    'docs_templates.docs_templates_content_check',
+    "CHECK (jsonb_typeof(content) = 'object'::text AND (content ->> 'type'::text) = 'doc'::text)",
+  ],
+  ['docs_templates.docs_templates_version_check', 'CHECK (version >= 1)'],
+  ['docs_attachments.docs_attachments_pkey', 'PRIMARY KEY (id)'],
+  [
+    'docs_attachments.docs_attachments_document_id_fk',
+    'FOREIGN KEY (document_id) REFERENCES docs_documents(id) ON UPDATE RESTRICT ON DELETE RESTRICT',
+  ],
+  [
+    'docs_attachments.docs_attachments_created_by_user_id_fk',
+    'FOREIGN KEY (created_by_user_id) REFERENCES auth_users(id) ON DELETE RESTRICT',
+  ],
+  [
+    'docs_attachments.docs_attachments_medium_check',
+    "CHECK (medium = ANY (ARRAY['file'::text, 'cos'::text]))",
+  ],
+  [
+    'docs_attachments.docs_attachments_file_name_check',
+    'CHECK (char_length(file_name) >= 1 AND char_length(file_name) <= 255)',
+  ],
+  [
+    'docs_attachments.docs_attachments_byte_size_check',
+    "CHECK (byte_size >= 1 AND byte_size <= '9007199254740991'::bigint)",
+  ],
+  ['docs_attachments.docs_attachments_sha256_check', "CHECK (sha256 ~ '^[0-9a-f]{64}$'::text)"],
+  ['docs_comments.docs_comments_pkey', 'PRIMARY KEY (id)'],
+  [
+    'docs_comments.docs_comments_document_id_fk',
+    'FOREIGN KEY (document_id) REFERENCES docs_documents(id) ON UPDATE RESTRICT ON DELETE RESTRICT',
+  ],
+  [
+    'docs_comments.docs_comments_created_by_user_id_fk',
+    'FOREIGN KEY (created_by_user_id) REFERENCES auth_users(id) ON DELETE RESTRICT',
+  ],
+  [
+    'docs_comments.docs_comments_updated_by_user_id_fk',
+    'FOREIGN KEY (updated_by_user_id) REFERENCES auth_users(id) ON DELETE RESTRICT',
+  ],
+  [
+    'docs_comments.docs_comments_body_check',
+    'CHECK (char_length(body) >= 1 AND char_length(body) <= 10000)',
+  ],
+  ['docs_comments.docs_comments_version_check', 'CHECK (version >= 1)'],
 ])
 
 export const APPLICATION_INDEX_SIGNATURES = new Map<string, string>([
@@ -582,6 +763,32 @@ export const APPLICATION_INDEX_SIGNATURES = new Map<string, string>([
     'UNIQUE btree (user_id, sequence)',
   ],
   ['notification_user_streams.notification_user_streams_pkey', 'UNIQUE btree (user_id)'],
+  // 同上：取自真实 PG18 的 `pg_get_indexdef`，保留唯一性、列序与 predicate。
+  ['docs_documents.docs_documents_pkey', 'UNIQUE btree (id)'],
+  ['docs_documents.docs_documents_space_id_id_unique', 'UNIQUE btree (space_id, id)'],
+  [
+    'docs_documents.docs_documents_active_sibling_idx',
+    'btree (space_id, parent_id, "position", id) WHERE (deleted_at IS NULL)',
+  ],
+  ['docs_documents.docs_documents_physical_idx', 'btree (space_id, parent_id, id)'],
+  ['docs_documents.docs_documents_deletion_batch_idx', 'btree (space_id, deletion_batch_id, id)'],
+  ['docs_documents.docs_documents_trash_root_idx', 'btree (space_id, deleted_at, id)'],
+  ['docs_spaces.docs_spaces_pkey', 'UNIQUE btree (id)'],
+  ['docs_spaces.docs_spaces_created_at_idx', 'btree (created_at, id)'],
+  // 同上：取自真实 PG18 的 `pg_get_indexdef`，保留唯一性、列序与 predicate。
+  ['docs_templates.docs_templates_pkey', 'UNIQUE btree (id)'],
+  ['docs_templates.docs_templates_space_id_created_at_idx', 'btree (space_id, created_at, id)'],
+  ['docs_attachments.docs_attachments_pkey', 'UNIQUE btree (id)'],
+  [
+    'docs_attachments.docs_attachments_medium_storage_key_unique',
+    'UNIQUE btree (medium, storage_key)',
+  ],
+  [
+    'docs_attachments.docs_attachments_document_id_created_at_idx',
+    'btree (document_id, created_at, id)',
+  ],
+  ['docs_comments.docs_comments_pkey', 'UNIQUE btree (id)'],
+  ['docs_comments.docs_comments_document_id_created_at_idx', 'btree (document_id, created_at, id)'],
 ])
 
 export function indexSignature(definition: string): string {
