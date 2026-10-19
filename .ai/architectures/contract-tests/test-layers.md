@@ -2,7 +2,7 @@
 
 Contract Test 对真实 Fastify app 的 HTTP 行为、Glue 映射和原始 handler 输出分别断言；数据库行为测试使用独立 PostgreSQL 容器。单条断言的失败模式见 `.ai/knowledge/server/serialization-masks-handler-regressions.md` 与 `.ai/knowledge/contract-tests/contract-parsing-constraints.md`。
 
-_最后更新：2026-10-19_
+_最后更新：2026-10-20_
 
 ## 隔离夹具
 
@@ -24,7 +24,9 @@ schema 经 `tests/helpers/contract.ts` 从 `api/generated/openapi.json` 读取�
 
 ## Website 与身份运行测试
 
-根 `vitest.config.ts` 包含 Website Web、Server、共享包及 `tests/` 的自有测试，排除 `vendor/` 和 `output/`。DOM 用例以文件标记使用 jsdom；其余使用 Node。`scripts/runtime/tests.mjs` 每轮先依次生成 Contract 与构建 SDK，再执行完整 Website Vitest 和明确列出的 runtime/共享身份配置 Node 测试；`scripts/api/generate.test.mjs` 纳入默认脚本测试。Vitest 限制两个 worker，减少独立数据库容器和 CPU 争用，不缩减断言。
+测试流程、用例归类、本地与 CI 执行范围统一由 `TESTING.md` 定义。根 `vitest.config.ts` 保留完整 Website Web、Server、共享包及 `tests/` 的自有测试，排除 `vendor/` 和 `output/`；`vitest.quick.config.ts` 复用其解析、别名与隔离设置，只选择轻量范围。DOM 用例以文件标记使用 jsdom；其余使用 Node。
+
+`scripts/runtime/tests.mjs` 每轮先依次生成 Contract 与构建 SDK，再执行所选 Website Vitest 和 Node 测试。默认选择轻量配置与未标记 `fullOnly` 的脚本文件；`--full` 选择原完整 Website 配置及全部登记的 Node 文件。`scripts/api/generate.test.mjs` 和真实 Common 入口打包属于完整范围。两种模式的 Vitest 都限制两个 worker；`scripts/runtime/tests.test.mjs` 通过真实 Vitest 文件发现验证轻量边界和完整覆盖。
 
 `tests/auth/` 和 `tests/contract/identity.test.ts` 保留独立 OIDC、内部身份接口和会话撤销覆盖；默认空客户端与显式普通客户端分别测试。runtime 测试验证配置投影、client 核验、资源归属、receipt 和退役维护；`tests/runtime/native-health.test.ts` 核对 Website/Hydra readiness、显式 client 校验及 Website 检查 CLI，不调用开发服务。维护数据库测试使用临时 PostgreSQL，资源删除使用受控适配器或临时目录。真实生命周期、浏览器和外部应用验收分别报告。
 
@@ -34,7 +36,7 @@ schema 经 `tests/helpers/contract.ts` 从 `api/generated/openapi.json` 读取�
 
 ## GitHub CI
 
-`.github/workflows/ci.yml` 在目标为 `main` 的 PR、`main` push 和手动触发时执行。`verify` 使用 Ubuntu 24.04 runner，检出当前仓库，按 pnpm lockfile 安装依赖，然后执行 `pnpm api:check`、`pnpm typecheck`、`pnpm build` 和 `pnpm test`。Linux runner 提供测试夹具所需的 Docker；Docker 不可用时失败，不改用开发服务。
+`.github/workflows/ci.yml` 在目标为 `main` 的 PR、`main` push 和手动触发时执行。`verify` 使用 Ubuntu 24.04 runner，检出当前仓库，按 pnpm lockfile 安装依赖，然后执行 `pnpm api:check`、`pnpm typecheck`、`pnpm build` 和 `pnpm test:full`。Linux runner 提供测试夹具所需的 Docker；Docker 不可用时失败，不改用开发服务。
 
 CI 使用 Node 22、pnpm 11.9.0 与 Corepack 0.34.6。通过 `INTEGRATION_NODE_BIN` 和 `INTEGRATION_COREPACK_JS` 显式提供实际工具路径，避免 runtime 按 Node 安装目录推测 Corepack 位置。测试入口沿用前述 Website 与 runtime 统一流程，不复制或缩减身份测试范围。
 
@@ -42,6 +44,6 @@ CI 使用 Node 22、pnpm 11.9.0 与 Corepack 0.34.6。通过 `INTEGRATION_NODE_B
 
 SDK 的行为与公开包测试位于 `tests/sdk/`，覆盖对象请求类型、配置与会话边界、上传和真实产物入口；类型夹具通过 `@workspace/sdk` 解析公开声明。原始 HTTP、handler 与需要显式 Host 的 readiness 测试保留独立协议工具，不能作为业务绕过 SDK 的调用方式。同一 checkout 的产物写入必须串行，约束见 `.ai/architectures/runtime/runtime-boundaries.md`。
 
-默认测试包含 Playwright Chromium 的真实 Browser SDK 夹具。首次本地测试先显式运行 `pnpm exec playwright install chromium`；Linux 如需同时安装系统依赖，使用 `pnpm exec playwright install --with-deps chromium`。依赖安装和日常 runtime 不自动下载浏览器；浏览器夹具也不代表完整 Website 浏览器验收。
+真实 Browser SDK Chromium 夹具保留在完整测试中，轻量模式不选择该文件。浏览器安装和本地页面验收的执行规则见 `TESTING.md`；SDK 夹具不代表完整 Website 浏览器验收。
 
 唯一汇总检查名为 `ci-gate`。它在 `verify` 结束后始终执行，仅当 `verify` 的结果为 `success` 时通过；失败、取消或跳过均不能通过。工作流仅有 `contents: read` 权限，不使用 App 私钥或业务环境秘密。主分支 Ruleset 是否已将 `ci-gate` 设为必需检查，需独立核对 GitHub；本地配置校验不代表远程 CI 已通过。

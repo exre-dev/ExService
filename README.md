@@ -51,11 +51,12 @@ Website 使用独立 PostgreSQL `exre`；Hydra 提供 OIDC 协议并使用独立
 | Website 显式迁移    | `pnpm db:migrate`                                                           |
 | Hydra 显式迁移      | `pnpm infra migrate`                                                        |
 | 显式登记身份客户端  | `pnpm infra clients`                                                        |
-| 自动测试/监听测试   | `pnpm test` / `pnpm test:watch`                                             |
+| 轻量测试/监听测试   | `pnpm test` / `pnpm test:watch`                                             |
+| 完整测试（CI）      | `pnpm test:full`                                                            |
 | 构建                | `pnpm build`                                                                |
 | Contract 与类型检查 | `pnpm api:lint` / `pnpm api:generate` / `pnpm api:check` / `pnpm typecheck` |
 
-首次本地测试前先执行 `pnpm exec playwright install chromium`，准备默认测试使用的 Browser SDK Chromium 夹具；Linux 需要系统依赖时使用 `pnpm exec playwright install --with-deps chromium`。日常 runtime 不自动安装浏览器。
+开发阶段可按需做定向 test，本地提交不自动运行整仓测试或整套检查；代码变更提 PR 前集中使用轻量测试，CI 保持完整测试。轻量测试不要求 Docker 或安装 Chromium。完整测试保留数据库、真实 Browser SDK、编译打包和进程清理夹具；首次本地运行 `pnpm test:full` 前准备 Docker 并执行 `pnpm exec playwright install chromium`。Linux 需要系统依赖时使用 `pnpm exec playwright install --with-deps chromium`。测试规则、用例归类和页面浏览器验收策略统一见 `TESTING.md`。
 
 测试使用临时数据库，不连接开发库；Build 不连接数据库或启动 Docker。自动测试、本机生命周期、浏览器和部署验收分别报告。
 

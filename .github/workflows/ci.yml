@@ -67,8 +67,8 @@ jobs:
       - name: Build Website
         run: pnpm build
 
-      - name: Test Website and runtime
-        run: pnpm test
+      - name: Test Website and runtime (full)
+        run: pnpm test:full
 
   ci-gate:
     name: ci-gate

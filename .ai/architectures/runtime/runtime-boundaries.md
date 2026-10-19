@@ -2,7 +2,7 @@
 
 运行入口由 `scripts/runtime/entry.mjs`、`settings.mjs`、`services.mjs`、`applications.mjs` 和 `native.mjs` 分担。日常启动和首次准备检查单集中在 `README.md`；身份客户端边界见 `.ai/architectures/identity/integration-boundaries.md`。
 
-_最后更新：2026-10-19_
+_最后更新：2026-10-20_
 
 ## 配置来源与消费者
 
@@ -36,7 +36,7 @@ PG 管理角色由 `POSTGRES_USER` 配置，缺省为新安装的 `postgres`；�
 
 同一 checkout 的所有 Contract/SDK 产物写入命令必须串行，包括根 dev、test/watch、typecheck、build、手动生成和 SDK build。现有应用锁不协调独立构建命令；并行验证应使用不同 checkout。低层 Web dev 不承担准备与 SDK 重建，手动准备顺序见 `README.md`。
 
-Build 只读取工具和固定公开编译设置，生成 Contract 并构建 SDK、Website Web/Server，不要求运行秘密、数据库或服务。生产 Website 维护 CLI 使用编译入口。根自动测试执行 Website Vitest 与 runtime/共享身份配置的 Node 测试，使用临时 PG18 和独立 schema/库；不连接开发库。完整范围见 `.ai/architectures/contract-tests/test-layers.md`。
+Build 只读取工具和固定公开编译设置，生成 Contract 并构建 SDK、Website Web/Server，不要求运行秘密、数据库或服务。生产 Website 维护 CLI 使用编译入口。根自动测试默认选择轻量 Website Vitest 与 Node 脚本；完整模式保留临时 PG18 和独立 schema/库等集成夹具，不连接开发库。执行规则以 `TESTING.md` 为准，夹具结构见 `.ai/architectures/contract-tests/test-layers.md`。
 
 日志在写入前脱敏，原生应用 JSONL 按大小和数量轮转。Nginx 使用由根设置渲染的同源模板，覆盖 HTTPS、WebSocket、内部拒绝与 Hydra public 白名单；系统安装和重载仍由操作者显式执行。Nginx 用实际连接地址覆盖客户端传入的转发 IP；Website 监听入口只信任回环代理，保留客户端 IP 限流隔离。`createApp()` 默认不信任转发头，直接非回环请求不能用该头改变限流键。
 

@@ -1558,6 +1558,7 @@ test('new parser separates dependency and native commands and rejects unknown/re
 
 test('unified tests exclude real lifecycle probes and remove development credentials from every group', async () => {
   const options = {
+    full: true,
     workspace: root,
     tools: { node: process.execPath, corepack: join(root, 'fake-corepack.js') },
     inherited: { DATABASE_URL: 'developer-private', REDIS_URL: 'developer-redis' },

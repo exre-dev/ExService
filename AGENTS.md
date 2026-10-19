@@ -57,7 +57,7 @@ Browser 和 Node 的本站业务 HTTP 调用统一使用 `@workspace/sdk` 的 `i
 2. API 变更先改 Contract，再运行 `pnpm api:lint` 和 `pnpm api:generate`。`packages/sdk/src/generated/schema.d.ts` 禁止手改，Contract 变更须同时提交重新生成的结果。
 3. 在所属模块的 `apps/server/src/modules/{name}/api/operations.ts` 或 `apps/server/src/domains/{name}/api/operations.ts` 中显式登记 `operationId`（系统 operation 在 `apps/server/src/http/system/operations.ts`），由 `apps/server/src/http/service-handlers.ts` 汇总，实现 handler，并通过 SDK 的对象请求 API 接入消费方。Contract 与登记表必须双向一致；文件名不参与映射。Glue 的 `/api` 前缀须显式配置，`servers[].url` 不能替代它。
 4. 新增或修改 operation 时同步更新 `tests/contract/`：校验真实 HTTP 响应及注册 handler 的原始返回值，防止序列化掩盖回归。原因见 `.ai/knowledge/server/serialization-masks-handler-regressions.md` 与 `.ai/knowledge/server/operation-registration-gaps.md`。
-5. 完成 API 变更后运行 `pnpm typecheck`、`pnpm test`、`pnpm build`；自动检查、真实浏览器验收和部署验收分别报告。
+5. API 变更的验证时机与范围统一遵守 `TESTING.md`；自动检查、真实浏览器验收和部署验收分别报告。
 
 OpenAPI 3.1 schema 仅使用 JSON Schema Draft-07 兼容子集；引入 Draft 2020-12 专有语义前，须单独设计并确认 validator/serializer compiler。破坏性 Contract 变更须显式评审与版本化；不要自行发明版本策略或兼容层。
 

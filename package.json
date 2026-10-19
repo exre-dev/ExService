@@ -23,6 +23,7 @@
     "api:generate": "node scripts/api/generate.mjs generate",
     "typecheck": "node scripts/runtime/typecheck.mjs",
     "test": "node scripts/runtime/tests.mjs",
+    "test:full": "node scripts/runtime/tests.mjs --full",
     "test:watch": "node scripts/runtime/tests.mjs --watch",
     "build": "node scripts/runtime/build.mjs",
     "start": "node scripts/runtime/entry.mjs start",
