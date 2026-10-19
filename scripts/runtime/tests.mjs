@@ -9,7 +9,7 @@ import { isGeneratedOutput } from './sdk-watch.mjs'
 
 export function testSpecifications({ workspace = root, inherited = process.env, tools } = {}) {
   const { tools: { node, corepack }, environment } = preparationContext({ workspace, inherited, tools })
-  const logic = ['scripts/api/generate.test.mjs', 'packages/common/test/config.test.mjs', 'packages/common/test/entry.test.mjs',
+  const logic = ['scripts/api/generate.test.mjs', 'tests/browser/browser-suite.test.mjs', 'packages/common/test/config.test.mjs', 'packages/common/test/entry.test.mjs',
     'scripts/runtime/settings.test.mjs', 'scripts/runtime/identity-runtime.test.mjs', 'scripts/runtime/output.test.mjs',
     'scripts/runtime/deployment.test.mjs', 'scripts/runtime/application-lock.test.mjs', 'scripts/runtime/retire-outline.test.mjs',
     'scripts/runtime/ownership.test.mjs', 'scripts/runtime/readiness.test.mjs', 'scripts/runtime/hydra-client.test.mjs',
