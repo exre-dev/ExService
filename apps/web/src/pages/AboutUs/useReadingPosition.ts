@@ -56,6 +56,7 @@ export function useReadingPosition(
     }
   }, [location.key])
   useLayoutEffect(() => {
+    if (restored.current?.key !== location.key) restored.current = undefined
     if (
       !ready ||
       !main.current ||

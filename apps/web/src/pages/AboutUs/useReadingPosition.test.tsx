@@ -134,3 +134,52 @@ it('retains the last recorded scroll position when the destination clamps the do
   expect(screen.getByRole('heading').textContent).toBe('/home')
   expect(scroll).toHaveBeenLastCalledWith({ top: 1239, behavior: 'instant' })
 })
+
+it('restores Home after an unfinished Team navigation clamps the document', () => {
+  let scrollY = 0
+  let pageHeight = 4000
+  vi.spyOn(window, 'scrollY', 'get').mockImplementation(() => scrollY)
+  vi.spyOn(document.documentElement, 'scrollHeight', 'get').mockImplementation(() => pageHeight)
+  const scroll = vi.fn(({ top }: ScrollToOptions) => {
+    scrollY = top ?? 0
+  })
+  vi.stubGlobal('scrollTo', scroll)
+  function ReadingPage() {
+    const location = useLocation()
+    const navigate = useNavigate()
+    const ref = useReadingPosition(location.pathname === '/home', 'Page', 'Description')
+    return (
+      <>
+        <main ref={ref}>
+          <h1 tabIndex={-1}>{location.pathname}</h1>
+          <Link to="/team">Team</Link>
+        </main>
+        <button onClick={() => navigate(-1)}>Back</button>
+      </>
+    )
+  }
+  render(
+    <MemoryRouter initialEntries={[{ pathname: '/home', key: 'interrupted-home' }]}>
+      <ReadingPage />
+    </MemoryRouter>,
+  )
+  act(() => {
+    scrollY = 1484
+    window.dispatchEvent(new Event('scroll'))
+  })
+  fireEvent.click(screen.getByRole('link', { name: 'Team' }))
+  expect(screen.getByRole('heading').textContent).toBe('/team')
+  expect(scroll).toHaveBeenCalledTimes(1)
+  pageHeight = 1344
+  act(() => {
+    scrollY = 704
+    window.dispatchEvent(new Event('scroll'))
+  })
+  pageHeight = 4000
+  const back = screen.getByRole('button', { name: 'Back' })
+  back.focus()
+  fireEvent.click(back)
+  expect(screen.getByRole('heading').textContent).toBe('/home')
+  expect(scroll).toHaveBeenLastCalledWith({ top: 1484, behavior: 'instant' })
+  expect(document.activeElement).toBe(back)
+})

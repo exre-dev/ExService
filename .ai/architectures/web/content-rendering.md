@@ -2,7 +2,7 @@
 
 Website 的仓库内容通过通用 Fumadocs 编译链路接入 SPA。每个业务集合独立定义字段、公开投影和引用语义，编译、资源处理及正文加载不依赖 About。当前使用者是 About 和 Support；其他 Website 栏目可以注册新的 namespace。
 
-_最后更新：2026-10-15_
+_最后更新：2026-10-19_
 
 ## 边界与数据流
 
@@ -69,6 +69,8 @@ Media 介绍使用独立 `aboutMediaPage` 集合与 `kind: "media"` 投影，交
 iframe 只由受控播放列表地址与固定权限组生成，桌面展示高度 640px、最大宽度 800px；Apple 原生内容固定 450px 高，容器按比例缩小 iframe 布局宽度再整体放大，使内容与可见框一同增大，而非在底部留白。手机保留原生 450px 高与完整布局宽度，避免缩小内部视口后产生横向裁切。页面不追加播放器下方的来源文字或外部打开链接；原生控件由 Apple 管理。不能将跨域 iframe 的 load 事件解释为播放或账号验收。视频目录仅展示 video 条目并沿用草稿过滤、封面降级与相关内容入口。Media 反色样式只作用于本页，正文容器和关联成员按钮的交互状态也需继承可读前景色。内容维护见 `.ai/knowledge/web/content-authoring.md`。
 
 About 入口及正文分别懒加载。成员只拥有正文 id，不创建个人路由；简介 Modal 不改变 URL。阅读位置按 Router location key 保存于模块内有限 Map，离开 About 再后退仍能恢复，页面刷新不持久化该状态。位置由 scroll 事件记录；离开时不再读取 window.scrollY，因为目的页 DOM 已可能缩短文档并将位置压缩，cleanup 再保存会覆盖原阅读位置。
+
+location key 变化时先清除当前的「已恢复」标识，即使目的页正文仍未就绪；历史位置 Map 继续保留。这样在目的页加载期间立即后退时，旧页会重新执行恢复，不会因遗留的旧 key 跳过定位。POP 恢复仍等待足够的文档高度，并保留当前焦点。回归位于 `apps/web/src/pages/AboutUs/useReadingPosition.test.tsx` 与 `tests/browser/about-home-refined.mjs`。
 
 首页由 `AboutHome.tsx` 组合背景 Hero 与品牌叙事布局。`AboutHomeHero.tsx` 暂用 Rifling 911 加入页的首张图片和相同 HalftoneDots 参数，标题、引言与简介叠在渐变遮罩上。图片先显示，再检查 WebGL2 并懒加载半调组件；WebGL 不可用时保留原图，图片失败时保留纯色背景与文案。半调设置 `speed=0`，不持续绘制，像素预算限制为 200 万。
 
