@@ -26,7 +26,9 @@ vi.mock('@workspace/sdk', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   instance: (config: { method?: string }) => {
     const handlers = { GET: get, POST: post, PATCH: patch, PUT: put }
-    return handlers[(config.method ?? 'GET') as keyof typeof handlers](config)
+    return Promise.resolve(
+      handlers[(config.method ?? 'GET') as keyof typeof handlers](config),
+    ).then((data) => ({ msg: 'ok', data }))
   },
 }))
 vi.mock('@web/src/auth/AuthContext', () => ({
@@ -152,8 +154,8 @@ let deferred: { promise: Promise<unknown>; release: (value: unknown) => void } |
 
 function routeGet() {
   get.mockImplementation(({ url: path }: { url: string }) => {
-    if (path === '/notifications/summary') return Promise.resolve(summary)
-    if (path === '/notifications') return Promise.resolve(page)
+    if (path === '/api/notifications/summary') return Promise.resolve(summary)
+    if (path === '/api/notifications') return Promise.resolve(page)
     if (deferred !== null) return deferred.promise
     return Promise.resolve(detail)
   })
@@ -178,7 +180,7 @@ afterEach(() => {
   authState.status = 'authenticated'
   bindNotificationsToken(null)
   window.localStorage.clear()
-  selectSessionScope('/api')
+  selectSessionScope('/')
 })
 
 describe('notifications controller', () => {
@@ -186,9 +188,9 @@ describe('notifications controller', () => {
     const body = deferredResponse()
     let detailReads = 0
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.resolve(summary)
-        : path === '/notifications'
+        : path === '/api/notifications'
           ? Promise.resolve(page)
           : ++detailReads === 1
             ? body.promise
@@ -228,9 +230,9 @@ describe('notifications controller', () => {
   it('rechecks a selected renderable body when its blocking bulk confirmation is cancelled', async () => {
     const body = deferredResponse()
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.resolve(summary)
-        : path === '/notifications'
+        : path === '/api/notifications'
           ? Promise.resolve(page)
           : body.promise,
     )
@@ -265,9 +267,9 @@ describe('notifications controller', () => {
       const obsolete = deferredResponse()
       let detailReads = 0
       get.mockImplementation(({ url: path }: { url: string }) =>
-        path === '/notifications/summary'
+        path === '/api/notifications/summary'
           ? Promise.resolve(summary)
-          : path === '/notifications'
+          : path === '/api/notifications'
             ? Promise.resolve(page)
             : ++detailReads === 1
               ? obsolete.promise
@@ -304,16 +306,16 @@ describe('notifications controller', () => {
     let detailReads = 0,
       writes = 0
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.resolve({ ...summary, unreadCount: 0 })
-        : path === '/notifications'
+        : path === '/api/notifications'
           ? Promise.resolve(page)
           : ++detailReads === 1
             ? obsolete.promise
             : Promise.resolve({ ...detail, readAt: 123 }),
     )
     post.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/clear-preview'
+      path === '/api/notifications/clear-preview'
         ? Promise.resolve(livePreview())
         : ++writes === 1
           ? Promise.reject(new Error('private clear failure'))
@@ -347,9 +349,9 @@ describe('notifications controller', () => {
     let summaries = 0,
       pages = 0
     get.mockImplementation(({ url: path }: { url: string }) => {
-      if (path === '/notifications/summary')
+      if (path === '/api/notifications/summary')
         return ++summaries === 1 ? oldSummary.promise : Promise.resolve(summary)
-      if (path !== '/notifications') return Promise.resolve(detail)
+      if (path !== '/api/notifications') return Promise.resolve(detail)
       pages += 1
       return pages === 1
         ? Promise.resolve(pageOf(['A'], 'next'))
@@ -390,9 +392,9 @@ describe('notifications controller', () => {
 
   it('automatically reads an unavailable structured body when its text fallback is renderable', async () => {
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.resolve(summary)
-        : path === '/notifications'
+        : path === '/api/notifications'
           ? Promise.resolve(page)
           : Promise.resolve({ ...detail, contentAvailable: false, content: null }),
     )
@@ -412,9 +414,9 @@ describe('notifications controller', () => {
   })
   it('does not automatically read a detail without renderable content or text fallback', async () => {
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.resolve(summary)
-        : path === '/notifications'
+        : path === '/api/notifications'
           ? Promise.resolve(page)
           : Promise.resolve({ ...detail, content: null, contentFallbackText: null }),
     )
@@ -431,8 +433,8 @@ describe('notifications controller', () => {
     const firstWrite = deferredResponse()
     get.mockImplementation(
       ({ url: path, ...init }: { url: string } & { pathParams?: { notificationId?: string } }) => {
-        if (path === '/notifications/summary') return Promise.resolve(summary)
-        if (path === '/notifications') return Promise.resolve(page)
+        if (path === '/api/notifications/summary') return Promise.resolve(summary)
+        if (path === '/api/notifications') return Promise.resolve(page)
         return Promise.resolve({
           ...detail,
           receiptId: init?.pathParams?.notificationId,
@@ -468,9 +470,9 @@ describe('notifications controller', () => {
       const obsolete = deferredResponse()
       let pages = 0
       get.mockImplementation(({ url: path }: { url: string }) =>
-        path === '/notifications/summary'
+        path === '/api/notifications/summary'
           ? Promise.resolve(summary)
-          : path === '/notifications'
+          : path === '/api/notifications'
             ? ++pages === 1
               ? obsolete.promise
               : Promise.resolve(pageOf(['recovered'], null))
@@ -505,9 +507,9 @@ describe('notifications controller', () => {
 
   it('keeps an explicit mark-unread action unread until a new proactive selection', async () => {
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.resolve(summary)
-        : path === '/notifications'
+        : path === '/api/notifications'
           ? Promise.resolve(page)
           : Promise.resolve({ ...detail, readAt: 123 }),
     )
@@ -532,7 +534,7 @@ describe('notifications controller', () => {
   })
   it('releases only its own bulk phase when another notification module advances the write generation', async () => {
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.resolve({ ...summary, unreadCount: 0 })
         : Promise.resolve(page),
     )
@@ -577,8 +579,8 @@ describe('notifications controller', () => {
     const firstWrite = deferredResponse()
     get.mockImplementation(
       ({ url: path, ...init }: { url: string } & { pathParams?: { notificationId?: string } }) => {
-        if (path === '/notifications/summary') return Promise.resolve(summary)
-        if (path === '/notifications') return Promise.resolve(page)
+        if (path === '/api/notifications/summary') return Promise.resolve(summary)
+        if (path === '/api/notifications') return Promise.resolve(page)
         return Promise.resolve({ ...detail, receiptId: init?.pathParams?.notificationId })
       },
     )
@@ -615,7 +617,7 @@ describe('notifications controller', () => {
 
   it('rejects retained pagination callbacks after close or switching the view', async () => {
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.resolve(summary)
         : Promise.resolve(pageOf(['A'], 'next')),
     )
@@ -628,7 +630,7 @@ describe('notifications controller', () => {
       hook.result.current.onCloseModal()
       previous()
     })
-    expect(get.mock.calls.filter((call) => call[0].url === '/notifications')).toHaveLength(1)
+    expect(get.mock.calls.filter((call) => call[0].url === '/api/notifications')).toHaveLength(1)
     await act(async () => {
       hook.result.current.onOpenModal()
     })
@@ -642,12 +644,12 @@ describe('notifications controller', () => {
 
   it('retains the clear snapshot body and safe confirm error through a submission retry', async () => {
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.resolve({ ...summary, unreadCount: 0 })
         : Promise.resolve(page),
     )
     post.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/clear-preview'
+      path === '/api/notifications/clear-preview'
         ? Promise.resolve(livePreview())
         : Promise.reject(
             new ExAxiosError('http', 'HTTP_ERROR', 'secret database credentials', { status: 500 }),
@@ -671,11 +673,13 @@ describe('notifications controller', () => {
       hook.result.current.refreshSummary()
       hook.result.current.confirm.onSubmit()
     })
-    const submissions = post.mock.calls.filter((call) => call[0].url === '/notifications/clear-all')
+    const submissions = post.mock.calls.filter(
+      (call) => call[0].url === '/api/notifications/clear-all',
+    )
     expect(submissions).toHaveLength(2)
     expect(submissions[1]?.[0]).toEqual(submissions[0]?.[0])
     expect(
-      post.mock.calls.filter((call) => call[0].url === '/notifications/clear-preview'),
+      post.mock.calls.filter((call) => call[0].url === '/api/notifications/clear-preview'),
     ).toHaveLength(1)
   })
 
@@ -684,9 +688,9 @@ describe('notifications controller', () => {
       pageRead = deferredResponse(),
       detailRead = deferredResponse()
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? summaryRead.promise
-        : path === '/notifications'
+        : path === '/api/notifications'
           ? pageRead.promise
           : detailRead.promise,
     )
@@ -789,7 +793,7 @@ describe('notifications controller', () => {
     let reads = 0
     get.mockImplementation(
       ({ url: path, ...init }: { url: string } & { params?: { cursor?: string } }) => {
-        if (path !== '/notifications') return routeGetCalls(path)
+        if (path !== '/api/notifications') return routeGetCalls(path)
         if (init?.params?.cursor) return next.promise
         reads += 1
         return reads === 1
@@ -852,7 +856,7 @@ describe('notifications controller', () => {
         url: path,
         ...init
       }: { url: string } & { params?: { view?: string; cursor?: string } }) => {
-        if (path !== '/notifications') return routeGetCalls(path)
+        if (path !== '/api/notifications') return routeGetCalls(path)
         if (init?.params?.view === 'history') return Promise.resolve(page)
         return init?.params?.cursor ? Promise.resolve(pageOf(['B'], null)) : first.promise
       },
@@ -889,18 +893,18 @@ describe('notifications controller', () => {
       hook.result.current.onOpenModal()
       hook.result.current.list.onFilterChange('unread')
     })
-    const before = get.mock.calls.filter((call) => call[0].url === '/notifications').length
+    const before = get.mock.calls.filter((call) => call[0].url === '/api/notifications').length
     await act(async () => {
       hook.result.current.bulk.onReadAll()
     })
     const fresh = deferredResponse()
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary' ? fresh.promise : Promise.resolve(page),
+      path === '/api/notifications/summary' ? fresh.promise : Promise.resolve(page),
     )
     await act(async () => {
       hook.result.current.confirm.onSubmit()
     })
-    expect(get.mock.calls.filter((call) => call[0].url === '/notifications')).toHaveLength(
+    expect(get.mock.calls.filter((call) => call[0].url === '/api/notifications')).toHaveLength(
       before + 1,
     )
     expect(hook.result.current.countState.kind).toBe('loading')
@@ -915,8 +919,8 @@ describe('notifications controller', () => {
       body = deferredResponse()
     get.mockImplementation(
       ({ url: path, ...init }: { url: string } & { params?: { view?: string } }) => {
-        if (path === '/notifications/summary') return Promise.resolve(summary)
-        if (path === '/notifications/{notificationId}') return body.promise
+        if (path === '/api/notifications/summary') return Promise.resolve(summary)
+        if (path === '/api/notifications/{notificationId}') return body.promise
         return init?.params?.view === 'unread' ? Promise.resolve(page) : list.promise
       },
     )
@@ -941,9 +945,9 @@ describe('notifications controller', () => {
 
   it('clears local private selections and intents when the token changes while still authenticated', async () => {
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.resolve(summary)
-        : path === '/notifications/{notificationId}'
+        : path === '/api/notifications/{notificationId}'
           ? Promise.resolve({ ...detail, readAt: 123 })
           : Promise.resolve(page),
     )
@@ -976,7 +980,7 @@ describe('notifications controller', () => {
   it('keeps old rows through a failed explicit page recovery', async () => {
     let requests = 0
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path !== '/notifications'
+      path !== '/api/notifications'
         ? routeGetCalls(path)
         : ++requests === 1
           ? Promise.resolve(pageOf(['A'], 'next'))
@@ -1005,7 +1009,7 @@ describe('notifications controller', () => {
   it('stops automatic pagination when the server repeats a completed cursor', async () => {
     get.mockImplementation(
       ({ url: path, ...init }: { url: string } & { params?: { cursor?: string } }) =>
-        path !== '/notifications'
+        path !== '/api/notifications'
           ? routeGetCalls(path)
           : Promise.resolve(pageOf(init?.params?.cursor ? ['B'] : ['A'], 'same')),
     )
@@ -1024,7 +1028,7 @@ describe('notifications controller', () => {
     await act(async () => {
       hook.result.current.list.onLoadMore()
     })
-    expect(get.mock.calls.filter((call) => call[0].url === '/notifications')).toHaveLength(2)
+    expect(get.mock.calls.filter((call) => call[0].url === '/api/notifications')).toHaveLength(2)
   })
 
   it('restores closing and drops intent on SESSION_INVALID during submission', async () => {
@@ -1050,7 +1054,7 @@ describe('notifications controller', () => {
     let release!: (value: unknown) => void
     get.mockImplementation(
       ({ url: path, ...init }: { url: string } & { params?: { cursor?: string } }) => {
-        if (path !== '/notifications') return routeGetCalls(path)
+        if (path !== '/api/notifications') return routeGetCalls(path)
         if (init?.params?.cursor)
           return new Promise((resolve) => {
             release = resolve
@@ -1066,7 +1070,7 @@ describe('notifications controller', () => {
       hook.result.current.list.onLoadMore()
       hook.result.current.list.onLoadMore()
     })
-    expect(get.mock.calls.filter((call) => call[0].url === '/notifications')).toHaveLength(2)
+    expect(get.mock.calls.filter((call) => call[0].url === '/api/notifications')).toHaveLength(2)
     await act(async () => {
       release(pageOf(['A', 'B'], null))
     })
@@ -1074,7 +1078,7 @@ describe('notifications controller', () => {
     await act(async () => {
       hook.result.current.list.onLoadMore()
     })
-    expect(get.mock.calls.filter((call) => call[0].url === '/notifications')).toHaveLength(2)
+    expect(get.mock.calls.filter((call) => call[0].url === '/api/notifications')).toHaveLength(2)
   })
 
   it('keeps a fixed read-all body through polling and an uncertain retry', async () => {
@@ -1089,7 +1093,7 @@ describe('notifications controller', () => {
     })
     expect(hook.result.current.confirm.kind).toBe('read-all')
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.resolve({ ...summary, unreadCount: 7, readThroughToken: 'new.token' })
         : Promise.resolve(page),
     )
@@ -1105,7 +1109,7 @@ describe('notifications controller', () => {
 
   it('does not confirm or submit a zero-item clear preview', async () => {
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.resolve({ ...summary, unreadCount: 0 })
         : Promise.resolve(page),
     )
@@ -1113,15 +1117,15 @@ describe('notifications controller', () => {
     const hook = renderHook(() => useNotificationsController())
     await waitFor(() => expect(hook.result.current.countState.kind).toBe('ready'))
     const summaryRequests = get.mock.calls.filter(
-      (call) => call[0].url === '/notifications/summary',
+      (call) => call[0].url === '/api/notifications/summary',
     ).length
     await act(async () => {
       hook.result.current.bulk.onClearAll()
       hook.result.current.bulk.onClearAll()
     })
-    expect(get.mock.calls.filter((call) => call[0].url === '/notifications/summary')).toHaveLength(
-      summaryRequests + 1,
-    )
+    expect(
+      get.mock.calls.filter((call) => call[0].url === '/api/notifications/summary'),
+    ).toHaveLength(summaryRequests + 1)
     expect(post).toHaveBeenCalledTimes(1)
     expect(hook.result.current.confirm.kind).toBeNull()
     await act(async () => {
@@ -1134,7 +1138,7 @@ describe('notifications controller', () => {
     const hook = renderHook(() => useNotificationsController())
     await waitFor(() =>
       expect(get).toHaveBeenCalledWith({
-        url: '/notifications/summary',
+        url: '/api/notifications/summary',
         method: 'GET',
         alert: false,
       }),
@@ -1145,7 +1149,7 @@ describe('notifications controller', () => {
 
   it('shows the count as stale rather than zero when the summary request fails', async () => {
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.reject(new ExAxiosError('network', 'NETWORK_ERROR', '网络连接失败，请稍后重试'))
         : Promise.resolve(page),
     )
@@ -1163,7 +1167,7 @@ describe('notifications controller', () => {
    */
   describe('M5 polling backoff', () => {
     const summaryCalls = () =>
-      get.mock.calls.filter((call) => call[0].url === '/notifications/summary').length
+      get.mock.calls.filter((call) => call[0].url === '/api/notifications/summary').length
 
     function setupPolling() {
       const hook = renderHook(() => useNotificationsController())
@@ -1177,7 +1181,7 @@ describe('notifications controller', () => {
         let attempts = 0
         const attemptedAt: number[] = []
         get.mockImplementation(({ url: path }: { url: string }) => {
-          if (path !== '/notifications/summary') return Promise.resolve(page)
+          if (path !== '/api/notifications/summary') return Promise.resolve(page)
           attempts += 1
           attemptedAt.push(Date.now())
           return attempts <= 4
@@ -1263,7 +1267,7 @@ describe('notifications controller', () => {
         // 前 3 次失败，之后成功。
         let attempts = 0
         get.mockImplementation(({ url: path }: { url: string }) => {
-          if (path !== '/notifications/summary') return Promise.resolve(page)
+          if (path !== '/api/notifications/summary') return Promise.resolve(page)
           attempts += 1
           return attempts <= 3
             ? Promise.reject(
@@ -1335,7 +1339,7 @@ describe('notifications controller', () => {
     it('does not stack a second request while one summary is already in flight', async () => {
       let release!: (value: unknown) => void
       get.mockImplementation(({ url: path }: { url: string }) => {
-        if (path !== '/notifications/summary') return Promise.resolve(page)
+        if (path !== '/api/notifications/summary') return Promise.resolve(page)
         // 第一次挂住，好在「在途」状态下再触发刷新。
         return new Promise((resolve) => {
           release = resolve
@@ -1358,7 +1362,7 @@ describe('notifications controller', () => {
       vi.useFakeTimers()
       try {
         get.mockImplementation(({ url: path }: { url: string }) =>
-          path === '/notifications/summary'
+          path === '/api/notifications/summary'
             ? Promise.reject(
                 new ExAxiosError('network', 'NETWORK_ERROR', '网络连接失败，请稍后重试'),
               )
@@ -1387,7 +1391,7 @@ describe('notifications controller', () => {
     })
     await waitFor(() =>
       expect(get).toHaveBeenCalledWith({
-        url: '/notifications',
+        url: '/api/notifications',
         method: 'GET',
         alert: false,
         params: { view: 'history', limit: 20 },
@@ -1416,7 +1420,7 @@ describe('notifications controller', () => {
     })
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith({
-        url: '/notifications/{notificationId}/state',
+        url: '/api/notifications/{notificationId}/state',
         method: 'PATCH',
         alert: false,
         pathParams: { notificationId: 'receipt-1' },
@@ -1435,9 +1439,9 @@ describe('notifications controller', () => {
       get.mockImplementation(
         ({ url: path, ...init }: { url: string } & { params?: { view?: string } }) =>
           Promise.resolve(
-            path === '/notifications/summary'
+            path === '/api/notifications/summary'
               ? { ...summary, unreadCount: saved ? 1 : 2 }
-              : path === '/notifications/{notificationId}'
+              : path === '/api/notifications/{notificationId}'
                 ? detail
                 : {
                     ...page,
@@ -1544,9 +1548,9 @@ describe('notifications controller', () => {
     let detailReads = 0
     patch.mockReturnValue(write.promise)
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.resolve(summary)
-        : path === '/notifications'
+        : path === '/api/notifications'
           ? Promise.resolve(page)
           : ++detailReads === 1
             ? Promise.resolve(detail)
@@ -1688,7 +1692,7 @@ describe('notifications controller', () => {
     // 409 之后重新读取详情，而不是自动重试同一个写。
     await waitFor(() =>
       expect(get).toHaveBeenCalledWith({
-        url: '/notifications/{notificationId}',
+        url: '/api/notifications/{notificationId}',
         method: 'GET',
         alert: false,
         pathParams: { notificationId: 'receipt-1' },
@@ -1703,7 +1707,7 @@ describe('notifications controller', () => {
     async (change) => {
       let release!: (value: unknown) => void
       get.mockImplementation(({ url: path }: { url: string }) => {
-        if (path !== '/notifications') return routeGetCalls(path)
+        if (path !== '/api/notifications') return routeGetCalls(path)
         return new Promise((resolve) => {
           release = resolve
         })
@@ -1719,7 +1723,7 @@ describe('notifications controller', () => {
         })
       } else {
         window.localStorage.setItem(
-          `exwebsite.auth.token:${encodeURIComponent(new URL('/scope-b', window.location.origin).href)}`,
+          `exwebsite.php.auth.v1:${encodeURIComponent(new URL('/scope-b', window.location.origin).href)}`,
           'session-token',
         )
         act(() => selectSessionScope('/scope-b'))
@@ -1736,12 +1740,12 @@ describe('notifications controller', () => {
 
   it('sends the previewed scope and reuses one request id for the clear intent', async () => {
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.resolve({ ...summary, unreadCount: 0 })
         : Promise.resolve(page),
     )
     post.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/clear-preview'
+      path === '/api/notifications/clear-preview'
         ? Promise.resolve(livePreview())
         : Promise.resolve(clearResult),
     )
@@ -1754,17 +1758,16 @@ describe('notifications controller', () => {
       await hook.result.current.bulk.onClearAll()
     })
     expect(post).toHaveBeenCalledWith({
-      url: '/notifications/clear-preview',
+      url: '/api/notifications/clear-preview',
       method: 'POST',
       alert: false,
-      data: {},
     })
     expect(hook.result.current.confirm).toMatchObject({ kind: 'clear', count: 3 })
 
     await act(async () => {
       await hook.result.current.confirm.onSubmit()
     })
-    const submit = post.mock.calls.find((call) => call[0].url === '/notifications/clear-all')
+    const submit = post.mock.calls.find((call) => call[0].url === '/api/notifications/clear-all')
     expect(submit).toBeTruthy()
     expect(submit![0]).toMatchObject({ data: { clearSnapshotToken: 'clear.snapshot.token' } })
     expect(typeof (submit![0] as { data: { requestId: string } }).data.requestId).toBe('string')
@@ -1783,8 +1786,8 @@ describe('notifications controller', () => {
     const requestedCursors: (string | undefined)[] = []
     get.mockImplementation(
       ({ url: path, ...init }: { url: string } & { params?: { cursor?: string } }) => {
-        if (path === '/notifications/summary') return Promise.resolve(summary)
-        if (path !== '/notifications') return Promise.resolve(detail)
+        if (path === '/api/notifications/summary') return Promise.resolve(summary)
+        if (path !== '/api/notifications') return Promise.resolve(detail)
         const cursor = init?.params?.cursor
         requestedCursors.push(cursor)
         if (cursor !== undefined) {
@@ -1831,8 +1834,8 @@ describe('notifications controller', () => {
     let releaseReload!: (value: unknown) => void
     get.mockImplementation(
       ({ url: path, ...init }: { url: string } & { params?: { cursor?: string } }) => {
-        if (path === '/notifications/summary') return Promise.resolve(summary)
-        if (path !== '/notifications') return Promise.resolve(detail)
+        if (path === '/api/notifications/summary') return Promise.resolve(summary)
+        if (path !== '/api/notifications') return Promise.resolve(detail)
         const cursor = init?.params?.cursor
         if (cursor !== undefined && !secondPageFailed) {
           secondPageFailed = true
@@ -1887,14 +1890,14 @@ describe('notifications controller', () => {
    */
   it('treats the preview as expired when the server clock is ahead of this machine', async () => {
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.resolve({ ...summary, unreadCount: 0 })
         : Promise.resolve(page),
     )
     // 服务端快 1 小时。`expiresAt` 在本机看还有 30 分钟，但在服务端时钟上已经过期 30 分钟。
     const localNow = Date.now()
     post.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/clear-preview'
+      path === '/api/notifications/clear-preview'
         ? Promise.resolve(
             livePreview({
               serverTime: localNow + 3_600_000,
@@ -1918,14 +1921,14 @@ describe('notifications controller', () => {
 
   it('keeps the preview valid when this machine clock is ahead of the server', async () => {
     get.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/summary'
+      path === '/api/notifications/summary'
         ? Promise.resolve({ ...summary, unreadCount: 0 })
         : Promise.resolve(page),
     )
     // 反过来：本机快 1 小时。`expiresAt` 在本机看已过期 30 分钟，但服务端还剩 30 分钟。
     const localNow = Date.now()
     post.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/notifications/clear-preview'
+      path === '/api/notifications/clear-preview'
         ? Promise.resolve(
             livePreview({
               serverTime: localNow - 3_600_000,
@@ -1959,7 +1962,7 @@ describe('notifications controller', () => {
       await hook.result.current.confirm.onSubmit()
     })
     expect(post).toHaveBeenCalledWith({
-      url: '/notifications/read-all',
+      url: '/api/notifications/read-all',
       method: 'POST',
       alert: false,
       data: { requestId: expect.any(String), readThroughToken: 'read.through.token' },
@@ -1990,7 +1993,7 @@ describe('notifications controller', () => {
 })
 
 function routeGetCalls(path: string) {
-  if (path === '/notifications/summary') return Promise.resolve(summary)
+  if (path === '/api/notifications/summary') return Promise.resolve(summary)
   return Promise.resolve(page)
 }
 

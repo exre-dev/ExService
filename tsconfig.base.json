@@ -20,8 +20,6 @@
       "react-dom/*": ["./apps/web/node_modules/@types/react-dom/*"],
       "@web": ["./apps/web"],
       "@web/*": ["./apps/web/*"],
-      "@server": ["./apps/server"],
-      "@server/*": ["./apps/server/*"],
       "@components": ["./packages/components"],
       "@components/*": ["./packages/components/*"],
       "@tests": ["./tests"],

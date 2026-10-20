@@ -18,7 +18,9 @@ vi.mock('@workspace/sdk', async (importOriginal) => ({
   setAccessToken: vi.fn(),
   instance: (config: { method?: string }) => {
     const handlers = { GET: get, POST: post }
-    return handlers[(config.method ?? 'GET') as keyof typeof handlers](config)
+    return Promise.resolve(
+      handlers[(config.method ?? 'GET') as keyof typeof handlers](config),
+    ).then((data) => ({ msg: 'ok', data }))
   },
 }))
 
@@ -54,7 +56,7 @@ describe('explicit logout', () => {
   ])('clears browser authentication when revocation fails: $message', async (error) => {
     window.localStorage.setItem(AUTH_TOKEN_KEY, 'current-token')
     window.sessionStorage.setItem(SSO_SUCCESS_KEY, 'cached-sso-result')
-    get.mockResolvedValue({ nickname: 'Member', avatarUrl: null })
+    get.mockResolvedValue({ username: 'Member', avatar: null })
     post.mockRejectedValue(error)
     render(
       <AuthProvider>
@@ -69,7 +71,7 @@ describe('explicit logout', () => {
     expect(window.sessionStorage.getItem(SSO_SUCCESS_KEY)).toBeNull()
     expect(screen.getByText('anonymous')).toBeTruthy()
     expect(post).toHaveBeenCalledWith({
-      url: '/auth/logout',
+      url: '/api/auth/logout',
       method: 'POST',
       headers: { Authorization: 'Bearer current-token' },
       alert: false,
@@ -82,15 +84,17 @@ describe('explicit logout', () => {
       writeToken(window.localStorage, 'old-token')
       bindSettingsToken('old-token')
       settingsConfig.profile.snapshot = {
-        id: 'user-one',
+        id: 1,
+        platform_role: 'user',
+        last_login_time: null,
         email: 'private@example.com',
-        nickname: 'Member',
+        username: 'Member',
         qq: null,
-        fivemId: null,
-        avatarUrl: null,
+
+        avatar: null,
       }
       settingsConfig.profile.status = 'ready'
-      get.mockResolvedValue({ nickname: 'Member', avatarUrl: null })
+      get.mockResolvedValue({ username: 'Member', avatar: null })
       let resolve!: (value: unknown) => void, reject!: (error: unknown) => void
       post.mockImplementation(
         () =>
@@ -138,7 +142,7 @@ describe('explicit logout', () => {
       </AuthProvider>,
     )
     fireEvent.click(screen.getByRole('button', { name: '退出登录' }))
-    await act(async () => resolve({ nickname: 'Old profile', avatarUrl: null }))
+    await act(async () => resolve({ username: 'Old profile', avatar: null }))
     expect(screen.getByText('anonymous')).toBeTruthy()
   })
 
@@ -222,7 +226,7 @@ describe('auth session restore', () => {
     )
     await waitFor(() => expect(finish).toBeDefined())
     window.localStorage.setItem(AUTH_TOKEN_KEY, 'new-token')
-    finish?.({ nickname: 'Old user', avatarUrl: null })
+    finish?.({ username: 'Old user', avatar: null })
     await waitFor(() => expect(window.localStorage.getItem(AUTH_TOKEN_KEY)).toBe('new-token'))
     expect(screen.getByText('loading')).toBeTruthy()
   })
@@ -230,7 +234,7 @@ describe('auth session restore', () => {
 
 it('does not restore UI from a retained token after explicit logout fails to delete persistence', async () => {
   writeToken(window.localStorage, 'retained-token')
-  get.mockResolvedValue({ nickname: 'Member', avatarUrl: null })
+  get.mockResolvedValue({ username: 'Member', avatar: null })
   post.mockRejectedValue(new Error('offline'))
   render(
     <AuthProvider>

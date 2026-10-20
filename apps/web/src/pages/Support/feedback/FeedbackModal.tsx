@@ -1,3 +1,4 @@
+import { useAuth } from '../../../auth/AuthContext'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -26,13 +27,19 @@ import {
   Spinner,
   Switch,
 } from '@exre/exui'
-import { ClickUpFieldInput, FileUploader } from '@workspace/components'
+import { FileUploader } from '@workspace/components'
 import type { components } from '@workspace/sdk/types'
-import { FEEDBACK_LIMITS, FREQUENCIES } from '@workspace/common/feedback-content'
-import { readToken, sessionScopeRevision, subscribeSessionChanges } from '../../../auth/storage'
+import { FREQUENCIES } from '@workspace/common/feedback-content'
+import {
+  feedbackStorageKey,
+  readToken,
+  sessionScopeRevision,
+  subscribeSessionChanges,
+} from '../../../auth/storage'
 import { feedbackPort, getFeedbackOptions } from './api'
 import { FeedbackFlow, FeedbackStopped, type FeedbackArea, type FeedbackSnapshot } from './flow'
 import {
+  FEEDBACK_LIMITS,
   draftFromForm,
   emptyDraft,
   feedbackSchema,
@@ -47,7 +54,7 @@ import { useFeedback } from './FeedbackProvider'
 import { actions, fieldGuidance } from './feedbackFormConfig'
 import { kindsForArea, ruleForKind } from './kind-rules'
 
-type Options = components['schemas']['FeedbackOptions']
+type Options = components['schemas']['FeedbackOptionsData']
 const emptyOptions: Pick<Options, 'fields' | 'actions'> = {
   fields: [],
   actions: [],
@@ -86,13 +93,11 @@ function FeedbackSkeleton({
   )
 }
 function fixedError(error: unknown): string {
-  const code = error && typeof error === 'object' && 'code' in error ? error.code : null
-  if (code === 'FEEDBACK_RATE_LIMITED' || code === 'FEEDBACK_BUSY')
-    return '当前提交较多，请稍后再试。'
-  if (code === 'FEEDBACK_STATE_CONFLICT') return '提交进度已变化，请核对当前记录。'
-  if (code === 'FEEDBACK_PAYLOAD_CONFLICT') return '内容与原提交不一致，请核对原记录。'
-  if (code === 'FEEDBACK_INVALID_INPUT') return '填写内容或选项已不可用，请检查后重试。'
-  if (code === 'SESSION_INVALID' || code === 'UNAUTHORIZED') return '登录已失效，请重新登录后恢复。'
+  const status = error && typeof error === 'object' && 'status' in error ? error.status : null
+  if (status === 429) return '当前提交较多，请稍后再试。'
+  if (status === 409) return '提交进度已变化，请核对当前记录。'
+  if (status === 400 || status === 413) return '填写内容或附件不符合要求，请检查后重试。'
+  if (status === 401) return '登录已失效，请重新登录后恢复。'
   return '暂时无法继续，请核对进度后重试；已接收的内容会保留。'
 }
 function hasContent(draft: FeedbackDraft): boolean {
@@ -121,6 +126,7 @@ export function FeedbackModal({
   onOpenChange: (open: boolean) => void
   returnFocus?: HTMLElement
 }) {
+  const { userId } = useAuth()
   const { claimSubmission } = useFeedback()
   const choices = kindsForArea(area)
   const [confirmation, setConfirmation] = useState(false),
@@ -163,8 +169,8 @@ export function FeedbackModal({
         scope === sessionScopeRevision() &&
         token.current !== null &&
         readToken(window.localStorage) === token.current,
-      undefined,
       area,
+      feedbackStorageKey(userId!, area),
     )
   const flow = flowRef.current
   useEffect(() => {
@@ -218,13 +224,13 @@ export function FeedbackModal({
       .then((next) => {
         if (disposed || scope !== sessionScopeRevision()) return
         setFailure(null)
-        if (next?.nextAction === 'done') {
+        if (next?.status === 'completed' && next.nextAction === 'done') {
           flow.reset()
           drafts.current = {}
           setKind(null)
           form.reset(emptyDraft())
           setSnapshot(null)
-          toast.info('上次反馈已提交，可以填写一份新反馈。')
+          toast.info('上次反馈已接收，可以填写一份新反馈。')
           return
         }
         setSnapshot(next)
@@ -312,8 +318,8 @@ export function FeedbackModal({
         return
       }
       if (next) setSnapshot(next)
-      if (next?.nextAction === 'done') {
-        toast.info('反馈已提交')
+      if (next?.status === 'completed' && next.nextAction === 'done') {
+        toast.info('反馈已接收')
         flow.reset()
         drafts.current = {}
         form.reset(emptyDraft())
@@ -324,9 +330,6 @@ export function FeedbackModal({
       } else {
         if (next?.nextAction === 'upload')
           toast.warning('请重新选择缺失附件，内容和摘要须与原清单一致。')
-        else if (next?.nextAction === 'retry') toast.error('本次提交未完成，请重试。')
-        else if (next?.nextAction === 'verify' || next?.nextAction === 'wait')
-          toast.warning('提交结果待确认，请稍后核对。')
       }
     } catch (error) {
       if (
@@ -492,41 +495,7 @@ export function FeedbackModal({
       </Field>
     )
   }
-  function clickup(
-    name: 'typeOptionId' | 'departmentOptionId',
-    label: string,
-    fieldId: string,
-    presentation: {
-      required?: boolean
-      description?: string
-      placeholder?: string
-    } = {},
-  ) {
-    return (
-      <Controller
-        name={name}
-        control={form.control}
-        render={({ field }) => (
-          <ClickUpFieldInput
-            definition={options?.fields.find((item) => item.id === fieldId)}
-            binding={{
-              name: field.name,
-              value: field.value,
-              onChange: field.onChange,
-              onBlur: field.onBlur,
-              ref: field.ref,
-            }}
-            label={label}
-            error={errors[name]?.message}
-            disabled={locked}
-            {...presentation}
-          />
-        )}
-      />
-    )
-  }
   const currentRule = kind ? ruleForKind(kind) : null
-  const classification = currentRule?.classification
   const pointer = flow.pointer()
   const recheck = () =>
     process(async () => {
@@ -543,23 +512,10 @@ export function FeedbackModal({
     })
   function getPrimaryAction() {
     if (failure === 'uncertain') return { label: '核对进度', run: recheck }
-    if (snapshot?.nextAction === 'restart') {
+    if (snapshot && ['upload', 'continue'].includes(snapshot.nextAction)) {
       return {
-        label: '开始新反馈',
-        run: () => {
-          flow.reset()
-          drafts.current = {}
-          setKind(null)
-          setSnapshot(null)
-          form.reset(emptyDraft())
-        },
-      }
-    }
-    if (snapshot && ['upload', 'continue', 'retry'].includes(snapshot.nextAction)) {
-      const retry = snapshot.nextAction === 'retry'
-      return {
-        label: retry ? '重试' : '继续提交',
-        run: () => process(() => flow.continue(files, retry ? 'retry' : 'continue')),
+        label: '继续提交',
+        run: () => process(() => flow.continue(files)),
       }
     }
     if (!snapshot && failure === 'rejected' && flow.canReplayPrepare()) {
@@ -587,6 +543,7 @@ export function FeedbackModal({
             <div className={styles.anonymousFooter}>
               <div className={styles.anonymousControl}>
                 <FieldLabel htmlFor={`${id}-anonymous`}>匿名提交</FieldLabel>
+                <FieldDescription>平台管理员仍可核对提交账号。</FieldDescription>
                 <Switch
                   id={`${id}-anonymous`}
                   checked={field.value}
@@ -624,7 +581,7 @@ export function FeedbackModal({
   const dialogDescription = confirmation
     ? null
     : currentRule?.body === 'bug'
-      ? '标题、问题分类和问题描述为必填，其余内容可按实际情况补充。'
+      ? '标题和问题描述为必填，其余内容可按实际情况补充。'
       : kind
         ? '标题和内容为必填，标注「选填」的内容可留空。'
         : '选择最贴近你想法的类型，开始填写反馈。'
@@ -670,11 +627,7 @@ export function FeedbackModal({
             ) : (
               <>
                 {options && !options.available ? (
-                  <p role="status">
-                    {options.reason === 'not_configured'
-                      ? '反馈提交暂未配置，请稍后再试。'
-                      : '反馈提交暂不可用，请稍后再试。'}
-                  </p>
+                  <p role="status">反馈提交暂不可用，请稍后再试。</p>
                 ) : null}
                 {notice && (
                   <p className={styles.notice} role="alert">
@@ -730,25 +683,6 @@ export function FeedbackModal({
                         aria-busy={busy}
                       >
                         {field('title', '标题')}
-                        {options && classification && (
-                          <div className={currentRule?.department ? styles.columns : undefined}>
-                            {clickup(
-                              'typeOptionId',
-                              classification.label,
-                              '4c3befc0-5146-43a2-8610-86efe4e8124a',
-                              {
-                                ...classification,
-                                required: currentRule?.typeField === 'required',
-                              },
-                            )}
-                            {currentRule?.department &&
-                              clickup(
-                                'departmentOptionId',
-                                '部门',
-                                '9b3d2027-2162-42e2-81b9-d907592cdb5b',
-                              )}
-                          </div>
-                        )}
                         {currentRule?.action &&
                           selection(
                             'action',
@@ -787,9 +721,9 @@ export function FeedbackModal({
                             })
                             form.clearErrors('files')
                           }}
-                          maxFiles={FEEDBACK_LIMITS.files}
-                          maxFileSize={FEEDBACK_LIMITS.fileBytes}
-                          maxTotalSize={FEEDBACK_LIMITS.totalFileBytes}
+                          maxFiles={(options?.limits ?? FEEDBACK_LIMITS).files}
+                          maxFileSize={(options?.limits ?? FEEDBACK_LIMITS).fileBytes}
+                          maxTotalSize={(options?.limits ?? FEEDBACK_LIMITS).totalFileBytes}
                           disabled={busy}
                           fileSelectionDisabled={
                             Boolean(snapshot && snapshot.nextAction !== 'upload') ||

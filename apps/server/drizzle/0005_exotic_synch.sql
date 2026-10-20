@@ -1,2 +1,0 @@
-ALTER TABLE "support_feedback_submissions" DROP CONSTRAINT "support_feedback_form_check";--> statement-breakpoint
-ALTER TABLE "support_feedback_submissions" ADD CONSTRAINT "support_feedback_form_check" CHECK ((("support_feedback_submissions"."form_kind" in ('bug','feature','asset','request','content','campaign') and "support_feedback_submissions"."form_version"=2) or ("support_feedback_submissions"."form_kind" in ('suggestion','complaint') and "support_feedback_submissions"."form_version"=3)) and "support_feedback_submissions"."content_rule_version"=1);

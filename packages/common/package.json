@@ -4,11 +4,6 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./node/identity-config": {
-      "browser": null,
-      "types": "./src/node/identity-config/index.d.mts",
-      "node": "./src/node/identity-config/index.mjs"
-    },
     "./feedback-content": {
       "types": "./src/feedback-content/index.d.mts",
       "default": "./src/feedback-content/index.mjs"

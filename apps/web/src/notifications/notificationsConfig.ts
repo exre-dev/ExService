@@ -3,9 +3,9 @@ import type { components } from '@workspace/sdk/types'
 import { sessionScopeRevision } from '@web/src/auth/storage'
 
 export type NotificationItem = components['schemas']['NotificationItem']
-export type NotificationDetail = components['schemas']['NotificationDetail']
-export type NotificationSummary = components['schemas']['NotificationSummary']
-export type NotificationPreferences = components['schemas']['NotificationPreferences']
+export type NotificationDetail = components['schemas']['NotificationDetailData']
+export type NotificationSummary = components['schemas']['NotificationSummaryData']
+export type NotificationPreferences = components['schemas']['NotificationPreferencesData']
 
 export type NotificationPageStatus = 'idle' | 'loading' | 'ready' | 'error'
 export type NotificationNextPageStatus = 'idle' | 'loading' | 'error'
@@ -119,7 +119,9 @@ export function captureNotificationWrite(): NotificationGeneration {
 }
 
 export function isCurrentNotificationGeneration(generation: NotificationGeneration): boolean {
-  return ownerScope === sessionScopeRevision() && generation.epoch === epoch && generation.seq === seq
+  return (
+    ownerScope === sessionScopeRevision() && generation.epoch === epoch && generation.seq === seq
+  )
 }
 
 /** 未读计数的展示态：失败时是「未更新」，绝不画成 0。 */

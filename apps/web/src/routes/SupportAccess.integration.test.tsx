@@ -45,7 +45,10 @@ const content = vi.hoisted(() => ({
 vi.mock('@workspace/sdk', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   instance: (config: { method?: string }) =>
-    config.method === 'POST' ? api.POST(config) : api.GET(config),
+    Promise.resolve(config.method === 'POST' ? api.POST(config) : api.GET(config)).then((data) => ({
+      msg: 'ok',
+      data,
+    })),
 }))
 vi.mock('../content/support/registry', async () => {
   const { createContentStore } = await import('../content/store')
@@ -118,7 +121,7 @@ it('delays the session loading status without mounting protected content', async
   act(() => vi.advanceTimersByTime(1))
   expect(screen.getByRole('status', { name: '正在确认登录状态…' })).toBeTruthy()
   expect(screen.queryByTitle('支持面板')).toBeNull()
-  await act(async () => finish({ nickname: 'Tester', avatarUrl: null }))
+  await act(async () => finish({ username: 'Tester', avatar: null }))
   expect(screen.queryByRole('status')).toBeNull()
   expect(screen.getByTitle('支持面板')).toBeTruthy()
 })
@@ -134,8 +137,8 @@ it('requires the real session restore result, then unloads protected content on 
   )
   render(tree())
   expect(screen.queryByTitle('支持面板')).toBeNull()
-  expect(api.GET).toHaveBeenCalledWith({ url: '/auth/me', method: 'GET', alert: false })
-  await act(async () => finish({ nickname: 'Tester', avatarUrl: null }))
+  expect(api.GET).toHaveBeenCalledWith({ url: '/api/auth/me', method: 'GET', alert: false })
+  await act(async () => finish({ username: 'Tester', avatar: null }))
   expect(screen.getByTitle('支持面板')).toBeTruthy()
   act(() => {
     window.localStorage.removeItem(AUTH_TOKEN_KEY)
@@ -154,8 +157,8 @@ it('requires the real session restore result, then unloads protected content on 
 it('keeps a failed restore protected and retries through the real provider', async () => {
   window.localStorage.setItem(AUTH_TOKEN_KEY, 'fixture-token')
   api.GET.mockRejectedValueOnce(new Error('private transport details')).mockResolvedValueOnce({
-    nickname: 'Tester',
-    avatarUrl: null,
+    username: 'Tester',
+    avatar: null,
   })
   render(tree())
   await screen.findByRole('button', { name: '重试登录状态' })
@@ -179,7 +182,7 @@ it('ignores a session response that arrives after logout', async () => {
   api.POST.mockResolvedValue({ status: 'signed-out' })
   render(tree())
   fireEvent.click(screen.getByRole('button', { name: '退出登录' }))
-  await act(async () => finish({ nickname: 'Old user', avatarUrl: null }))
+  await act(async () => finish({ username: 'Old user', avatar: null }))
   expect(screen.queryByTitle('支持面板')).toBeNull()
   expect(screen.getByText('登录后可访问支持中心')).toBeTruthy()
 })
@@ -192,7 +195,7 @@ it('cannot remount a Support loader that resolves after real logout', async () =
     })
   })
   window.localStorage.setItem(AUTH_TOKEN_KEY, 'fixture-token')
-  api.GET.mockResolvedValue({ nickname: 'Tester', avatarUrl: null })
+  api.GET.mockResolvedValue({ username: 'Tester', avatar: null })
   api.POST.mockResolvedValue({ status: 'signed-out' })
   render(
     <MemoryRouter initialEntries={['/support']}>
@@ -233,7 +236,7 @@ it('discards real useContent results after cross-tab logout during an article lo
       }),
   )
   window.localStorage.setItem(AUTH_TOKEN_KEY, 'fixture-token')
-  api.GET.mockResolvedValue({ nickname: 'Tester', avatarUrl: null })
+  api.GET.mockResolvedValue({ username: 'Tester', avatar: null })
   render(
     <MemoryRouter initialEntries={['/support/errors/example']}>
       <AuthProvider>

@@ -70,16 +70,13 @@ export function acquireLock({
   name = 'mode-lock.json',
   runId = randomUUID(),
   inspect = processIdentity,
-  externalCheck = () => {},
-  recoverCleanup,
 }) {
   mkdirSync(directory, { recursive: true })
   const path = join(directory, name),
-    gate = `${path}.gate`
+    gate = path + '.gate'
   const identity = inspect(process.pid)
   if (!identity) throw new LocalError('PROCESS_IDENTITY_UNAVAILABLE')
-  let gateOwned = false,
-    recovery
+  let gateOwned = false
   try {
     try {
       writeFileSync(gate, JSON.stringify({ identity }), { flag: 'wx', mode: 0o600 })
@@ -88,121 +85,23 @@ export function acquireLock({
       if (error.code !== 'EEXIST') throw error
       const prior = readJson(gate, 'MODE_GATE_INVALID')
       if (identityAlive(prior.identity, inspect)) throw new LocalError('MODE_OPERATION_BUSY')
-      // Deleting a stale gate cannot be compare-and-swap on Windows: another
-      // contender may have installed a live gate between inspection and unlink.
       throw new LocalError(
         'MODE_GATE_STALE',
-        'verify the recorded gate owner is gone, then explicitly remove only this stale .gate file',
+        'verify the recorded gate owner is gone before removing this exact gate',
       )
     }
     if (existsSync(path)) {
       const prior = readJson(path, 'MODE_LOCK_INVALID')
-      const protectedCleanup =
-        prior.cleanupRequired ||
-        prior.state === 'cleanup-failed' ||
-        (prior.mode === 'local' &&
-          prior.state !== 'stopped' &&
-          (prior.resources?.started?.length > 0 || prior.resources?.createdStopped?.length > 0))
-      if (protectedCleanup && !recoverCleanup)
-        throw new LocalError(
-          'MODE_CLEANUP_REQUIRED',
-          'stop the original owner in its terminal; inspect the preserved ownership record',
-        )
-      if (
-        recoverCleanup &&
-        (prior.version !== 1 ||
-          prior.mode !== mode ||
-          prior.fingerprint !== fingerprint ||
-          !prior.runId)
-      )
-        throw new LocalError('MODE_RECOVERY_PROVENANCE_CONFLICT')
-      if (prior.persistent && !recoverCleanup) {
-        externalCheck(prior)
-        throw new LocalError(
-          'MODE_ACTIVE',
-          'stop the original owner in its terminal; inspect the preserved ownership record',
-        )
-      }
       if (identityAlive(prior.identity, inspect))
-        throw new LocalError(
-          'MODE_ACTIVE',
-          'stop the original owner in its terminal; inspect the preserved ownership record',
-        )
-      if (
-        Array.isArray(prior.children) &&
-        prior.children.some((child) => identityAlive(child.identity, inspect))
-      )
-        throw new LocalError(
-          'MODE_CHILDREN_STILL_ACTIVE',
-          'inspect the original run; no stale PIDs were killed',
-        )
-      if (
-        !recoverCleanup &&
-        prior.mode === 'local' &&
-        prior.state === 'preflight' &&
-        !prior.resources &&
-        (mode !== prior.mode || fingerprint !== prior.fingerprint)
-      )
+        throw new LocalError('MODE_ACTIVE', 'stop the original supervisor in its own terminal')
+      if (prior.cleanupRequired || prior.state !== 'stopped')
         throw new LocalError(
           'MODE_CLEANUP_REQUIRED',
-          'inspect the preserved application ownership record before retrying',
+          'inspect the preserved child identities and original run; never kill by stale PID',
         )
-      if (recoverCleanup) {
-        recovery = recoverCleanup(prior)
-        // Intent precedes external proof/archive writes: if they fail, ordinary
-        // contenders must not reclaim this exited owner's remaining journal.
-        atomicJson(path, {
-          ...prior,
-          ...recovery,
-          version: prior.version,
-          runId: prior.runId,
-          mode: prior.mode,
-          fingerprint: prior.fingerprint,
-          identity: prior.identity,
-          cleanupRequired: true,
-        })
-      }
-      try {
-        externalCheck(prior)
-      } catch (error) {
-        if (recoverCleanup) {
-          try {
-            atomicJson(path, { ...readJson(path), state: 'cleanup-failed', cleanupRequired: true })
-          } catch {}
-        }
-        throw error
-      }
-      // Verification and preservation happen while the private gate is held,
-      // before replacing the only remaining journal of an exited supervisor.
-    } else if (recoverCleanup) {
-      recovery = recoverCleanup(undefined)
-      writeFileSync(
-        path,
-        JSON.stringify(
-          {
-            version: 1,
-            runId,
-            mode,
-            fingerprint,
-            identity,
-            state: 'stopping',
-            cleanupRequired: true,
-            ...recovery,
-          },
-          null,
-          2,
-        ) + '\n',
-        { flag: 'wx', mode: 0o600 },
-      )
-      try {
-        externalCheck(undefined)
-      } catch (error) {
-        try {
-          atomicJson(path, { ...readJson(path), state: 'cleanup-failed', cleanupRequired: true })
-        } catch {}
-        throw error
-      }
-    } else externalCheck(undefined)
+      if (prior.children?.some((child) => identityAlive(child.identity, inspect)))
+        throw new LocalError('MODE_CHILDREN_STILL_ACTIVE')
+    }
     const record = {
       version: 1,
       runId,
@@ -210,8 +109,8 @@ export function acquireLock({
       fingerprint,
       identity,
       state: 'preflight',
+      cleanupRequired: true,
       createdAt: new Date().toISOString(),
-      ...(recoverCleanup ? { cleanupRequired: true, ...recovery } : {}),
     }
     if (existsSync(path)) atomicJson(path, record)
     else writeFileSync(path, JSON.stringify(record, null, 2) + '\n', { flag: 'wx', mode: 0o600 })

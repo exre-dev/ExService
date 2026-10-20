@@ -11,7 +11,9 @@ vi.mock('@workspace/sdk', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   instance: (config: { method?: string }) => {
     const handlers = { POST: post, GET: get }
-    return handlers[(config.method ?? 'GET') as keyof typeof handlers](config)
+    return Promise.resolve(
+      handlers[(config.method ?? 'GET') as keyof typeof handlers](config),
+    ).then((data) => ({ msg: 'ok', data }))
   },
 }))
 let mobile = false
@@ -118,8 +120,8 @@ it('switches the same registration dialog to ordinary login with only the comple
   expect((screen.getByLabelText('邮箱') as HTMLInputElement).value).toBe('member@example.com')
   expect((screen.getByLabelText('密码') as HTMLInputElement).value).toBe('')
   expect(post.mock.calls.map(([config]) => config.url)).toEqual([
-    '/auth/invitations/check',
-    '/auth/invitations/verify',
-    '/auth/invitations/complete',
+    '/api/auth/invitations/check',
+    '/api/auth/invitations/verify',
+    '/api/auth/invitations/complete',
   ])
 })

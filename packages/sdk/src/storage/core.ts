@@ -1,14 +1,22 @@
 import { StorageSdkError, toStorageSdkError } from '../errors.js'
 import type { ConfigSnapshot, SdkConfig } from '../config.js'
 import type { HttpRequest, RequestConfig, ResponseFor } from '../request-types.js'
-import type { UploadData, UploadOptions, Storage, CosTransport } from './types.js'
+import type { UploadData, UploadOptions, Storage } from './types.js'
 export const REQUEST_TIMEOUT_MS = 120_000
 export const FALLBACK_CONTENT_TYPE = 'application/octet-stream'
 const CONTENT_TYPE_PATTERN = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+\/[A-Za-z0-9!#$%&'*+.^_`|~-]+$/
 
-export function resolveContentType(explicit: string | undefined, blobType: string | undefined): string {
+export function resolveContentType(
+  explicit: string | undefined,
+  blobType: string | undefined,
+): string {
   if (explicit !== undefined) return explicit
-  if (typeof blobType === 'string' && blobType !== '' && blobType.length <= 127 && CONTENT_TYPE_PATTERN.test(blobType)) {
+  if (
+    typeof blobType === 'string' &&
+    blobType !== '' &&
+    blobType.length <= 127 &&
+    CONTENT_TYPE_PATTERN.test(blobType)
+  ) {
     return blobType
   }
   return FALLBACK_CONTENT_TYPE
@@ -18,8 +26,11 @@ export function resolveContentType(explicit: string | undefined, blobType: strin
 async function toBytes(data: UploadData): Promise<Uint8Array> {
   if (data instanceof Uint8Array) return new Uint8Array(data).slice()
   if (data instanceof Blob) {
-    try { return new Uint8Array(await data.arrayBuffer()) }
-    catch { throw new StorageSdkError('INVALID_INPUT') }
+    try {
+      return new Uint8Array(await data.arrayBuffer())
+    } catch {
+      throw new StorageSdkError('INVALID_INPUT')
+    }
   }
   throw new StorageSdkError('INVALID_INPUT', { detail: 'unsupported binary input' })
 }
@@ -33,73 +44,77 @@ async function apiRequest<T>(pending: Promise<T>): Promise<T> {
 }
 
 /**
- * 上传协调：归一化输入 → prepare → 按返回 medium 固定本次介质
- * → file multipart，或 COS PutObject 后 complete → 只返回 URL。
- *
- * 每次调用独立持有 COS 临时凭证，不使用全局可变凭证缓存，避免不同 key 并发串用。
+ * 上传协调：归一化输入 → PHP prepare → file multipart → 返回 URL。
  */
-export function createStorage(state: SdkConfig, request: (config: HttpRequest, expected?: ConfigSnapshot) => Promise<unknown>, loadTransport: () => Promise<CosTransport>, requestPolicy: { timeoutMs?: number; signal?: AbortSignal } = {}): Storage {
+export function createStorage(
+  state: SdkConfig,
+  request: (config: HttpRequest, expected?: ConfigSnapshot) => Promise<unknown>,
+  requestPolicy: { timeoutMs?: number; signal?: AbortSignal } = {},
+): Storage {
   function check(expected: ConfigSnapshot) {
     if (!state.matches(expected)) throw new StorageSdkError('CONFIG_CHANGED')
   }
-  async function stage<C extends RequestConfig>(config: C, expected: ConfigSnapshot): Promise<ResponseFor<C>> {
+  async function stage<C extends RequestConfig>(
+    config: C,
+    expected: ConfigSnapshot,
+  ): Promise<ResponseFor<C>> {
     return apiRequest(request(config as HttpRequest, expected)) as Promise<ResponseFor<C>>
   }
-  async function upload(key: string, data: UploadData, uploadOptions: UploadOptions = {}): Promise<string> {
+  async function upload(
+    key: string,
+    data: UploadData,
+    uploadOptions: UploadOptions = {},
+  ): Promise<string> {
     const expected = state.resolve()
     if (!expected.token) throw new StorageSdkError('UNAUTHORIZED')
     if (typeof key !== 'string' || key.length === 0) {
       throw new StorageSdkError('INVALID_INPUT', { detail: 'key is required' })
     }
-    if (!uploadOptions || typeof uploadOptions !== 'object' || Array.isArray(uploadOptions) ||
-        Object.keys(uploadOptions).some(key => key !== 'medium' && key !== 'contentType') ||
-        (uploadOptions.medium !== undefined && uploadOptions.medium !== 'file' && uploadOptions.medium !== 'cos') ||
-        (uploadOptions.contentType !== undefined && (typeof uploadOptions.contentType !== 'string' || uploadOptions.contentType.length > 127 || !CONTENT_TYPE_PATTERN.test(uploadOptions.contentType)))) {
+    if (
+      !uploadOptions ||
+      typeof uploadOptions !== 'object' ||
+      Array.isArray(uploadOptions) ||
+      Object.keys(uploadOptions).some((key) => key !== 'medium' && key !== 'contentType') ||
+      (uploadOptions.medium !== undefined &&
+        uploadOptions.medium !== 'file' &&
+        uploadOptions.medium !== 'cos') ||
+      (uploadOptions.contentType !== undefined &&
+        (typeof uploadOptions.contentType !== 'string' ||
+          uploadOptions.contentType.length > 127 ||
+          !CONTENT_TYPE_PATTERN.test(uploadOptions.contentType)))
+    ) {
       throw new StorageSdkError('INVALID_INPUT')
     }
     const bytes = await toBytes(data)
-    const contentType = resolveContentType(uploadOptions.contentType, data instanceof Uint8Array ? undefined : data.type)
+    const contentType = resolveContentType(
+      uploadOptions.contentType,
+      data instanceof Uint8Array ? undefined : data.type,
+    )
 
     check(expected)
-    const prepared = await stage({ url: '/storage/uploads/prepare', method: 'POST',
-      timeout: requestPolicy.timeoutMs ?? REQUEST_TIMEOUT_MS, signal: requestPolicy.signal, alert: false,
-      data: {
-        key,
-        size: bytes.byteLength,
-        contentType,
-        ...(uploadOptions.medium === undefined ? {} : { medium: uploadOptions.medium }),
+    const prepared = await stage(
+      {
+        url: '/api/storage/uploads/prepare',
+        method: 'POST',
+        timeout: requestPolicy.timeoutMs ?? REQUEST_TIMEOUT_MS,
+        signal: requestPolicy.signal,
+        alert: false,
+        data: {
+          key,
+          size: bytes.byteLength,
+          contentType,
+          ...(uploadOptions.medium === undefined ? {} : { medium: uploadOptions.medium }),
+        },
       },
-    }, expected)
+      expected,
+    )
     check(expected)
-    const plan = prepared
+    const plan = prepared.data
 
     // prepare 的 maxBytes 只是客户端预检，服务器仍是最终校验者。
     if (bytes.byteLength > plan.maxBytes) throw new StorageSdkError('TOO_LARGE')
 
-    if (plan.medium === 'cos') {
-      try {
-        check(expected)
-        const transport = await loadTransport()
-        check(expected)
-        await transport.putObject({
-          bucket: plan.bucket,
-          region: plan.region,
-          key: plan.key,
-          bytes,
-          contentType,
-          credentials: plan.credentials,
-        })
-      } catch (cause) {
-        throw toStorageSdkError({ cause })
-      }
-      check(expected)
-      const completed = await stage({ url: '/storage/uploads/complete', method: 'POST',
-        timeout: requestPolicy.timeoutMs ?? REQUEST_TIMEOUT_MS, signal: requestPolicy.signal, alert: false,
-        data: { key: plan.key, uploadTicket: plan.uploadTicket },
-      }, expected)
-      check(expected)
-      return completed.url
-    }
+    if (plan.medium !== 'file') throw new StorageSdkError('UNAVAILABLE')
 
     // FormData 序列化：boundary 由运行时生成，不手写 Content-Type。
     // `new Uint8Array(bytes)` 复制到新的 ArrayBuffer，同时也满足 BlobPart 的类型要求。
@@ -107,15 +122,26 @@ export function createStorage(state: SdkConfig, request: (config: HttpRequest, e
     form.append('key', key)
     form.append('medium', 'file')
     form.append('contentType', contentType)
-    form.append('data', new Blob([new Uint8Array(bytes)], { type: contentType }), key.split('/').pop() ?? key)
+    form.append(
+      'data',
+      new Blob([new Uint8Array(bytes)], { type: contentType }),
+      key.split('/').pop() ?? key,
+    )
 
     check(expected)
-    const uploaded = await stage({ url: '/storage/uploads', method: 'POST',
-      timeout: requestPolicy.timeoutMs ?? REQUEST_TIMEOUT_MS, signal: requestPolicy.signal, alert: false,
-      data: form,
-    }, expected)
+    const uploaded = await stage(
+      {
+        url: '/api/storage/uploads',
+        method: 'POST',
+        timeout: requestPolicy.timeoutMs ?? REQUEST_TIMEOUT_MS,
+        signal: requestPolicy.signal,
+        alert: false,
+        data: form,
+      },
+      expected,
+    )
     check(expected)
-    return uploaded.url
+    return uploaded.data.url
   }
 
   return { upload }

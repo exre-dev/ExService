@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest'
 import type { components } from '@workspace/sdk/types'
 import { FeedbackFlow, FeedbackStopped, type FeedbackPort } from './flow'
 
-type Snapshot = components['schemas']['FeedbackSnapshot']
+type Snapshot = components['schemas']['FeedbackSnapshotData']
 const form: components['schemas']['FeedbackForm'] = {
   kind: 'request',
   title: '标题',
@@ -16,7 +16,7 @@ const initial = (): Snapshot => ({
   revision: 0,
   form,
   createdAt: 1,
-  receiveExpiresAt: 86400001,
+  receiveExpiresAt: 86401,
   status: 'receiving',
   nextAction: 'upload',
   taskId: null,
@@ -41,8 +41,8 @@ function harness(area: 'development' | 'community' = 'development') {
         revision: input.expectedRevision + 1,
         status: 'completed',
         nextAction: 'done',
-        taskId: 'task-1',
-        taskUrl: 'https://app.clickup.com/t/task-1',
+        taskId: null,
+        taskUrl: null,
       }
       return state
     }),
@@ -61,8 +61,8 @@ function harness(area: 'development' | 'community' = 'development') {
     },
     changed,
     () => true,
-    async () => {},
     area,
+    `exwebsite.php.feedback.v1:test:${area}`,
   )
   return {
     flow,
@@ -87,8 +87,8 @@ it('only finishes after done and clears identifier-only recovery storage', async
 it('uses a separate community pointer and rejects forms outside its area before writing', async () => {
   const development = harness()
   const community = harness('community')
-  expect(development.flow.storageKey).toBe('exwebsite.feedback.v2')
-  expect(community.flow.storageKey).toBe('exwebsite.feedback.community.v1')
+  expect(development.flow.storageKey).toBe('exwebsite.php.feedback.v1:test:development')
+  expect(community.flow.storageKey).toBe('exwebsite.php.feedback.v1:test:community')
   await expect(community.flow.submit(form, [])).rejects.toThrow()
   expect(community.port.prepare).not.toHaveBeenCalled()
   expect(community.storage.size).toBe(0)
@@ -245,26 +245,79 @@ it('reuses a frozen prepare key and payload after a lost prepare response', asyn
   const calls = vi.mocked(h.port.prepare).mock.calls
   expect(calls[0]![0]).toEqual(calls[1]![0])
 })
-it('does not retry verification or failed states automatically', async () => {
+it('keeps an unchanged receiving snapshot after an ambiguous failed advance', async () => {
   const h = harness()
-  for (const nextAction of ['verify', 'retry'] as const) {
-    const state = {
-      ...initial(),
-      status: nextAction === 'verify' ? 'verification_required' : 'failed',
-      nextAction,
-    } as Snapshot
-    vi.mocked(h.port.prepare).mockResolvedValueOnce(state)
-    await h.flow.submit(form, [])
-  }
-  expect(h.port.advance).not.toHaveBeenCalled()
-})
-it('reads status after lost advance response and stops when it shows verify', async () => {
-  const h = harness()
-  vi.mocked(h.port.advance).mockImplementationOnce(async () => {
-    h.setState({ ...initial(), revision: 1, status: 'verification_required', nextAction: 'verify' })
-    throw new Error('timeout')
-  })
-  expect((await h.flow.submit(form, []))?.nextAction).toBe('verify')
+  vi.mocked(h.port.advance).mockRejectedValueOnce(new Error('timeout'))
+  await expect(h.flow.submit(form, [])).rejects.toThrow('timeout')
   expect(h.port.advance).toHaveBeenCalledTimes(1)
   expect(h.port.get).toHaveBeenCalledTimes(1)
+  expect(h.flow.snapshot?.status).toBe('receiving')
+  expect(h.flow.pointer()).not.toBeNull()
+})
+it('reconciles completed PHP state after a lost advance response', async () => {
+  const h = harness()
+  vi.mocked(h.port.advance).mockImplementationOnce(async () => {
+    h.setState({ ...initial(), revision: 1, status: 'completed', nextAction: 'done' })
+    throw new Error('timeout')
+  })
+  expect((await h.flow.submit(form, []))?.nextAction).toBe('done')
+  expect(h.port.advance).toHaveBeenCalledTimes(1)
+  expect(h.port.get).toHaveBeenCalledTimes(1)
+  expect(h.flow.pointer()).toBeNull()
+})
+
+it('reconciles an uploaded attachment after a lost PUT response using its declared digest and ID', async () => {
+  const h = harness()
+  const file = new File(['evidence'], 'evidence.txt', { type: 'text/plain' })
+  vi.mocked(h.port.prepare).mockImplementationOnce(async (input) => {
+    const state: Snapshot = {
+      ...initial(),
+      submissionKey: input.submissionKey,
+      attachments: input.attachments.map((attachment, ordinal) => ({
+        ...attachment,
+        id: attachment.id!,
+        ordinal,
+        status: 'expected',
+        remoteAttachmentId: null,
+      })),
+    }
+    h.setState(state)
+    return state
+  })
+  vi.mocked(h.port.upload).mockImplementationOnce(async (id, attachmentId) => {
+    const state = h.flow.snapshot!
+    h.setState({
+      ...state,
+      revision: 1,
+      nextAction: 'continue',
+      attachments: state.attachments.map((item) =>
+        item.id === attachmentId ? { ...item, status: 'uploaded' } : item,
+      ),
+    })
+    expect(id).toBe(state.id)
+    throw new Error('response lost')
+  })
+  expect((await h.flow.submit(form, [file]))?.status).toBe('completed')
+  const input = vi.mocked(h.port.prepare).mock.calls[0]![0]
+  expect(input.attachments[0]).toMatchObject({ byteLength: 8, originalName: 'evidence.txt' })
+  expect(input.attachments[0]!.sha256).toMatch(/^[a-f0-9]{64}$/)
+  expect(h.port.upload).toHaveBeenCalledWith(initial().id, input.attachments[0]!.id, file)
+  expect(h.port.advance).toHaveBeenCalledWith(initial().id, {
+    expectedRevision: 1,
+    intent: 'continue',
+  })
+})
+
+it('refreshes a 409 snapshot and advances only the new revision', async () => {
+  const h = harness()
+  vi.mocked(h.port.advance).mockImplementationOnce(async () => {
+    h.setState({ ...initial(), revision: 2, nextAction: 'continue' })
+    throw { status: 409 }
+  })
+  expect((await h.flow.submit(form, []))?.status).toBe('completed')
+  expect(h.port.get).toHaveBeenCalledTimes(1)
+  expect(h.port.advance).toHaveBeenNthCalledWith(2, initial().id, {
+    expectedRevision: 2,
+    intent: 'continue',
+  })
 })

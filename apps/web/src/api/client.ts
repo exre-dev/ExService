@@ -1,6 +1,7 @@
 import { setBaseUrl, setSessionExpiredHandler } from '@workspace/sdk'
 import {
   expirePersistedSession,
+  clearLegacySessionStorage,
   readToken,
   selectSessionScope,
   sessionScopeRevision,
@@ -26,9 +27,10 @@ function syncSessionCaches(): void {
 
 /** Installs application navigation/session wiring before any request or React render. */
 export function installSdkIntegration(): () => void {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.origin}/api`
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
   // Validation must precede changing the application's selected persistence scope.
   setBaseUrl(baseUrl)
+  clearLegacySessionStorage()
   disposeActive?.()
   selectSessionScope(baseUrl)
   // Retained caches must change owners even while their UI consumers are unmounted.
@@ -38,18 +40,29 @@ export function installSdkIntegration(): () => void {
   const stopSync = startSessionSync()
   let active = true
   setSessionExpiredHandler(() => {
-    if (!active || scope !== sessionScopeRevision()) return
-    expirePersistedSession()
-    if (syncSessionToken() !== null) return
+    if (!active || scope !== sessionScopeRevision()) return false
+    if (!expirePersistedSession()) {
+      // A suppressed expired token is already anonymous locally, even when its
+      // persistent deletion cannot authorize navigation or an expiry message.
+      try {
+        if (readToken(window.localStorage) === null) syncSessionToken()
+      } catch {
+        // SDK has already dropped the expired credential. Publish the unavailable
+        // local session so private UI and caches cannot retain the old owner.
+        syncSessionToken()
+      }
+      return false
+    }
+    if (syncSessionToken() !== null) return false
     if (window.location.pathname === '/support' || window.location.pathname.startsWith('/support/'))
-      return
-    if (window.location.pathname.startsWith('/identity/')) return
+      return true
     if (
       window.location.pathname === '/login' &&
       new URLSearchParams(window.location.search).has('ssoRequestId')
     )
-      return
+      return true
     if (window.location.pathname !== '/login') window.location.replace('/login')
+    return true
   })
   const dispose = () => {
     if (!active) return

@@ -4,13 +4,16 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { ExAxiosError } from '@workspace/sdk'
+import type { components } from '@workspace/sdk/types'
 
 const post = vi.hoisted(() => vi.fn())
 vi.mock('@workspace/sdk', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   instance: (config: { method?: string }) => {
     const handlers = { POST: post }
-    return handlers[(config.method ?? 'GET') as keyof typeof handlers](config)
+    return Promise.resolve(
+      handlers[(config.method ?? 'GET') as keyof typeof handlers](config),
+    ).then((data) => ({ msg: 'ok', data }))
   },
 }))
 vi.mock('@web/src/pages/AuthPage/AuthBackdrop', () => ({ AuthBackdrop: () => null }))
@@ -43,6 +46,41 @@ afterEach(() => {
 })
 
 describe('AuthFlow captcha stage', () => {
+  it('finishes a completed PHP SSO inspection without confirming again or replacing the Website token', async () => {
+    const original = window
+    const replace = vi.fn()
+    vi.stubGlobal(
+      'window',
+      new Proxy(original, {
+        get(target, key) {
+          if (key === 'location') return { ...target.location, replace }
+          return Reflect.get(target, key)
+        },
+      }),
+    )
+    try {
+      const ssoRequestId = 's'.repeat(43)
+      localStorage.setItem(AUTH_TOKEN_KEY, 'website-token')
+      const inspection: components['schemas']['SsoInspectResponse']['data'] = {
+        ssoRequestId,
+        status: 'completed',
+        serverTime: Date.now(),
+        expiresAt: Date.now() + 60000,
+      }
+      post.mockResolvedValue(inspection)
+      render(
+        <MemoryRouter>
+          <AuthFlow presentation="page" ssoRequestId={ssoRequestId} />
+        </MemoryRouter>,
+      )
+      await waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith('/sso/success'))
+      expect(post).toHaveBeenCalledTimes(1)
+      expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe('website-token')
+      expect(sessionStorage.getItem('exwebsite.auth.sso-success')).toBeNull()
+    } finally {
+      vi.stubGlobal('window', original)
+    }
+  })
   it('removes the legal footer from the actual login page after continuing', async () => {
     const user = userEvent.setup()
     render(
@@ -101,12 +139,12 @@ describe('AuthFlow captcha stage', () => {
 
     await user.click(screen.getByRole('button', { name: '登录' }))
     expect(post).toHaveBeenCalledWith({
-      url: '/auth/login',
+      url: '/api/auth/login',
       method: 'POST',
       data: { email: 'member@example.com', password: 'password-one' },
       alert: false,
     })
-    expect(await screen.findByText('邮箱或密码错误')).toBeTruthy()
+    expect(await screen.findByText('Invalid credentials')).toBeTruthy()
 
     expect(screen.queryByRole('button', { name: '返回修改资料' })).toBeNull()
   })
@@ -116,7 +154,7 @@ describe('AuthFlow captcha stage', () => {
     window.localStorage.clear()
     const ssoRequestId = 's'.repeat(43)
     post.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/auth/sso/inspect'
+      path === '/api/auth/sso/inspect'
         ? Promise.resolve({ ssoRequestId, status: 'pending' })
         : Promise.reject(
             new ExAxiosError('http', 'INVALID_CREDENTIALS', 'Invalid credentials', { status: 401 }),
@@ -133,11 +171,11 @@ describe('AuthFlow captcha stage', () => {
     await user.type(screen.getByLabelText('密码', { exact: true }), 'password-one')
     await user.click(screen.getByRole('button', { name: '继续' }))
     expect(post).not.toHaveBeenCalledWith(
-      expect.objectContaining({ url: '/auth/sso/login', method: 'POST' }),
+      expect.objectContaining({ url: '/api/auth/sso/login', method: 'POST' }),
     )
     await user.click(screen.getByRole('button', { name: '登录' }))
     expect(post).toHaveBeenCalledWith({
-      url: '/auth/sso/login',
+      url: '/api/auth/sso/login',
       method: 'POST',
       data: { ssoRequestId, email: 'member@example.com', password: 'password-one' },
       alert: false,
@@ -150,7 +188,7 @@ describe('AuthFlow captcha stage', () => {
       const user = userEvent.setup()
       window.localStorage.setItem(AUTH_TOKEN_KEY, 'old-token')
       post.mockImplementation(({ url: path }: { url: string }) =>
-        path === '/auth/login'
+        path === '/api/auth/login'
           ? Promise.resolve({ token: 'new-token' })
           : failure === 'network failure'
             ? Promise.reject(new Error('offline'))
@@ -170,7 +208,7 @@ describe('AuthFlow captcha stage', () => {
       await user.click(screen.getByRole('button', { name: '继续' }))
       await user.click(screen.getByRole('button', { name: '登录' }))
       expect(post).toHaveBeenCalledWith({
-        url: '/auth/logout',
+        url: '/api/auth/logout',
         method: 'POST',
         headers: { Authorization: 'Bearer old-token' },
         alert: false,
@@ -185,7 +223,7 @@ describe('AuthFlow captcha stage', () => {
     window.localStorage.setItem(AUTH_TOKEN_KEY, 'old-token')
     let completeLogout: ((value: unknown) => void) | undefined
     post.mockImplementation(({ url: path }: { url: string }) =>
-      path === '/auth/login'
+      path === '/api/auth/login'
         ? Promise.resolve({ token: 'new-token' })
         : new Promise((resolve) => {
             completeLogout = resolve
@@ -230,7 +268,7 @@ describe('AuthFlow captcha stage', () => {
       const onSessionCreated = vi.fn()
       window.localStorage.setItem(AUTH_TOKEN_KEY, 'old-token')
       post.mockImplementation(async ({ url: path }: { url: string }) => {
-        if (path === '/auth/login') return { token: 'new-token' }
+        if (path === '/api/auth/login') return { token: 'new-token' }
         if (cleared) window.localStorage.removeItem(AUTH_TOKEN_KEY)
         throw new ExAxiosError('http', 'SESSION_INVALID', 'Invalid session', { status: 401 })
       })
@@ -263,7 +301,7 @@ describe('AuthFlow captcha stage', () => {
         expect(readToken(window.localStorage)).toBeNull()
       }
       post.mockImplementation(async ({ url: path }: { url: string }) => {
-        if (path === '/auth/login') return { token: 'new-token' }
+        if (path === '/api/auth/login') return { token: 'new-token' }
         window.localStorage.setItem(AUTH_TOKEN_KEY, 'replacement-token')
         return { status: 'ok' }
       })

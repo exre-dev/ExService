@@ -1,46 +1,6 @@
-import { createServer } from 'node:http'
-import { afterEach, describe, expect, it } from 'vitest'
-import { ExAxiosError } from '@sdk/src/http/errors'
-import { createConfig, type RuntimeEnvironment } from '@sdk/src/config'
-import { createHttpCore } from '@sdk/src/http/core'
-
-function browserHttp(
-  environment: Omit<RuntimeEnvironment, 'readToken'> & {
-    readToken?: () => string | null | undefined
-  },
-  options: TestOptions = {},
-) {
-  const read = environment.readToken
-  const runtime: RuntimeEnvironment = {
-    ...environment,
-    readToken: read
-      ? () => {
-          const value = read()
-          return value === undefined ? { kind: 'unavailable' } : { kind: 'known', value }
-        }
-      : undefined,
-  }
-  const state = createConfig(runtime)
-  if (options.baseUrl) state.setBaseUrl(options.baseUrl)
-  if (options.onSessionExpired) state.setSessionExpiredHandler(options.onSessionExpired)
-  const request = createHttpCore(runtime, state)
-  return {
-    ...state,
-    request: (config: Parameters<typeof request>[0]) =>
-      request({ alert: options.alert, ...config }),
-  }
-}
-interface TestOptions {
-  baseUrl?: string
-  websiteBaseUrl?: string
-  alert?: boolean
-  onSessionExpired?: (
-    context: import('@sdk/src/request-types').SessionExpiredContext,
-  ) => void | Promise<void>
-}
-function testHttp(options: TestOptions = {}) {
-  return browserHttp({ environment: 'node' }, options)
-}
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
+import { afterEach, expect, it } from 'vitest'
+import { createRuntime } from '@sdk/src/runtime'
 
 const servers: ReturnType<typeof createServer>[] = []
 afterEach(async () => {
@@ -54,801 +14,422 @@ afterEach(async () => {
     ),
   )
 })
-
-async function fixture(handler: Parameters<typeof createServer>[0]): Promise<string> {
+async function service(handler: (req: IncomingMessage, res: ServerResponse) => void) {
   const server = createServer(handler)
   servers.push(server)
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const address = server.address()
-  if (!address || typeof address === 'string') throw new Error('expected TCP address')
+  if (!address || typeof address === 'string') throw Error('Missing address')
   return `http://127.0.0.1:${address.port}`
 }
+function json(res: ServerResponse, status: number, body: unknown, headers = {}) {
+  res.writeHead(status, { 'content-type': 'application/json', ...headers })
+  res.end(JSON.stringify(body))
+}
 
-describe('ExAxios Node HTTP boundary', () => {
-  it('rejects ambiguous Authorization headers before an unrelated credential can invalidate the current session', async () => {
-    let received = 0,
-      expired = 0
-    const origin = await fixture((_request, response) => {
-      received++
-      response.writeHead(401, { 'content-type': 'application/json' })
-      response.end(
-        JSON.stringify({
-          error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'ambiguous' },
-        }),
-      )
+it('joins a deployment prefix with the complete PHP path, serializes inputs and returns the native envelope', async () => {
+  const seen: Array<{
+    url: string
+    authorization: string | undefined
+    cookie: string | undefined
+  }> = []
+  const origin = await service((req, res) => {
+    seen.push({
+      url: req.url ?? '',
+      authorization: req.headers.authorization,
+      cookie: req.headers.cookie,
     })
-    const sdk = testHttp({
-      baseUrl: `${origin}/api`,
-      onSessionExpired: () => {
-        expired++
-      },
-    })
-    sdk.setAccessToken('current')
-    for (const headers of [
-      { Authorization: 'Bearer current', authorization: 'Bearer other' },
-      { 'Authorization ': 'Bearer other' },
-    ]) {
-      await expect(sdk.request({ url: '/health', headers })).rejects.toMatchObject({
-        code: 'CONFIG_ERROR',
-      })
+    json(res, 200, { msg: 'ok', data: { status: 'ok' } })
+  })
+  const sdk = createRuntime({ environment: 'node' })
+  sdk.setBaseUrl(`${origin}/backend`)
+  sdk.setAccessToken('site-token')
+  const request = sdk.instance as (config: Record<string, unknown>) => Promise<unknown>
+  expect(await request({ url: '/api/health' })).toEqual({ msg: 'ok', data: { status: 'ok' } })
+  await request({
+    url: '/api/notifications/{notificationId}',
+    pathParams: { notificationId: 'a b' },
+    params: { mode: 'x/y' },
+  })
+  expect(seen).toEqual([
+    { url: '/backend/api/health', authorization: 'Bearer site-token', cookie: undefined },
+    {
+      url: '/backend/api/notifications/a%20b?mode=x%2Fy',
+      authorization: 'Bearer site-token',
+      cookie: undefined,
+    },
+  ])
+})
+
+it('rejects undeclared operations and unsafe paths before sending a credential', async () => {
+  let calls = 0
+  const origin = await service((_req, res) => {
+    calls++
+    json(res, 200, {})
+  })
+  const sdk = createRuntime({ environment: 'node' })
+  sdk.setBaseUrl(`${origin}/backend`)
+  sdk.setAccessToken('site-token')
+  const request = sdk.instance as (config: Record<string, unknown>) => Promise<unknown>
+  for (const config of [
+    { url: '/api/missing' },
+    { url: '/api/auth/login', method: 'GET' },
+    { url: '/api/notifications/{notificationId}', pathParams: { notificationId: '..' } },
+    { url: '/api/health', headers: { Authorization: 'a', authorization: 'b' } },
+    { url: '/api/health', adapter: 'http' },
+    { url: '/api/health', params: { unsafe: { nested: 'value' } } },
+  ])
+    await expect(request(config)).rejects.toMatchObject({ code: 'CONFIG_ERROR' })
+  expect(calls).toBe(0)
+})
+
+it('accepts only small JSON {msg} business errors and keeps real status and Retry-After', async () => {
+  let mode = 'valid'
+  const origin = await service((_req, res) => {
+    if (mode === 'html') {
+      res.writeHead(500, { 'content-type': 'text/html' })
+      res.end('<h1>secret</h1>')
+      return
     }
-    expect(received).toBe(0)
-    expect(expired).toBe(0)
+    if (mode === 'unknown') {
+      json(res, 500, { message: 'secret' })
+      return
+    }
+    if (mode === 'large') {
+      json(res, 500, { msg: 'secret'.repeat(12000) })
+      return
+    }
+    json(res, 429, { msg: '请稍后重试' }, { 'retry-after': '5' })
   })
-  it('encodes contract path/query inputs and serializes JSON and multipart without inventing a bodyless POST content type', async () => {
-    const received: Array<{ url?: string; type?: string; body: string }> = []
-    const origin = await fixture(async (request, response) => {
-      const chunks: Buffer[] = []
-      for await (const chunk of request) chunks.push(Buffer.from(chunk))
-      received.push({
-        url: request.url,
-        type: request.headers['content-type'],
-        body: Buffer.concat(chunks).toString(),
-      })
-      response.writeHead(200, { 'content-type': 'application/json' })
-      response.end('{}')
-    })
-    const sdk = testHttp({ baseUrl: `${origin}/api` }),
-      request = sdk.request
-    await request({
-      url: '/notifications/{notificationId}',
-      pathParams: { notificationId: 'part one' },
-      params: { tag: ['a b', 'c/d'], omitted: undefined },
-    })
-    await request({ url: '/json', method: 'POST', data: { message: 'hello' } })
-    const form = new FormData()
-    form.append('value', 'multipart-value')
-    await request({ url: '/multipart', method: 'POST', data: form })
-    await request({ url: '/bodyless', method: 'POST' })
-    expect(received[0]!.url).toBe('/api/notifications/part%20one?tag=a+b&tag=c%2Fd')
-    expect(received[1]).toMatchObject({ type: 'application/json', body: '{"message":"hello"}' })
-    expect(received[2]!.type).toMatch(/^multipart\/form-data; boundary=/)
-    expect(received[2]!.body).toContain('multipart-value')
-    expect(received[3]).toMatchObject({ type: undefined, body: '' })
+  const sdk = createRuntime({ environment: 'node' })
+  sdk.setBaseUrl(origin)
+  const request = sdk.instance as (config: Record<string, unknown>) => Promise<unknown>
+  await expect(request({ url: '/api/health', responseType: 'blob' })).rejects.toMatchObject({
+    kind: 'http',
+    code: 'HTTP_ERROR',
+    status: 429,
+    message: '请稍后重试',
+    retryAfterSeconds: 5,
   })
-
-  it('rejects unsafe templates, malformed or excess path values, query objects, and low-level overrides before sending', async () => {
-    const received: string[] = []
-    const origin = await fixture((request, response) => {
-      received.push(request.url ?? '')
-      response.end('{}')
-    })
-    const request = testHttp({ baseUrl: `${origin}/api` }).request
-    for (const config of [
-      { url: `${origin}/api/health` },
-      { url: '//remote.test/api' },
-      { url: '/health?x=1' },
-      { url: '/health#x' },
-      { url: '/a/../health' },
-      { url: '/%2e%2e/health' },
-      { url: '/a\\health' },
-      { url: '/a%2Fhealth' },
-      { url: '/n/{id}' },
-      { url: '/n/{id}', pathParams: { id: 'a/b' } },
-      { url: '/n/{id}', pathParams: { id: '%2f' } },
-      { url: '/n/{id}', pathParams: { id: '.' } },
-      { url: '/n/{id}', pathParams: { id: '\ud800' } },
-      { url: '/n/{id}', pathParams: { id: 'x', extra: 'y' } },
-      { url: '/n', params: { key: {} } },
-      { url: '/n', transport: () => {} },
-      { url: '/n', validateStatus: () => true },
-      { url: '/n', transformResponse: [] },
-    ])
-      await expect(request(config as never)).rejects.toMatchObject({ code: 'CONFIG_ERROR' })
-    expect(received).toEqual([])
-  })
-
-  it.each(['blob', 'arraybuffer'] as const)(
-    'preserves binary %s session envelopes through the inclusive 64 KiB budget',
-    async (responseType) => {
-      for (const size of [5077, 65_536]) {
-        const empty = JSON.stringify({
-          error: { code: 'SESSION_INVALID', message: '', requestId: 'body-id' },
-        })
-        const payload = JSON.stringify({
-          error: {
-            code: 'SESSION_INVALID',
-            message: 'x'.repeat(size - Buffer.byteLength(empty)),
-            requestId: 'body-id',
-          },
-        })
-        expect(Buffer.byteLength(payload)).toBe(size)
-        const origin = await fixture((_request, response) => {
-          response.writeHead(401, {
-            'content-type': 'application/json',
-            'x-request-id': 'header-id',
-          })
-          response.end(payload)
-        })
-        let handled = 0
-        const sdk = testHttp({
-          baseUrl: origin + '/api',
-          onSessionExpired: () => {
-            handled++
-          },
-          alert: false,
-        })
-        sdk.setAccessToken('current')
-        await expect(
-          sdk.request({ url: '/storage/files', params: { key: 'fixture' }, responseType }),
-        ).rejects.toMatchObject({ code: 'SESSION_INVALID', requestId: 'body-id', status: 401 })
-        await expect(
-          sdk.request({ url: '/storage/files', params: { key: 'fixture' }, responseType }),
-        ).rejects.toMatchObject({ code: 'SESSION_INVALID', requestId: 'body-id' })
-        expect(sdk.resolve().token).toBeNull()
-        expect(handled).toBe(1)
-      }
-    },
-  )
-
-  it.each(['blob', 'arraybuffer'] as const)(
-    'rejects over-budget, wrong-media, malformed and invalid-JSON binary %s envelopes without session effects',
-    async (responseType) => {
-      const empty = JSON.stringify({
-        error: { code: 'SESSION_INVALID', message: '', requestId: 'body-id' },
-      })
-      const oversized = JSON.stringify({
-        error: {
-          code: 'SESSION_INVALID',
-          message: 'x'.repeat(65_537 - Buffer.byteLength(empty)),
-          requestId: 'body-id',
-        },
-      })
-      expect(Buffer.byteLength(oversized)).toBe(65_537)
-      const valid = JSON.stringify({
-        error: { code: 'SESSION_INVALID', message: 'safe', requestId: 'body-id' },
-      })
-      const origin = await fixture((request, response) => {
-        response.writeHead(401, {
-          'content-type': request.url?.endsWith('/media') ? 'text/plain' : 'application/json',
-          'x-request-id': 'header-id',
-        })
-        response.end(
-          request.url?.endsWith('/large')
-            ? oversized
-            : request.url?.endsWith('/malformed')
-              ? JSON.stringify({
-                  error: {
-                    code: 'SESSION_INVALID',
-                    message: 'safe',
-                    requestId: 'body-id',
-                    extra: true,
-                  },
-                })
-              : request.url?.endsWith('/invalid-json')
-                ? '{invalid'
-                : valid,
-        )
-      })
-      let handled = 0
-      const sdk = testHttp({
-        baseUrl: origin + '/api',
-        onSessionExpired: () => {
-          handled++
-        },
-        alert: false,
-      })
-      sdk.setAccessToken('current')
-      for (const url of ['/large', '/media', '/malformed', '/invalid-json']) {
-        await expect(sdk.request({ url, responseType })).rejects.toMatchObject({
-          code: 'HTTP_ERROR',
-          requestId: 'header-id',
-          status: 401,
-        })
-      }
-      expect(sdk.resolve().token).toBe('current')
-      expect(handled).toBe(0)
-    },
-  )
-  it('returns JSON body and attaches a scoped token', async () => {
-    const received: string[] = []
-    const origin = await fixture((request, response) => {
-      received.push(request.headers.authorization ?? '')
-      response.setHeader('content-type', 'application/json')
-      response.end(JSON.stringify({ status: 'ok' }))
-    })
-    const sdk = testHttp({ baseUrl: `${origin}/api`, websiteBaseUrl: `${origin}/api` })
-    const http = sdk.request
-    sdk.setAccessToken('secret')
-    expect(await http({ url: '/health' })).toEqual({ status: 'ok' })
-    expect(received).toEqual(['Bearer secret'])
-  })
-
-  it('does not follow an authenticated redirect outside the API scope', async () => {
-    const received: string[] = []
-    const destination = await fixture((request, response) => {
-      received.push(request.headers.authorization ?? '')
-      response.end('reached')
-    })
-    const origin = await fixture((_request, response) => {
-      response.writeHead(302, { location: `${destination}/receive` })
-      response.end()
-    })
-    const sdk = testHttp({
-      baseUrl: `${origin}/api`,
-      websiteBaseUrl: `${origin}/api`,
-      alert: false,
-    })
-    const http = sdk.request
-    sdk.setAccessToken('secret')
-    await expect(http({ url: '/redirect' })).rejects.toBeInstanceOf(ExAxiosError)
-    expect(received).toEqual([])
-  })
-
-  it.each([302, 307])(
-    'does not forward an explicit website Authorization through a %i redirect',
-    async (status) => {
-      const received: string[] = []
-      const destination = await fixture((request, response) => {
-        received.push(request.headers.authorization ?? '')
-        response.end('reached')
-      })
-      const origin = await fixture((_request, response) => {
-        response.writeHead(status, { location: `${destination}/receive` })
-        response.end()
-      })
-      const sdk = testHttp({
-        baseUrl: `${origin}/api`,
-        websiteBaseUrl: `${origin}/api`,
-        alert: false,
-      })
-      const http = sdk.request
-      await expect(
-        http({ url: '/redirect', headers: { Authorization: 'Bearer storage-token' } }),
-      ).rejects.toMatchObject({ kind: 'http', status })
-      expect(received).toEqual([])
-    },
-  )
-
-  it.each([302, 307])(
-    'blocks %i redirects to same-origin /docs and another origin for both authentication sources',
-    async (status) => {
-      const local: string[] = [],
-        remote: string[] = []
-      const destination = await fixture((request, response) => {
-        remote.push(request.headers.authorization ?? '')
-        response.end('reached')
-      })
-      const origin = await fixture((request, response) => {
-        if (request.url === '/docs') {
-          local.push(request.headers.authorization ?? '')
-          response.end('reached')
-          return
-        }
-        response.writeHead(status, {
-          location: request.url === '/api/to-docs' ? '/docs' : `${destination}/receive`,
-        })
-        response.end()
-      })
-      const sdk = testHttp({
-        baseUrl: `${origin}/api`,
-        websiteBaseUrl: `${origin}/api`,
-        alert: false,
-      })
-      const http = sdk.request
-      for (const mode of ['explicit', 'automatic'] as const) {
-        if (mode === 'automatic') sdk.setAccessToken('internal-token')
-        for (const url of ['/to-docs', '/to-remote']) {
-          const headers =
-            mode === 'explicit' ? { Authorization: 'Bearer storage-token' } : undefined
-          await expect(http({ url, headers })).rejects.toMatchObject({ kind: 'http', status })
-        }
-      }
-      expect(local).toEqual([])
-      expect(remote).toEqual([])
-    },
-  )
-
-  it('distinguishes API scope from its prefix neighbor and preserves setters after invalid input', async () => {
-    const received: Array<{ url: string; auth?: string }> = []
-    const origin = await fixture((request, response) => {
-      received.push({ url: request.url ?? '', auth: request.headers.authorization })
-      response.setHeader('content-type', 'application/json')
-      response.end('{}')
-    })
-    const sdk = testHttp({
-      baseUrl: `${origin}/api`,
-      websiteBaseUrl: `${origin}/api`,
-      alert: false,
-    })
-    const http = sdk.request
-    sdk.setAccessToken('secret')
-    expect(() => sdk.setBaseUrl('https://user:secret@example.test/api')).toThrow(ExAxiosError)
-    expect(() => sdk.setAccessToken('bad\r\ntoken')).toThrow(ExAxiosError)
-    await http({ url: '/ok' })
-    await expect(http({ url: `${origin}/api-other` })).rejects.toMatchObject({
-      code: 'CONFIG_ERROR',
-    })
-    expect(received).toEqual([{ url: '/api/ok', auth: 'Bearer secret' }])
-  })
-
-  it('rejects unknown runtime options and unsafe URL forms before any request', async () => {
-    const received: string[] = []
-    const origin = await fixture((request, response) => {
-      received.push(request.url ?? '')
-      response.writeHead(200, { 'content-type': 'application/json' })
-      response.end('{}')
-    })
-    const missing = testHttp({ alert: false })
-    await expect(missing.request({ url: '/health' })).rejects.toMatchObject({
-      code: 'CONFIG_ERROR',
-    })
-    const sdk = testHttp({
-      baseUrl: `${origin}/api`,
-      websiteBaseUrl: `${origin}/api`,
-      alert: false,
-    })
-    const http = sdk.request
-    for (const config of [
-      { url: '/unsafe', adapter: 'fetch' },
-      { url: '/unsafe', socketPath: '/tmp/socket' },
-      { url: '/unsafe', headers: { Host: 'evil.test' } },
-      { url: '/unsafe', timeout: -1 },
-      { url: '/%2Fescape' },
-      { url: '/..\\docs' },
-    ])
-      await expect(http(config as Parameters<typeof http>[0])).rejects.toMatchObject({
-        code: 'CONFIG_ERROR',
-      })
-    expect(() => sdk.setBaseUrl('ftp://example.test/api')).toThrow(ExAxiosError)
-    await http({ url: '/ok' })
-    expect(received).toEqual(['/api/ok'])
-  })
-
-  it('encodes query parameters and rejects absolute targets on other ports', async () => {
-    const received: Array<{ url: string; auth?: string }> = []
-    const origin = await fixture((request, response) => {
-      received.push({ url: request.url ?? '', auth: request.headers.authorization })
-      response.writeHead(200, { 'content-type': 'application/json' })
-      response.end('{}')
-    })
-    const other = await fixture((request, response) => {
-      received.push({ url: request.url ?? '', auth: request.headers.authorization })
-      response.writeHead(200, { 'content-type': 'application/json' })
-      response.end('{}')
-    })
-    const sdk = testHttp({
-      baseUrl: `${origin}/api`,
-      websiteBaseUrl: `${origin}/api`,
-      alert: false,
-    })
-    const http = sdk.request
-    sdk.setAccessToken('secret')
-    await http({ url: '/sp ace', params: { tag: ['a b', 'c'], omitted: undefined } })
-    await expect(http({ url: `${other}/api/health` })).rejects.toMatchObject({
-      code: 'CONFIG_ERROR',
-    })
-    expect(received).toEqual([{ url: '/api/sp%20ace?tag=a+b&tag=c', auth: 'Bearer secret' }])
-  })
-
-  it('lets the typed storage download carry an encoded slash in its query key over real HTTP', async () => {
-    const received: string[] = []
-    const origin = await fixture((request, response) => {
-      received.push(request.url ?? '')
-      response.writeHead(200, { 'content-type': 'application/octet-stream' })
-      response.end(Buffer.from([3, 4, 5]))
-    })
-    const sdk = testHttp({
-      baseUrl: `${origin}/api`,
-      websiteBaseUrl: `${origin}/api`,
-      alert: false,
-    })
-    const http = sdk.request
-    const body = (await http({
-      url: '/storage/files',
-      params: { key: 'demo/file.bin' },
-      responseType: 'arraybuffer',
-    })) as ArrayBuffer
-    expect([...new Uint8Array(body)]).toEqual([3, 4, 5])
-    expect(received).toEqual(['/api/storage/files?key=demo%2Ffile.bin'])
-    await expect(http({ url: '/storage%2Ffiles' })).rejects.toMatchObject({ code: 'CONFIG_ERROR' })
-  })
-
-  it('classifies the actual Axios fetch adapter deadline as TIMEOUT', async () => {
-    const origin = await fixture((_request, _response) => {})
-    const sdk = browserHttp(
-      { environment: 'browser', origin },
-      { baseUrl: `${origin}/api`, websiteBaseUrl: `${origin}/api`, alert: false },
-    )
-    const http = sdk.request
-    await expect(http({ url: '/slow', timeout: 20 })).rejects.toMatchObject({
-      kind: 'timeout',
-      code: 'TIMEOUT',
-    })
-  })
-
-  it('does not clear the local session for an unrelated explicit Authorization', async () => {
-    const auth: string[] = []
-    const origin = await fixture((request, response) => {
-      auth.push(request.headers.authorization ?? '')
-      if (request.url === '/api/ok') {
-        response.writeHead(200, { 'content-type': 'application/json' })
-        response.end('{}')
-        return
-      }
-      response.writeHead(401, { 'content-type': 'application/json' })
-      response.end(
-        JSON.stringify({ error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'r' } }),
-      )
-    })
-    let expired = 0
-    const sdk = testHttp({
-      baseUrl: `${origin}/api`,
-      websiteBaseUrl: `${origin}/api`,
-      alert: false,
-      onSessionExpired: () => {
-        expired++
-      },
-    })
-    const http = sdk.request
-    sdk.setAccessToken('internal')
+  for (mode of ['html', 'unknown', 'large'])
     await expect(
-      http({ url: '/expired', headers: { Authorization: 'Bearer other' } }),
-    ).rejects.toMatchObject({ code: 'SESSION_INVALID' })
-    await http({ url: '/ok' })
-    expect(expired).toBe(0)
-    expect(auth).toEqual(['Bearer other', 'Bearer internal'])
-  })
+      request({ url: '/api/health', responseType: 'arraybuffer' }),
+    ).rejects.toMatchObject({ code: 'HTTP_ERROR', message: '请求失败，请稍后重试', status: 500 })
+})
 
-  it('classifies a JSON error and ignores a forged incoming request ID', async () => {
-    const origin = await fixture((_request, response) => {
-      response.writeHead(429, {
-        'content-type': 'application/json',
-        'x-request-id': 'header-id',
-        'retry-after': '2',
-      })
-      response.end(
-        JSON.stringify({
-          error: { code: 'RATE_LIMITED', message: '请稍后重试', requestId: 'body-id' },
-        }),
-      )
+it('accepts exactly 64 KiB of JSON error bytes and rejects the next byte', async () => {
+  const empty = JSON.stringify({ msg: '' })
+  let size = 65_536
+  const origin = await service((_req, res) =>
+    json(res, 401, { msg: 'x'.repeat(size - Buffer.byteLength(empty)) }),
+  )
+  const sdk = createRuntime({ environment: 'node' })
+  sdk.setBaseUrl(origin)
+  for (const responseType of ['blob', 'arraybuffer'] as const) {
+    await expect(sdk.instance({ url: '/api/health', responseType })).rejects.toMatchObject({
+      message: 'x'.repeat(size - Buffer.byteLength(empty)),
+      status: 401,
     })
-    const sdk = testHttp({
-      baseUrl: `${origin}/api`,
-      websiteBaseUrl: `${origin}/api`,
-      alert: false,
+    size = 65_537
+    await expect(sdk.instance({ url: '/api/health', responseType })).rejects.toMatchObject({
+      message: '请求失败，请稍后重试',
+      status: 401,
     })
-    const http = sdk.request
-    await expect(http({ url: '/wait' })).rejects.toMatchObject({
-      kind: 'http',
-      code: 'RATE_LIMITED',
-      status: 429,
-      requestId: 'body-id',
-      retryAfterSeconds: 2,
+    size = 65_536
+  }
+})
+
+it('expires only a protected 401 for the current token, preserving anonymous and foreign Authorization failures', async () => {
+  const seen: string[] = []
+  const origin = await service((req, res) => {
+    seen.push(req.headers.authorization ?? '')
+    json(res, req.url === '/api/auth/me' || req.url === '/api/auth/login' ? 401 : 403, {
+      msg: '凭据错误',
     })
   })
+  let token: string | null = 'current',
+    cleared = 0,
+    expired = 0
+  const sdk = createRuntime({
+    environment: 'browser',
+    origin,
+    readToken: () => ({ kind: 'known', value: token }),
+    clearToken: (expected) => {
+      if (token !== expected) return false
+      token = null
+      cleared++
+      return true
+    },
+  })
+  sdk.setSessionExpiredHandler(() => {
+    expired++
+  })
+  const request = sdk.instance as (config: Record<string, unknown>) => Promise<unknown>
+  await expect(request({ url: '/api/auth/login', method: 'POST' })).rejects.toMatchObject({
+    status: 401,
+  })
+  await expect(
+    request({ url: '/api/auth/me', headers: { Authorization: 'Bearer other' } }),
+  ).rejects.toMatchObject({ status: 401 })
+  await expect(request({ url: '/api/health' })).rejects.toMatchObject({ status: 403 })
+  expect(token).toBe('current')
+  expect(cleared).toBe(0)
+  await expect(request({ url: '/api/auth/me', alert: false })).rejects.toMatchObject({
+    code: 'HTTP_ERROR',
+    status: 401,
+  })
+  expect(token).toBeNull()
+  expect(cleared).toBe(1)
+  expect(expired).toBe(1)
+  expect(seen).toEqual(['Bearer current', 'Bearer other', 'Bearer current', 'Bearer current'])
+})
 
-  it('handles one concurrent invalid session once and allows a newly supplied token', async () => {
-    let count = 0
-    const auth: string[] = []
-    const origin = await fixture((request, response) => {
-      auth.push(request.headers.authorization ?? '')
-      if (request.url === '/api/ok') {
-        response.setHeader('content-type', 'application/json')
-        response.end('{}')
-        return
-      }
-      response.setHeader('content-type', 'application/json')
-      response.statusCode = 401
-      response.end(
-        JSON.stringify({
-          error: { code: 'SESSION_INVALID', message: '登录状态已失效', requestId: 'req-1' },
-        }),
-      )
-    })
-    const sdk = testHttp({
-      baseUrl: `${origin}/api`,
-      websiteBaseUrl: `${origin}/api`,
-      alert: false,
-      onSessionExpired: () => {
-        count++
+it('does not clear a replacement credential after a late protected 401', async () => {
+  let release: (() => void) | undefined
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const origin = await service(async (_req, res) => {
+    await gate
+    json(res, 401, { msg: '过期' })
+  })
+  let token: string | null = 'old',
+    cleared = 0
+  const sdk = createRuntime({
+    environment: 'browser',
+    origin,
+    readToken: () => ({ kind: 'known', value: token }),
+    clearToken: () => {
+      cleared++
+      token = null
+      return true
+    },
+  })
+  const pending = sdk.instance({ url: '/api/auth/me' })
+  token = 'new'
+  release?.()
+  await expect(pending).rejects.toMatchObject({ status: 401 })
+  expect(token).toBe('new')
+  expect(cleared).toBe(0)
+})
+
+it('does not clear a token on a new service root after a late 401', async () => {
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const origin = await service(async (_req, res) => {
+    await gate
+    json(res, 401, { msg: 'expired' })
+  })
+  const sdk = createRuntime({ environment: 'node' })
+  sdk.setBaseUrl(origin)
+  sdk.setAccessToken('old')
+  let expired = 0
+  sdk.setSessionExpiredHandler(() => {
+    expired++
+  })
+  const pending = sdk.instance({ url: '/api/auth/me' })
+  sdk.setBaseUrl(`${origin}/other`)
+  sdk.setAccessToken('new')
+  release()
+  await expect(pending).rejects.toMatchObject({ status: 401 })
+  expect(expired).toBe(0)
+})
+
+it('preserves the HTTP error when notification and session handlers throw', async () => {
+  const origin = await service((_req, res) => json(res, 401, { msg: 'expired' }))
+  let token: string | null = 'current'
+  const sdk = createRuntime({
+    environment: 'browser',
+    origin,
+    readToken: () => ({ kind: 'known', value: token }),
+    clearToken: (expected) => {
+      if (token !== expected) return false
+      token = null
+      return true
+    },
+    notify: () => {
+      throw Error('notification failure')
+    },
+  })
+  sdk.setSessionExpiredHandler(() => {
+    throw Error('handler failure')
+  })
+  await expect(sdk.instance({ url: '/api/auth/me' })).rejects.toMatchObject({
+    code: 'HTTP_ERROR',
+    status: 401,
+    message: 'expired',
+  })
+  expect(token).toBeNull()
+})
+
+it('rejects redirects and classifies cancellation without exposing transport details', async () => {
+  const origin = await service((_req, res) => {
+    res.writeHead(302, { location: 'https://outside.example/steal' })
+    res.end()
+  })
+  const sdk = createRuntime({ environment: 'node' })
+  sdk.setBaseUrl(origin)
+  sdk.setAccessToken('private')
+  await expect(sdk.instance({ url: '/api/health' })).rejects.toMatchObject({
+    kind: 'http',
+    status: 302,
+  })
+  const controller = new AbortController()
+  controller.abort()
+  await expect(
+    sdk.instance({ url: '/api/health', signal: controller.signal }),
+  ).rejects.toMatchObject({ kind: 'cancelled', code: 'CANCELLED' })
+})
+
+it('classifies a real request deadline as TIMEOUT', async () => {
+  const origin = await service((_req, _res) => {})
+  const sdk = createRuntime({ environment: 'node' })
+  sdk.setBaseUrl(origin)
+  await expect(sdk.instance({ url: '/api/health', timeout: 20 })).rejects.toMatchObject({
+    kind: 'timeout',
+    code: 'TIMEOUT',
+  })
+})
+
+it('does not notify or navigate if persisted token removal cannot be confirmed', async () => {
+  const origin = await service((_req, res) => json(res, 401, { msg: 'expired' }))
+  let token: string | null = 'old',
+    notified = 0,
+    navigated = 0
+  const sdk = createRuntime({
+    environment: 'browser',
+    origin,
+    readToken: () => ({ kind: 'known', value: token }),
+    clearToken: () => {
+      token = 'new'
+      return true
+    },
+    notify: () => {
+      notified++
+    },
+    navigate: () => {
+      navigated++
+    },
+  })
+  await expect(sdk.instance({ url: '/api/auth/me' })).rejects.toMatchObject({ status: 401 })
+  expect(token).toBe('new')
+  expect(notified).toBe(0)
+  expect(navigated).toBe(0)
+})
+
+it.each(['false', 'true', 'void', 'throw'] as const)(
+  'handles explicit-root 401 with %s session handler before any alert',
+  async (outcome) => {
+    const origin = await service((_req, res) => json(res, 401, { msg: 'expired' }))
+    const events: string[] = []
+    const sdk = createRuntime({
+      environment: 'browser',
+      origin,
+      notify: () => {
+        events.push('notify')
+      },
+      navigate: () => {
+        events.push('navigate')
       },
     })
-    const http = sdk.request
-    sdk.setAccessToken('old')
-    const results = await Promise.allSettled([http({ url: '/expired' }), http({ url: '/expired' })])
-    expect(results.map((result) => result.status)).toEqual(['rejected', 'rejected'])
-    expect(count).toBe(1)
-    sdk.setAccessToken('new')
-    await http({ url: '/ok' })
-    expect(auth).toEqual(['Bearer old', 'Bearer old', 'Bearer new'])
-  })
-
-  it('ignores a late invalid session from an older token revision', async () => {
-    let release!: () => void, arrived!: () => void
-    const reached = new Promise<void>((resolve) => {
-      arrived = resolve
+    sdk.setBaseUrl(`${origin}/backend`)
+    sdk.setAccessToken('persisted-token')
+    sdk.setSessionExpiredHandler(() => {
+      events.push('handler')
+      if (outcome === 'throw') throw Error('cleanup failed')
+      if (outcome === 'false') return false
+      if (outcome === 'true') return true
     })
-    const gate = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    const auth: string[] = []
-    const origin = await fixture(async (request, response) => {
-      auth.push(request.headers.authorization ?? '')
-      if (request.url === '/api/slow') {
-        arrived()
-        await gate
-        response.statusCode = 401
-        response.setHeader('content-type', 'application/json')
-        response.end(
-          JSON.stringify({
-            error: { code: 'SESSION_INVALID', message: '登录状态已失效', requestId: 'req-2' },
-          }),
-        )
-      } else {
-        response.setHeader('content-type', 'application/json')
-        response.end('{}')
-      }
-    })
-    let expired = 0
-    const sdk = testHttp({
-      baseUrl: `${origin}/api`,
-      websiteBaseUrl: `${origin}/api`,
-      alert: false,
-      onSessionExpired: () => {
-        expired++
-      },
-    })
-    const http = sdk.request
-    sdk.setAccessToken('old')
-    const pending = http({ url: '/slow' })
-    await reached
-    sdk.setAccessToken('new')
-    release()
-    await expect(pending).rejects.toMatchObject({ code: 'SESSION_INVALID' })
-    await http({ url: '/ok' })
-    expect(expired).toBe(0)
-    expect(auth).toEqual(['Bearer old', 'Bearer new'])
-  })
-
-  it('ignores a late 401 from an older website scope and can expire a newly set token', async () => {
-    let release!: () => void, arrived!: () => void
-    const gate = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    const reached = new Promise<void>((resolve) => {
-      arrived = resolve
-    })
-    const oldOrigin = await fixture(async (_request, response) => {
-      arrived()
-      await gate
-      response.writeHead(401, { 'content-type': 'application/json' })
-      response.end(
-        JSON.stringify({
-          error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'old' },
-        }),
-      )
-    })
-    const newAuth: string[] = []
-    const newOrigin = await fixture((request, response) => {
-      newAuth.push(request.headers.authorization ?? '')
-      response.writeHead(401, { 'content-type': 'application/json' })
-      response.end(
-        JSON.stringify({
-          error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'new' },
-        }),
-      )
-    })
-    let expired = 0
-    const sdk = testHttp({
-      baseUrl: `${oldOrigin}/api`,
-      websiteBaseUrl: `${oldOrigin}/api`,
-      alert: false,
-      onSessionExpired: () => {
-        expired++
-      },
-    })
-    const http = sdk.request
-    sdk.setAccessToken('old-token')
-    const pending = http({ url: '/slow' })
-    await reached
-    sdk.setBaseUrl(`${newOrigin}/api`)
-    sdk.setAccessToken('new-token')
-    release()
-    await expect(pending).rejects.toMatchObject({ code: 'SESSION_INVALID' })
-    expect(expired).toBe(0)
-    await expect(http({ url: '/expire' })).rejects.toMatchObject({ code: 'SESSION_INVALID' })
-    expect(expired).toBe(1)
-    sdk.setAccessToken('another-token')
-    await expect(http({ url: '/expire' })).rejects.toMatchObject({ code: 'SESSION_INVALID' })
-    expect(expired).toBe(2)
-    expect(newAuth).toEqual(['Bearer new-token', 'Bearer another-token'])
-  })
-
-  it('does not clear or navigate when a bound browser session becomes unreadable', async () => {
-    let reads = 0,
-      clears = 0,
-      notifications = 0,
-      navigations = 0
-    const authorization: string[] = []
-    const origin = await fixture((request, response) => {
-      authorization.push(request.headers.authorization ?? '')
-      response.writeHead(401, { 'content-type': 'application/json' })
-      response.end(
-        JSON.stringify({
-          error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'unreadable' },
-        }),
-      )
-    })
-    const sdk = browserHttp(
-      {
-        environment: 'browser',
-        origin,
-        readToken: () => {
-          if (++reads === 1) return 'old-token'
-          throw new Error('storage unavailable')
-        },
-        clearToken: () => {
-          clears++
-          return true
-        },
-        notify: () => {
-          notifications++
-        },
-        navigate: () => {
-          navigations++
-        },
-      },
-      { baseUrl: `${origin}/api`, websiteBaseUrl: `${origin}/api` },
-    )
-    const http = sdk.request
-    await expect(http({ url: '/expired' })).rejects.toMatchObject({ code: 'SESSION_INVALID' })
-    expect(authorization).toEqual(['Bearer old-token'])
-    expect(clears).toBe(0)
-    expect(notifications).toBe(0)
-    expect(navigations).toBe(0)
-  })
-
-  it('does not replace an explicit in-memory token with an unrelated persisted token', async () => {
-    const authorization: string[] = []
-    const origin = await fixture((request, response) => {
-      authorization.push(request.headers.authorization ?? '')
-      response.writeHead(401, { 'content-type': 'application/json' })
-      response.end(
-        JSON.stringify({
-          error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'manual' },
-        }),
-      )
-    })
-    let stored = 'persisted-token',
-      clears = 0
-    const sdk = browserHttp(
-      {
-        environment: 'browser',
-        origin,
-        readToken: () => stored,
-        clearToken: () => {
-          clears++
-          stored = ''
-          return true
-        },
-      },
-      { baseUrl: `${origin}/api`, websiteBaseUrl: `${origin}/api`, alert: false },
-    )
-    const http = sdk.request
-    sdk.setAccessToken('manual-token')
-    await expect(http({ url: '/expired' })).rejects.toMatchObject({ code: 'SESSION_INVALID' })
-    expect(authorization).toEqual(['Bearer manual-token'])
-    expect(stored).toBe('persisted-token')
-    expect(clears).toBe(0)
-  })
-
-  it('keeps network, cancellation, and timeout errors free of request details', async () => {
-    const origin = await fixture((_request, _response) => {})
-    const sdk = testHttp({
-      baseUrl: `${origin}/api`,
-      websiteBaseUrl: `${origin}/api`,
-      alert: false,
-    })
-    const http = sdk.request
-    const cancelled = new AbortController()
-    cancelled.abort()
-    await expect(http({ url: '/cancel', signal: cancelled.signal })).rejects.toMatchObject({
-      code: 'CANCELLED',
-    })
-    await expect(http({ url: '/timeout', timeout: 10 })).rejects.toMatchObject({ code: 'TIMEOUT' })
-  })
-
-  it('snapshots alert choice at send time and leaves callback errors behind', async () => {
-    const messages: string[] = []
-    const origin = await fixture((_request, response) => {
-      response.statusCode = 503
-      response.end('not-json')
-    })
-    const sdk = browserHttp(
-      { environment: 'node', notify: (message) => messages.push(message) },
-      { baseUrl: `${origin}/api`, websiteBaseUrl: `${origin}/api`, alert: false },
-    )
-    const http = sdk.request
-    await expect(http({ url: '/silent' })).rejects.toBeInstanceOf(ExAxiosError)
-    await expect(http({ url: '/loud', alert: true })).rejects.toMatchObject({ code: 'HTTP_ERROR' })
-    expect(messages).toEqual(['请求失败，请稍后重试'])
-  })
-
-  it('rejects invalid success JSON and parses small binary errors and HTTP-date Retry-After', async () => {
-    const retryDate = new Date(Date.now() + 30_000).toUTCString()
-    const origin = await fixture((request, response) => {
-      if (request.url === '/api/invalid') {
-        response.writeHead(200, { 'content-type': 'application/json' })
-        response.end('{invalid')
-        return
-      }
-      response.writeHead(429, { 'content-type': 'application/json', 'retry-after': retryDate })
-      response.end(
-        JSON.stringify({
-          error: { code: 'RATE_LIMITED', message: 'try later', requestId: 'binary-id' },
-        }),
-      )
-    })
-    const sdk = testHttp({
-      baseUrl: `${origin}/api`,
-      websiteBaseUrl: `${origin}/api`,
-      alert: false,
-    })
-    const http = sdk.request
-    await expect(http({ url: '/invalid' })).rejects.toMatchObject({
+    await expect(sdk.instance({ url: '/api/auth/me', alert: true })).rejects.toMatchObject({
       code: 'HTTP_ERROR',
-      status: 200,
+      status: 401,
     })
-    const error = await http({ url: '/binary', responseType: 'arraybuffer' }).then(
-      () => {
-        throw new Error('expected HTTP failure')
-      },
-      (value) => value as ExAxiosError,
+    expect(events).toEqual(
+      outcome === 'true' || outcome === 'void' ? ['handler', 'notify'] : ['handler'],
     )
-    expect(error).toMatchObject({ code: 'RATE_LIMITED', status: 429, requestId: 'binary-id' })
-    expect(error.retryAfterSeconds).toBeGreaterThanOrEqual(28)
-    expect(error.retryAfterSeconds).toBeLessThanOrEqual(30)
-  })
+  },
+)
 
-  it('preserves the HTTP error when notification and session callbacks throw', async () => {
-    const origin = await fixture((_request, response) => {
-      response.writeHead(401, { 'content-type': 'application/json' })
-      response.end(
-        JSON.stringify({
-          error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'safe-id' },
-        }),
-      )
-    })
-    const sdk = browserHttp(
-      {
-        environment: 'node',
-        notify: () => {
-          throw new Error('notify failed')
-        },
-      },
-      {
-        baseUrl: `${origin}/api`,
-        websiteBaseUrl: `${origin}/api`,
-        onSessionExpired: () => {
-          throw new Error('callback failed')
-        },
-      },
-    )
-    sdk.setAccessToken('secret')
-    await expect(sdk.request({ url: '/expired' })).rejects.toMatchObject({
-      code: 'SESSION_INVALID',
-      requestId: 'safe-id',
-    })
+it('notifies once for concurrent protected 401s only after a successful handler', async () => {
+  const origin = await service((_req, res) => json(res, 401, { msg: 'expired' }))
+  const events: string[] = []
+  const sdk = createRuntime({
+    environment: 'browser',
+    origin,
+    notify: () => {
+      events.push('notify')
+    },
   })
+  sdk.setBaseUrl(`${origin}/backend`)
+  sdk.setAccessToken('persisted-token')
+  sdk.setSessionExpiredHandler(() => {
+    events.push('handler')
+    return true
+  })
+  const responses = await Promise.allSettled([
+    sdk.instance({ url: '/api/auth/me', alert: true }),
+    sdk.instance({ url: '/api/auth/me', alert: true }),
+  ])
+  expect(
+    responses.every((result) => result.status === 'rejected' && result.reason.status === 401),
+  ).toBe(true)
+  expect(events).toEqual(['handler', 'notify'])
+})
+
+it('keeps Promise handlers nonblocking while deferring alert until confirmation', async () => {
+  const origin = await service((_req, res) => json(res, 401, { msg: 'expired' }))
+  let confirm!: (value: boolean | void) => void
+  const confirmation = new Promise<boolean | void>((resolve) => {
+    confirm = resolve
+  })
+  const events: string[] = []
+  const sdk = createRuntime({
+    environment: 'browser',
+    origin,
+    notify: () => {
+      events.push('notify')
+    },
+  })
+  sdk.setBaseUrl(`${origin}/backend`)
+  sdk.setAccessToken('persisted-token')
+  sdk.setSessionExpiredHandler(() => {
+    events.push('handler')
+    return confirmation
+  })
+  await expect(sdk.instance({ url: '/api/auth/me', alert: true })).rejects.toMatchObject({
+    status: 401,
+  })
+  expect(events).toEqual(['handler'])
+  confirm(undefined)
+  await confirmation
+  await Promise.resolve()
+  expect(events).toEqual(['handler', 'notify'])
+})
+
+it('suppresses alert after an asynchronous veto or rejection without replacing the 401', async () => {
+  for (const outcome of [false, 'reject'] as const) {
+    const origin = await service((_req, res) => json(res, 401, { msg: 'expired' }))
+    const events: string[] = []
+    const sdk = createRuntime({
+      environment: 'browser',
+      origin,
+      notify: () => {
+        events.push('notify')
+      },
+    })
+    sdk.setBaseUrl(`${origin}/backend`)
+    sdk.setAccessToken('persisted-token')
+    sdk.setSessionExpiredHandler(() =>
+      outcome === false ? Promise.resolve(false) : Promise.reject(Error('cleanup failed')),
+    )
+    await expect(sdk.instance({ url: '/api/auth/me', alert: true })).rejects.toMatchObject({
+      code: 'HTTP_ERROR',
+      status: 401,
+    })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(events).toEqual([])
+  }
 })

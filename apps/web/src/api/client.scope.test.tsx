@@ -22,11 +22,13 @@ const requests: Array<{ url: string; authorization: string | undefined }> = []
 const replace = vi.fn()
 const json = (response: ServerResponse, status: number, body: unknown) => {
   response.writeHead(status, { 'content-type': 'application/json' })
-  response.end(JSON.stringify(body))
+  response.end(
+    JSON.stringify(status >= 400 ? { msg: 'request failed' } : { msg: 'ok', data: body }),
+  )
 }
 const expired = (response: ServerResponse) =>
   json(response, 401, {
-    error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'scope-fixture' },
+    error: { code: 'HTTP_ERROR', message: 'expired', requestId: 'scope-fixture' },
   })
 
 async function install(base = '/custom-api') {
@@ -36,7 +38,7 @@ async function install(base = '/custom-api') {
   return import('../auth/storage')
 }
 async function request() {
-  return (await import('@workspace/sdk')).instance({ url: '/auth/me', alert: false })
+  return (await import('@workspace/sdk')).instance({ url: '/api/auth/me', alert: false })
 }
 async function reload(base = '/custom-api') {
   cleanup()
@@ -54,7 +56,15 @@ beforeEach(async () => {
   window.localStorage.clear()
   window.sessionStorage.clear()
   respond = (_request, response) =>
-    json(response, 200, { nickname: 'Scoped account', avatarUrl: null })
+    json(response, 200, {
+      id: 1,
+      username: 'Scoped account',
+      avatar: null,
+      email: 'scope@example.test',
+      qq: null,
+      platform_role: '',
+      last_login_time: null,
+    })
   server = createServer((request, response) => {
     requests.push({ url: request.url!, authorization: request.headers.authorization })
     respond(request, response)
@@ -142,7 +152,9 @@ it('restores a persisted custom login into the real Browser SDK before AuthProvi
     </AuthProvider>,
   )
   await waitFor(() => expect(screen.getByTestId('state').textContent).toBe('authenticated'))
-  expect(requests).toEqual([{ url: '/custom-api/auth/me', authorization: 'Bearer custom-account' }])
+  expect(requests).toEqual([
+    { url: '/custom-api/api/auth/me', authorization: 'Bearer custom-account' },
+  ])
   expect(window.localStorage.getItem(storage.AUTH_TOKEN_KEY)).toBe('default-account')
 })
 
@@ -196,7 +208,10 @@ it('validates a new root before changing scope or credentials', async () => {
   })
   expect(storage.readToken(window.localStorage)).toBe('custom-A')
   await request()
-  expect(requests.at(-1)).toEqual({ url: '/custom-api/auth/me', authorization: 'Bearer custom-A' })
+  expect(requests.at(-1)).toEqual({
+    url: '/custom-api/api/auth/me',
+    authorization: 'Bearer custom-A',
+  })
 })
 
 it('synchronizes cross-tab replacement, removal and clear before requests while ignoring unrelated events', async () => {
@@ -236,7 +251,7 @@ it('expires restored custom credentials without deleting default or another root
   const keyA = keyFor('expired-custom')
   storage = await reload()
   respond = (_request, response) => expired(response)
-  await expect(request()).rejects.toMatchObject({ code: 'SESSION_INVALID' })
+  await expect(request()).rejects.toMatchObject({ code: 'HTTP_ERROR' })
   expect(requests.at(-1)?.authorization).toBe('Bearer expired-custom')
   expect(storage.readToken(window.localStorage)).toBeNull()
   expect(window.localStorage.getItem(keyA)).toBeNull()
@@ -258,7 +273,7 @@ it.each(['logout', 'expiry'] as const)(
     if (action === 'logout') storage.clearBrowserSession()
     else {
       respond = (_request, response) => expired(response)
-      await expect(request()).rejects.toMatchObject({ code: 'SESSION_INVALID' })
+      await expect(request()).rejects.toMatchObject({ code: 'HTTP_ERROR' })
     }
     expect(storage.readRawToken(window.localStorage)).toBe('same-token')
     expect(storage.readToken(window.localStorage)).toBeNull()
@@ -281,7 +296,7 @@ it.each(['getItem', 'accessor'] as const)(
   'does not borrow default credentials when scoped storage %s fails on startup',
   async (failure) => {
     const persistent = window.localStorage
-    persistent.setItem('exwebsite.auth.token', 'default-token')
+    persistent.setItem(`exwebsite.php.auth.v1:${encodeURIComponent(root)}`, 'default-token')
     let read: ReturnType<typeof vi.spyOn> | undefined
     if (failure === 'accessor') storageUnavailable = true
     else
@@ -295,7 +310,9 @@ it.each(['getItem', 'accessor'] as const)(
     read?.mockRestore()
     storageUnavailable = false
     expect(storage.readToken(persistent)).toBeNull()
-    expect(persistent.getItem('exwebsite.auth.token')).toBe('default-token')
+    expect(persistent.getItem(`exwebsite.php.auth.v1:${encodeURIComponent(root)}`)).toBe(
+      'default-token',
+    )
   },
 )
 
@@ -331,7 +348,7 @@ it('preserves a replacement raw token when restored custom expiry arrives before
   await reached
   window.localStorage.setItem(key, 'replacement-custom')
   release()
-  await expect(pending).rejects.toMatchObject({ code: 'SESSION_INVALID' })
+  await expect(pending).rejects.toMatchObject({ code: 'HTTP_ERROR' })
   expect(storage.readToken(window.localStorage)).toBe('replacement-custom')
   expect(replace).not.toHaveBeenCalled()
   respond = (_request, response) => json(response, 200, { status: 'ok' })
@@ -360,11 +377,11 @@ it('does not let an old root response expire an equal-token new root or a stale 
   storage.writeToken(window.localStorage, 'shared-string')
   disposeA()
   release()
-  await expect(pending).rejects.toMatchObject({ code: 'SESSION_INVALID' })
+  await expect(pending).rejects.toMatchObject({ code: 'HTTP_ERROR' })
   expect(storage.readToken(window.localStorage)).toBe('shared-string')
   expect(replace).not.toHaveBeenCalled()
   respond = (_request, response) => expired(response)
-  await expect(request()).rejects.toMatchObject({ code: 'SESSION_INVALID' })
+  await expect(request()).rejects.toMatchObject({ code: 'HTTP_ERROR' })
   expect(storage.readToken(window.localStorage)).toBeNull()
   expect(replace).toHaveBeenCalledWith('/login')
 })
@@ -415,47 +432,11 @@ it.each(['login', 'logout'] as const)(
       phase === 'logout' ? 'old-account' : null,
     )
     expect(replace).not.toHaveBeenCalled()
-    expect(requests.filter((request) => request.url.startsWith('/custom-B/'))).toEqual([])
-  },
-)
-
-it.each(['inspect', 'accept'] as const)(
-  'discards late OIDC %s results after a same-token root switch',
-  async (phase) => {
-    const storage = await install()
-    storage.writeToken(window.localStorage, 'same-account')
-    let release!: () => void, arrived!: () => void
-    const gate = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    const reached = new Promise<void>((resolve) => {
-      arrived = resolve
-    })
-    respond = (request, response) => {
-      const body = request.url?.endsWith('/inspect')
-        ? { clientName: 'Fixture', scopes: ['openid'] }
-        : { redirectUrl: `${root}/hydra-complete` }
-      if ((phase === 'inspect') === request.url?.endsWith('/inspect')) {
-        arrived()
-        void gate.then(() => json(response, 200, body))
-      } else json(response, 200, body)
-    }
-    const { OidcPage } = await import('../pages/IdentityPage/OidcPage')
-    render(
-      <MemoryRouter initialEntries={['/identity/login?login_challenge=fixture']}>
-        <OidcPage phase="login" />
-      </MemoryRouter>,
-    )
-    await reached
-    await install('/custom-B')
-    storage.writeToken(window.localStorage, 'same-account')
-    await act(async () => {
-      release()
-      await new Promise((resolve) => setTimeout(resolve, 30))
-    })
-    expect(replace).not.toHaveBeenCalled()
-    expect(storage.readRawToken(window.localStorage)).toBe('same-account')
-    expect(requests.filter((request) => request.url.startsWith('/custom-B/'))).toEqual([])
+    expect(
+      requests.filter(
+        (request) => request.url.startsWith('/custom-B/') && !request.url.endsWith('/api/auth/me'),
+      ),
+    ).toEqual([])
   },
 )
 
@@ -474,7 +455,7 @@ it.each(['getItem', 'accessor'] as const)(
       read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
         throw new Error('denied')
       })
-    await expect(request()).rejects.toMatchObject({ code: 'SESSION_INVALID' })
+    await expect(request()).rejects.toMatchObject({ code: 'HTTP_ERROR' })
     expect(requests.at(-1)?.authorization).toBe('Bearer restored-token')
     expect(replace).not.toHaveBeenCalled()
     read?.mockRestore()
@@ -562,7 +543,7 @@ it('drops an invitation automatic chain before sending its code to a replacement
     arrived = resolve
   })
   respond = (request, response) => {
-    if (request.url === '/custom-api/auth/invitations/check') {
+    if (request.url === '/custom-api/api/auth/invitations/check') {
       release = () =>
         json(response, 200, {
           status: 'eligible',
@@ -594,7 +575,7 @@ it('drops an invitation automatic chain before sending its code to a replacement
     release()
     await new Promise((resolve) => setTimeout(resolve, 30))
   })
-  expect(requests.map((request) => request.url)).toEqual(['/custom-api/auth/invitations/check'])
+  expect(requests.map((request) => request.url)).toEqual(['/custom-api/api/auth/invitations/check'])
   expect(screen.queryByLabelText('密码')).toBeNull()
   expect(screen.getByLabelText('邮箱')).toBeTruthy()
 })
@@ -637,12 +618,12 @@ it('clears invitation credentials and the password form on a root switch but pre
   expect(screen.queryByLabelText('6 位验证码')).toBeNull()
   expect(screen.getByLabelText('邮箱')).toBeTruthy()
   expect(requests.map((request) => request.url)).toEqual([
-    '/custom-api/auth/invitations/check',
-    '/custom-api/auth/invitations/verify',
+    '/custom-api/api/auth/invitations/check',
+    '/custom-api/api/auth/invitations/verify',
   ])
   await user.click(screen.getByRole('button', { name: '继续' }))
   expect(await screen.findByLabelText('6 位验证码')).toBeTruthy()
-  expect(requests.at(-1)?.url).toBe('/custom-B/auth/invitations/check')
+  expect(requests.at(-1)?.url).toBe('/custom-B/api/auth/invitations/check')
 })
 
 it('clears retained profile and notification caches on installation without mounted consumers', async () => {
@@ -653,19 +634,20 @@ it('clears retained profile and notification caches on installation without moun
   settings.bindSettingsToken('same-token')
   notifications.bindNotificationsToken('same-token')
   settings.settingsConfig.profile.snapshot = {
-    id: 'fixture',
+    id: 1,
+    platform_role: 'user',
+    last_login_time: null,
     email: 'fixture@example.test',
-    nickname: 'Old root',
+    username: 'Old root',
     qq: null,
-    fivemId: null,
-    avatarUrl: null,
+    avatar: null,
   }
   notifications.notificationsConfig.summary.unreadCount = 42
   notifications.notificationsConfig.summary.status = 'ready'
   const pending = settings.beginSettingsRequest('same-token')!
   const generation = notifications.captureNotificationRead()
   window.localStorage.setItem(
-    `${storage.AUTH_TOKEN_KEY}:${encodeURIComponent(`${root}/custom-B`)}`,
+    `exwebsite.php.auth.v1:${encodeURIComponent(`${root}/custom-B`)}`,
     'same-token',
   )
   await install('/custom-B')
@@ -701,7 +683,7 @@ it('keeps default failed-logout suppression when returning from a custom root wh
   expect(requests.at(-1)?.authorization).toBe('Bearer retained-default')
 })
 
-const feedbackOptions: components['schemas']['FeedbackOptions'] = {
+const feedbackOptions: components['schemas']['FeedbackOptionsData'] = {
   available: true,
   reason: null,
   fields: [],
@@ -716,12 +698,26 @@ const feedbackOptions: components['schemas']['FeedbackOptions'] = {
     fileBytes: 20971520,
     files: 5,
     totalFileBytes: 104857600,
-    largeFileInfoBytes: 16384,
+    largeFileInfoBytes: 65536,
   },
 }
 
 async function mountFeedback() {
   const { ThemeProvider, Toaster } = await import('@exre/exui')
+  const { AuthProvider } = await import('../auth/AuthContext')
+  const previousRespond = respond
+  respond = (request, response) =>
+    request.url?.endsWith('/api/auth/me')
+      ? json(response, 200, {
+          id: 1,
+          username: 'Feedback user',
+          avatar: null,
+          email: 'user@example.test',
+          qq: null,
+          platform_role: '',
+          last_login_time: null,
+        })
+      : previousRespond(request, response)
   const { FeedbackProvider, useFeedback } =
     await import('../pages/Support/feedback/FeedbackProvider')
   await import('../pages/Support/feedback/FeedbackModal')
@@ -737,13 +733,21 @@ async function mountFeedback() {
     <ThemeProvider defaultTheme="light">
       <Toaster />
       <MemoryRouter>
-        <FeedbackProvider>
-          <Entry />
-        </FeedbackProvider>
+        <AuthProvider>
+          <FeedbackProvider>
+            <Entry />
+          </FeedbackProvider>
+        </AuthProvider>
       </MemoryRouter>
     </ThemeProvider>,
   )
   const entry = screen.getByRole('button', { name: '投诉和建议' })
+  await waitFor(() =>
+    expect(requests.some((request) => request.url.endsWith('/api/auth/me'))).toBe(true),
+  )
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  })
   fireEvent.click(entry)
   fireEvent.click((await screen.findByText('反馈和建议')).closest('button')!)
   fireEvent.change(screen.getByLabelText('标题'), { target: { value: 'A 的私密建议' } })
@@ -768,10 +772,10 @@ it.each(['prepare', 'upload'] as const)(
     vi.stubGlobal('Blob', NativeBlob)
     vi.stubGlobal('File', NativeFile)
     let release: (() => void) | undefined
-    let prepared: components['schemas']['FeedbackSnapshot'] | undefined
+    let prepared: components['schemas']['FeedbackSnapshotData'] | undefined
     const attachmentBodies: string[] = []
     respond = (request, response) => {
-      if (request.url?.includes('/options?')) {
+      if (request.url?.endsWith('/options')) {
         json(response, 200, feedbackOptions)
         return
       }
@@ -779,15 +783,15 @@ it.each(['prepare', 'upload'] as const)(
         const chunks: Buffer[] = []
         for await (const chunk of request) chunks.push(Buffer.from(chunk))
         const body = Buffer.concat(chunks).toString()
-        if (request.url === '/custom-api/support/feedback/submissions') {
-          const input = JSON.parse(body) as components['schemas']['FeedbackPrepare']
+        if (request.url === '/custom-api/api/support/feedback/submissions?area=community') {
+          const input = JSON.parse(body) as components['schemas']['FeedbackPrepareRequest']
           prepared = {
             id: '11111111-1111-4111-8111-111111111111',
             submissionKey: input.submissionKey,
             revision: 0,
             form: input.form,
             createdAt: 1,
-            receiveExpiresAt: 86400001,
+            receiveExpiresAt: 86401,
             status: 'receiving',
             nextAction: 'upload',
             taskId: null,
@@ -795,6 +799,7 @@ it.each(['prepare', 'upload'] as const)(
             failure: null,
             attachments: input.attachments.map((attachment, ordinal) => ({
               ...attachment,
+              id: attachment.id ?? crypto.randomUUID(),
               ordinal,
               status: 'expected',
               remoteAttachmentId: null,
@@ -807,11 +812,11 @@ it.each(['prepare', 'upload'] as const)(
           prepared = {
             ...prepared!,
             revision: 1,
-            status: 'ready',
+            status: 'receiving',
             nextAction: 'continue',
             attachments: prepared!.attachments.map((attachment) => ({
               ...attachment,
-              status: 'received',
+              status: 'uploaded',
             })),
           }
           if (stage === 'upload') release = () => json(response, 200, prepared)
@@ -835,7 +840,7 @@ it.each(['prepare', 'upload'] as const)(
     fireEvent.click(screen.getByRole('button', { name: '提交' }))
     await waitFor(() => expect(release).toBeTypeOf('function'))
     window.localStorage.setItem(
-      `${storage.AUTH_TOKEN_KEY}:${encodeURIComponent(`${root}/custom-B`)}`,
+      `exwebsite.php.auth.v1:${encodeURIComponent(`${root}/custom-B`)}`,
       'same-feedback-token',
     )
     await act(async () => {
@@ -843,7 +848,11 @@ it.each(['prepare', 'upload'] as const)(
       release!()
     })
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    expect(requests.filter((request) => request.url.startsWith('/custom-B/'))).toEqual([])
+    expect(
+      requests.filter(
+        (request) => request.url.startsWith('/custom-B/') && !request.url.endsWith('/api/auth/me'),
+      ),
+    ).toEqual([])
     if (stage === 'prepare') expect(attachmentBodies).toEqual([])
     else {
       expect(attachmentBodies).toHaveLength(1)
@@ -851,7 +860,7 @@ it.each(['prepare', 'upload'] as const)(
       expect(
         requests.some(
           (request) =>
-            request.url.startsWith('/custom-api/support/feedback/submissions/') &&
+            request.url.startsWith('/custom-api/api/support/feedback/submissions/') &&
             request.url.includes('/attachments/'),
         ),
       ).toBe(true)
@@ -874,23 +883,31 @@ it.each([false, true])(
     expect(screen.getByLabelText('标题')).toBe(title)
     expect(title.value).toBe('A 的私密建议')
     window.localStorage.setItem(
-      `${storage.AUTH_TOKEN_KEY}:${encodeURIComponent(`${root}/custom-B`)}`,
+      `exwebsite.php.auth.v1:${encodeURIComponent(`${root}/custom-B`)}`,
       'same-feedback-token',
     )
     await act(async () => {
       await install('/custom-B')
       if (reopenImmediately) fireEvent.click(entry)
     })
-    if (!reopenImmediately) {
-      expect(screen.queryByRole('dialog')).toBeNull()
+    await waitFor(() =>
+      expect(requests.some((request) => request.url === '/custom-B/api/auth/me')).toBe(true),
+    )
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    })
+    if (!screen.queryByRole('dialog'))
       fireEvent.click(screen.getByRole('button', { name: '投诉和建议' }))
-    }
     fireEvent.click((await screen.findByText('反馈和建议')).closest('button')!)
     expect((screen.getByLabelText('标题') as HTMLInputElement).value).toBe('')
     expect(screen.getByLabelText('内容').textContent).not.toContain('A 的私密正文')
-    expect(requests.map((request) => request.url)).toEqual([
-      '/custom-api/support/feedback/options?area=community',
-      '/custom-B/support/feedback/options?area=community',
+    expect(
+      requests
+        .filter((request) => !request.url.endsWith('/api/auth/me'))
+        .map((request) => request.url),
+    ).toEqual([
+      '/custom-api/api/support/feedback/options',
+      '/custom-B/api/support/feedback/options',
     ])
   },
 )
@@ -918,7 +935,7 @@ it.each([false, true])(
     await request()
     expect(requests.at(-1)?.authorization).toBe('Bearer replacement-default')
     respond = (_request, response) => expired(response)
-    await expect(request()).rejects.toMatchObject({ code: 'SESSION_INVALID' })
+    await expect(request()).rejects.toMatchObject({ code: 'HTTP_ERROR' })
     expect(storage.readRawToken(window.localStorage)).toBeNull()
     expect(storage.readToken(window.localStorage)).toBeNull()
   },

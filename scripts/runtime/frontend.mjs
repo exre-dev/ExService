@@ -1,10 +1,13 @@
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
-import { environmentFile, operatingEnvironment, withNodePath } from './settings.mjs'
-import { signalScope } from './ownership.mjs'
+import { environmentFile, operatingEnvironment, withNodePath, publicSettings } from './settings.mjs'
+import { acquireLock } from './ownership.mjs'
+import { digest } from './local-config.mjs'
+import { supervise, assertPortFree, httpReady } from './local-dev.mjs'
+import { prepareSdk } from './sdk-preparation.mjs'
+import { watchSdkSources } from './sdk-watch.mjs'
 import { readAdminFrontendConfiguration, adminFrontendSpecification } from './admin-frontend.mjs'
-import { runFrontendGroup } from './frontend-group.mjs'
 import { reporter, RuntimeError } from './output.mjs'
 import { root } from './shared.mjs'
 
@@ -18,7 +21,7 @@ export function frontendArguments(input) {
   const args = input[0] === '--' ? input.slice(1) : input
   const { values } = parseArgs({
     args,
-    options: { port: { type: 'string', default: '8090' }, 'admin-port': { type: 'string' } },
+    options: { port: { type: 'string', default: '8080' }, 'admin-port': { type: 'string' } },
   })
   return {
     port: previewPort(values.port),
@@ -32,30 +35,11 @@ export function frontendArguments(input) {
 export function frontendSpecification({
   workspace = root,
   inherited = process.env,
-  port = 8090,
+  port = 8080,
 } = {}) {
   const configured = environmentFile(join(workspace, '.env.local'))
   const node = inherited.INTEGRATION_NODE_BIN ?? configured.INTEGRATION_NODE_BIN ?? process.execPath
-  const baseUrl = (inherited.VITE_API_BASE_URL ?? configured.VITE_API_BASE_URL) || '/api'
-  if (baseUrl !== '/api') {
-    let url
-    try {
-      url = new URL(baseUrl)
-    } catch {}
-    if (
-      !url ||
-      !/^https?:$/.test(url.protocol) ||
-      url.username ||
-      url.password ||
-      url.search ||
-      url.hash
-    )
-      throw new RuntimeError('FRONTEND_API_BASE_URL_INVALID', {
-        keys: ['VITE_API_BASE_URL'],
-        reason: '前端 API 地址无效',
-        next: '设置为 /api 或包含 API 路径的完整 HTTP(S) 地址；不要包含凭据、query 或 hash',
-      })
-  }
+  const settings = publicSettings({ ...configured, ...inherited })
   return {
     name: 'Web',
     command: node,
@@ -71,42 +55,71 @@ export function frontendSpecification({
     environment: {
       ...withNodePath(operatingEnvironment(inherited), node),
       NODE_ENV: 'development',
-      VITE_API_BASE_URL: baseUrl,
-      INTEGRATION_SERVER_PORT: String(
-        previewPort(inherited.LOCAL_API_PORT ?? configured.LOCAL_API_PORT ?? 8082),
-      ),
+      ...settings,
+      WEBSITE_WEB_PORT: String(previewPort(port)),
     },
   }
 }
 
-export async function main(options = {}, execute = runFrontendGroup) {
-  const spec = frontendSpecification(options)
-  const admin = readAdminFrontendConfiguration(options)
-  const adminSpec = adminFrontendSpecification({ ...options, configuration: admin })
-  const webUrl = `http://127.0.0.1:${options.port ?? 8090}/`
+export async function main(options = {}, dependencies = {}) {
+  const workspace = options.workspace ?? root
+  const port = options.port ?? 8080
+  const spec = frontendSpecification({ ...options, workspace, port })
+  const admin = readAdminFrontendConfiguration({ ...options, workspace })
+  if (port === admin.port)
+    throw new RuntimeError('PORT_CONFLICT', { keys: ['--port', 'LOCAL_ADMIN_WEB_PORT'] })
+  const adminSpec = adminFrontendSpecification({ ...options, workspace, configuration: admin })
+  const webUrl = `http://127.0.0.1:${port}/`
   const adminUrl = `http://127.0.0.1:${admin.port}/`
-  const output = reporter()
-  output.title('启动前端预览')
-  const scope = signalScope()
-  try {
-    await execute(
-      [
-        { ...spec, readinessUrl: webUrl },
-        { ...adminSpec, readinessUrl: adminUrl },
-      ],
-      {
+  const output = dependencies.output ?? reporter()
+  const directory = join(workspace, '.local/runtime/frontend')
+  const fingerprint = digest({
+    port,
+    environment: spec.environment,
+    adminPort: admin.port,
+    adminEnvironment: adminSpec.environment,
+  })
+  const lock = (dependencies.acquireLock ?? acquireLock)({
+    mode: 'frontend',
+    fingerprint,
+    directory,
+  })
+  output.title('启动前端')
+  return (dependencies.supervise ?? supervise)({
+    mode: 'frontend',
+    fingerprint,
+    directory,
+    lock,
+    specifications: [spec, adminSpec],
+    signal: options.signal,
+    onLog: output.log,
+    prepareGeneration: ({ execute, signal }) =>
+      (dependencies.prepare ?? prepareSdk)({
+        ...options,
+        workspace,
+        execute,
+        signal,
         onLog: output.log,
-        signal: options.signal ? AbortSignal.any([scope.signal, options.signal]) : scope.signal,
-        onReady() {
-          output.status('Website', '可访问', webUrl, { level: 'success' })
-          output.status('管理端', '可访问', adminUrl, { level: 'success' })
-          output.note(`Website API 地址：${spec.environment.VITE_API_BASE_URL}；Ctrl+C 结束预览`)
-        },
-      },
-    )
-  } finally {
-    scope.close()
-  }
+      }),
+    preflight: async () => {
+      for (const selected of [port, admin.port])
+        await (dependencies.assertPortFree ?? assertPortFree)(selected)
+    },
+    watchSources: (change, onError) =>
+      (dependencies.watchSources ?? watchSdkSources)(workspace, change, { onError }),
+    readiness: async (children, { signal }) => {
+      for (const url of [webUrl, adminUrl])
+        await (dependencies.httpReady ?? httpReady)(url, {
+          children,
+          signal,
+          expected: (response) => response.headers.get('content-type')?.includes('text/html'),
+        })
+    },
+    onReady: () => {
+      output.status('Website', '可访问', webUrl, { level: 'success' })
+      output.status('管理端', '可访问', adminUrl, { level: 'success' })
+    },
+  })
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

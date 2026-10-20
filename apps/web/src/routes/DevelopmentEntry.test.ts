@@ -21,6 +21,7 @@ it('sets the referrer policy before Vite injects its development entry scripts',
     }>((resolveResponse, reject) => {
       get(
         `http://127.0.0.1:${address.port}/register?email=entry.fixture%40example.com&code=001234`,
+        { headers: { Host: '127.0.0.1:8080' } },
         (res) => {
           res.resume()
           res.once('end', () =>

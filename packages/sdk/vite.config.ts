@@ -4,7 +4,6 @@ import { defineConfig } from 'vite'
 
 const packageRoot = dirname(fileURLToPath(import.meta.url))
 
-
 export default defineConfig({
   root: packageRoot,
   build: {
@@ -20,7 +19,7 @@ export default defineConfig({
       formats: ['es'],
     },
     rollupOptions: {
-      external: ['cos-js-sdk-v5', 'cos-nodejs-sdk-v5', 'axios', '@exre/exui'],
+      external: ['axios', '@exre/exui'],
       output: {
         entryFileNames: '[name].js',
         chunkFileNames: 'chunks/[name]-[hash].js',

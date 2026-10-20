@@ -6,17 +6,6 @@ dist/
 apps/web/.source/
 *.tsbuildinfo
 
-# Server-generated avatar bytes stay local. `apps/server/data/.gitkeep` is tracked.
-apps/server/data/avatars/
-
-# Generic content storage: uploaded objects and in-flight temporary files stay local.
-# 精确匹配这两个目录，不广泛忽略其他 data 内容。
-apps/server/data/uploads/
-apps/server/data/upload-tmp/
-
-# Preserve and ignore local data left by the pre-promotion SQLite Server.
-apps/mock-server/data/
-
 # Local environment overrides
 .env.local
 .env.*.local

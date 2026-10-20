@@ -12,8 +12,6 @@ import { InvitationRegistrationPage } from '@web/src/pages/AuthPage/InvitationRe
 import { JoinPage } from '@web/src/pages/JoinPage/Rifling-911'
 import { CAEPJoinPage } from '@web/src/pages/JoinPage/CAEP'
 import { DocsPage } from '@web/src/pages/DocsPage'
-import { SignedOutPage } from '@web/src/pages/IdentityPage/SignedOutPage'
-import { OidcPage } from '@web/src/pages/IdentityPage/OidcPage'
 import { SupportAccess } from './routes/SupportAccess'
 import { FeedbackProvider } from './pages/Support/feedback/FeedbackProvider'
 const loadAboutUs = () => import('./pages/AboutUs/AboutUs')
@@ -32,10 +30,6 @@ export function App() {
           <Route path="/register" element={<InvitationRegistrationPage />} />
           <Route path="/sso/success" element={<SsoSuccess />} />
           <Route path="/sso/*" element={<NotFound />} />
-          <Route path="/identity/signed-out" element={<SignedOutPage />} />
-          <Route path="/identity/login" element={<OidcPage phase="login" />} />
-          <Route path="/identity/consent" element={<OidcPage phase="consent" />} />
-          <Route path="/identity/logout" element={<OidcPage phase="logout" />} />
           <Route element={<RootLayout />}>
             <Route path="/" element={<Home />} />
             <Route path="/docs" element={<DocsPage />} />

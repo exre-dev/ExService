@@ -69,6 +69,7 @@ export interface SettingsNotificationsSlice extends PreferenceFormBinding {
 }
 
 export interface SettingsPanelProps {
+  allowFivemIdEditing?: boolean
   category: SettingsCategory
   onCategoryChange: (category: SettingsCategory) => void
   theme: SettingsTheme
@@ -492,15 +493,17 @@ function AccountContent(props: ReadyProps) {
             setEditField('qq')
           }}
         />
-        <SettingRow
-          label="FiveM ID"
-          description="未验证。此信息由用户手填，不用于身份认证、社区组归属或权限判断。"
-          value={props.profile.fivemId ?? '未设置'}
-          onEdit={(trigger) => {
-            editTrigger.current = trigger
-            setEditField('fivemId')
-          }}
-        />
+        {props.allowFivemIdEditing !== false && (
+          <SettingRow
+            label="FiveM ID"
+            description="未验证。此信息由用户手填，不用于身份认证、社区组归属或权限判断。"
+            value={props.profile.fivemId ?? '未设置'}
+            onEdit={(trigger) => {
+              editTrigger.current = trigger
+              setEditField('fivemId')
+            }}
+          />
+        )}
       </section>
       {editField && (
         <EditDialog

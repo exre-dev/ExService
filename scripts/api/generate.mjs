@@ -4,7 +4,8 @@ import { mkdir, mkdtemp, readFile, writeFile, rename, rm, stat, utimes } from 'n
 import { dirname, join, resolve, relative, isAbsolute } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { randomUUID } from 'node:crypto'
-import { resolvePathItem, validateContract } from './read-contract.mjs'
+import { readContract } from './read-contract.mjs'
+import { renderOperationPolicy } from './operation-policy.mjs'
 
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url))
 const require = createRequire(import.meta.url)
@@ -89,16 +90,28 @@ export async function generate(mode = 'generate') {
   return generateContract({ mode })
 }
 
-export async function generateContract({ workspace = repositoryRoot, mode = 'generate' } = {}) {
+export async function generateContract({
+  workspace = repositoryRoot,
+  mode = 'generate',
+  afterSnapshot,
+} = {}) {
   workspace = resolve(workspace)
-  const contractSource = join(workspace, 'api/openapi.yaml')
-  const jsonOutput = join(workspace, 'api/generated/openapi.json')
+  const phpApi = join(workspace, 'apps/php-server/api')
+  const contractSource = join(phpApi, 'generated/openapi.internal.yaml')
   const typesOutput = join(workspace, 'packages/sdk/src/generated/schema.d.ts')
-  if (!['lint', 'bundle', 'generate', 'check'].includes(mode))
+  const policyOutput = join(workspace, 'packages/sdk/src/generated/operation-policy.ts')
+  if (!['lint', 'generate', 'check'].includes(mode))
     throw new Error(`Unknown API generation mode: ${mode}`)
   const configArgs = ['--config', join(repositoryRoot, 'redocly.yaml')]
-  await run(redoclyCli, ['lint', contractSource, ...configArgs], workspace)
+  for (const audience of ['internal', 'public'])
+    await run(
+      redoclyCli,
+      ['lint', join(phpApi, audience, 'openapi.yaml'), ...configArgs],
+      workspace,
+    )
   if (mode === 'lint') return
+  const document = readContract(contractSource)
+  const policy = renderOperationPolicy(document)
   const taskRoot = join(workspace, '.local')
   await mkdir(taskRoot, { recursive: true })
   const temporary = await mkdtemp(join(taskRoot, 'api-generation-'))
@@ -107,38 +120,19 @@ export async function generateContract({ workspace = repositoryRoot, mode = 'gen
   if (!ownedPath || ownedPath.startsWith('..') || isAbsolute(ownedPath))
     throw new Error('Invalid Contract generation temporary directory')
   try {
-    const bundlePath = join(temporary, 'openapi.json')
+    const snapshotPath = join(temporary, 'openapi.internal.json')
+    await writeFile(snapshotPath, `${JSON.stringify(document, null, 2)}\n`, { flag: 'wx' })
+    await afterSnapshot?.()
+    const generatedTypes = join(temporary, 'schema.d.ts')
     await run(
-      redoclyCli,
-      [
-        'bundle',
-        contractSource,
-        '--output',
-        bundlePath,
-        '--ext',
-        'json',
-        '--component-renaming-conflicts-severity',
-        'error',
-        ...configArgs,
-      ],
+      typesCli,
+      [snapshotPath, '--output', generatedTypes, '--redocly', join(repositoryRoot, 'redocly.yaml')],
       workspace,
     )
-    const document = validateContract(JSON.parse(await readFile(bundlePath, 'utf8')))
-    for (const [path, item] of Object.entries(document.paths))
-      document.paths[path] = resolvePathItem(document, item)
-    validateContract(document)
-    const json = `${JSON.stringify(document, null, 2)}\n`
-    await writeFile(bundlePath, json)
-    const artifacts = [{ path: jsonOutput, content: json }]
-    if (mode !== 'bundle') {
-      const generatedTypes = join(temporary, 'schema.d.ts')
-      await run(
-        typesCli,
-        [bundlePath, '--output', generatedTypes, '--redocly', join(repositoryRoot, 'redocly.yaml')],
-        workspace,
-      )
-      artifacts.push({ path: typesOutput, content: await readFile(generatedTypes, 'utf8') })
-    }
+    const artifacts = [
+      { path: typesOutput, content: await readFile(generatedTypes, 'utf8') },
+      { path: policyOutput, content: policy },
+    ]
     if (mode === 'check') {
       const stale = []
       for (const { path, content } of artifacts) {
@@ -147,7 +141,7 @@ export async function generateContract({ workspace = repositoryRoot, mode = 'gen
       }
       if (stale.length)
         throw new Error(
-          `Generated API artifacts are missing or stale: ${stale.join(', ')}. Run pnpm api:generate.`,
+          `Generated PHP SDK artifacts are missing or stale: ${stale.join(', ')}. Run pnpm api:generate.`,
         )
     } else await publishArtifacts(artifacts)
   } finally {

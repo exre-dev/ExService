@@ -22,7 +22,9 @@ vi.mock('@workspace/sdk', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   instance: (config: { method?: string }) => {
     const handlers = { GET: get, PUT: put }
-    return handlers[(config.method ?? 'GET') as keyof typeof handlers](config)
+    return Promise.resolve(
+      handlers[(config.method ?? 'GET') as keyof typeof handlers](config),
+    ).then((data) => ({ msg: 'ok', data }))
   },
 }))
 vi.mock('@web/src/auth/AuthContext', () => ({
@@ -42,12 +44,14 @@ vi.mock('@exre/exui', async (importOriginal) => ({
 import { SettingsExperience, SettingsModal } from '@web/src/settings/SettingsExperience'
 
 const profile = {
-  id: '8e5b2093-dcce-422c-af4d-e4b58ba66ab5',
+  id: 1,
+  platform_role: 'user',
+  last_login_time: null,
   email: 'person@example.com',
-  nickname: 'Person',
+  username: 'Person',
   qq: '123456789',
-  fivemId: null,
-  avatarUrl: null,
+
+  avatar: null,
 }
 const stored = {
   revision: 3,
@@ -90,7 +94,7 @@ afterEach(() => {
 
 function respond(overrides: { failPreferences?: boolean } = {}) {
   get.mockImplementation(({ url: path }: { url: string }) => {
-    if (path === '/notification-preferences') {
+    if (path === '/api/notification-preferences') {
       return overrides.failPreferences
         ? Promise.reject(new Error('通知设置暂时无法读取'))
         : Promise.resolve(stored)
@@ -102,7 +106,7 @@ function respond(overrides: { failPreferences?: boolean } = {}) {
 function respondSequence(responses: Array<Stored | 'reject'>) {
   let index = 0
   get.mockImplementation(({ url: path }: { url: string }) => {
-    if (path !== '/notification-preferences') return Promise.resolve(profile)
+    if (path !== '/api/notification-preferences') return Promise.resolve(profile)
     const next = responses[index]
     index += 1
     if (next === undefined) return Promise.resolve(stored)
@@ -162,7 +166,7 @@ describe('notification preferences real seam', () => {
     await userEvent.click(a.getByRole('button', { name: '重试保存' }))
     await waitFor(() => expect(put).toHaveBeenCalledTimes(3))
     expect(put).toHaveBeenLastCalledWith({
-      url: '/notification-preferences',
+      url: '/api/notification-preferences',
       method: 'PUT',
       alert: false,
       data: {
@@ -312,7 +316,7 @@ describe('notification preferences real seam', () => {
     await userEvent.click(b.getByRole('switch', { name: '个人提醒' }))
     await waitFor(() => expect(put).toHaveBeenCalledTimes(2))
     expect(put).toHaveBeenLastCalledWith({
-      url: '/notification-preferences',
+      url: '/api/notification-preferences',
       method: 'PUT',
       alert: false,
       data: {
@@ -476,7 +480,7 @@ describe('notification preferences real seam', () => {
 
   it('keeps preference acceptance independent from receipt write generations and profile failures', async () => {
     get.mockImplementation(({ url: path }: { url: string }) => {
-      if (path === '/notification-preferences') return Promise.resolve(stored)
+      if (path === '/api/notification-preferences') return Promise.resolve(stored)
       return Promise.reject(new Error('资料暂时无法读取'))
     })
     const { a } = await twoHosts()

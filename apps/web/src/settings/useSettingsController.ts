@@ -17,7 +17,7 @@ import {
   type CurrentUser,
 } from '@web/src/settings/settingsConfig'
 
-type AvatarMediaType = components['schemas']['UploadAvatarRequest']['mediaType']
+type AvatarMediaType = components['schemas']['AccountAvatarRequest']['mediaType']
 
 export function useSettingsController() {
   const auth = useAuth()
@@ -65,13 +65,13 @@ export function useSettingsController() {
     settingsConfig.profile.status = 'loading'
     settingsConfig.profile.error = null
     try {
-      const result = await instance({ url: '/auth/me', method: 'GET', alert: false })
+      const { data: result } = await instance({ url: '/api/auth/me', method: 'GET', alert: false })
       if (!current(token, revision)) return
       settingsConfig.profile.snapshot = result
       settingsConfig.profile.status = 'ready'
     } catch (error) {
       if (current(token, revision)) {
-        if (error instanceof ExAxiosError && error.code === 'SESSION_INVALID') {
+        if (error instanceof ExAxiosError && error.status === 401) {
           invalidate(token)
           bindSettingsToken(null)
           return
@@ -103,7 +103,7 @@ export function useSettingsController() {
       } catch (error) {
         if (!current(token, revision)) throw new Error('登录状态已变更，请重新打开设置')
         if (error instanceof ExAxiosError) {
-          if (error.code === 'SESSION_INVALID') {
+          if (error.status === 401) {
             auth.invalidateSession(token)
             bindSettingsToken(null)
           }
@@ -121,13 +121,12 @@ export function useSettingsController() {
 
   const save = useCallback(
     async (field: SettingsField, value: string) => {
-      const body =
-        field === 'nickname'
-          ? { nickname: value }
-          : field === 'qq'
-            ? { qq: value === '' ? null : value }
-            : { fivemId: value === '' ? null : value }
-      await mutate(() => instance({ url: '/auth/me', method: 'PATCH', alert: false, data: body }))
+      const body = field === 'nickname' ? { nickname: value } : { qq: value === '' ? null : value }
+      if (field === 'fivemId') throw new Error('游戏身份需通过绑定流程设置')
+      await mutate(
+        async () =>
+          (await instance({ url: '/api/auth/me', method: 'PATCH', alert: false, data: body })).data,
+      )
     },
     [mutate],
   )
@@ -142,21 +141,27 @@ export function useSettingsController() {
         throw new Error('只支持不超过 2 MiB 的 PNG、JPEG 或 WebP 图片')
       }
       const imageBase64 = await toBase64(file)
-      await mutate(() =>
-        instance({
-          url: '/auth/me/avatar',
-          method: 'POST',
-          alert: false,
-          data: { imageBase64, mediaType },
-        }),
+      await mutate(
+        async () =>
+          (
+            await instance({
+              url: '/api/auth/me/avatar',
+              method: 'POST',
+              alert: false,
+              data: { imageBase64, mediaType },
+            })
+          ).data,
       )
     },
     [mutate],
   )
 
   const removeAvatar = useCallback(async () => {
-    const body: components['schemas']['UpdateCurrentUserRequest'] = { avatar: null }
-    await mutate(() => instance({ url: '/auth/me', method: 'PATCH', alert: false, data: body }))
+    const body: components['schemas']['AccountProfileRequest'] = { avatar: null }
+    await mutate(
+      async () =>
+        (await instance({ url: '/api/auth/me', method: 'PATCH', alert: false, data: body })).data,
+    )
   }, [mutate])
 
   const logout = useCallback(() => {

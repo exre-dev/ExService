@@ -13,6 +13,7 @@ import { useLocation } from 'react-router'
 import { toast } from '@exre/exui'
 import { readToken, sessionScopeRevision, subscribeSessionChanges } from '../../../auth/storage'
 import type { FeedbackArea } from './flow'
+import { useAuth } from '../../../auth/AuthContext'
 
 const FeedbackModal = lazy(() =>
   import('./FeedbackModal').then((module) => ({ default: module.FeedbackModal })),
@@ -32,6 +33,9 @@ function currentToken(): string | null {
 
 /** Keep opened feedback forms alive across route changes, including their in-flight commands. */
 export function FeedbackProvider({ children }: { children: ReactNode }) {
+  const { userId, state } = useAuth()
+  const authScope = sessionScopeRevision()
+  const authToken = currentToken()
   const [areas, setAreas] = useState<FeedbackArea[]>([])
   const [openArea, setOpenArea] = useState<FeedbackArea | null>(null)
   const running = useRef<symbol | null>(null)
@@ -59,15 +63,25 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const openFeedback = useCallback((area: FeedbackArea, trigger?: HTMLElement) => {
-    if (running.current) {
-      toast.info('正在上传中，请稍候')
-      return
-    }
-    if (trigger) triggers.current[area] = trigger
-    setAreas((current) => (current.includes(area) ? current : [...current, area]))
-    setOpenArea(area)
-  }, [])
+  const openFeedback = useCallback(
+    (area: FeedbackArea, trigger?: HTMLElement) => {
+      if (
+        userId === null ||
+        state.status !== 'authenticated' ||
+        authScope !== sessionScopeRevision() ||
+        authToken !== currentToken()
+      )
+        return
+      if (running.current) {
+        toast.info('正在上传中，请稍候')
+        return
+      }
+      if (trigger) triggers.current[area] = trigger
+      setAreas((current) => (current.includes(area) ? current : [...current, area]))
+      setOpenArea(area)
+    },
+    [userId, state.status, authScope, authToken],
+  )
   const claimSubmission = useCallback(() => {
     if (running.current) return null
     const command = Symbol()

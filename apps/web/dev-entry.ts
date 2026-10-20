@@ -27,7 +27,7 @@ export function isInternalPath(raw = ''): boolean {
   return /^(?:api|docs)\/internal(?:\/|$)/i.test(segments.join('/'))
 }
 
-/** Keep browser storage and OIDC on one configured development origin. */
+/** Keep browser storage and OAuth on one configured development origin. */
 export function proxyBoundaryPlugin(publicOrigin?: string): Plugin {
   const canonical = publicOrigin ? new URL(publicOrigin) : undefined
   return {
@@ -98,7 +98,10 @@ export function trustedProxy(options: ProxyOptions, publicOrigin: string): Proxy
       const headers = (request: ClientRequest, _incoming: IncomingMessage) => {
         request.setHeader('X-Forwarded-Host', origin.host)
         request.setHeader('X-Forwarded-Proto', origin.protocol.slice(0, -1))
-        request.setHeader('X-Forwarded-Port', origin.port)
+        request.setHeader(
+          'X-Forwarded-Port',
+          origin.port || (origin.protocol === 'https:' ? '443' : '80'),
+        )
         request.setHeader('X-Forwarded-For', '127.0.0.1')
         request.setHeader('Host', new URL(String(options.target)).host)
         request.removeHeader('Forwarded')
@@ -157,5 +160,21 @@ export function devEntryPlugin(port: number): Plugin {
           })
       })
     },
+  }
+}
+
+/** Only PHP API and its two server-rendered OAuth pages leave the frontend. */
+export function phpProxy(target: string, publicOrigin: string): Record<string, ProxyOptions> {
+  let origin: URL
+  try {
+    origin = new URL(target)
+  } catch {
+    throw new Error('PHP_SERVER_ORIGIN_INVALID')
+  }
+  if (!/^https?:\/\/[^/\s\\?#@]+\/?$/.test(target) || origin.username || origin.password)
+    throw new Error('PHP_SERVER_ORIGIN_INVALID')
+  return {
+    '^/api(?:/|\\?|$)': trustedProxy({ target: origin.origin }, publicOrigin),
+    '^/oauth/(?:authorize|device)(?:\\?|$)': trustedProxy({ target: origin.origin }, publicOrigin),
   }
 }

@@ -2,7 +2,12 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@exre/exui'
 import { SettingsPanel, type SettingsCategory } from '@workspace/components'
 import { useAuth } from '@web/src/auth/AuthContext'
-import { readToken, sessionScopeRevision, subscribeSessionChanges } from '@web/src/auth/storage'
+import {
+  readToken,
+  serviceResourceUrl,
+  sessionScopeRevision,
+  subscribeSessionChanges,
+} from '@web/src/auth/storage'
 import { useNotificationPreferencesController } from '@web/src/notifications/useNotificationPreferencesController'
 import { useSettingsController } from '@web/src/settings/useSettingsController'
 import styles from '@web/src/settings/SettingsExperience.module.scss'
@@ -28,7 +33,11 @@ export function SettingsExperience({ initialCategory }: { initialCategory: Setti
 
   // 会话代次：换号后重新读取一次服务器已保存值，不沿用上一个账号的「已读过」记号。
   const [sessionToken, setSessionToken] = useState<string | null>(() => currentToken())
-  const scope = useSyncExternalStore(subscribeSessionChanges, sessionScopeRevision, sessionScopeRevision)
+  const scope = useSyncExternalStore(
+    subscribeSessionChanges,
+    sessionScopeRevision,
+    sessionScopeRevision,
+  )
   const entered = useRef(new Set<string>())
 
   useEffect(() => subscribeSessionChanges(() => setSessionToken(currentToken())), [])
@@ -66,14 +75,15 @@ export function SettingsExperience({ initialCategory }: { initialCategory: Setti
       onCategoryChange={setCategory}
       theme={settings.snapshot.general.theme}
       onThemeChange={settings.setTheme}
+      allowFivemIdEditing={false}
       profile={
         profile
           ? {
               email: profile.email,
-              nickname: profile.nickname,
+              nickname: profile.username,
               qq: profile.qq ?? null,
-              fivemId: profile.fivemId ?? null,
-              avatarUrl: profile.avatarUrl ?? null,
+              fivemId: null,
+              avatarUrl: serviceResourceUrl(profile.avatar),
             }
           : null
       }

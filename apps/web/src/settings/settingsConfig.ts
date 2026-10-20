@@ -3,7 +3,7 @@ import { proxy } from 'valtio'
 import type { SettingsTheme } from '@workspace/components'
 import { sessionScopeRevision } from '@web/src/auth/storage'
 
-export type CurrentUser = components['schemas']['CurrentUser']
+export type CurrentUser = components['schemas']['AccountMeData']
 
 export const settingsConfig = proxy({
   general: { theme: 'system' as SettingsTheme },
@@ -39,7 +39,9 @@ export function beginSettingsRequest(token: string) {
 }
 
 export function settingsRequestCurrent(token: string, requestRevision: number) {
-  return ownerScope === sessionScopeRevision() && ownerToken === token && revision === requestRevision
+  return (
+    ownerScope === sessionScopeRevision() && ownerToken === token && revision === requestRevision
+  )
 }
 
 export function attachSettingsConsumer() {

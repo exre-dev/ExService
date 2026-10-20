@@ -1,7 +1,46 @@
 import { setAccessToken } from '@workspace/sdk'
 
-export const AUTH_TOKEN_KEY = 'exwebsite.auth.token'
-export const SSO_SUCCESS_KEY = 'exwebsite.auth.sso-success'
+const browserOrigin = typeof window === 'undefined' ? 'http://localhost' : window.location.origin
+export const AUTH_TOKEN_KEY = `exwebsite.php.auth.v1:${encodeURIComponent(browserOrigin)}`
+export const SSO_SUCCESS_KEY = `exwebsite.php.sso-success.v1:${encodeURIComponent(browserOrigin)}`
+const ssoSuccessKey = () => `exwebsite.php.sso-success.v1:${encodeURIComponent(serviceRoot)}`
+export const feedbackStorageKey = (userId: number, area: string) =>
+  `exwebsite.php.feedback.v1:${encodeURIComponent(serviceRoot)}:${userId}:${area}`
+
+/** Remove only retired Website credentials/pointers; never inspect or migrate their values. */
+export function clearLegacySessionStorage(): void {
+  for (const name of ['localStorage', 'sessionStorage'] as const) {
+    try {
+      const storage = window[name]
+      const keys: string[] = []
+      for (let index = 0; index < storage.length; index++) {
+        const key = storage.key(index)
+        if (
+          key &&
+          (key === 'exwebsite.auth.token' ||
+            key.startsWith('exwebsite.auth.token:') ||
+            key === 'exwebsite.auth.sso-success' ||
+            [
+              'exwebsite.feedback.v1.request',
+              'exwebsite.feedback.v1.bug',
+              'exwebsite.feedback.v2',
+              'exwebsite.feedback.community.v1',
+            ].includes(key))
+        )
+          keys.push(key)
+      }
+      for (const key of keys) {
+        try {
+          storage.removeItem(key)
+        } catch {
+          /* cleanup is best effort */
+        }
+      }
+    } catch {
+      /* unavailable storage is never a legacy credential source */
+    }
+  }
+}
 interface ScopeState {
   suppressed?: { baseline: string | null | undefined }
   // A reader may release suppression before the storage synchronization runs.
@@ -11,6 +50,14 @@ interface ScopeState {
 // Suppression belongs to the root even while another root is selected.
 const scopes = new Map<string, ScopeState>()
 let selected = { key: AUTH_TOKEN_KEY, custom: false }
+let serviceRoot = browserOrigin
+/** Resolve PHP-owned resources against the selected service, including deployment prefixes. */
+export function serviceResourceUrl(value: string | null): string | null {
+  if (!value) return null
+  if (/^https?:\/\//i.test(value)) return value
+  if (value.startsWith('//') || /^[a-z][a-z\d+.-]*:/i.test(value)) return null
+  return `${serviceRoot}/${value.replace(/^\/+/, '')}`
+}
 let revision = 0
 const scopeState = () => {
   let state = scopes.get(selected.key)
@@ -25,8 +72,9 @@ export const sessionScopeRevision = (): number => revision
 /** Called only after the SDK has accepted the root; use its URL normalization. */
 export function selectSessionScope(baseUrl: string): void {
   const normalized = new URL(baseUrl, window.location.origin).href.replace(/\/+$/, '')
-  const custom = normalized !== `${new URL(window.location.origin).origin}/api`
-  const key = custom ? `${AUTH_TOKEN_KEY}:${encodeURIComponent(normalized)}` : AUTH_TOKEN_KEY
+  const custom = normalized !== new URL(window.location.origin).origin
+  const key = `exwebsite.php.auth.v1:${encodeURIComponent(normalized)}`
+  serviceRoot = normalized
   if (key !== selected.key) {
     selected = { key, custom }
     revision++
@@ -41,7 +89,13 @@ export function subscribeSessionChanges(listener: () => void): () => void {
 }
 
 function changed(): void {
-  for (const listener of subscribers) listener()
+  for (const listener of subscribers) {
+    try {
+      listener()
+    } catch {
+      // An unreadable store in one consumer must not block other session owners.
+    }
+  }
 }
 
 export function startSessionSync(): () => void {
@@ -141,26 +195,39 @@ export function removeMatchingToken(
 }
 
 /** Reconcile credentials installed by login or custom-root restoration. */
-export function expirePersistedSession(): void {
+export function expirePersistedSession(): boolean {
   const state = scopeState()
   const owned = state.persistedLogin
   state.persistedLogin = undefined
-  if (!owned) return
+  if (!owned) {
+    try {
+      return readRawToken(window.localStorage) === null
+    } catch {
+      return false
+    }
+  }
   let browserStorage: Storage
   try {
     browserStorage = window.localStorage
-    if (owned.storage !== browserStorage) return
-    if (readRawToken(browserStorage) !== owned.token) return
+    if (owned.storage !== browserStorage) return false
+    if (readRawToken(browserStorage) !== owned.token) {
+      syncSessionToken()
+      return false
+    }
   } catch {
     // Only this owned value is suppressed when persistence becomes readable again.
     state.suppressed = { baseline: owned.token }
-    return
+    return false
   }
   state.suppressed = { baseline: owned.token }
   try {
     browserStorage.removeItem(selected.key)
+    const remaining = readRawToken(browserStorage)
+    if (remaining !== null && remaining !== owned.token) syncSessionToken()
+    return remaining === null
   } catch {
     /* keep the effective session anonymous */
+    return false
   }
 }
 
@@ -182,7 +249,7 @@ export function clearBrowserSession(): void {
     /* still clear in-memory authentication */
   }
   try {
-    window.sessionStorage.removeItem(SSO_SUCCESS_KEY)
+    window.sessionStorage.removeItem(ssoSuccessKey())
   } catch {
     /* independent of token cleanup */
   }
@@ -194,14 +261,14 @@ export function writeSsoSuccess(
   storage: Pick<Storage, 'setItem'>,
   record: { ssoRequestId: string; confirmedAt: number },
 ): void {
-  storage.setItem(SSO_SUCCESS_KEY, JSON.stringify(record))
+  storage.setItem(ssoSuccessKey(), JSON.stringify(record))
 }
 
 export function readRecentSsoSuccess(
   storage: Pick<Storage, 'getItem' | 'removeItem'>,
   now: number,
 ): { ssoRequestId: string; confirmedAt: number } | null {
-  const raw = storage.getItem(SSO_SUCCESS_KEY)
+  const raw = storage.getItem(ssoSuccessKey())
   if (raw === null) {
     return null
   }
@@ -215,12 +282,12 @@ export function readRecentSsoSuccess(
       now - value.confirmedAt < 0 ||
       now - value.confirmedAt > 5 * 60 * 1000
     ) {
-      storage.removeItem(SSO_SUCCESS_KEY)
+      storage.removeItem(ssoSuccessKey())
       return null
     }
     return { ssoRequestId: value.ssoRequestId, confirmedAt: value.confirmedAt }
   } catch {
-    storage.removeItem(SSO_SUCCESS_KEY)
+    storage.removeItem(ssoSuccessKey())
     return null
   }
 }

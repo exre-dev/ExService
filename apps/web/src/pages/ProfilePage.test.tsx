@@ -12,7 +12,9 @@ vi.mock('@workspace/sdk', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   instance: (config: { method?: string }) => {
     const handlers = { GET: get }
-    return handlers[(config.method ?? 'GET') as keyof typeof handlers](config)
+    return Promise.resolve(
+      handlers[(config.method ?? 'GET') as keyof typeof handlers](config),
+    ).then((data) => ({ msg: 'ok', data }))
   },
 }))
 vi.mock('@web/src/auth/AuthContext', () => ({
@@ -80,10 +82,10 @@ describe('ProfilePage loading errors', () => {
       .mockResolvedValueOnce({
         id: 'user',
         email: 'person@example.com',
-        nickname: 'Person',
+        username: 'Person',
         qq: null,
-        fivemId: null,
-        avatarUrl: null,
+
+        avatar: null,
       })
     render(<ProfilePage />)
     expect(await screen.findByRole('alert')).toHaveProperty('textContent', '暂时无法读取')

@@ -148,7 +148,7 @@ test('Git preserves LF in hook scripts even when automatic CRLF checkout is enab
 test('signed-off Git commits format staged files and preserve generated and unrelated files', () => {
   const cwd = commitFixture()
   write(cwd, 'src/space path.ts', 'export const greeting={name:"example"};\n')
-  write(cwd, 'api/generated/openapi.json', 'generator-owned bytes\n')
+  write(cwd, 'apps/php-server/api/generated/openapi.internal.yaml', 'generator-owned bytes\n')
   const generatedSdkTypes = 'packages/sdk/src/generated/schema.d.ts'
   write(cwd, generatedSdkTypes, 'generator-owned type bytes\n')
   const generatedFont = 'packages/components/src/tiptap/fonts/maple-mono-cn'
@@ -161,7 +161,7 @@ test('signed-off Git commits format staged files and preserve generated and unre
     cwd,
     'add',
     'src/space path.ts',
-    'api/generated/openapi.json',
+    'apps/php-server/api/generated/openapi.internal.yaml',
     generatedSdkTypes,
     generatedFont,
   )
@@ -170,7 +170,10 @@ test('signed-off Git commits format staged files and preserve generated and unre
     git(cwd, 'show', 'HEAD:src/space path.ts'),
     "export const greeting = { name: 'example' }",
   )
-  assert.equal(git(cwd, 'show', 'HEAD:api/generated/openapi.json'), 'generator-owned bytes')
+  assert.equal(
+    git(cwd, 'show', 'HEAD:apps/php-server/api/generated/openapi.internal.yaml'),
+    'generator-owned bytes',
+  )
   assert.equal(git(cwd, 'show', `HEAD:${generatedSdkTypes}`), 'generator-owned type bytes')
   assert.equal(git(cwd, 'show', `HEAD:${generatedFont}/font.scss`), fontStyles.trim())
   assert.equal(git(cwd, 'show', `HEAD:${generatedFont}/manifest.json`), '{"generated":true}')

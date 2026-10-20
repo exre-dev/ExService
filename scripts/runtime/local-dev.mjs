@@ -3,13 +3,11 @@ import { request as httpRequest } from 'node:http'
 import { request as httpsRequest } from 'node:https'
 import { Readable } from 'node:stream'
 import { existsSync } from 'node:fs'
-import { join, dirname, delimiter } from 'node:path'
+import { join } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
-import { diagnostic, RuntimeError } from './output.mjs'
-import { atomicJson, LocalError, readJson, toolchain } from './local-config.mjs'
+import { RuntimeError } from './output.mjs'
+import { atomicJson, LocalError, readJson } from './local-config.mjs'
 import { spawnOwned, stopOwned } from './ownership.mjs'
-import { serverSpecification } from './server.mjs'
-import { adminFrontendSpecification } from './admin-frontend.mjs'
 
 export async function assertPortFree(port) {
   const server = createServer()
@@ -125,103 +123,6 @@ export async function httpReady(
     target: `${target.origin}${target.pathname}`,
   })
 }
-export function specifications(state, tools = toolchain(), admin) {
-  const env = applicationEnvironments(state, tools)
-  return [
-    {
-      ...serverSpecification('dev', [], { workspace: state.workspace, inherited: env.server }),
-      name: 'server',
-      command: tools.node,
-    },
-    {
-      name: 'web',
-      cwd: state.workspace,
-      command: tools.node,
-      args: [tools.corepack, 'pnpm', '--filter', '@workspace/web', 'dev'],
-      environment: env.web,
-    },
-    ...(admin
-      ? [
-          adminFrontendSpecification({
-            workspace: state.workspace,
-            inherited: state.environments.web,
-            configuration: admin,
-            node: tools.node,
-          }),
-        ]
-      : []),
-  ]
-}
-function applicationEnvironments(state, tools) {
-  return Object.fromEntries(
-    Object.entries(state.environments).map(([service, environment]) => {
-      const path =
-        Object.entries(environment).find(([key]) => key.toUpperCase() === 'PATH')?.[1] ?? ''
-      return [
-        service,
-        {
-          ...Object.fromEntries(
-            Object.entries(environment).filter(([key]) => key.toUpperCase() !== 'PATH'),
-          ),
-          PATH: `${dirname(tools.node)}${delimiter}${path}`,
-        },
-      ]
-    }),
-  )
-}
-export async function verifyFoundationSchemas(state, { bootstrap = false } = {}) {
-  const { default: pg } = await import('pg')
-  for (const name of ['hydra']) {
-    const prefix = `${name.toUpperCase()}_DATABASE`
-    const expectedOwner = state.values[`${prefix}_USER`]
-    const client = new pg.Client({
-      connectionString: state.databases[prefix],
-      connectionTimeoutMillis: 3000,
-    })
-    try {
-      await client.connect()
-      await client.query('BEGIN READ ONLY')
-      const identity = await client.query(
-        'SELECT current_database() AS name, current_user AS owner',
-      )
-      if (identity.rows[0]?.name !== name || identity.rows[0]?.owner !== expectedOwner)
-        throw new RuntimeError('DATABASE_IDENTITY_CONFLICT', { service: name })
-      const unsafe = await client.query(
-        'SELECT d.datname FROM pg_database d JOIN pg_roles r ON r.oid=d.datdba WHERE d.datname=$1 AND r.rolname<>$2',
-        [name, expectedOwner],
-      )
-      const roles = await client.query(
-        'SELECT rolname FROM pg_roles WHERE rolname=$1 AND (NOT rolcanlogin OR rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls)',
-        [expectedOwner],
-      )
-      if (unsafe.rows.length || roles.rows.length)
-        throw new RuntimeError('DATABASE_OWNER_CONFLICT', {
-          service: name,
-          keys: [`${prefix}_USER`],
-        })
-      const tables = (
-        await client.query(
-          "SELECT tablename FROM pg_tables WHERE schemaname=current_schema() AND (tablename LIKE 'hydra_%' OR tablename='schema_migration')",
-        )
-      ).rows
-      if (
-        !tables.some((row) => row.tablename === 'hydra_client') ||
-        !tables.some((row) => /migration/.test(row.tablename))
-      )
-        throw new RuntimeError('DATABASE_MIGRATIONS_MISSING', { service: name })
-      await client.query('ROLLBACK')
-    } catch (error) {
-      throw diagnostic(error, {
-        service: name,
-        phase: '数据库结构和身份检查',
-        keys: [`${prefix}_HOST`, `${prefix}_PORT`, `${prefix}_USER`, `${prefix}_PASSWORD`],
-        next: '先检查连接配置；结构缺失时显式 pnpm infra migrate',
-      })
-    } finally {
-      await client.end().catch(() => {})
-    }
-  }
-}
 /** Owns application children and retains ownership until cleanup completes. */
 export async function supervise({
   mode,
@@ -272,7 +173,6 @@ export async function supervise({
         name: child.specification.name,
         identity: child.identity,
       })),
-      resources: { started: [], preRunning: [], createdStopped: [], containerProofs: [] },
     }
     atomicJson(runPath, value)
     lock.update(value)

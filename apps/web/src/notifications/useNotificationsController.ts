@@ -133,7 +133,7 @@ export function useNotificationsController() {
   }, [])
   const sessionInvalid = useCallback(
     (error: unknown) => {
-      if (!(error instanceof ExAxiosError) || error.code !== 'SESSION_INVALID') return false
+      if (!(error instanceof ExAxiosError) || error.status !== 401) return false
       const token = currentToken()
       if (token !== null) auth.invalidateSession(token)
       bindNotificationsToken(null)
@@ -192,7 +192,11 @@ export function useNotificationsController() {
     notificationsConfig.summary.status = 'loading'
     notificationsConfig.summary.error = null
     try {
-      const result = await instance({ url: '/notifications/summary', method: 'GET', alert: false })
+      const { data: result } = await instance({
+        url: '/api/notifications/summary',
+        method: 'GET',
+        alert: false,
+      })
       if (!accepted()) return
       scheduler.recordSuccess()
       applyUnreadCount(result.unreadCount, result.readThroughToken)
@@ -324,8 +328,8 @@ export function useNotificationsController() {
       const promise = Promise.resolve().then(async () => {
         if (!accepted()) return
         try {
-          const result = await instance({
-            url: '/notifications',
+          const { data: result } = await instance({
+            url: '/api/notifications',
             method: 'GET',
             alert: false,
             params: {
@@ -404,8 +408,8 @@ export function useNotificationsController() {
       setDetail(null)
       setDetailStatus('loading')
       try {
-        const result = await instance({
-          url: '/notifications/{notificationId}',
+        const { data: result } = await instance({
+          url: '/api/notifications/{notificationId}',
           method: 'GET',
           alert: false,
           pathParams: { notificationId: receiptId },
@@ -445,8 +449,8 @@ export function useNotificationsController() {
       setReadPending(true)
       setReadError(null)
       try {
-        const result = await instance({
-          url: '/notifications/{notificationId}/state',
+        const { data: result } = await instance({
+          url: '/api/notifications/{notificationId}/state',
           method: 'PATCH',
           alert: false,
           pathParams: { notificationId: receiptId },
@@ -565,11 +569,10 @@ export function useNotificationsController() {
           }
           setConfirm({ kind, count: fresh.unreadCount })
         } else {
-          const result = await instance({
-            url: '/notifications/clear-preview',
+          const { data: result } = await instance({
+            url: '/api/notifications/clear-preview',
             method: 'POST',
             alert: false,
-            data: {},
           })
           if (!accepted()) return
           if (result.itemCount === 0) {
@@ -646,7 +649,7 @@ export function useNotificationsController() {
     try {
       if (kind === 'read-all' && readIntent !== null) {
         await instance({
-          url: '/notifications/read-all',
+          url: '/api/notifications/read-all',
           method: 'POST',
           alert: false,
           data: { requestId: readIntent.requestId, readThroughToken: readIntent.readThroughToken },
@@ -654,8 +657,8 @@ export function useNotificationsController() {
         if (!accepted()) return
         toast.info('已标记本次选定通知，新到通知仍未读。')
       } else if (preview !== null) {
-        const result = await instance({
-          url: '/notifications/clear-all',
+        const { data: result } = await instance({
+          url: '/api/notifications/clear-all',
           method: 'POST',
           alert: false,
           data: { requestId: preview.requestId, clearSnapshotToken: preview.token },
@@ -747,7 +750,13 @@ export function useNotificationsController() {
   }
   const detailSlice: NotificationDetailSlice = {
     status: detailStatus,
-    value: detail,
+    value: detail && {
+      ...detail,
+      actions: detail.actions.map((action) => ({
+        ...action,
+        emphasis: action.emphasis === 'primary' ? 'primary' : 'secondary',
+      })),
+    },
     readPending,
     readError,
     onToggleRead: toggleRead,

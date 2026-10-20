@@ -2,15 +2,15 @@ extends:
   - recommended
 
 rules:
-  # 首版 Contract 未包含认证，因此当时关闭了此规则。当前 Contract 已定义 bearerAuth，
-  # 并逐 operation 声明公开访问或所需认证；此处保留既有 lint 配置。
+  # PHP 内部契约使用 sessionAuth，公开契约使用各自的 OAuth 安全声明。
   security-defined: off
 
-  # 常规错误由 `default` ErrorResponse 表达；需要重试延迟的 operation 另以显式
-  # 429/503 引用 RetryableErrorResponse。两者共用 ErrorEnvelope，因此不要求
-  # 每个 operation 另行列出显式 4xx response。
+  # PHP 业务错误按具体状态返回 {msg}；不要求每个 operation 重复 4xx 声明。
   operation-4xx-response: off
 
-  # 这是私有项目的内部 API Contract，不是对外发布的 API 描述，仓库也未确定许可证。
+  # storageComplete 在当前 PHP 部署中固定返回 503，不存在成功响应。
+  operation-2xx-response: off
+
+  # 本仓库没有确定许可证。
   # 与其填入未经确认的 license，不如显式关闭该规则。
   info-license: off

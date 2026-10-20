@@ -10,53 +10,50 @@ import {
 } from '../../apps/web/dev-entry'
 
 const cleanup: (() => Promise<void>)[] = []
-it('uses explicit public origin for HMR and proxies only Website API without legacy Docs modes', async () => {
-  const keys = [
-    'WEBSITE_INTEGRATION_ENABLED',
-    'WEBSITE_INTEGRATION_MODE',
-    'SERVER_PUBLIC_WEB_BASE_URL',
-    'OUTLINE_DEV_HTTP_PORT',
-    'INTEGRATION_OUTLINE_VITE_PORT',
-    'INTEGRATION_WEB_PORT',
-    'INTEGRATION_SERVER_PORT',
-    'WEBSITE_DEV_ENTRY_PORT',
-  ]
-  const original = Object.fromEntries(keys.map((key) => [key, process.env[key]]))
+it('uses PHP proxy origin and exact OAuth HTML paths on the public frontend port', async () => {
+  const keys = ['PHP_SERVER_ORIGIN', 'WEBSITE_WEB_PORT']
+  const prior = keys.map((key) => process.env[key])
   try {
-    for (const mode of ['local', 'dev', 'full']) {
-      Object.assign(process.env, {
-        WEBSITE_INTEGRATION_ENABLED: 'true',
-        WEBSITE_INTEGRATION_MODE: mode,
-        SERVER_PUBLIC_WEB_BASE_URL: 'http://127.0.0.1:18080',
-        OUTLINE_DEV_HTTP_PORT: '13102',
-        INTEGRATION_OUTLINE_VITE_PORT: '13101',
-        INTEGRATION_WEB_PORT: '18081',
-        INTEGRATION_SERVER_PORT: '18082',
-      })
-      delete process.env.WEBSITE_DEV_ENTRY_PORT
-      const loaded = await loadConfigFromFile(
-        { command: 'serve', mode: 'development' },
-        'apps/web/vite.config.ts',
-      )
-      const server = loaded!.config.server!
-      expect(server.host).toBe('127.0.0.1')
-      expect(server.port).toBe(18081)
-      expect(server.hmr).toEqual({ protocol: 'ws', host: '127.0.0.1', clientPort: 18080 })
-      expect(server.headers).toMatchObject({ 'Referrer-Policy': 'no-referrer' })
-      expect(Object.keys(server.proxy!)).toEqual(['/api'])
-      expect(server.proxy!['/api']).toMatchObject({ target: 'http://127.0.0.1:18082' })
-    }
-    delete process.env.SERVER_PUBLIC_WEB_BASE_URL
-    const standalone = await loadConfigFromFile(
+    process.env.PHP_SERVER_ORIGIN = 'http://127.0.0.1:18787'
+    process.env.WEBSITE_WEB_PORT = '18080'
+    const loaded = await loadConfigFromFile(
       { command: 'serve', mode: 'development' },
       'apps/web/vite.config.ts',
     )
-    expect(standalone!.config.server!.hmr).toBeUndefined()
-  } finally {
-    for (const key of keys) {
-      if (original[key] === undefined) delete process.env[key]
-      else process.env[key] = original[key]
+    const server = loaded!.config.server!
+    expect(server.host).toBe('127.0.0.1')
+    expect(server.port).toBe(18080)
+    expect(server.strictPort).toBe(true)
+    expect(server.headers).toMatchObject({ 'Referrer-Policy': 'no-referrer' })
+    const proxies = server.proxy!
+    for (const path of [
+      '/api/account/me',
+      '/oauth/authorize?request=1',
+      '/oauth/device?user_code=x',
+    ]) {
+      const entry = Object.entries(proxies).find(([context]) =>
+        context.startsWith('^') ? new RegExp(context).test(path) : path.startsWith(context),
+      )
+      expect(entry?.[1]).toMatchObject({ target: 'http://127.0.0.1:18787' })
     }
+    for (const path of [
+      '/oauth/device/extra',
+      '/oauth/authorize-extra',
+      '/oauth/other',
+      '/apiculture',
+      '/login',
+      '/register',
+      '/sso/success',
+    ])
+      expect(
+        Object.keys(proxies).some((context) =>
+          context.startsWith('^') ? new RegExp(context).test(path) : path.startsWith(context),
+        ),
+      ).toBe(false)
+  } finally {
+    keys.forEach((key, i) =>
+      prior[i] === undefined ? delete process.env[key] : (process.env[key] = prior[i]),
+    )
   }
 })
 afterEach(async () => {

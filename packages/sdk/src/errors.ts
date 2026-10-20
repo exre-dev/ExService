@@ -15,21 +15,17 @@ export type StorageSdkErrorCode =
   | 'UNKNOWN'
 import { ExAxiosError } from './http/errors.js'
 
-const SERVER_CODE_TO_SDK_CODE: Record<string, StorageSdkErrorCode> = {
-  STORAGE_INVALID_INPUT: 'INVALID_INPUT',
-  STORAGE_TICKET_FORBIDDEN: 'FORBIDDEN',
-  STORAGE_NOT_FOUND: 'NOT_FOUND',
-  STORAGE_CONFLICT: 'CONFLICT',
-  STORAGE_TOO_LARGE: 'TOO_LARGE',
-  STORAGE_UNSUPPORTED_MEDIA_TYPE: 'UNSUPPORTED_MEDIA_TYPE',
-  STORAGE_TIMEOUT: 'TIMEOUT',
-  STORAGE_UPSTREAM_FAILED: 'UPSTREAM_FAILED',
-  STORAGE_UNAVAILABLE: 'UNAVAILABLE',
-  STORAGE_BUSY: 'BUSY',
-  SESSION_INVALID: 'UNAUTHORIZED',
-  BAD_REQUEST: 'INVALID_INPUT',
-  INTERNAL_ERROR: 'UNKNOWN',
-  NOT_FOUND: 'NOT_FOUND',
+const STATUS_CODE: Record<number, StorageSdkErrorCode> = {
+  400: 'INVALID_INPUT',
+  401: 'UNAUTHORIZED',
+  403: 'FORBIDDEN',
+  404: 'NOT_FOUND',
+  409: 'CONFLICT',
+  413: 'TOO_LARGE',
+  415: 'UNSUPPORTED_MEDIA_TYPE',
+  422: 'INVALID_INPUT',
+  429: 'BUSY',
+  503: 'UNAVAILABLE',
 }
 
 /**
@@ -58,42 +54,22 @@ export class StorageSdkError extends Error {
   }
 }
 
-export function serverCodeToSdkCode(code: unknown): StorageSdkErrorCode {
-  return typeof code === 'string' && code in SERVER_CODE_TO_SDK_CODE
-    ? SERVER_CODE_TO_SDK_CODE[code]!
-    : 'UNKNOWN'
-}
-
 /**
- * 把服务端 envelope、HTTP 状态与网络异常统一成 StorageSdkError。
- * 云 SDK 的原始异常不直接作为展示文案。
+ * 仅按传输分类和真实 HTTP 状态转换，不从 PHP 的中文 msg 猜测业务码。
  */
-export function toStorageSdkError(input: {
-  error?: unknown
-  status?: number
-  cause?: unknown
-}): StorageSdkError {
-  const { error, status, cause } = input
+export function toStorageSdkError(input: { status?: number; cause?: unknown }): StorageSdkError {
+  const { status, cause } = input
   if (cause instanceof StorageSdkError) return cause
   if (cause instanceof ExAxiosError) {
     const code =
-      cause.code === 'SESSION_INVALID'
-        ? 'UNAUTHORIZED'
-        : cause.code === 'TIMEOUT' || cause.code === 'CANCELLED'
-          ? 'TIMEOUT'
-          : cause.code === 'NETWORK_ERROR'
-            ? 'NETWORK'
-            : serverCodeToSdkCode(cause.code)
+      cause.code === 'TIMEOUT' || cause.code === 'CANCELLED'
+        ? 'TIMEOUT'
+        : cause.code === 'NETWORK_ERROR'
+          ? 'NETWORK'
+          : cause.status === undefined
+            ? 'UNKNOWN'
+            : (STATUS_CODE[cause.status] ?? 'UNKNOWN')
     return new StorageSdkError(code, { status: cause.status, requestId: cause.requestId })
-  }
-  const envelope =
-    typeof error === 'object' && error !== null
-      ? (error as { error?: { code?: unknown; message?: unknown; requestId?: unknown } }).error
-      : undefined
-  const code = serverCodeToSdkCode(envelope?.code)
-  const requestId = typeof envelope?.requestId === 'string' ? envelope.requestId : undefined
-  if (code !== 'UNKNOWN') {
-    return new StorageSdkError(code, { status, requestId })
   }
   if (cause !== undefined) {
     if (cause instanceof Error && (cause.name === 'TimeoutError' || cause.name === 'AbortError')) {
@@ -101,5 +77,8 @@ export function toStorageSdkError(input: {
     }
     return new StorageSdkError('NETWORK', { status })
   }
-  return new StorageSdkError('UNKNOWN', { status, requestId })
+  return new StorageSdkError(
+    status === undefined ? 'UNKNOWN' : (STATUS_CODE[status] ?? 'UNKNOWN'),
+    { status },
+  )
 }

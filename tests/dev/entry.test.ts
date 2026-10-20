@@ -2,7 +2,7 @@ import { createServer as createHttpServer, request as httpRequest } from 'node:h
 import type { AddressInfo } from 'node:net'
 import { afterEach, expect, it } from 'vitest'
 import { createServer } from 'vite'
-import { createDevEntryServer, guardedProxy, proxyBoundaryPlugin } from '../../apps/web/dev-entry'
+import { createDevEntryServer, phpProxy, proxyBoundaryPlugin } from '../../apps/web/dev-entry'
 
 const close: (() => Promise<void>)[] = []
 afterEach(async () => {
@@ -28,7 +28,12 @@ it('serves Docs paths through Website fallback and proxies only Website API on b
     server: {
       host: '127.0.0.1',
       port: 0,
-      proxy: { '/api': guardedProxy({ target, ws: true }) },
+      proxy: Object.fromEntries(
+        Object.entries(phpProxy(target, 'http://127.0.0.1:8080')).map(([key, value]) => [
+          key,
+          { ...value, ws: true },
+        ]),
+      ),
     },
     plugins: [
       proxyBoundaryPlugin(),
@@ -61,7 +66,16 @@ it('serves Docs paths through Website fallback and proxies only Website API on b
     const origin = `http://127.0.0.1:${port}`
     expect(await (await fetch(`${origin}/`)).text()).toContain('Website home')
     expect(await (await fetch(`${origin}/api/health`)).json()).toEqual({ path: '/api/health' })
+    for (const path of ['/oauth/authorize?x=1', '/oauth/device?user_code=x'])
+      expect(await (await fetch(origin + path)).json()).toEqual({ path })
     for (const path of [
+      '/login',
+      '/register',
+      '/sso/success',
+      '/oauth/device/extra',
+      '/oauth/authorize-extra',
+      '/oauth/other',
+      '/apiculture',
       '/docs',
       '/docs/',
       '/docs/doc/old',

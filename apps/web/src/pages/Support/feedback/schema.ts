@@ -2,7 +2,6 @@ import { z } from 'zod'
 import {
   analyzeRequest,
   composeBug,
-  FEEDBACK_LIMITS,
   FREQUENCIES,
   utf8Bytes,
 } from '@workspace/common/feedback-content'
@@ -10,14 +9,20 @@ import type { components } from '@workspace/sdk/types'
 import type { FeedbackForm } from './flow'
 import { ruleForKind } from './kind-rules'
 
+export const FEEDBACK_LIMITS = {
+  titleCodePoints: 200,
+  userContentBytes: 65536,
+  fileBytes: 20971520,
+  files: 5,
+  totalFileBytes: 104857600,
+  largeFileInfoBytes: 65536,
+} as const satisfies components['schemas']['FeedbackLimits']
 const control = /[\u0000-\u001f\u007f-\u009f]/
 export type FeedbackKind = FeedbackForm['kind']
 export interface FeedbackDraft {
   contentFormat?: 'markdown'
   editorErrors: Partial<Record<MarkdownField, string | undefined>>
   title: string
-  typeOptionId: string
-  departmentOptionId: string
   action: string
   largeFileInfoEnabled: boolean
   largeFileInfo: string
@@ -36,8 +41,6 @@ export const emptyDraft = (): FeedbackDraft => ({
   contentFormat: 'markdown',
   editorErrors: {},
   title: '',
-  typeOptionId: '',
-  departmentOptionId: '',
   action: '',
   largeFileInfoEnabled: false,
   largeFileInfo: '',
@@ -52,10 +55,7 @@ export const emptyDraft = (): FeedbackDraft => ({
 })
 const optional = (value: string): string | null => (value.trim() ? value : null)
 
-export function toFeedbackForm(
-  kind: FeedbackKind,
-  draft: FeedbackDraft,
-): components['schemas']['FeedbackSubmissionForm'] {
+export function toFeedbackForm(kind: FeedbackKind, draft: FeedbackDraft): FeedbackForm {
   const common = {
     title: draft.title.trim(),
     largeFileInfo: draft.largeFileInfoEnabled ? optional(draft.largeFileInfo) : null,
@@ -66,29 +66,24 @@ export function toFeedbackForm(
       return {
         ...common,
         kind,
-        typeOptionId: draft.typeOptionId,
         details: {
           description: draft.description,
           reproductionSteps: optional(draft.reproductionSteps),
           expectedResult: optional(draft.expectedResult),
           actualResult: optional(draft.actualResult),
-          frequency: (draft.frequency ||
-            null) as components['schemas']['FeedbackBugDetails']['frequency'],
+          frequency: draft.frequency || null,
         },
       }
     case 'feature':
       return {
         ...common,
         kind,
-        typeOptionId: optional(draft.typeOptionId),
-        departmentOptionId: optional(draft.departmentOptionId),
         contentText: draft.contentText,
       }
     case 'asset':
       return {
         ...common,
         kind,
-        typeOptionId: optional(draft.typeOptionId),
         action: draft.action as 'add' | 'modify' | 'delete' | 'other',
         contentText: draft.contentText,
       }
@@ -96,7 +91,6 @@ export function toFeedbackForm(
       return {
         ...common,
         kind,
-        typeOptionId: optional(draft.typeOptionId),
         contentText: draft.contentText,
       }
     case 'content':
@@ -115,41 +109,34 @@ export function toFeedbackForm(
   }
 }
 export function draftFromForm(form: FeedbackForm): FeedbackDraft {
+  const text = (value: unknown) => (typeof value === 'string' ? value : '')
+  const details =
+    form.details && typeof form.details === 'object'
+      ? (form.details as Record<string, unknown>)
+      : {}
   return {
     ...emptyDraft(),
-    contentFormat: form.contentFormat,
+    contentFormat: form.contentFormat === 'markdown' ? 'markdown' : undefined,
     title: form.title,
-    largeFileInfo: form.largeFileInfo ?? '',
-    largeFileInfoEnabled: form.largeFileInfo !== null,
-    ...('typeOptionId' in form ? { typeOptionId: form.typeOptionId ?? '' } : {}),
-    ...(form.kind === 'feature' ? { departmentOptionId: form.departmentOptionId ?? '' } : {}),
-    ...(form.kind === 'complaint' ? { anonymous: form.anonymous } : {}),
-    ...('action' in form ? { action: form.action } : {}),
-    ...(form.kind === 'bug'
-      ? {
-          description: form.details.description,
-          reproductionSteps: form.details.reproductionSteps ?? '',
-          expectedResult: form.details.expectedResult ?? '',
-          actualResult: form.details.actualResult ?? '',
-          frequency: form.details.frequency ?? '',
-        }
-      : { contentText: form.contentText }),
+    largeFileInfo: text(form.largeFileInfo),
+    largeFileInfoEnabled: Boolean(form.largeFileInfo),
+    anonymous: form.anonymous === true,
+    action: text(form.action),
+    contentText: text(form.contentText),
+    description: text(details.description),
+    reproductionSteps: text(details.reproductionSteps),
+    expectedResult: text(details.expectedResult),
+    actualResult: text(details.actualResult),
+    frequency: text(details.frequency),
   }
 }
 export function feedbackSchema(
   kind: FeedbackKind,
-  options: Pick<components['schemas']['FeedbackOptions'], 'fields' | 'actions'>,
+  options: Pick<components['schemas']['FeedbackOptionsData'], 'fields' | 'actions'> &
+    Partial<Pick<components['schemas']['FeedbackOptionsData'], 'limits'>>,
 ) {
   const rule = ruleForKind(kind)
-  const fieldOptions = (id: string) =>
-    options.fields.find((field) => field.id === id)?.type_config.options ?? []
-  const selection = (items: { id: string }[]) =>
-    z
-      .string()
-      .refine(
-        (value) => !value || items.some((item) => item.id === value),
-        '选项已不可用，请重新选择',
-      )
+  const limits = options.limits ?? FEEDBACK_LIMITS
   return z
     .object({
       contentFormat: z.literal('markdown').optional(),
@@ -159,15 +146,10 @@ export function feedbackSchema(
         .refine(
           (value) =>
             Boolean(value.trim()) &&
-            Array.from(value.trim()).length <= FEEDBACK_LIMITS.titleCodePoints &&
+            Array.from(value.trim()).length <= limits.titleCodePoints &&
             !control.test(value),
           '标题须为 1–200 字且不含换行',
         ),
-      typeOptionId: selection(fieldOptions('4c3befc0-5146-43a2-8610-86efe4e8124a')).refine(
-        (value) => rule.typeField !== 'required' || Boolean(value),
-        '请选择问题分类',
-      ),
-      departmentOptionId: selection(fieldOptions('9b3d2027-2162-42e2-81b9-d907592cdb5b')),
       action: z
         .string()
         .refine(
@@ -199,14 +181,23 @@ export function feedbackSchema(
             ),
           ),
         )
-        .max(FEEDBACK_LIMITS.files, '最多选择 5 个附件'),
+        .max(limits.files, '最多选择 5 个附件'),
     })
     .superRefine((draft, ctx) => {
       const form = toFeedbackForm(kind, draft)
       const analysis =
         form.kind === 'bug'
-          ? composeBug(form.details, draft.contentFormat)
-          : analyzeRequest(form.contentText, draft.contentFormat)
+          ? composeBug(
+              {
+                description: draft.description,
+                reproductionSteps: optional(draft.reproductionSteps),
+                expectedResult: optional(draft.expectedResult),
+                actualResult: optional(draft.actualResult),
+                frequency: (draft.frequency || null) as keyof typeof FREQUENCIES | null,
+              },
+              draft.contentFormat,
+            )
+          : analyzeRequest(draft.contentText, draft.contentFormat)
       if (!analysis.valid)
         ctx.addIssue({
           code: 'custom',
@@ -217,6 +208,21 @@ export function feedbackSchema(
               : analysis.reason === 'too_large'
                 ? '正文超出大小限制，请缩短内容'
                 : '正文格式不可用，请调整内容',
+        })
+      if (
+        utf8Bytes(
+          JSON.stringify(form)
+            .replace(
+              /[\u0080-\uffff]/g,
+              (char) => '\\u' + char.charCodeAt(0).toString(16).padStart(4, '0'),
+            )
+            .replaceAll('/', '\\/'),
+        ) > 131072
+      )
+        ctx.addIssue({
+          code: 'custom',
+          path: [rule.body === 'bug' ? 'description' : 'contentText'],
+          message: '表单内容过大，请缩短内容',
         })
       const activeFields: MarkdownField[] =
         rule.body === 'bug'
@@ -234,18 +240,18 @@ export function feedbackSchema(
         ] as const)
           if (utf8Bytes(draft[field]) > 16384)
             ctx.addIssue({ code: 'custom', path: [field], message: '此项最多 16 KiB，请缩短内容' })
-      if (draft.largeFileInfoEnabled && utf8Bytes(draft.largeFileInfo) > 16384)
-        ctx.addIssue({ code: 'custom', path: ['largeFileInfo'], message: '补充信息最多 16 KiB' })
+      if (draft.largeFileInfoEnabled && utf8Bytes(draft.largeFileInfo) > limits.largeFileInfoBytes)
+        ctx.addIssue({ code: 'custom', path: ['largeFileInfo'], message: '补充信息最多 64 KiB' })
       if (
         draft.files.some(
           (file) =>
             file.size < 1 ||
-            file.size > FEEDBACK_LIMITS.fileBytes ||
+            file.size > limits.fileBytes ||
             Array.from(file.name).length < 1 ||
             Array.from(file.name).length > 255 ||
             control.test(file.name),
         ) ||
-        draft.files.reduce((sum, file) => sum + file.size, 0) > FEEDBACK_LIMITS.totalFileBytes
+        draft.files.reduce((sum, file) => sum + file.size, 0) > limits.totalFileBytes
       )
         ctx.addIssue({
           code: 'custom',
