@@ -1,8 +1,8 @@
 # 跨模块架构总览
 
-本文件说明 ExWebsite 当前开发拓扑。HTTP 形状以 `api/openapi.yaml` 为准；Server 请求与数据库生命周期见 `.ai/architectures/server/request-lifecycle.md`，数据规则见 `.ai/databases/data-model.md`。
+本文件说明 ExWebsite 当前开发拓扑。Website HTTP 形状以 `api/openapi.yaml` 为准；Server 请求与数据库生命周期见 `.ai/architectures/server/request-lifecycle.md`，数据规则见 `.ai/databases/data-model.md`。独立管理端的 PHP 请求边界见 `.ai/architectures/admin-web/application-boundaries.md`。
 
-_最后更新：2026-10-19_
+_最后更新：2026-10-20_
 
 ## 系统结构
 
@@ -23,15 +23,17 @@ api/openapi.yaml + api/paths/ + api/schemas/
 
 ## 模块边界
 
-| 路径                   | 责任                                                                                                               |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `api/`                 | 唯一 HTTP Contract 的源文件与统一生成的 JSON。                                                                     |
-| `packages/sdk/`        | Contract 生成类型、Browser/Node 单例 HTTP 请求与上传；边界见 `.ai/architectures/sdk/client-boundaries.md`。        |
-| `packages/components/` | 基于 ExUI 的应用级共享 UI。                                                                                        |
-| `packages/common/`     | 按模块子入口提供共享纯逻辑，包含反馈内容与 Node 身份配置、绑定投影；消费规则见 `.agents/rules/package-common.md`。 |
-| `apps/web/`            | Vite/React 前端、路由、主题和 SDK 接入。                                                                           |
-| `apps/server/`         | `modules/` 公共能力、`domains/` 具体流程、统一 HTTP/Glue 入口与受控 PostgreSQL 访问。                              |
-| `tests/contract/`      | 对真实 Fastify app 的 HTTP 行为与原始 handler 输出做验证。                                                         |
+| 路径                   | 责任                                                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `api/`                 | 唯一 HTTP Contract 的源文件与统一生成的 JSON。                                                                      |
+| `packages/sdk/`        | Contract 生成类型、Browser/Node 单例 HTTP 请求与上传；边界见 `.ai/architectures/sdk/client-boundaries.md`。         |
+| `packages/components/` | 基于 ExUI 的应用级共享 UI。                                                                                         |
+| `packages/common/`     | 按模块子入口提供共享纯逻辑，包含反馈内容与 Node 身份配置、绑定投影；消费规则见 `.agents/rules/package-common.md`。  |
+| `apps/web/`            | Vite/React 前端、路由、主题和 SDK 接入。                                                                            |
+| `apps/admin-web/`      | 管理端 SPA，保留 Ant Design，独立消费 PHP API；模块边界见 `.ai/architectures/admin-web/application-boundaries.md`。 |
+| `apps/php-server/`     | 独立 PHP 后端 Git 子模块，按自己的 Contract、配置和生命周期运行。                                                   |
+| `apps/server/`         | `modules/` 公共能力、`domains/` 具体流程、统一 HTTP/Glue 入口与受控 PostgreSQL 访问。                               |
+| `tests/contract/`      | 对真实 Fastify app 的 HTTP 行为与原始 handler 输出做验证。                                                          |
 
 ## 依赖与构建
 
