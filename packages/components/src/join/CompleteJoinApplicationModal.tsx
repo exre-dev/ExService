@@ -15,7 +15,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  ExForm,
+  Form,
   FormErrorSummary,
   Input,
   Textarea,
@@ -211,7 +211,7 @@ function Wizard<T extends FormValues, O extends JoinApplicationDraft>({
   }, [step])
   useEffect(() => {
     if (!pendingFocus.current) return
-    // ExForm commits its controlled step after our render. Focus on the next
+    // Form commits its controlled step after our render. Focus on the next
     // frame, when that step's real input has registered with the form instance.
     const frame = requestAnimationFrame(() => {
       if (pendingFocus.current) form.setFocus(pendingFocus.current)
@@ -286,7 +286,7 @@ function Wizard<T extends FormValues, O extends JoinApplicationDraft>({
         },
       }
     })
-    // This is the adapter from the existing string-path field catalogue to ExForm.
+    // This is the adapter from the existing string-path field catalogue to Form.
     // Schemas remain the authority for the value at each path.
     const result = configured as unknown as FormFieldConfig<T>[]
     if (applicationType === 'experienced')
@@ -360,7 +360,7 @@ function Wizard<T extends FormValues, O extends JoinApplicationDraft>({
         </p>
         {step === last && <FormSummary form={form} type={applicationType} />}
         {serverAction && <div className={styles.serverAction}>{serverAction}</div>}
-        <ExForm
+        <Form
           form={form}
           fields={fields}
           steps={steps}
@@ -403,7 +403,7 @@ function Wizard<T extends FormValues, O extends JoinApplicationDraft>({
           }
         >
           <FormErrorSummary title={null} />
-        </ExForm>
+        </Form>
       </section>
       <div className={styles.footer} ref={setFooterHost}>
         <DialogDescription className={styles.footerDescription}>
@@ -413,7 +413,7 @@ function Wizard<T extends FormValues, O extends JoinApplicationDraft>({
     </>
   )
 }
-// ExForm snapshots are frozen. Copy every draft container before reusing it as
+// Form snapshots are frozen. Copy every draft container before reusing it as
 // defaults, keeping the original in-memory File objects intact.
 function restoreDraft(draft: NonNullable<CompleteJoinApplicationModalProps['initialDraft']>) {
   return {

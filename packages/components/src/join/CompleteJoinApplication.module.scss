@@ -184,7 +184,7 @@
   }
 }
 
-/* ExForm owns step validation; navigation is presented by the modal footer. */
+/* Form owns step validation; navigation is presented by the modal footer. */
 .form :global(.ex-form-steps),
 .form :global(.ex-form-footer) {
   display: none;
@@ -225,7 +225,8 @@
 /* Field errors stay beside their inputs. Only submission-level errors remain,
    after the fields rather than in a summary above them. */
 .form :global(.ex-form-summary),
-.form :global(.ex-form-summary > ul) {
+.form :global(.ex-form-summary > [data-slot='alert-description']),
+.form :global(.ex-form-summary ul) {
   display: contents;
 }
 .form :global(.ex-form-summary li) {
@@ -233,7 +234,8 @@
   grid-column: 1 / -1;
   list-style: none;
 }
-.form :global(.ex-form-summary-title),
+.form :global(.ex-form-summary > svg),
+.form :global(.ex-form-summary > [data-slot='alert-title']),
 .form :global(.ex-form-summary li:has(.ex-form-summary-link)) {
   display: none;
 }

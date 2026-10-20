@@ -63,7 +63,7 @@ OpenAPI 3.1 schema 仅使用 JSON Schema Draft-07 兼容子集；引入 Draft 20
 
 ## 前端规则
 
-- 修改 Form 前，阅读并遵守 `.ai/rules/frontend-forms.md`；全站临时通知统一使用 `ExMessage`，遵守 `.ai/rules/frontend-notifications.md`。
+- 修改 Form 前，阅读并遵守 `.ai/rules/frontend-forms.md`；全站临时通知统一使用 `toast`，遵守 `.ai/rules/frontend-notifications.md`。
 - 共享组件使用 CSS Modules、ExUI 颜色/边框/圆角 token 和 `lucide-react` 图标，不新建本地 token 层。`react`、`react-dom`、`react-router` 同时声明为 peer/dev dependencies，保证消费方单一实例。
 - 修改 ExUI 接入或主题前，阅读 `.ai/knowledge/web/exui-integration-traps.md`。全局样式仅在 `apps/web/src/main.tsx` 导入一次；`useTheme` 必须位于 `ThemeProvider` 内，应用按 light/dark 类补充 `color-scheme`。不要另装 ExUI 已打包的 Sonner、Radix、Base UI 等实现库。
 

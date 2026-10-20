@@ -1,4 +1,4 @@
-import { ExMessage } from '@exre/exui'
+import { toast } from '@exre/exui'
 import { createRuntime } from './runtime.js'
 import type { RuntimeEnvironment } from './config.js'
 import type { SdkInstance, SessionExpiredHandler } from './request-types.js'
@@ -23,7 +23,7 @@ const environment: RuntimeEnvironment = {
       return false
     }
   },
-  notify: (message) => ExMessage.error(message),
+  notify: (message) => toast.error(message),
   navigate: (url) => {
     if (typeof location === 'undefined') return
     const target = new URL(url, location.href)

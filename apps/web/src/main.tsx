@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
-import { ThemeProvider, GlassSeed, ExMessageContext } from '@exre/exui'
+import { ThemeProvider, GlassSeed, Toaster } from '@exre/exui'
 import { instance } from '@workspace/sdk'
 import { installSdkIntegration } from '@web/src/api/client'
 import { App } from '@web/src/App'
@@ -43,7 +43,7 @@ createRoot(container).render(
       <WebsiteThemePreferenceReconciliation />
       <SettingsThemeProjection />
       <GlassSeed />
-      <ExMessageContext />
+      <Toaster position="top-right" duration={3000} visibleToasts={3} />
       <BrowserRouter>
         <App />
       </BrowserRouter>

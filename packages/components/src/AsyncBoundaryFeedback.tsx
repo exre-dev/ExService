@@ -8,7 +8,7 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  ExMessage,
+  toast,
   Spinner,
 } from '@exre/exui'
 import { Check, CircleAlert, Copy, RotateCcw } from 'lucide-react'
@@ -112,7 +112,7 @@ export function AsyncFailure({
       await navigator.clipboard.writeText(report)
       setCopied(true)
     } catch {
-      ExMessage.error('复制失败，请选择错误信息后手动复制。')
+      toast.error('复制失败，请选择错误信息后手动复制。')
     } finally {
       copying.current = false
     }

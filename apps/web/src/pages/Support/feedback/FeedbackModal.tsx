@@ -3,7 +3,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Button,
-  ExMessage,
+  toast,
   Field,
   FieldContent,
   FieldDescription,
@@ -224,7 +224,7 @@ export function FeedbackModal({
           setKind(null)
           form.reset(emptyDraft())
           setSnapshot(null)
-          ExMessage.info('上次反馈已提交，可以填写一份新反馈。')
+          toast.info('上次反馈已提交，可以填写一份新反馈。')
           return
         }
         setSnapshot(next)
@@ -240,7 +240,7 @@ export function FeedbackModal({
         if (!disposed && scope === sessionScopeRevision() && !(error instanceof FeedbackStopped)) {
           if (flow.hasPending())
             setFailure((current) => (current === 'rejected' ? current : 'uncertain'))
-          ExMessage.warn('提交结果待确认，请稍后核对。')
+          toast.warning('提交结果待确认，请稍后核对。')
         }
       })
       .finally(() => {
@@ -313,7 +313,7 @@ export function FeedbackModal({
       }
       if (next) setSnapshot(next)
       if (next?.nextAction === 'done') {
-        ExMessage.info('反馈已提交')
+        toast.info('反馈已提交')
         flow.reset()
         drafts.current = {}
         form.reset(emptyDraft())
@@ -323,10 +323,10 @@ export function FeedbackModal({
         setOpen(false)
       } else {
         if (next?.nextAction === 'upload')
-          ExMessage.warn('请重新选择缺失附件，内容和摘要须与原清单一致。')
-        else if (next?.nextAction === 'retry') ExMessage.error('本次提交未完成，请重试。')
+          toast.warning('请重新选择缺失附件，内容和摘要须与原清单一致。')
+        else if (next?.nextAction === 'retry') toast.error('本次提交未完成，请重试。')
         else if (next?.nextAction === 'verify' || next?.nextAction === 'wait')
-          ExMessage.warn('提交结果待确认，请稍后核对。')
+          toast.warning('提交结果待确认，请稍后核对。')
       }
     } catch (error) {
       if (
@@ -344,7 +344,7 @@ export function FeedbackModal({
           !snapshot && flow.hasPending() && !rejected
             ? '提交结果待确认，请稍后核对。'
             : fixedError(error)
-        ExMessage.error(message)
+        toast.error(message)
         form.setError('root.server', { type: 'server', message })
       }
     } finally {

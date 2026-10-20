@@ -721,7 +721,7 @@ const feedbackOptions: components['schemas']['FeedbackOptions'] = {
 }
 
 async function mountFeedback() {
-  const { ThemeProvider, ExMessageContext } = await import('@exre/exui')
+  const { ThemeProvider, Toaster } = await import('@exre/exui')
   const { FeedbackProvider, useFeedback } =
     await import('../pages/Support/feedback/FeedbackProvider')
   await import('../pages/Support/feedback/FeedbackModal')
@@ -735,7 +735,7 @@ async function mountFeedback() {
   }
   render(
     <ThemeProvider defaultTheme="light">
-      <ExMessageContext />
+      <Toaster />
       <MemoryRouter>
         <FeedbackProvider>
           <Entry />

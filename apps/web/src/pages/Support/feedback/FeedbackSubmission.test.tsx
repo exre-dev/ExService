@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { Button, ExMessageContext, ThemeProvider } from '@exre/exui'
+import { Button, Toaster, ThemeProvider } from '@exre/exui'
 import { StrictMode } from 'react'
 import { Link, MemoryRouter, Route, Routes } from 'react-router'
 import { FeedbackProvider, useFeedback } from './FeedbackProvider'
@@ -82,7 +82,7 @@ function mount() {
   render(
     <StrictMode>
       <ThemeProvider defaultTheme="light">
-        <ExMessageContext />
+        <Toaster />
         <MemoryRouter initialEntries={['/support']}>
           <FeedbackProvider>
             <Routes>

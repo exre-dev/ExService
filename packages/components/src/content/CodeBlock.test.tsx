@@ -2,7 +2,7 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { CodeBlock } from './CodeBlock'
-import { ExMessage } from '@exre/exui'
+import { toast } from '@exre/exui'
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
@@ -11,7 +11,7 @@ afterEach(() => {
 it('copies each block original text, without line numbers or other blocks', async () => {
   const writeText = vi.fn().mockResolvedValue(undefined)
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
-  const info = vi.spyOn(ExMessage, 'info').mockReturnValue('copied')
+  const info = vi.spyOn(toast, 'info').mockReturnValue('copied')
   render(
     <>
       <CodeBlock rawCode={'first\n'}>
@@ -28,7 +28,7 @@ it('copies each block original text, without line numbers or other blocks', asyn
 })
 it('reports a fixed error when clipboard is unavailable', async () => {
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined })
-  const error = vi.spyOn(ExMessage, 'error').mockReturnValue('failed')
+  const error = vi.spyOn(toast, 'error').mockReturnValue('failed')
   render(
     <CodeBlock rawCode="example">
       <code>example</code>

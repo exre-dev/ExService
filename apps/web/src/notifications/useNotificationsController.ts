@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useSnapshot } from 'valtio'
-import { ExMessage } from '@exre/exui'
+import { toast } from '@exre/exui'
 import { instance, ExAxiosError } from '@workspace/sdk'
 import { useAuth } from '@web/src/auth/AuthContext'
 import { readToken, subscribeSessionChanges } from '@web/src/auth/storage'
@@ -575,7 +575,7 @@ export function useNotificationsController() {
           if (result.itemCount === 0) {
             void loadSummary()
             void loadPage('all', null, { force: true })
-            ExMessage.info('暂无可清理通知。')
+            toast.info('暂无可清理通知。')
             failedPreparationKind.current = null
             bulkPhase.current = 'idle'
             return
@@ -652,7 +652,7 @@ export function useNotificationsController() {
           data: { requestId: readIntent.requestId, readThroughToken: readIntent.readThroughToken },
         })
         if (!accepted()) return
-        ExMessage.info('已标记本次选定通知，新到通知仍未读。')
+        toast.info('已标记本次选定通知，新到通知仍未读。')
       } else if (preview !== null) {
         const result = await instance({
           url: '/notifications/clear-all',
@@ -661,7 +661,7 @@ export function useNotificationsController() {
           data: { requestId: preview.requestId, clearSnapshotToken: preview.token },
         })
         if (!accepted()) return
-        ExMessage.info(
+        toast.info(
           `已清理 ${result.affectedCount} 条，跳过 ${result.skippedCount} 条；新到通知仍保留。`,
         )
         detailRequestId.current += 1

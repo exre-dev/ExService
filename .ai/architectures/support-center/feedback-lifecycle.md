@@ -46,11 +46,11 @@ GET、HEAD 和 lookup 不认领、清理或写远端。过期在途读取只派�
 
 ## 浏览器恢复与维护
 
-`apps/web/src/pages/Support/feedback/` 使用 RHF/Zod 与 ExUI Dialog。`App` 路由树外的 `FeedbackProvider` 按需加载并保留两个入口的反馈表单，统一认领进行中的命令；站内切换页面只隐藏弹窗，不卸载提交任务。各类型草稿在所属 `FeedbackModal` 内分别留存；返回类型选择不混入别的类型字段或附件。关闭有内容且尚未提交的草稿先在同一 Dialog 确认继续填写或放弃，确认放弃后清空草稿。prepare 开始后类型和匿名状态锁定；提交期间可通过关闭按钮、Esc 或遮罩直接关闭，原提交和附件继续推进。重新点击任一反馈入口时只用 ExMessage 提示正在上传，不打开弹窗。
+`apps/web/src/pages/Support/feedback/` 使用 RHF/Zod 与 ExUI Dialog。`App` 路由树外的 `FeedbackProvider` 按需加载并保留两个入口的反馈表单，统一认领进行中的命令；站内切换页面只隐藏弹窗，不卸载提交任务。各类型草稿在所属 `FeedbackModal` 内分别留存；返回类型选择不混入别的类型字段或附件。关闭有内容且尚未提交的草稿先在同一 Dialog 确认继续填写或放弃，确认放弃后清空草稿。prepare 开始后类型和匿名状态锁定；提交期间可通过关闭按钮、Esc 或遮罩直接关闭，原提交和附件继续推进。重新点击任一反馈入口时只用 toast 提示正在上传，不打开弹窗。
 
 同目录 `kind-rules.ts` 集中八类 kind 的 area、字段适用性与展示文案，Modal、Zod 和恢复流程共同消费。未知 kind 不按非社区补集推断 development；表单序列化与还原继续按生成 Contract 的判别 union 保留明确形状。该规则属于 Website 反馈流程，不进入 Common。
 
-提交期间仅原主按钮显示 Spinner 与「提交中」，不渲染进度 Block、提交编号或常驻 loading 通知。任务和全部附件完成后通过 ExMessage 提示成功、清空表单并关闭弹窗；已关闭的弹窗不会因失败重新打开。明确失败保留原提交并提供「重试」；超时、断线或远端结果待确认时提示核对，并只提供「核对进度」，不能直接再次写入。缺失附件仍可重新选择并核对摘要；恢复后的可继续步骤使用同一个主按钮。
+提交期间仅原主按钮显示 Spinner 与「提交中」，不渲染进度 Block、提交编号或常驻 loading 通知。任务和全部附件完成后通过 toast 提示成功、清空表单并关闭弹窗；已关闭的弹窗不会因失败重新打开。明确失败保留原提交并提供「重试」；超时、断线或远端结果待确认时提示核对，并只提供「核对进度」，不能直接再次写入。缺失附件仍可重新选择并核对摘要；恢复后的可继续步骤使用同一个主按钮。
 
 development 的 sessionStorage key 保持 `exwebsite.feedback.v2`，community 使用 `exwebsite.feedback.community.v1`，仅保存提交 key／ID；两个入口分别保留原提交并拒绝错入口表单与快照。冻结 prepare、正文与 File 留在当前 SPA 内存；关闭弹窗或站内导航不清理进行中的任务。刷新或关闭浏览器不能保证任务继续执行，重新进入后读取原记录并按需重新选择附件。只有 key 时的 404 不能自动生成新 key；已确认可重试的 prepare 沿用原 key 和冻结载荷，未知结果只能只读 lookup。
 

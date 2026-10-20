@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router'
-import { ExMessage } from '@exre/exui'
+import { toast } from '@exre/exui'
 import { InvitationRegistrationFlow } from '@web/src/invitations/InvitationRegistrationFlow'
 import { ExAxiosError } from '@workspace/sdk'
 
@@ -34,8 +34,8 @@ afterEach(() => {
   window.history.replaceState(null, '', '/')
 })
 beforeEach(() => {
-  vi.spyOn(ExMessage, 'info').mockReturnValue('info')
-  vi.spyOn(ExMessage, 'error').mockReturnValue('error')
+  vi.spyOn(toast, 'info').mockReturnValue('info')
+  vi.spyOn(toast, 'error').mockReturnValue('error')
 })
 
 const eligible = {
@@ -170,7 +170,7 @@ it.each([
 ])(
   'does not verify after automatic check %s and shows one persistent failure under StrictMode',
   async (status, code, message) => {
-    const notify = vi.spyOn(ExMessage, 'error')
+    const notify = vi.spyOn(toast, 'error')
     window.history.replaceState(null, '', '/register?email=member@example.com&code=001234')
     post.mockRejectedValue(failure(status as number, code as string))
     render(
@@ -232,7 +232,7 @@ it('clears a captured URL code when automatic verification fails and exposes a f
 
 it('keeps a code after resend network failure and clears it only after 202 with the response cooldown', async () => {
   const user = userEvent.setup(),
-    notify = vi.spyOn(ExMessage, 'info')
+    notify = vi.spyOn(toast, 'info')
   post
     .mockResolvedValueOnce(eligible)
     .mockRejectedValueOnce(new Error('offline'))
@@ -289,7 +289,7 @@ it('prevents resend from bypassing a verification lock and enables explicit retr
 it('rejects an old email check after the email changes without sending a notification', async () => {
   const user = userEvent.setup(),
     next = deferred<typeof eligible>(),
-    notify = vi.spyOn(ExMessage, 'error')
+    notify = vi.spyOn(toast, 'error')
   post.mockReturnValue(next.promise)
   render(
     <MemoryRouter>
@@ -337,7 +337,7 @@ it('back cancels late verification and requires the new email to be checked agai
 
 it('unmount during the automatic check prevents verification and late notifications', async () => {
   const next = deferred<typeof eligible>(),
-    notify = vi.spyOn(ExMessage, 'error')
+    notify = vi.spyOn(toast, 'error')
   window.history.replaceState(null, '', '/register?email=member@example.com&code=001234')
   post.mockReturnValue(next.promise)
   const rendered = render(
@@ -358,7 +358,7 @@ it.each(['modal', 'page'] as const)(
   async (presentation) => {
     const user = userEvent.setup(),
       onLogin = vi.fn(),
-      notify = vi.spyOn(ExMessage, 'info')
+      notify = vi.spyOn(toast, 'info')
     post
       .mockResolvedValueOnce(eligible)
       .mockResolvedValueOnce(verified)
@@ -502,7 +502,7 @@ for (const presentation of ['page', 'modal'] as const) {
       await user.click(screen.getByRole('button', { name: '继续' }))
       expect(await screen.findAllByText(message)).toHaveLength(1)
       expect(screen.queryAllByRole('region')).toHaveLength(panel ? 1 : 0)
-      expect(ExMessage.error).not.toHaveBeenCalled()
+      expect(toast.error).not.toHaveBeenCalled()
       expect(screen.queryByText('private stack')).toBeNull()
       expect(screen.getByLabelText('邮箱').getAttribute('aria-invalid')).toBe(
         panel ? 'false' : 'true',
@@ -525,7 +525,7 @@ it.each([undefined, '0', '-1', 'NaN', 'Infinity'])(
     )
     await user.click(screen.getByRole('button', { name: '继续' }))
     expect(await screen.findAllByText('检查失败，请稍后重试')).toHaveLength(1)
-    expect(ExMessage.error).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
   },
 )
 
@@ -549,7 +549,7 @@ it.each(checkCases)(
       panel ? 'false' : 'true',
     )
     expect(post).toHaveBeenCalledTimes(1)
-    expect(ExMessage.error).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
   },
 )
 
@@ -619,7 +619,7 @@ it('keeps manual verification failure in the field alone and does not loop on co
   await user.type(await enterCode(user), '001234')
   expect(await screen.findAllByText('验证码无效或已过期，请重新获取')).toHaveLength(1)
   expect(screen.queryByRole('region')).toBeNull()
-  expect(ExMessage.error).not.toHaveBeenCalled()
+  expect(toast.error).not.toHaveBeenCalled()
 })
 
 it('puts resend failure in one code-form panel without a field error and clears it before retrying', async () => {
@@ -647,8 +647,8 @@ it('puts resend failure in one code-form panel without a field error and clears 
     next.resolve({ status: 'accepted', serverTime: 1000, resendAvailableAt: 1000 })
   })
   expect(code.value).toBe('')
-  expect(ExMessage.info).toHaveBeenCalledExactlyOnceWith('如邮箱符合邀请条件，将发送验证码')
-  expect(ExMessage.error).not.toHaveBeenCalled()
+  expect(toast.info).toHaveBeenCalledExactlyOnceWith('如邮箱符合邀请条件，将发送验证码')
+  expect(toast.error).not.toHaveBeenCalled()
 })
 
 it.each([
@@ -681,7 +681,7 @@ it.each([
   })
   expect(screen.queryByText(message)).toBeNull()
   expect(screen.queryByRole('region')).toBeNull()
-  expect(ExMessage.error).not.toHaveBeenCalled()
+  expect(toast.error).not.toHaveBeenCalled()
 })
 
 it('rejects late automatic verification errors after changing the email', async () => {

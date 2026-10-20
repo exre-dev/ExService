@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useLocation } from 'react-router'
-import { ExMessage } from '@exre/exui'
+import { toast } from '@exre/exui'
 import { readToken, sessionScopeRevision, subscribeSessionChanges } from '../../../auth/storage'
 import type { FeedbackArea } from './flow'
 
@@ -61,7 +61,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
 
   const openFeedback = useCallback((area: FeedbackArea, trigger?: HTMLElement) => {
     if (running.current) {
-      ExMessage.info('正在上传中，请稍候')
+      toast.info('正在上传中，请稍候')
       return
     }
     if (trigger) triggers.current[area] = trigger

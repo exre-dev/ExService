@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterAll, afterEach, beforeAll, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { Button, ExMessageContext, ThemeProvider } from '@exre/exui'
+import { Button, Toaster, ThemeProvider } from '@exre/exui'
 import { MemoryRouter } from 'react-router'
 import { FeedbackProvider, useFeedback } from './FeedbackProvider'
 import type { FeedbackSnapshot } from './flow'
@@ -107,7 +107,7 @@ function mount(area: 'development' | 'community' = 'development') {
   localStorage.setItem('exwebsite.auth.token', 'test-token')
   render(
     <ThemeProvider defaultTheme="light">
-      <ExMessageContext />
+      <Toaster />
       <MemoryRouter>
         <FeedbackProvider>
           <Entries />
