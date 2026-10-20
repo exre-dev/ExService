@@ -1430,7 +1430,7 @@ test('offline Build excludes runtime secrets, needs no prepared database, and st
       AUTH_CODE_HMAC_KEY: 'private',
     },
   })
-  assert.equal(specs.length, 4)
+  assert.equal(specs.length, 5)
   assert.equal(specs[0].name, 'API Contract')
   assert.deepEqual(specs[0].args, [join(f.workspace, 'scripts/api/generate.mjs'), 'generate'])
   assert.ok(
