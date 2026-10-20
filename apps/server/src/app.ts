@@ -35,6 +35,7 @@ export function createApp({
   notifications,
   clickupServices,
   supportServices,
+  docsServices,
   identityKeys,
   oidcServices,
   logger = false,
@@ -62,6 +63,7 @@ export function createApp({
       oidcServices,
       clickupServices,
       supportServices,
+      docsServices,
     }),
   )
   app.register(httpFoundation, { origins: corsAllowedOrigins })

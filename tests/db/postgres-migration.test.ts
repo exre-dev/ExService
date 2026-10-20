@@ -3,6 +3,7 @@ import { runMigrations } from '@server/src/db/migration-runner'
 import { openDatabase } from '@server/src/db/client'
 import { resetDatabase } from '@server/src/db/reset-plan'
 import { isolatedPostgres } from '@tests/helpers/postgres'
+import { APPLICATION_TABLES } from '@server/src/db/schema-check'
 import { Client } from 'pg'
 import { readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
@@ -35,7 +36,7 @@ async function installMigrationPrefix(
   })
 }
 
-it.each([1, 2, 3])(
+it.each([1, 2, 3, 4, 5, 6, 7])(
   'upgrades the complete %i-migration historical schema without replacing data',
   async (count) => {
     const isolated = await isolatedPostgres({ migrate: false })
@@ -59,6 +60,7 @@ it.each([1, 2, 3])(
     expect(
       (await isolated.db.query('SELECT count(*)::integer AS n FROM notification_receipts')).rows,
     ).toEqual([{ n: 0 }])
+    // 计数取自 journal，新增迁移不需要改这里。
     const migrationCount = JSON.parse(
       readFileSync(
         new URL('../../apps/server/drizzle/meta/_journal.json', import.meta.url),
@@ -71,6 +73,22 @@ it.each([1, 2, 3])(
     expect(
       (await isolated.db.query('SELECT count(*)::integer AS n FROM support_feedback_submissions'))
         .rows,
+    ).toEqual([{ n: 0 }])
+    // Docs 核心表由 0006 追加，B 类预留表由 0007 追加；从任一历史前缀升级后都必须存在且为空。
+    expect(
+      (await isolated.db.query('SELECT count(*)::integer AS n FROM docs_spaces')).rows,
+    ).toEqual([{ n: 0 }])
+    expect(
+      (await isolated.db.query('SELECT count(*)::integer AS n FROM docs_documents')).rows,
+    ).toEqual([{ n: 0 }])
+    expect(
+      (await isolated.db.query('SELECT count(*)::integer AS n FROM docs_templates')).rows,
+    ).toEqual([{ n: 0 }])
+    expect(
+      (await isolated.db.query('SELECT count(*)::integer AS n FROM docs_attachments')).rows,
+    ).toEqual([{ n: 0 }])
+    expect(
+      (await isolated.db.query('SELECT count(*)::integer AS n FROM docs_comments')).rows,
     ).toEqual([{ n: 0 }])
   },
 )
@@ -532,3 +550,37 @@ it('locks target tables before reset preflight so queued DDL cannot enter betwee
     await db.query('CREATE SCHEMA public')
   }
 }, 90_000)
+
+/**
+ * 运行时只读 `_journal.json` 与 SQL，不读 drizzle 快照，因此快照内容漂移不会被任何
+ * 行为用例发现——但下一次 `db:generate` 会以最新快照为基线，把丢失的表当成新增表，
+ * 在已升级的库上直接失败。这里把快照链钉成一条门禁。
+ */
+it('keeps every drizzle snapshot inside the table set the readiness gate enforces', () => {
+  const folder = new URL('../../apps/server/drizzle/meta/', import.meta.url)
+  const journal = JSON.parse(readFileSync(new URL('_journal.json', folder), 'utf8')) as {
+    entries: Array<{ tag: string }>
+  }
+  // SQL 文件用完整 tag 命名，快照只用四位序号。
+  const tablesOf = (tag: string): string[] => {
+    const snapshot = JSON.parse(
+      readFileSync(new URL(`${tag.slice(0, 4)}_snapshot.json`, folder), 'utf8'),
+    ) as { tables: Record<string, unknown> }
+    return Object.keys(snapshot.tables)
+      .map((name) => name.replace(/^public\./, ''))
+      .sort()
+  }
+
+  const latest = tablesOf(journal.entries.at(-1)!.tag)
+  // 最新快照必须与 readiness/reset 使用的表集合完全一致，否则 generate 会 diff 出错。
+  expect(latest).toEqual([...APPLICATION_TABLES].sort())
+
+  // 链上每一份快照都必须是最新集合的子集且单调增长；缺失上游表就在这里暴露。
+  let previous: string[] = []
+  for (const entry of journal.entries) {
+    const tables = tablesOf(entry.tag)
+    for (const table of previous) expect(tables, `${entry.tag} lost ${table}`).toContain(table)
+    for (const table of tables) expect(latest, `${entry.tag} has unknown ${table}`).toContain(table)
+    previous = tables
+  }
+})

@@ -33,6 +33,10 @@
       "description": "站内持久通知的收件箱、已读、不可恢复清理与通知偏好。"
     },
     {
+      "name": "docs",
+      "description": "Docs 空间、文档树、回收站与正文，以及本版本保留未实现的搜索、AI、模板、附件与评论能力。"
+    },
+    {
       "name": "support",
       "description": "登录用户的反馈提交与恢复。"
     }
@@ -1973,6 +1977,2433 @@
           },
           "409": {
             "$ref": "#/components/responses/ErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/spaces": {
+      "get": {
+        "operationId": "listDocsSpaces",
+        "summary": "List Docs spaces",
+        "description": "Public read. Keyset pagination ordered by (createdAt, id) ascending. `limit` defaults to 100 and is clamped to 1..200; `cursor` is opaque and bound to the tree generation. The page never exposes trashed content and never writes state.",
+        "security": [],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "read"
+          }
+        },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size. Defaults to 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Opaque cursor returned by a previous page of the same query.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of spaces.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsSpacePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDocsSpace",
+        "summary": "Create a Docs space",
+        "description": "Creates one space with its name and description. The caller never supplies id, version, treeVersion or timestamps; those are server-owned fields and are rejected when written.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "command",
+            "wireBytes": 65536
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsCreateSpaceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created space.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsSpace"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/spaces/{spaceId}": {
+      "get": {
+        "operationId": "getDocsSpace",
+        "summary": "Read one Docs space",
+        "description": "Public read. Returns the current space snapshot including its tree version. Unknown ids and trashed-only content merge into a neutral 404.",
+        "security": [],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "read"
+          }
+        },
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The space snapshot.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsSpace"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateDocsSpace",
+        "summary": "Update a Docs space name and description",
+        "description": "A complete replacement of the name and description, not a partial patch; optional fields would make \"clear\" ambiguous. `expectedVersion` must match the stored space version, otherwise 409 and the caller re-reads before retrying.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "command",
+            "wireBytes": 65536
+          }
+        },
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsUpdateSpaceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The space snapshot after the update.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsSpace"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/spaces/{spaceId}/delete": {
+      "post": {
+        "operationId": "deleteDocsSpace",
+        "summary": "Delete an empty Docs space",
+        "description": "Deletion succeeds only when the space currently holds no document row and no template row; it does not require that nothing was ever written. Trashed documents and templates both count as references, so a trashed-only space is still non-empty and cannot be deleted. Uses POST so the version fields are carried in a validated JSON body.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "command",
+            "wireBytes": 65536
+          }
+        },
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsDeleteSpaceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "The space was deleted; no body.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/spaces/{spaceId}/tree": {
+      "get": {
+        "operationId": "getDocsTree",
+        "summary": "Read one level of a space document tree",
+        "description": "Public read. Only active nodes are returned. Omit `parentId` to read the root level; it must never be sent as the string null. An existing but empty level returns 200 with empty items, which never masks an unavailable parent: a parent that does not exist in this space, or that is trashed, is 404, and a parent id owned by another space merges into the same 404. A cursor whose space or parent level does not match the query is 400; a cursor bound to a different tree version is 409 DOCS_TREE_CHANGED and the caller restarts pagination.",
+        "security": [],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "read"
+          }
+        },
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          },
+          {
+            "name": "parentId",
+            "in": "query",
+            "required": false,
+            "description": "Parent document id. Omitted means the root level.",
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size. Defaults to 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Opaque cursor returned by a previous page of the same space and parent.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of active tree nodes and the current tree version.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsTreePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/spaces/{spaceId}/documents": {
+      "post": {
+        "operationId": "createDocsDocument",
+        "summary": "Create a document in a space",
+        "description": "Creates one document under `parentId` (null means the space root) at the position implied by `beforeDocumentId` (null appends to the end of the level). The parent and the anchor must belong to the path space and be active. The body is required; an empty document is expressed as an empty doc or a single paragraph. The request is subject to the 9 MiB content wire budget and to the 8 MiB content profile budget, plus the per-space 10,000 physical row quota.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "content",
+            "wireBytes": 9437184
+          }
+        },
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsCreateDocumentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created document and the new tree version.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsDocumentResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/spaces/{spaceId}/trash": {
+      "get": {
+        "operationId": "listDocsTrash",
+        "summary": "List the current trash roots of a space",
+        "description": "Login required. Returns only roots of the current deletion batches, ordered by (deletedAt, id) descending, with a cursor bound to the tree version. Members of a batch that are not themselves roots are not listed separately.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "read"
+          }
+        },
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size. Defaults to 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Opaque cursor returned by a previous page of the same space.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of trash groups and the current tree version.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsTrashPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/spaces/{spaceId}/templates": {
+      "get": {
+        "operationId": "listDocsTemplates",
+        "summary": "List the templates of a space",
+        "description": "RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 200 DocsTemplatePage shape is reserved for a future release and is not returned now. Templates belong to exactly one space and the list items never carry the template body.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "read"
+          }
+        },
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size. Defaults to 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Opaque cursor returned by a previous page of the same space.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reserved success shape; not returned in this release.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsTemplatePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "501": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDocsTemplate",
+        "summary": "Create a template in a space",
+        "description": "RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 201 DocsTemplate shape is reserved for a future release and is not returned now. Uses the same 9 MiB content wire budget and 8 MiB content profile budget as document bodies.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "content",
+            "wireBytes": 9437184
+          }
+        },
+        "parameters": [
+          {
+            "name": "spaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsCreateTemplateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reserved success shape; not returned in this release.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsTemplate"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "501": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/documents/{documentId}": {
+      "get": {
+        "operationId": "getDocsDocument",
+        "summary": "Read one active document",
+        "description": "Public read. Returns the normalized body together with the document version and the current tree version. A trashed id, an unknown id and an id that resolves to trashed content all merge into a neutral 404 DOCS_NOT_FOUND, so this operation never discloses trashed content.",
+        "security": [],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "read"
+          }
+        },
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The document and the current tree version.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsDocumentResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateDocsDocument",
+        "summary": "Replace a document title and body",
+        "description": "A complete replacement of title and body under `expectedVersion` and `expectedSpaceId`; the parent, the space and the sibling order cannot be changed here. The returned body is the normalized full snapshot, including filled default attributes and the trailing paragraph, and the caller must use it together with the new version to update local state. Unknown content is never trimmed into a success.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "content",
+            "wireBytes": 9437184
+          }
+        },
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsSaveDocumentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The saved document and the new tree version.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsDocumentResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/documents/{documentId}/move": {
+      "post": {
+        "operationId": "moveDocsDocument",
+        "summary": "Move or reorder a document",
+        "description": "Moves the document and its whole physical subtree into `targetSpaceId` under `parentId`, at the position implied by `beforeDocumentId`. Source and target space may be identical, which makes this the only sibling reordering operation. The parent and anchor must belong to the target space; a self reference, a descendant target, a wrong-level anchor or an anchor equal to the moved document is 409 DOCS_INVALID_MOVE. When the spaces differ, both levels are reordered and both tree versions are checked.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "command",
+            "wireBytes": 65536
+          }
+        },
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsMoveDocumentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The move result, including both affected space versions.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsMoveResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/documents/{documentId}/trash": {
+      "post": {
+        "operationId": "trashDocsDocument",
+        "summary": "Move a document root and its subtree to trash",
+        "description": "Only an active root is accepted. The whole physical subtree is trashed as one deletion batch and stops being readable through the public document read. `trashedCount` counts only the members newly trashed by this call, never members of older batches.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "command",
+            "wireBytes": 65536
+          }
+        },
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsTrashDocumentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The trash result, including the deletion batch id.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsTrashResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/documents/{documentId}/ai-suggestions": {
+      "post": {
+        "operationId": "suggestDocsDocumentContent",
+        "summary": "Request an AI content suggestion for a document",
+        "description": "RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid request, reads no document, calls no model and consumes no credential. The 200 DocsAiSuggestion shape is reserved for a future release and is not returned now. When implemented, the server reads the current document, checks `baseVersion`, and returns a proposal that is never auto-saved; applying it through updateDocsDocument re-checks the same base version, content profile and space.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "command",
+            "wireBytes": 65536
+          }
+        },
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsAiSuggestionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reserved success shape; not returned in this release.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsAiSuggestion"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "501": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/documents/{documentId}/apply-template": {
+      "post": {
+        "operationId": "applyDocsTemplate",
+        "summary": "Apply a template to a document",
+        "description": "RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 200 DocsDocumentResult shape is reserved for a future release and is not returned now. Applying copies the template body and keeps the document title; the document and the template must belong to the same space, and no application record is created.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "command",
+            "wireBytes": 65536
+          }
+        },
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsApplyTemplateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reserved success shape; not returned in this release.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsDocumentResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "501": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/documents/{documentId}/attachments": {
+      "get": {
+        "operationId": "listDocsAttachments",
+        "summary": "List the attachments of a document",
+        "description": "RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid request, performs no query and returns no business data. The 200 DocsAttachmentPage shape is reserved for a future release and is not returned now.",
+        "security": [],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "read"
+          }
+        },
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size. Defaults to 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Opaque cursor returned by a previous page of the same document.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reserved success shape; not returned in this release.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsAttachmentPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "501": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      },
+      "post": {
+        "operationId": "uploadDocsAttachment",
+        "summary": "Upload an attachment for a document",
+        "description": "RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every authenticated request. The multipart payload is never consumed, parsed or validated in this release, so a malformed upload from an authenticated caller can also receive 501; the connection is closed after the fixed error response is flushed. The 201 DocsAttachment shape is reserved for a future release and is not returned now.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "reserved-upload"
+          }
+        },
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsAttachmentUploadRequest"
+              },
+              "encoding": {
+                "data": {
+                  "contentType": "*/*"
+                },
+                "fileName": {
+                  "contentType": "text/plain"
+                },
+                "contentType": {
+                  "contentType": "text/plain"
+                },
+                "expectedSpaceId": {
+                  "contentType": "text/plain"
+                },
+                "expectedDocumentVersion": {
+                  "contentType": "text/plain"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reserved success shape; not returned in this release.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsAttachment"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "501": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/documents/{documentId}/comments": {
+      "get": {
+        "operationId": "listDocsComments",
+        "summary": "List the comments of a document",
+        "description": "RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid request, performs no query and returns no business data. The 200 DocsCommentPage shape is reserved for a future release and is not returned now.",
+        "security": [],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "read"
+          }
+        },
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size. Defaults to 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Opaque cursor returned by a previous page of the same document.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reserved success shape; not returned in this release.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsCommentPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "501": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDocsComment",
+        "summary": "Create a document comment",
+        "description": "RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 201 DocsComment shape is reserved for a future release and is not returned now. There is no inline, selection, range, paragraphId, anchor, from/to or parentCommentId field, and no public author profile protocol in this release.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "command",
+            "wireBytes": 65536
+          }
+        },
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsCreateCommentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reserved success shape; not returned in this release.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsComment"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "501": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/trash/documents/{documentId}": {
+      "get": {
+        "operationId": "getDocsTrashedDocument",
+        "summary": "Read one trashed document",
+        "description": "Login required. The document must currently be trashed; reading an active document through this operation, or an unknown id, returns 404 DOCS_NOT_FOUND. The body and identity fields reuse the document shape while `hasChildren` still counts active direct children only, and the deletion attribution is carried separately in `deletion`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "read"
+          }
+        },
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The trashed document and its deletion facts.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsTrashedDocumentResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/trash/documents/{documentId}/restore": {
+      "post": {
+        "operationId": "restoreDocsDocument",
+        "summary": "Restore a whole deletion batch",
+        "description": "The path must be the root of the current deletion batch; restoring a non-root member is 409 DOCS_RESTORE_ROOT_REQUIRED. The whole batch is restored in one step and there is no targetSpaceId, parentId, children or includePrevious field. `placement` reports whether the root returned to its original parent or fell back to the space root when that parent is no longer available.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "command",
+            "wireBytes": 65536
+          }
+        },
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsRestoreDocumentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The restore result and the new tree version.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsRestoreResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/templates/{templateId}": {
+      "get": {
+        "operationId": "getDocsTemplate",
+        "summary": "Read one template",
+        "description": "RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 200 DocsTemplate shape is reserved for a future release and is not returned now.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "read"
+          }
+        },
+        "parameters": [
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reserved success shape; not returned in this release.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsTemplate"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "501": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateDocsTemplate",
+        "summary": "Replace a template name and body",
+        "description": "RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 200 DocsTemplate shape is reserved for a future release and is not returned now.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "content",
+            "wireBytes": 9437184
+          }
+        },
+        "parameters": [
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsUpdateTemplateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reserved success shape; not returned in this release.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsTemplate"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "501": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/templates/{templateId}/delete": {
+      "post": {
+        "operationId": "deleteDocsTemplate",
+        "summary": "Delete a template",
+        "description": "RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 204 shape is reserved for a future release and is not returned now. Deleting a template deletes only the template row and never deletes the body already applied to documents.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "command",
+            "wireBytes": 65536
+          }
+        },
+        "parameters": [
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsDeleteTemplateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Reserved success shape; not returned in this release. No body.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "501": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/attachments/{attachmentId}": {
+      "get": {
+        "operationId": "getDocsAttachment",
+        "summary": "Read one attachment and its download URL",
+        "description": "RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid request. The 200 DocsAttachmentAccess shape is reserved for a future release and is not returned now. The download URL is an absolute HTTP(S) address whose validity is decided by the storage medium and is not a proof of ownership or of the originating request.",
+        "security": [],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "read"
+          }
+        },
+        "parameters": [
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reserved success shape; not returned in this release.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsAttachmentAccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "501": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/attachments/{attachmentId}/delete": {
+      "post": {
+        "operationId": "deleteDocsAttachment",
+        "summary": "Detach an attachment from its document",
+        "description": "RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 204 shape is reserved for a future release and is not returned now. Deleting an attachment only removes the association; it never deletes the document and never deletes the stored object.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "command",
+            "wireBytes": 65536
+          }
+        },
+        "parameters": [
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsDeleteAttachmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Reserved success shape; not returned in this release. No body.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "501": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/comments/{commentId}": {
+      "put": {
+        "operationId": "updateDocsComment",
+        "summary": "Replace a comment body",
+        "description": "RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 200 DocsComment shape is reserved for a future release and is not returned now. The body is stored as literal text and is never rendered as HTML.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "command",
+            "wireBytes": 65536
+          }
+        },
+        "parameters": [
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsUpdateCommentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reserved success shape; not returned in this release.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsComment"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "501": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/comments/{commentId}/delete": {
+      "post": {
+        "operationId": "deleteDocsComment",
+        "summary": "Delete a comment",
+        "description": "RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid authenticated request. The 204 shape is reserved for a future release and is not returned now.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "command",
+            "wireBytes": 65536
+          }
+        },
+        "parameters": [
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocsDeleteCommentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Reserved success shape; not returned in this release. No body.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "401": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "409": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "413": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "415": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "501": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
+          },
+          "default": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/docs/search": {
+      "get": {
+        "operationId": "searchDocsDocuments",
+        "summary": "Search active documents",
+        "description": "RESERVED FOR A FUTURE RELEASE: this version returns 501 DOCS_FEATURE_NOT_IMPLEMENTED for every valid request, performs no query and returns no business data. The 200 DocsSearchPage shape below is the reserved success contract and is registered only so the generated client can carry it; it is not returned in this release. When implemented, only active documents are indexed and searched, and excerpts never contain trashed content.",
+        "security": [],
+        "tags": [
+          "docs"
+        ],
+        "x-fastify-config": {
+          "docs": {
+            "kind": "read"
+          }
+        },
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "Search text, 1 to 200 characters.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "spaceId",
+            "in": "query",
+            "required": false,
+            "description": "Optional space restriction.",
+            "schema": {
+              "$ref": "#/components/schemas/Uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Page size. Defaults to 20.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "Opaque cursor returned by a previous page of the same query.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reserved success shape; not returned in this release.",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/RequestId"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocsSearchPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "501": {
+            "$ref": "#/components/responses/ErrorResponse"
+          },
+          "503": {
+            "$ref": "#/components/responses/RetryableErrorResponse"
           },
           "default": {
             "$ref": "#/components/responses/ErrorResponse"
@@ -5516,6 +7947,2228 @@
               },
               "requestId": {
                 "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "DocsVersion": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 9007199254740991,
+        "description": "乐观并发版本号；不接受字符串或小数。"
+      },
+      "DocsCursor": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "minLength": 1,
+        "maxLength": 1024,
+        "description": "不透明分页游标；null 表示没有下一页。游标绑定树版本代际，不能当作权限证明，也不能跨空间或跨父层复用。"
+      },
+      "DocsTitle": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200,
+        "description": "文档标题；服务端 trim 后按 Unicode 码点限制为 1 至 200，拒绝全空白。"
+      },
+      "DocsSpaceName": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100,
+        "description": "空间名与模板名；服务端 trim 后按 Unicode 码点限制为 1 至 100。"
+      },
+      "DocsDescription": {
+        "type": "string",
+        "minLength": 0,
+        "maxLength": 2000,
+        "description": "空间描述；保留正文空白，不做 trim。"
+      },
+      "DocsContentSchemaVersion": {
+        "type": "integer",
+        "const": 1,
+        "description": "持久内容协议版本；不等于文档 version 或 Tiptap npm 版本。未知版本明确拒绝，不猜测转换。"
+      },
+      "DocsSpace": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "description",
+          "version",
+          "treeVersion",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "name": {
+            "$ref": "#/components/schemas/DocsSpaceName"
+          },
+          "description": {
+            "$ref": "#/components/schemas/DocsDescription"
+          },
+          "version": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "treeVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/SafeTimestamp"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/SafeTimestamp"
+          }
+        }
+      },
+      "DocsSpacePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "$ref": "#/components/schemas/DocsSpace"
+            }
+          },
+          "nextCursor": {
+            "$ref": "#/components/schemas/DocsCursor"
+          }
+        }
+      },
+      "DocsTreeNode": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "spaceId",
+          "parentId",
+          "title",
+          "position",
+          "version",
+          "hasChildren"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "spaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "parentId": {
+            "description": "父文档 ID；null 表示根层。树 operation 只返回活动节点。",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "$ref": "#/components/schemas/DocsTitle"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "version": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "hasChildren": {
+            "type": "boolean"
+          }
+        }
+      },
+      "DocsTreePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "treeVersion",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "$ref": "#/components/schemas/DocsTreeNode"
+            }
+          },
+          "treeVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "nextCursor": {
+            "$ref": "#/components/schemas/DocsCursor"
+          }
+        }
+      },
+      "DocsDocument": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "spaceId",
+          "parentId",
+          "title",
+          "position",
+          "version",
+          "hasChildren",
+          "contentSchemaVersion",
+          "content",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "spaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "parentId": {
+            "description": "父文档 ID；null 表示根层。",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "$ref": "#/components/schemas/DocsTitle"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "version": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "hasChildren": {
+            "type": "boolean",
+            "description": "只计活动直接子节点；已回收行的该值通常为 false，其存在不授予读取子树的能力。"
+          },
+          "contentSchemaVersion": {
+            "$ref": "#/components/schemas/DocsContentSchemaVersion"
+          },
+          "content": {
+            "$ref": "#/components/schemas/DocsTiptapDocument"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/SafeTimestamp"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/SafeTimestamp"
+          }
+        }
+      },
+      "DocsDocumentResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "document",
+          "treeVersion"
+        ],
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/DocsDocument"
+          },
+          "treeVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          }
+        }
+      },
+      "DocsSpaceVersion": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "spaceId",
+          "treeVersion"
+        ],
+        "properties": {
+          "spaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "treeVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          }
+        }
+      },
+      "DocsMoveResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "documentId",
+          "version",
+          "source",
+          "target",
+          "affectedCount"
+        ],
+        "properties": {
+          "documentId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "version": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "source": {
+            "$ref": "#/components/schemas/DocsSpaceVersion"
+          },
+          "target": {
+            "$ref": "#/components/schemas/DocsSpaceVersion"
+          },
+          "affectedCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20000,
+            "description": "本次文档字段实际更新的去重行数；成功 no-op 至少更新根。跨空间包含两侧同级重排。"
+          }
+        }
+      },
+      "DocsTrashResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "documentId",
+          "version",
+          "spaceId",
+          "treeVersion",
+          "deletionBatchId",
+          "trashedCount"
+        ],
+        "properties": {
+          "documentId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "version": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "spaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "treeVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "deletionBatchId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "trashedCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000,
+            "description": "仅本次新回收的成员，不包含旧批次。"
+          }
+        }
+      },
+      "DocsTrashGroup": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "documentId",
+          "spaceId",
+          "parentId",
+          "title",
+          "version",
+          "deletionBatchId",
+          "deletedAt",
+          "documentCount"
+        ],
+        "properties": {
+          "documentId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "spaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "parentId": {
+            "description": "回收根当时的父文档 ID；null 表示根层。",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "$ref": "#/components/schemas/DocsTitle"
+          },
+          "version": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "deletionBatchId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "deletedAt": {
+            "$ref": "#/components/schemas/SafeTimestamp"
+          },
+          "documentCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000,
+            "description": "仅同批次成员。"
+          }
+        }
+      },
+      "DocsTrashPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "treeVersion",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "$ref": "#/components/schemas/DocsTrashGroup"
+            }
+          },
+          "treeVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "nextCursor": {
+            "$ref": "#/components/schemas/DocsCursor"
+          }
+        }
+      },
+      "DocsDeletionFacts": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "batchId",
+          "rootId",
+          "deletedAt"
+        ],
+        "properties": {
+          "batchId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "rootId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "deletedAt": {
+            "$ref": "#/components/schemas/SafeTimestamp"
+          }
+        }
+      },
+      "DocsTrashedDocumentResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "document",
+          "treeVersion",
+          "deletion"
+        ],
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/DocsDocument"
+          },
+          "treeVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "deletion": {
+            "$ref": "#/components/schemas/DocsDeletionFacts"
+          }
+        }
+      },
+      "DocsRestoreResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "documentId",
+          "version",
+          "spaceId",
+          "treeVersion",
+          "restoredCount",
+          "retainedTrashedCount",
+          "placement"
+        ],
+        "properties": {
+          "documentId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "version": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "spaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "treeVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "restoredCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000
+          },
+          "retainedTrashedCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000,
+            "description": "恢复后仍位于该根物理子树中的其他回收批次成员，不计已经独立恢复并脱离的节点。"
+          },
+          "placement": {
+            "type": "string",
+            "enum": [
+              "original-parent",
+              "space-root"
+            ]
+          }
+        }
+      },
+      "DocsCreateSpaceRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "description"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/DocsSpaceName"
+          },
+          "description": {
+            "$ref": "#/components/schemas/DocsDescription"
+          }
+        }
+      },
+      "DocsUpdateSpaceRequest": {
+        "description": "空间更新同时提交名字和描述，避免可省略字段与清空语义混淆。",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "name",
+          "description"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "name": {
+            "$ref": "#/components/schemas/DocsSpaceName"
+          },
+          "description": {
+            "$ref": "#/components/schemas/DocsDescription"
+          }
+        }
+      },
+      "DocsDeleteSpaceRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "expectedTreeVersion"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "expectedTreeVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          }
+        }
+      },
+      "DocsCreateDocumentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedTreeVersion",
+          "parentId",
+          "beforeDocumentId",
+          "title",
+          "contentSchemaVersion",
+          "content"
+        ],
+        "properties": {
+          "expectedTreeVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "parentId": {
+            "description": "父文档 ID；null 表示创建在根层。父与锚点必须属于 path 空间且活动。",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "beforeDocumentId": {
+            "description": "同级重排锚点；null 表示追加到同级末尾。",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "$ref": "#/components/schemas/DocsTitle"
+          },
+          "contentSchemaVersion": {
+            "$ref": "#/components/schemas/DocsContentSchemaVersion"
+          },
+          "content": {
+            "$ref": "#/components/schemas/DocsTiptapDocument"
+          }
+        }
+      },
+      "DocsSaveDocumentRequest": {
+        "description": "完整替换标题与正文；不允许改父、改空间或改顺序。",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedSpaceId",
+          "expectedVersion",
+          "title",
+          "contentSchemaVersion",
+          "content"
+        ],
+        "properties": {
+          "expectedSpaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "expectedVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "title": {
+            "$ref": "#/components/schemas/DocsTitle"
+          },
+          "contentSchemaVersion": {
+            "$ref": "#/components/schemas/DocsContentSchemaVersion"
+          },
+          "content": {
+            "$ref": "#/components/schemas/DocsTiptapDocument"
+          }
+        }
+      },
+      "DocsMoveDocumentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sourceSpaceId",
+          "targetSpaceId",
+          "expectedVersion",
+          "expectedSourceTreeVersion",
+          "expectedTargetTreeVersion",
+          "parentId",
+          "beforeDocumentId"
+        ],
+        "properties": {
+          "sourceSpaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "targetSpaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "expectedVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "expectedSourceTreeVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "expectedTargetTreeVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "parentId": {
+            "description": "目标父文档 ID；null 表示目标空间根层。父与锚点必须属于目标空间。",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "beforeDocumentId": {
+            "description": "目标同级重排锚点；null 表示追加到同级末尾。",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "DocsTrashDocumentRequest": {
+        "description": "只接受活动根；整棵物理子树一起进入回收站。",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedSpaceId",
+          "expectedVersion",
+          "expectedTreeVersion"
+        ],
+        "properties": {
+          "expectedSpaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "expectedVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "expectedTreeVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          }
+        }
+      },
+      "DocsRestoreDocumentRequest": {
+        "description": "恢复当前整批；path 必须是该批次的根。没有 targetSpaceId、parentId、children 或 includePrevious 字段。",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedSpaceId",
+          "expectedVersion",
+          "expectedTreeVersion",
+          "deletionBatchId"
+        ],
+        "properties": {
+          "expectedSpaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "expectedVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "expectedTreeVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "deletionBatchId": {
+            "$ref": "#/components/schemas/Uuid"
+          }
+        }
+      },
+      "DocsSearchHit": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "documentId",
+          "spaceId",
+          "title",
+          "excerpt"
+        ],
+        "properties": {
+          "documentId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "spaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "title": {
+            "$ref": "#/components/schemas/DocsTitle"
+          },
+          "excerpt": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 500
+          }
+        }
+      },
+      "DocsSearchPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/DocsSearchHit"
+            }
+          },
+          "nextCursor": {
+            "$ref": "#/components/schemas/DocsCursor"
+          }
+        }
+      },
+      "DocsAiSuggestionRequest": {
+        "description": "AI 不接受调用方提交整篇待保存正文；只提交指令并核对 baseVersion。",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedSpaceId",
+          "baseVersion",
+          "instruction"
+        ],
+        "properties": {
+          "expectedSpaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "baseVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "instruction": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        }
+      },
+      "DocsAiSuggestion": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "documentId",
+          "baseVersion",
+          "contentSchemaVersion",
+          "proposedTitle",
+          "proposedContent"
+        ],
+        "properties": {
+          "documentId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "baseVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "contentSchemaVersion": {
+            "$ref": "#/components/schemas/DocsContentSchemaVersion"
+          },
+          "proposedTitle": {
+            "$ref": "#/components/schemas/DocsTitle"
+          },
+          "proposedContent": {
+            "$ref": "#/components/schemas/DocsTiptapDocument"
+          }
+        }
+      },
+      "DocsTemplate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "spaceId",
+          "name",
+          "contentSchemaVersion",
+          "content",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "spaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "name": {
+            "$ref": "#/components/schemas/DocsSpaceName"
+          },
+          "contentSchemaVersion": {
+            "$ref": "#/components/schemas/DocsContentSchemaVersion"
+          },
+          "content": {
+            "$ref": "#/components/schemas/DocsTiptapDocument"
+          },
+          "version": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/SafeTimestamp"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/SafeTimestamp"
+          }
+        }
+      },
+      "DocsTemplateSummary": {
+        "description": "模板列表项；字段与 DocsTemplate 相同，只是不含正文。",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "spaceId",
+          "name",
+          "contentSchemaVersion",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "spaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "name": {
+            "$ref": "#/components/schemas/DocsSpaceName"
+          },
+          "contentSchemaVersion": {
+            "$ref": "#/components/schemas/DocsContentSchemaVersion"
+          },
+          "version": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/SafeTimestamp"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/SafeTimestamp"
+          }
+        }
+      },
+      "DocsTemplatePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "$ref": "#/components/schemas/DocsTemplateSummary"
+            }
+          },
+          "nextCursor": {
+            "$ref": "#/components/schemas/DocsCursor"
+          }
+        }
+      },
+      "DocsCreateTemplateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "contentSchemaVersion",
+          "content"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/DocsSpaceName"
+          },
+          "contentSchemaVersion": {
+            "$ref": "#/components/schemas/DocsContentSchemaVersion"
+          },
+          "content": {
+            "$ref": "#/components/schemas/DocsTiptapDocument"
+          }
+        }
+      },
+      "DocsUpdateTemplateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedSpaceId",
+          "expectedVersion",
+          "name",
+          "contentSchemaVersion",
+          "content"
+        ],
+        "properties": {
+          "expectedSpaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "expectedVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "name": {
+            "$ref": "#/components/schemas/DocsSpaceName"
+          },
+          "contentSchemaVersion": {
+            "$ref": "#/components/schemas/DocsContentSchemaVersion"
+          },
+          "content": {
+            "$ref": "#/components/schemas/DocsTiptapDocument"
+          }
+        }
+      },
+      "DocsDeleteTemplateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedSpaceId",
+          "expectedVersion"
+        ],
+        "properties": {
+          "expectedSpaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "expectedVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          }
+        }
+      },
+      "DocsApplyTemplateRequest": {
+        "description": "应用模板只复制正文并保留文档标题；文档与模板必须同空间。模板不建立应用记录。",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedSpaceId",
+          "expectedVersion",
+          "templateId",
+          "expectedTemplateVersion"
+        ],
+        "properties": {
+          "expectedSpaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "expectedVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "templateId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "expectedTemplateVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          }
+        }
+      },
+      "DocsAttachment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "documentId",
+          "fileName",
+          "contentType",
+          "byteSize",
+          "sha256",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "documentId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "fileName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "contentType": {
+            "$ref": "#/components/schemas/StorageContentType"
+          },
+          "byteSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "小写十六进制 SHA-256；不外发 medium 或 storage key。"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/SafeTimestamp"
+          }
+        }
+      },
+      "DocsAttachmentPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "$ref": "#/components/schemas/DocsAttachment"
+            }
+          },
+          "nextCursor": {
+            "$ref": "#/components/schemas/DocsCursor"
+          }
+        }
+      },
+      "DocsAttachmentAccess": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "attachment",
+          "downloadUrl"
+        ],
+        "properties": {
+          "attachment": {
+            "$ref": "#/components/schemas/DocsAttachment"
+          },
+          "downloadUrl": {
+            "type": "string",
+            "format": "uri",
+            "minLength": 1,
+            "maxLength": 2048,
+            "description": "绝对 HTTP(S) 地址；有效期由介质决定，不承诺永久可用。"
+          }
+        }
+      },
+      "DocsAttachmentUploadRequest": {
+        "description": "仅用于 multipart。恰好一个二进制 data part，以及限定的 fileName、contentType、expectedSpaceId、expectedDocumentVersion 文本字段；不允许 medium、key、url 或 ticket。filename 不决定存储路径，路径由服务端生成。",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "fileName",
+          "contentType",
+          "expectedSpaceId",
+          "expectedDocumentVersion"
+        ],
+        "properties": {
+          "data": {
+            "type": "string",
+            "format": "binary"
+          },
+          "fileName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "contentType": {
+            "$ref": "#/components/schemas/StorageContentType"
+          },
+          "expectedSpaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "expectedDocumentVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          }
+        }
+      },
+      "DocsDeleteAttachmentRequest": {
+        "description": "附件删除是解除关联，不删除文档，也不自动删除存储对象。",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedSpaceId",
+          "expectedDocumentVersion"
+        ],
+        "properties": {
+          "expectedSpaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "expectedDocumentVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          }
+        }
+      },
+      "DocsComment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "documentId",
+          "body",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "documentId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000,
+            "description": "保留字面文本，不作为 HTML；拒绝全空白。没有 inline、selection、range、anchor 或 parentCommentId 字段。"
+          },
+          "version": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/SafeTimestamp"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/SafeTimestamp"
+          }
+        }
+      },
+      "DocsCommentPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "$ref": "#/components/schemas/DocsComment"
+            }
+          },
+          "nextCursor": {
+            "$ref": "#/components/schemas/DocsCursor"
+          }
+        }
+      },
+      "DocsCreateCommentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedSpaceId",
+          "body"
+        ],
+        "properties": {
+          "expectedSpaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          }
+        }
+      },
+      "DocsUpdateCommentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedSpaceId",
+          "expectedVersion",
+          "body"
+        ],
+        "properties": {
+          "expectedSpaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "expectedVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          }
+        }
+      },
+      "DocsDeleteCommentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedSpaceId",
+          "expectedVersion"
+        ],
+        "properties": {
+          "expectedSpaceId": {
+            "$ref": "#/components/schemas/Uuid"
+          },
+          "expectedVersion": {
+            "$ref": "#/components/schemas/DocsVersion"
+          }
+        }
+      },
+      "DocsTiptapDocument": {
+        "description": "持久正文的完整 Tiptap profile 1 JSON（锁定 Tiptap 3.32.0 完整富文本预设）。本 schema 只约束 JSON 形状与有限值域：Server 另外独立校验节点语法、父子关系、Mark 组合、表格逻辑网格、Unicode 与内容预算（8 MiB 正文、10,000 节点、深度 32、表格网格 10,000）。不接受 Markdown、HTML 字符串、Yjs 数据或浏览器 Editor 对象；null 不是空正文。",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "content"
+        ],
+        "properties": {
+          "type": {
+            "const": "doc"
+          },
+          "content": {
+            "description": "输入允许空数组，Server 规范化为至少一个 paragraph；禁止嵌套 doc。",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapNode": {
+        "description": "非 doc 节点的封闭 union；23 个分支靠各自的 type const 互斥，每次只应匹配一个分支。属性对象同样封闭，未知属性由 Server 明确拒绝。",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/DocsTiptapParagraph"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapHeading"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapText"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapHardBreak"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapBlockquote"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapBulletList"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapOrderedList"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapListItem"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapTaskList"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapTaskItem"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapCodeBlock"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapHorizontalRule"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapImage"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapMention"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapDetails"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapDetailsSummary"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapDetailsContent"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapTable"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapTableRow"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapTableCell"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapTableHeader"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapAdmonition"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapAdmonitionTitle"
+          }
+        ]
+      },
+      "DocsTiptapParagraph": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "paragraph"
+          },
+          "attrs": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "textAlign": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "left",
+                  "center",
+                  "right",
+                  "justify",
+                  null
+                ]
+              }
+            }
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapHeading": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "heading"
+          },
+          "attrs": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "level": {
+                "type": "integer",
+                "enum": [
+                  1,
+                  2,
+                  3,
+                  4
+                ]
+              },
+              "textAlign": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "left",
+                  "center",
+                  "right",
+                  "justify",
+                  null
+                ]
+              }
+            }
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapText": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "text"
+        ],
+        "properties": {
+          "type": {
+            "const": "text"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "description": "唯一允许声明 text 的节点；不能有 attrs 或 content。"
+          },
+          "marks": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapMark"
+            }
+          }
+        }
+      },
+      "DocsTiptapHardBreak": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "hardBreak"
+          },
+          "marks": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapMark"
+            }
+          }
+        }
+      },
+      "DocsTiptapBlockquote": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "blockquote"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapBulletList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "bulletList"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapOrderedList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "orderedList"
+          },
+          "attrs": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "start": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "type": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "1",
+                  "a",
+                  "A",
+                  "i",
+                  "I",
+                  null
+                ],
+                "description": "JSON 中持久为字符串形式。"
+              }
+            }
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapListItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "listItem"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapTaskList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "taskList"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapTaskItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "taskItem"
+          },
+          "attrs": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "checked": {
+                "type": "boolean"
+              }
+            }
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapCodeBlock": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "codeBlock"
+          },
+          "attrs": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "language": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[A-Za-z0-9_+\\-]*$"
+              }
+            }
+          },
+          "content": {
+            "description": "只含 text 节点，不带 Marks；保留代码空白。",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapText"
+            }
+          }
+        }
+      },
+      "DocsTiptapHorizontalRule": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "horizontalRule"
+          }
+        }
+      },
+      "DocsTiptapImage": {
+        "description": "src 没有默认值，因此 attrs 不可省略。",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "attrs"
+        ],
+        "properties": {
+          "type": {
+            "const": "image"
+          },
+          "attrs": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "src"
+            ],
+            "properties": {
+              "src": {
+                "type": "string",
+                "minLength": 1,
+                "description": "安全地址；profile 1 关闭全部 Data URL，不接受 javascript、blob、file 或其他协议，Image 不允许 mailto。"
+              },
+              "alt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "width": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 8192
+              },
+              "height": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 8192
+              }
+            }
+          }
+        }
+      },
+      "DocsTiptapMention": {
+        "description": "id 没有默认值，因此 attrs 不可省略。",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "attrs"
+        ],
+        "properties": {
+          "type": {
+            "const": "mention"
+          },
+          "attrs": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "内容身份，不是授权凭据。"
+              },
+              "label": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mentionSuggestionChar": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "DocsTiptapDetails": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "details"
+          },
+          "attrs": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "open": {
+                "type": "boolean",
+                "description": "profile 1 的 Node schema 始终包含 open；persist 是扩展选项而不是文档属性，提交它明确拒绝。"
+              }
+            }
+          },
+          "content": {
+            "description": "由 Server 强制为恰好一个 detailsSummary 加一个 detailsContent。",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapDetailsSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "detailsSummary"
+          },
+          "content": {
+            "description": "只接受可格式化的 text 节点；不接受 hardBreak、Mention 或块节点。",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapText"
+            }
+          }
+        }
+      },
+      "DocsTiptapDetailsContent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "detailsContent"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapTable": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "table"
+          },
+          "content": {
+            "description": "不保存 DOM colgroup、View 或布局按钮。",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapTableRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "tableRow"
+          },
+          "content": {
+            "description": "零或多个 cell/header；不设 minItems。上方单元格的 rowspan 可以完整覆盖后续行，因此空行合法，最终仍须通过逻辑网格策略。",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapTableCell": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "tableCell"
+          },
+          "attrs": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "colspan": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "rowspan": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "colwidth": {
+                "description": "非空时数组长度必须等于 colspan，每项为 0 至 8192 的整数。",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 8192
+                }
+              },
+              "align": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "left",
+                  "center",
+                  "right",
+                  null
+                ]
+              }
+            }
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapTableHeader": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "tableHeader"
+          },
+          "attrs": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "colspan": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "rowspan": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "colwidth": {
+                "description": "非空时数组长度必须等于 colspan，每项为 0 至 8192 的整数。",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 8192
+                }
+              },
+              "align": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "left",
+                  "center",
+                  "right",
+                  null
+                ]
+              }
+            }
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapAdmonition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "admonition"
+          },
+          "attrs": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "tip",
+                  "info",
+                  "warning",
+                  "error"
+                ]
+              }
+            }
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapAdmonitionTitle": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "admonitionTitle"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocsTiptapNode"
+            }
+          }
+        }
+      },
+      "DocsTiptapMark": {
+        "description": "8 类 Mark 的封闭 union；单个 inline 节点每类最多一个。重复 Mark、互斥组合和错误位置都由 Server 拒绝，不靠合并或丢弃修复。",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/DocsTiptapMarkBold"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapMarkItalic"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapMarkStrike"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapMarkUnderline"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapMarkCode"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapMarkLink"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapMarkHighlight"
+          },
+          {
+            "$ref": "#/components/schemas/DocsTiptapMarkTextStyle"
+          }
+        ]
+      },
+      "DocsTiptapMarkBold": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "bold"
+          }
+        }
+      },
+      "DocsTiptapMarkItalic": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "italic"
+          }
+        }
+      },
+      "DocsTiptapMarkStrike": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "strike"
+          }
+        }
+      },
+      "DocsTiptapMarkUnderline": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "underline"
+          }
+        }
+      },
+      "DocsTiptapMarkCode": {
+        "description": "沿用完整预设的排他规则，不与其他 Mark 混用。",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "code"
+          }
+        }
+      },
+      "DocsTiptapMarkLink": {
+        "description": "href 没有默认值，因此 attrs 不可省略。",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "attrs"
+        ],
+        "properties": {
+          "type": {
+            "const": "link"
+          },
+          "attrs": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "href"
+            ],
+            "properties": {
+              "href": {
+                "type": "string",
+                "minLength": 1,
+                "description": "安全地址；Link 另允许有目标的 mailto。_blank 由服务端补入 noopener/noreferrer。"
+              },
+              "target": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "_self",
+                  "_blank",
+                  null
+                ]
+              },
+              "rel": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "仅由 noopener、noreferrer、nofollow 组成，去重并固定 token 顺序。"
+              },
+              "class": {
+                "type": "null"
+              },
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "DocsTiptapMarkHighlight": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "highlight"
+          },
+          "attrs": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "color": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^#[0-9a-f]{3}([0-9a-f]{1})?$|^#[0-9a-f]{6}([0-9a-f]{2})?$",
+                "description": "只接受"
+              }
+            }
+          }
+        }
+      },
+      "DocsTiptapMarkTextStyle": {
+        "description": "不允许 fontFamily、lineHeight 或任意 style/class。",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "textStyle"
+          },
+          "attrs": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "color": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^#[0-9a-f]{3}([0-9a-f]{1})?$|^#[0-9a-f]{6}([0-9a-f]{2})?$"
+              },
+              "backgroundColor": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^#[0-9a-f]{3}([0-9a-f]{1})?$|^#[0-9a-f]{6}([0-9a-f]{2})?$"
+              },
+              "fontSize": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "只接受 px/rem 并换算为 0.75 至 3 rem 的有限数值；不接受 NaN、Infinity、calc 或百分比。"
               }
             }
           }

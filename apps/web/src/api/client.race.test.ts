@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { createServer, type Server } from 'node:http'
 import { afterEach, expect, it, vi } from 'vitest'
+import type { CheckedConfig, RequestConfig } from '../../../../packages/sdk/src/request-types'
 // jsdom resolves Node exports. Inject the private browser environment to test the
 // application wiring; real conditional Browser exports are covered independently.
 vi.mock('@workspace/sdk', async () => {
@@ -29,8 +30,9 @@ vi.mock('@workspace/sdk', async () => {
     )
   let runtime = create(window.location.origin)
   return {
-    instance: ((config: Parameters<typeof runtime.instance>[0]) =>
-      runtime.instance(config)) as unknown as typeof runtime.instance,
+    // Preserve the request generic instead of instantiating the full Contract union.
+    instance: <const C extends RequestConfig>(config: C & CheckedConfig<C>) =>
+      runtime.instance<C>(config),
     setBaseUrl: (url: string) => {
       runtime = create(new URL(url).origin)
       runtime.setBaseUrl(url)

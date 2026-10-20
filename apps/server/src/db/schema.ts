@@ -6,10 +6,12 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
   uniqueIndex,
+  uuid,
   customType,
 } from 'drizzle-orm/pg-core'
 
@@ -807,6 +809,270 @@ export const joinDeliveryAttempts = pgTable(
     check(
       'join_delivery_attempts_finished_check',
       sql`(${table.status} = 'pending' and ${table.finishedAt} is null) or (${table.status} <> 'pending' and ${table.finishedAt} is not null)`,
+    ),
+  ],
+)
+
+/**
+ * Docs 领域：平级空间与文档树。
+ *
+ * 实体主键使用 PostgreSQL `uuid`；操作账号外键沿用 `auth_users.id` 的 `text`，
+ * 不把账号表迁成 UUID。时间与版本使用毫秒安全整数 `bigint`，排序使用 `integer`。
+ * 除 `parent_id` 与删除四字段外全部非空；正文为 Tiptap JSON（`jsonb`），
+ * 文本投影与正文在同一保存事务中写入，投影不是正文的事实来源。
+ */
+export const docsSpaces = pgTable(
+  'docs_spaces',
+  {
+    id: uuid('id').primaryKey(),
+    name: text('name').notNull(),
+    description: text('description').notNull(),
+    version: bigint('version', { mode: 'number' }).notNull(),
+    treeVersion: bigint('tree_version', { mode: 'number' }).notNull(),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+    updatedAt: bigint('updated_at', { mode: 'number' }).notNull(),
+    createdByUserId: text('created_by_user_id').notNull(),
+    updatedByUserId: text('updated_by_user_id').notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.createdByUserId],
+      foreignColumns: [authUsers.id],
+      name: 'docs_spaces_created_by_user_id_fk',
+    }).onDelete('restrict'),
+    foreignKey({
+      columns: [table.updatedByUserId],
+      foreignColumns: [authUsers.id],
+      name: 'docs_spaces_updated_by_user_id_fk',
+    }).onDelete('restrict'),
+    check('docs_spaces_name_check', sql`char_length(${table.name}) between 1 and 100`),
+    check('docs_spaces_description_check', sql`char_length(${table.description}) <= 2000`),
+    check('docs_spaces_version_check', sql`${table.version} >= 1`),
+    check('docs_spaces_tree_version_check', sql`${table.treeVersion} >= 1`),
+    index('docs_spaces_created_at_idx').on(table.createdAt, table.id),
+  ],
+)
+
+export const docsDocuments = pgTable(
+  'docs_documents',
+  {
+    id: uuid('id').primaryKey(),
+    spaceId: uuid('space_id').notNull(),
+    parentId: uuid('parent_id'),
+    position: integer('position').notNull(),
+    title: text('title').notNull(),
+    contentSchemaVersion: integer('content_schema_version').notNull(),
+    content: jsonb('content').notNull(),
+    textContent: text('text_content').notNull(),
+    version: bigint('version', { mode: 'number' }).notNull(),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+    updatedAt: bigint('updated_at', { mode: 'number' }).notNull(),
+    createdByUserId: text('created_by_user_id').notNull(),
+    updatedByUserId: text('updated_by_user_id').notNull(),
+    deletedAt: bigint('deleted_at', { mode: 'number' }),
+    deletedByUserId: text('deleted_by_user_id'),
+    deletionBatchId: uuid('deletion_batch_id'),
+    deletionRootId: uuid('deletion_root_id'),
+  },
+  (table) => [
+    uniqueIndex('docs_documents_space_id_id_unique').on(table.spaceId, table.id),
+    foreignKey({
+      columns: [table.spaceId],
+      foreignColumns: [docsSpaces.id],
+      name: 'docs_documents_space_id_fk',
+    })
+      .onDelete('restrict')
+      .onUpdate('restrict'),
+    // 复合自外键：提交时核验父子同空间，并允许一次事务移动完整物理子树。
+    // 必须使用 NO ACTION：RESTRICT 的检查不可延迟，会让整棵子树迁移在中途就失败。
+    // 延迟属性无法由 drizzle 表达，在生成的 migration SQL 中显式追加 DEFERRABLE INITIALLY DEFERRED。
+    foreignKey({
+      columns: [table.parentId, table.spaceId],
+      foreignColumns: [table.id, table.spaceId],
+      name: 'docs_documents_parent_space_fk',
+    })
+      .onDelete('no action')
+      .onUpdate('no action'),
+    foreignKey({
+      columns: [table.deletionRootId],
+      foreignColumns: [table.id],
+      name: 'docs_documents_deletion_root_id_fk',
+    })
+      .onDelete('restrict')
+      .onUpdate('restrict'),
+    foreignKey({
+      columns: [table.createdByUserId],
+      foreignColumns: [authUsers.id],
+      name: 'docs_documents_created_by_user_id_fk',
+    }).onDelete('restrict'),
+    foreignKey({
+      columns: [table.updatedByUserId],
+      foreignColumns: [authUsers.id],
+      name: 'docs_documents_updated_by_user_id_fk',
+    }).onDelete('restrict'),
+    foreignKey({
+      columns: [table.deletedByUserId],
+      foreignColumns: [authUsers.id],
+      name: 'docs_documents_deleted_by_user_id_fk',
+    }).onDelete('restrict'),
+    check('docs_documents_not_self_parent_check', sql`${table.id} <> ${table.parentId}`),
+    check('docs_documents_title_check', sql`char_length(${table.title}) between 1 and 200`),
+    check('docs_documents_position_check', sql`${table.position} >= 0`),
+    check('docs_documents_content_schema_version_check', sql`${table.contentSchemaVersion} = 1`),
+    check(
+      'docs_documents_content_check',
+      sql`jsonb_typeof(${table.content}) = 'object' and ${table.content} ->> 'type' = 'doc'`,
+    ),
+    check('docs_documents_text_content_check', sql`octet_length(${table.textContent}) <= 8388608`),
+    check('docs_documents_version_check', sql`${table.version} >= 1`),
+    check(
+      'docs_documents_deletion_tuple_check',
+      sql`(${table.deletedAt} is null and ${table.deletedByUserId} is null and ${table.deletionBatchId} is null and ${table.deletionRootId} is null)
+    or (${table.deletedAt} is not null and ${table.deletedByUserId} is not null and ${table.deletionBatchId} is not null and ${table.deletionRootId} is not null)`,
+    ),
+    index('docs_documents_active_sibling_idx')
+      .on(table.spaceId, table.parentId, table.position, table.id)
+      .where(sql`${table.deletedAt} is null`),
+    index('docs_documents_physical_idx').on(table.spaceId, table.parentId, table.id),
+    index('docs_documents_deletion_batch_idx').on(table.spaceId, table.deletionBatchId, table.id),
+    index('docs_documents_trash_root_idx').on(table.spaceId, table.deletedAt, table.id),
+  ],
+)
+
+/*
+ * Docs B 类预留：模板、附件与评论的最小持久化结构。
+ *
+ * 三张表都只保存所属关系与可信元数据，不保存字节、签名 URL 或 AI 结果；
+ * 搜索复用 `docs_documents.text_content` 投影，AI 保持无状态，因此都不建表。
+ * 附件与评论只引用稳定 `document_id`，不复制 `space_id`。
+ */
+export const docsTemplates = pgTable(
+  'docs_templates',
+  {
+    id: uuid('id').primaryKey(),
+    spaceId: uuid('space_id').notNull(),
+    name: text('name').notNull(),
+    contentSchemaVersion: integer('content_schema_version').notNull(),
+    content: jsonb('content').notNull(),
+    version: bigint('version', { mode: 'number' }).notNull(),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+    updatedAt: bigint('updated_at', { mode: 'number' }).notNull(),
+    createdByUserId: text('created_by_user_id').notNull(),
+    updatedByUserId: text('updated_by_user_id').notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.spaceId],
+      foreignColumns: [docsSpaces.id],
+      name: 'docs_templates_space_id_fk',
+    })
+      .onDelete('restrict')
+      .onUpdate('restrict'),
+    foreignKey({
+      columns: [table.createdByUserId],
+      foreignColumns: [authUsers.id],
+      name: 'docs_templates_created_by_user_id_fk',
+    }).onDelete('restrict'),
+    foreignKey({
+      columns: [table.updatedByUserId],
+      foreignColumns: [authUsers.id],
+      name: 'docs_templates_updated_by_user_id_fk',
+    }).onDelete('restrict'),
+    check('docs_templates_name_check', sql`char_length(${table.name}) between 1 and 100`),
+    check('docs_templates_content_schema_version_check', sql`${table.contentSchemaVersion} = 1`),
+    check(
+      'docs_templates_content_check',
+      sql`jsonb_typeof(${table.content}) = 'object' and ${table.content} ->> 'type' = 'doc'`,
+    ),
+    check('docs_templates_version_check', sql`${table.version} >= 1`),
+    index('docs_templates_space_id_created_at_idx').on(table.spaceId, table.createdAt, table.id),
+  ],
+)
+
+export const docsAttachments = pgTable(
+  'docs_attachments',
+  {
+    id: uuid('id').primaryKey(),
+    documentId: uuid('document_id').notNull(),
+    medium: text('medium').notNull(),
+    storageKey: text('storage_key').notNull(),
+    fileName: text('file_name').notNull(),
+    contentType: text('content_type').notNull(),
+    byteSize: bigint('byte_size', { mode: 'number' }).notNull(),
+    sha256: text('sha256').notNull(),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+    createdByUserId: text('created_by_user_id').notNull(),
+  },
+  (table) => [
+    // 同一介质的同一对象只能被一条附件记录引用；不保存字节或签名 URL。
+    uniqueIndex('docs_attachments_medium_storage_key_unique').on(table.medium, table.storageKey),
+    foreignKey({
+      columns: [table.documentId],
+      foreignColumns: [docsDocuments.id],
+      name: 'docs_attachments_document_id_fk',
+    })
+      .onDelete('restrict')
+      .onUpdate('restrict'),
+    foreignKey({
+      columns: [table.createdByUserId],
+      foreignColumns: [authUsers.id],
+      name: 'docs_attachments_created_by_user_id_fk',
+    }).onDelete('restrict'),
+    check('docs_attachments_medium_check', sql`${table.medium} in ('file', 'cos')`),
+    check(
+      'docs_attachments_file_name_check',
+      sql`char_length(${table.fileName}) between 1 and 255`,
+    ),
+    check(
+      'docs_attachments_byte_size_check',
+      sql`${table.byteSize} >= 1 and ${table.byteSize} <= 9007199254740991`,
+    ),
+    check('docs_attachments_sha256_check', sql`${table.sha256} ~ '^[0-9a-f]{64}$'`),
+    index('docs_attachments_document_id_created_at_idx').on(
+      table.documentId,
+      table.createdAt,
+      table.id,
+    ),
+  ],
+)
+
+export const docsComments = pgTable(
+  'docs_comments',
+  {
+    id: uuid('id').primaryKey(),
+    documentId: uuid('document_id').notNull(),
+    body: text('body').notNull(),
+    version: bigint('version', { mode: 'number' }).notNull(),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+    updatedAt: bigint('updated_at', { mode: 'number' }).notNull(),
+    createdByUserId: text('created_by_user_id').notNull(),
+    updatedByUserId: text('updated_by_user_id').notNull(),
+  },
+  (table) => [
+    // 只关联整篇文档：没有选区、段落、锚点、父评论或通知状态字段。
+    foreignKey({
+      columns: [table.documentId],
+      foreignColumns: [docsDocuments.id],
+      name: 'docs_comments_document_id_fk',
+    })
+      .onDelete('restrict')
+      .onUpdate('restrict'),
+    foreignKey({
+      columns: [table.createdByUserId],
+      foreignColumns: [authUsers.id],
+      name: 'docs_comments_created_by_user_id_fk',
+    }).onDelete('restrict'),
+    foreignKey({
+      columns: [table.updatedByUserId],
+      foreignColumns: [authUsers.id],
+      name: 'docs_comments_updated_by_user_id_fk',
+    }).onDelete('restrict'),
+    check('docs_comments_body_check', sql`char_length(${table.body}) between 1 and 10000`),
+    check('docs_comments_version_check', sql`${table.version} >= 1`),
+    index('docs_comments_document_id_created_at_idx').on(
+      table.documentId,
+      table.createdAt,
+      table.id,
     ),
   ],
 )

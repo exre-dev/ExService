@@ -31,6 +31,7 @@ async function setup(createUserId?: () => string) {
     notifications: fixture.notifications,
     clickupServices: fixture.clickupServices,
     supportServices: fixture.supportServices,
+    docsServices: fixture.docsServices,
   })
   apps.push(app)
   return { fixture, app }
@@ -509,6 +510,7 @@ describe('profile contract operations', () => {
       notifications: fixture.notifications,
       clickupServices: fixture.clickupServices,
       supportServices: fixture.supportServices,
+      docsServices: fixture.docsServices,
     })
     apps.push(app)
     const response = await app.inject({

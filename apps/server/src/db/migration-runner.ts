@@ -6,6 +6,12 @@ import { createVerifiedPool, type DatabaseOptions } from '@server/src/db/client.
 import {
   APPLICATION_TABLES,
   BASELINE_APPLICATION_TABLES,
+  MIGRATION_0001_TABLES,
+  MIGRATION_0002_TABLES,
+  MIGRATION_0003_TABLES,
+  MIGRATION_0004_TABLES,
+  MIGRATION_0005_TABLES,
+  MIGRATION_0006_TABLES,
   assertDatabaseReady,
 } from '@server/src/db/schema-check.js'
 
@@ -15,9 +21,13 @@ const SAFE_IDENTIFIER = /^[a-z_][a-z0-9_]*$/
 // Matching names, rather than counts, still rejects incomplete/mixed versions.
 const COMPLETE_TABLE_SETS = [
   BASELINE_APPLICATION_TABLES, // 0000
-  [...BASELINE_APPLICATION_TABLES, 'auth_oidc_flows', 'auth_oidc_bindings', 'auth_identity_outbox'], // 0001
-  APPLICATION_TABLES.filter((table) => !table.startsWith('support_feedback_')), // 0002
-  APPLICATION_TABLES,
+  MIGRATION_0001_TABLES, // 0001
+  MIGRATION_0002_TABLES, // 0002
+  MIGRATION_0003_TABLES, // 0003：上游 support 反馈表
+  MIGRATION_0004_TABLES, // 0004：上游只改结构与索引，不新增表
+  MIGRATION_0005_TABLES, // 0005：上游只改结构与索引，不新增表
+  MIGRATION_0006_TABLES, // 0006：Docs 核心（docs_spaces、docs_documents）
+  APPLICATION_TABLES, // 0007：Docs B 类预留（docs_templates、docs_attachments、docs_comments）
 ]
 
 export interface MigrationOptions extends DatabaseOptions {

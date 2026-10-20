@@ -21,6 +21,8 @@ tags:
     description: 通用内容存储的上传、直传确认与本地公开读取。
   - name: notifications
     description: 站内持久通知的收件箱、已读、不可恢复清理与通知偏好。
+  - name: docs
+    description: Docs 空间、文档树、回收站与正文，以及本版本保留未实现的搜索、AI、模板、附件与评论能力。
   - name: support
     description: 登录用户的反馈提交与恢复。
 paths:
@@ -90,6 +92,52 @@ paths:
     $ref: ./paths/notifications.yaml#/~1notifications~1clear-all
   /notification-preferences:
     $ref: ./paths/notifications.yaml#/~1notification-preferences
+  /docs/spaces:
+    $ref: ./paths/docs.yaml#/~1docs~1spaces
+  /docs/spaces/{spaceId}:
+    $ref: ./paths/docs.yaml#/~1docs~1spaces~1{spaceId}
+  /docs/spaces/{spaceId}/delete:
+    $ref: ./paths/docs.yaml#/~1docs~1spaces~1{spaceId}~1delete
+  /docs/spaces/{spaceId}/tree:
+    $ref: ./paths/docs.yaml#/~1docs~1spaces~1{spaceId}~1tree
+  /docs/spaces/{spaceId}/documents:
+    $ref: ./paths/docs.yaml#/~1docs~1spaces~1{spaceId}~1documents
+  /docs/spaces/{spaceId}/trash:
+    $ref: ./paths/docs.yaml#/~1docs~1spaces~1{spaceId}~1trash
+  /docs/spaces/{spaceId}/templates:
+    $ref: ./paths/docs.yaml#/~1docs~1spaces~1{spaceId}~1templates
+  /docs/documents/{documentId}:
+    $ref: ./paths/docs.yaml#/~1docs~1documents~1{documentId}
+  /docs/documents/{documentId}/move:
+    $ref: ./paths/docs.yaml#/~1docs~1documents~1{documentId}~1move
+  /docs/documents/{documentId}/trash:
+    $ref: ./paths/docs.yaml#/~1docs~1documents~1{documentId}~1trash
+  /docs/documents/{documentId}/ai-suggestions:
+    $ref: ./paths/docs.yaml#/~1docs~1documents~1{documentId}~1ai-suggestions
+  /docs/documents/{documentId}/apply-template:
+    $ref: ./paths/docs.yaml#/~1docs~1documents~1{documentId}~1apply-template
+  /docs/documents/{documentId}/attachments:
+    $ref: ./paths/docs.yaml#/~1docs~1documents~1{documentId}~1attachments
+  /docs/documents/{documentId}/comments:
+    $ref: ./paths/docs.yaml#/~1docs~1documents~1{documentId}~1comments
+  /docs/trash/documents/{documentId}:
+    $ref: ./paths/docs.yaml#/~1docs~1trash~1documents~1{documentId}
+  /docs/trash/documents/{documentId}/restore:
+    $ref: ./paths/docs.yaml#/~1docs~1trash~1documents~1{documentId}~1restore
+  /docs/templates/{templateId}:
+    $ref: ./paths/docs.yaml#/~1docs~1templates~1{templateId}
+  /docs/templates/{templateId}/delete:
+    $ref: ./paths/docs.yaml#/~1docs~1templates~1{templateId}~1delete
+  /docs/attachments/{attachmentId}:
+    $ref: ./paths/docs.yaml#/~1docs~1attachments~1{attachmentId}
+  /docs/attachments/{attachmentId}/delete:
+    $ref: ./paths/docs.yaml#/~1docs~1attachments~1{attachmentId}~1delete
+  /docs/comments/{commentId}:
+    $ref: ./paths/docs.yaml#/~1docs~1comments~1{commentId}
+  /docs/comments/{commentId}/delete:
+    $ref: ./paths/docs.yaml#/~1docs~1comments~1{commentId}~1delete
+  /docs/search:
+    $ref: ./paths/docs.yaml#/~1docs~1search
   /support/feedback/options:
     $ref: ./paths/support.yaml#/~1support~1feedback~1options
   /support/feedback/submissions:
@@ -383,6 +431,172 @@ components:
       $ref: ./schemas/storage.yaml#/StorageUploadResult
     ErrorEnvelope:
       $ref: ./schemas/common.yaml#/ErrorEnvelope
+    DocsVersion:
+      $ref: ./schemas/docs.yaml#/DocsVersion
+    DocsCursor:
+      $ref: ./schemas/docs.yaml#/DocsCursor
+    DocsTitle:
+      $ref: ./schemas/docs.yaml#/DocsTitle
+    DocsSpaceName:
+      $ref: ./schemas/docs.yaml#/DocsSpaceName
+    DocsDescription:
+      $ref: ./schemas/docs.yaml#/DocsDescription
+    DocsContentSchemaVersion:
+      $ref: ./schemas/docs.yaml#/DocsContentSchemaVersion
+    DocsSpace:
+      $ref: ./schemas/docs.yaml#/DocsSpace
+    DocsSpacePage:
+      $ref: ./schemas/docs.yaml#/DocsSpacePage
+    DocsTreeNode:
+      $ref: ./schemas/docs.yaml#/DocsTreeNode
+    DocsTreePage:
+      $ref: ./schemas/docs.yaml#/DocsTreePage
+    DocsDocument:
+      $ref: ./schemas/docs.yaml#/DocsDocument
+    DocsDocumentResult:
+      $ref: ./schemas/docs.yaml#/DocsDocumentResult
+    DocsSpaceVersion:
+      $ref: ./schemas/docs.yaml#/DocsSpaceVersion
+    DocsMoveResult:
+      $ref: ./schemas/docs.yaml#/DocsMoveResult
+    DocsTrashResult:
+      $ref: ./schemas/docs.yaml#/DocsTrashResult
+    DocsTrashGroup:
+      $ref: ./schemas/docs.yaml#/DocsTrashGroup
+    DocsTrashPage:
+      $ref: ./schemas/docs.yaml#/DocsTrashPage
+    DocsDeletionFacts:
+      $ref: ./schemas/docs.yaml#/DocsDeletionFacts
+    DocsTrashedDocumentResult:
+      $ref: ./schemas/docs.yaml#/DocsTrashedDocumentResult
+    DocsRestoreResult:
+      $ref: ./schemas/docs.yaml#/DocsRestoreResult
+    DocsCreateSpaceRequest:
+      $ref: ./schemas/docs.yaml#/DocsCreateSpaceRequest
+    DocsUpdateSpaceRequest:
+      $ref: ./schemas/docs.yaml#/DocsUpdateSpaceRequest
+    DocsDeleteSpaceRequest:
+      $ref: ./schemas/docs.yaml#/DocsDeleteSpaceRequest
+    DocsCreateDocumentRequest:
+      $ref: ./schemas/docs.yaml#/DocsCreateDocumentRequest
+    DocsSaveDocumentRequest:
+      $ref: ./schemas/docs.yaml#/DocsSaveDocumentRequest
+    DocsMoveDocumentRequest:
+      $ref: ./schemas/docs.yaml#/DocsMoveDocumentRequest
+    DocsTrashDocumentRequest:
+      $ref: ./schemas/docs.yaml#/DocsTrashDocumentRequest
+    DocsRestoreDocumentRequest:
+      $ref: ./schemas/docs.yaml#/DocsRestoreDocumentRequest
+    DocsSearchHit:
+      $ref: ./schemas/docs.yaml#/DocsSearchHit
+    DocsSearchPage:
+      $ref: ./schemas/docs.yaml#/DocsSearchPage
+    DocsAiSuggestionRequest:
+      $ref: ./schemas/docs.yaml#/DocsAiSuggestionRequest
+    DocsAiSuggestion:
+      $ref: ./schemas/docs.yaml#/DocsAiSuggestion
+    DocsTemplate:
+      $ref: ./schemas/docs.yaml#/DocsTemplate
+    DocsTemplateSummary:
+      $ref: ./schemas/docs.yaml#/DocsTemplateSummary
+    DocsTemplatePage:
+      $ref: ./schemas/docs.yaml#/DocsTemplatePage
+    DocsCreateTemplateRequest:
+      $ref: ./schemas/docs.yaml#/DocsCreateTemplateRequest
+    DocsUpdateTemplateRequest:
+      $ref: ./schemas/docs.yaml#/DocsUpdateTemplateRequest
+    DocsDeleteTemplateRequest:
+      $ref: ./schemas/docs.yaml#/DocsDeleteTemplateRequest
+    DocsApplyTemplateRequest:
+      $ref: ./schemas/docs.yaml#/DocsApplyTemplateRequest
+    DocsAttachment:
+      $ref: ./schemas/docs.yaml#/DocsAttachment
+    DocsAttachmentPage:
+      $ref: ./schemas/docs.yaml#/DocsAttachmentPage
+    DocsAttachmentAccess:
+      $ref: ./schemas/docs.yaml#/DocsAttachmentAccess
+    DocsAttachmentUploadRequest:
+      $ref: ./schemas/docs.yaml#/DocsAttachmentUploadRequest
+    DocsDeleteAttachmentRequest:
+      $ref: ./schemas/docs.yaml#/DocsDeleteAttachmentRequest
+    DocsComment:
+      $ref: ./schemas/docs.yaml#/DocsComment
+    DocsCommentPage:
+      $ref: ./schemas/docs.yaml#/DocsCommentPage
+    DocsCreateCommentRequest:
+      $ref: ./schemas/docs.yaml#/DocsCreateCommentRequest
+    DocsUpdateCommentRequest:
+      $ref: ./schemas/docs.yaml#/DocsUpdateCommentRequest
+    DocsDeleteCommentRequest:
+      $ref: ./schemas/docs.yaml#/DocsDeleteCommentRequest
+    DocsTiptapDocument:
+      $ref: ./schemas/docs.yaml#/DocsTiptapDocument
+    DocsTiptapNode:
+      $ref: ./schemas/docs.yaml#/DocsTiptapNode
+    DocsTiptapParagraph:
+      $ref: ./schemas/docs.yaml#/DocsTiptapParagraph
+    DocsTiptapHeading:
+      $ref: ./schemas/docs.yaml#/DocsTiptapHeading
+    DocsTiptapText:
+      $ref: ./schemas/docs.yaml#/DocsTiptapText
+    DocsTiptapHardBreak:
+      $ref: ./schemas/docs.yaml#/DocsTiptapHardBreak
+    DocsTiptapBlockquote:
+      $ref: ./schemas/docs.yaml#/DocsTiptapBlockquote
+    DocsTiptapBulletList:
+      $ref: ./schemas/docs.yaml#/DocsTiptapBulletList
+    DocsTiptapOrderedList:
+      $ref: ./schemas/docs.yaml#/DocsTiptapOrderedList
+    DocsTiptapListItem:
+      $ref: ./schemas/docs.yaml#/DocsTiptapListItem
+    DocsTiptapTaskList:
+      $ref: ./schemas/docs.yaml#/DocsTiptapTaskList
+    DocsTiptapTaskItem:
+      $ref: ./schemas/docs.yaml#/DocsTiptapTaskItem
+    DocsTiptapCodeBlock:
+      $ref: ./schemas/docs.yaml#/DocsTiptapCodeBlock
+    DocsTiptapHorizontalRule:
+      $ref: ./schemas/docs.yaml#/DocsTiptapHorizontalRule
+    DocsTiptapImage:
+      $ref: ./schemas/docs.yaml#/DocsTiptapImage
+    DocsTiptapMention:
+      $ref: ./schemas/docs.yaml#/DocsTiptapMention
+    DocsTiptapDetails:
+      $ref: ./schemas/docs.yaml#/DocsTiptapDetails
+    DocsTiptapDetailsSummary:
+      $ref: ./schemas/docs.yaml#/DocsTiptapDetailsSummary
+    DocsTiptapDetailsContent:
+      $ref: ./schemas/docs.yaml#/DocsTiptapDetailsContent
+    DocsTiptapTable:
+      $ref: ./schemas/docs.yaml#/DocsTiptapTable
+    DocsTiptapTableRow:
+      $ref: ./schemas/docs.yaml#/DocsTiptapTableRow
+    DocsTiptapTableCell:
+      $ref: ./schemas/docs.yaml#/DocsTiptapTableCell
+    DocsTiptapTableHeader:
+      $ref: ./schemas/docs.yaml#/DocsTiptapTableHeader
+    DocsTiptapAdmonition:
+      $ref: ./schemas/docs.yaml#/DocsTiptapAdmonition
+    DocsTiptapAdmonitionTitle:
+      $ref: ./schemas/docs.yaml#/DocsTiptapAdmonitionTitle
+    DocsTiptapMark:
+      $ref: ./schemas/docs.yaml#/DocsTiptapMark
+    DocsTiptapMarkBold:
+      $ref: ./schemas/docs.yaml#/DocsTiptapMarkBold
+    DocsTiptapMarkItalic:
+      $ref: ./schemas/docs.yaml#/DocsTiptapMarkItalic
+    DocsTiptapMarkStrike:
+      $ref: ./schemas/docs.yaml#/DocsTiptapMarkStrike
+    DocsTiptapMarkUnderline:
+      $ref: ./schemas/docs.yaml#/DocsTiptapMarkUnderline
+    DocsTiptapMarkCode:
+      $ref: ./schemas/docs.yaml#/DocsTiptapMarkCode
+    DocsTiptapMarkLink:
+      $ref: ./schemas/docs.yaml#/DocsTiptapMarkLink
+    DocsTiptapMarkHighlight:
+      $ref: ./schemas/docs.yaml#/DocsTiptapMarkHighlight
+    DocsTiptapMarkTextStyle:
+      $ref: ./schemas/docs.yaml#/DocsTiptapMarkTextStyle
 
     FeedbackRequestForm:
       $ref: ./schemas/support.yaml#/FeedbackRequestForm

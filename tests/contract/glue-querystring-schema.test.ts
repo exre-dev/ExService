@@ -46,6 +46,7 @@ describe('glue route querystring schema', () => {
       notifications: fixture.notifications,
       clickupServices: fixture.clickupServices,
       supportServices: fixture.supportServices,
+      docsServices: fixture.docsServices,
     })
     apps.push(app)
 

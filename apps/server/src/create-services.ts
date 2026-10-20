@@ -3,6 +3,7 @@ import { ScryptPasswordHasher } from '@server/src/modules/auth/crypto.js'
 import { AuthService } from '@server/src/modules/auth/service.js'
 import { InvitationService } from '@server/src/domains/join/invitations/service.js'
 import { JoinService } from '@server/src/domains/join/applications/service.js'
+import { DocsService } from '@server/src/domains/docs/service.js'
 
 /** Pure production assembly: no database open, startup checks, migrations or writes. */
 export function createAuthServices(options: {
@@ -22,5 +23,6 @@ export function createAuthServices(options: {
     passwordHasher,
   })
   const joinServices = new JoinService(invitationServices)
-  return { authServices, invitationServices, joinServices }
+  const docsServices = new DocsService({ db: options.db })
+  return { authServices, invitationServices, joinServices, docsServices }
 }

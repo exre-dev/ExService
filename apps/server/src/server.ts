@@ -61,7 +61,7 @@ try {
     await assertProfileSchemaAvailable(db)
     await assertCommunitySchemaAvailable(db)
     await assertJoinSchemaAvailable(db)
-    const { authServices, invitationServices, joinServices } = createAuthServices({
+    const { authServices, invitationServices, joinServices, docsServices } = createAuthServices({
       db,
       codeHmacKey: parseAuthCodeHmacKey(process.env.AUTH_CODE_HMAC_KEY),
       publicWebBaseUrl: identity.enabled
@@ -107,6 +107,7 @@ try {
       notifications,
       clickupServices,
       supportServices,
+      docsServices,
       identityKeys: identity.enabled
         ? {
             clients: { ...identity.integrationClients },

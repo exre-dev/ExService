@@ -56,6 +56,7 @@ beforeEach(async () => {
     notifications: fixture.notifications,
     clickupServices: fixture.clickupServices,
     supportServices: fixture.supportServices,
+    docsServices: fixture.docsServices,
   })
   await app.ready()
   apps.push(app)

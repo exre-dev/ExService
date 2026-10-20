@@ -24,6 +24,7 @@ const serviceFields: readonly (keyof BusinessServices)[] = [
   'notifications',
   'clickupServices',
   'supportServices',
+  'docsServices',
 ]
 interface ErrorContext {
   stage?: BusinessPluginStage

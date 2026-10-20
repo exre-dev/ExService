@@ -2,6 +2,7 @@ import test from 'node:test'
 import { parseEnv } from 'node:util'
 import assert from 'node:assert/strict'
 import {
+  copyFileSync,
   mkdtempSync,
   mkdirSync,
   writeFileSync,
@@ -211,24 +212,6 @@ function fixture(t, profile = 'local') {
     read: (inherited) => readRuntimeConfiguration({ workspace, inherited: inherited ?? {} }),
   }
 }
-
-test('ClickUp token overrides root config only in server and is redacted in retained logs', (t) => {
-  const f = fixture(t)
-  f.values.CLICKUP_TOKEN = 'root-private'
-  f.save()
-  const state = f.read({ CLICKUP_TOKEN: 'p@%' })
-  assert.equal(state.environments.server.CLICKUP_TOKEN, 'p@%')
-  for (const [name, environment] of Object.entries(state.environments))
-    if (name !== 'server') assert.equal(environment.CLICKUP_TOKEN, undefined)
-  const file = join(f.workspace, 'logs/clickup.jsonl')
-  const log = logWriter(file, { maxBytes: 1024, retain: 2, environment: state.environments.server })
-  for (let i = 0; i < 30; i++) log('server', `p@% ${encodeURIComponent('p@%')} ${'x'.repeat(150)}`)
-  for (const name of readdirSync(join(f.workspace, 'logs'))) {
-    const retained = readFileSync(join(f.workspace, 'logs', name), 'utf8')
-    assert.equal(retained.includes('p@%'), false)
-    assert.equal(retained.includes(encodeURIComponent('p@%')), false)
-  }
-})
 
 test('Docker status failures explain engine availability without exposing command output', (t) => {
   const state = fixture(t).read()
@@ -1504,22 +1487,149 @@ test('Nginx template preserves HTTPS, Website API forwarding, Hydra whitelist an
   assert.throws(() => nginxConfiguration(state), /NGINX_VALUE_INVALID/)
 })
 
-test('Nginx API upload ceiling covers the support and configured storage wire budgets', (t) => {
+/** Copies the generated Contract into a disposable workspace so a rendering test can retune one budget. */
+function contractWorkspace(t, patch) {
+  const workspace = mkdtempSync(join(tmpdir(), 'runtime-nginx-contract-'))
+  t.after(() => rmSync(workspace, { recursive: true, force: true }))
+  const contract = JSON.parse(readFileSync(join(root, 'api/generated/openapi.json'), 'utf8'))
+  patch(contract)
+  mkdirSync(join(workspace, 'api/generated'), { recursive: true })
+  mkdirSync(join(workspace, 'infra/runtime'), { recursive: true })
+  writeFileSync(join(workspace, 'api/generated/openapi.json'), JSON.stringify(contract))
+  copyFileSync(
+    join(root, 'infra/runtime/nginx.conf.template'),
+    join(workspace, 'infra/runtime/nginx.conf.template'),
+  )
+  return workspace
+}
+
+/** Every operation carrying a Docs registration; the bundled Contract has no path-item references. */
+const docsRegistrations = (contract) =>
+  Object.values(contract.paths).flatMap((item) =>
+    Object.values(item)
+      .filter((operation) => operation?.['x-fastify-config']?.docs)
+      .map((operation) => operation['x-fastify-config'].docs),
+  )
+
+const CERTIFICATES = {
+  NGINX_SITE_CERT: '/certs/site.crt',
+  NGINX_SITE_KEY: '/certs/site.key',
+  NGINX_ISSUER_CERT: '/certs/issuer.crt',
+  NGINX_ISSUER_KEY: '/certs/issuer.key',
+  HYDRA_INTERNAL_PUBLIC_URL: 'http://127.0.0.1:4444',
+}
+
+function nginxState(t, workspace = root) {
   const state = fixture(t, 'deployment').read()
-  state.workspace = root
-  Object.assign(state.values, {
-    NGINX_SITE_CERT: '/certs/site.crt',
-    NGINX_SITE_KEY: '/certs/site.key',
-    NGINX_ISSUER_CERT: '/certs/issuer.crt',
-    NGINX_ISSUER_KEY: '/certs/issuer.key',
-    HYDRA_INTERNAL_PUBLIC_URL: 'http://127.0.0.1:4444',
-  })
+  state.workspace = workspace
+  Object.assign(state.values, CERTIFICATES)
+  return state
+}
+
+test('ClickUp token overrides root config only in server and is redacted in retained logs', (t) => {
+  const f = fixture(t)
+  f.values.CLICKUP_TOKEN = 'root-private'
+  f.save()
+  const state = f.read({ CLICKUP_TOKEN: 'p@%' })
+  assert.equal(state.environments.server.CLICKUP_TOKEN, 'p@%')
+  for (const [name, environment] of Object.entries(state.environments))
+    if (name !== 'server') assert.equal(environment.CLICKUP_TOKEN, undefined)
+  const file = join(f.workspace, 'logs/clickup.jsonl')
+  const log = logWriter(file, { maxBytes: 1024, retain: 2, environment: state.environments.server })
+  for (let i = 0; i < 30; i++) log('server', `p@% ${encodeURIComponent('p@%')} ${'x'.repeat(150)}`)
+  for (const name of readdirSync(join(f.workspace, 'logs'))) {
+    const retained = readFileSync(join(f.workspace, 'logs', name), 'utf8')
+    assert.equal(retained.includes('p@%'), false)
+    assert.equal(retained.includes(encodeURIComponent('p@%')), false)
+  }
+})
+
+test('Nginx API upload ceiling covers the support, storage and Docs wire budgets, whichever dominates', (t) => {
+  const state = nginxState(t)
+  // 上游 support 上传的 wire 预算（21,037,056）大于 Docs 的 9 MiB，也大于默认存储 wire。
   assert.match(nginxConfiguration(state), /location \/api\/ \{\s*client_max_body_size 21037056;/)
+  // 默认存储 wire 恰好也是 21,037,056，上一条无法区分它来自 support 还是 storage。
+  // 把存储压到 1 MiB（单独只有 1,114,112）后仍是同一数值，才真正钉住 support 的参与。
+  state.values.STORAGE_MAX_BYTES = String(1024 * 1024)
+  assert.match(nginxConfiguration(state), /client_max_body_size 21037056;/)
+  // storage dominates once it is configured above support.
   state.values.STORAGE_MAX_BYTES = String(80 * 1024 * 1024)
   assert.match(nginxConfiguration(state), /client_max_body_size 83951616;/)
+  // Docs dominates when its declared body budget exceeds both; the value stays derived from the Contract.
+  const workspace = contractWorkspace(t, (contract) => {
+    for (const config of docsRegistrations(contract))
+      if (config.kind === 'content') config.wireBytes = 100 * 1024 * 1024
+  })
+  const docsDominant = nginxState(t, workspace)
+  assert.match(nginxConfiguration(docsDominant), /client_max_body_size 104857600;/)
+  docsDominant.values.STORAGE_MAX_BYTES = String(80 * 1024 * 1024)
+  assert.match(nginxConfiguration(docsDominant), /client_max_body_size 104857600;/)
   for (const value of ['0', '-1', 'NaN', '1.5', '1e3', ' 20 ', String(Number.MAX_SAFE_INTEGER)]) {
     state.values.STORAGE_MAX_BYTES = value
     assert.throws(() => nginxConfiguration(state), /NGINX_UPLOAD_BUDGET_INVALID/)
+  }
+})
+
+test('Nginx rendering refuses a missing or malformed Docs wire registration', (t) => {
+  const patches = {
+    'no Docs registration at all': (contract) => {
+      for (const item of Object.values(contract.paths)) {
+        for (const operation of Object.values(item)) {
+          if (!operation?.['x-fastify-config']?.docs) continue
+          delete operation['x-fastify-config'].docs
+          if (!Object.keys(operation['x-fastify-config']).length)
+            delete operation['x-fastify-config']
+        }
+      }
+    },
+    'only read/reserved-upload kinds left': (contract) => {
+      for (const config of docsRegistrations(contract)) {
+        if (config.kind === 'read') continue
+        config.kind = 'reserved-upload'
+        delete config.wireBytes
+      }
+    },
+    'unknown kind': (contract) => {
+      docsRegistrations(contract)[0].kind = 'upload'
+    },
+    'missing kind': (contract) => {
+      delete docsRegistrations(contract)[0].kind
+    },
+    'content without wireBytes': (contract) => {
+      delete docsRegistrations(contract).find((config) => config.kind === 'content').wireBytes
+    },
+    'extra key': (contract) => {
+      docsRegistrations(contract).find((config) => config.kind === 'command').bodyLimit = 65536
+    },
+    'zero wireBytes': (contract) => {
+      docsRegistrations(contract).find((config) => config.kind === 'content').wireBytes = 0
+    },
+    'negative wireBytes': (contract) => {
+      docsRegistrations(contract).find((config) => config.kind === 'content').wireBytes = -1
+    },
+    'fractional wireBytes': (contract) => {
+      docsRegistrations(contract).find((config) => config.kind === 'content').wireBytes = 1.5
+    },
+    'unsafe wireBytes': (contract) => {
+      docsRegistrations(contract).find((config) => config.kind === 'content').wireBytes =
+        2 ** 53 + 2
+    },
+    'string wireBytes': (contract) => {
+      docsRegistrations(contract).find((config) => config.kind === 'content').wireBytes = '9437184'
+    },
+    'read carrying wireBytes': (contract) => {
+      docsRegistrations(contract).find((config) => config.kind === 'read').wireBytes = 65536
+    },
+    'registration as an array': (contract) => {
+      contract.paths['/docs/spaces'].get['x-fastify-config'].docs = ['read']
+    },
+    'registration as null': (contract) => {
+      contract.paths['/docs/spaces'].get['x-fastify-config'].docs = null
+    },
+  }
+  for (const [name, patch] of Object.entries(patches)) {
+    const state = nginxState(t, contractWorkspace(t, patch))
+    assert.throws(() => nginxConfiguration(state), /NGINX_DOCS_BUDGET_INVALID/, name)
   }
 })
 

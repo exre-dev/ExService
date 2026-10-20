@@ -195,6 +195,7 @@ it.each([
   'notifications',
   'joinServices',
   'invitationServices',
+  'docsServices',
 ] as const)('rejects absent required %s with its safe diagnostic', async (field) => {
   const services = fixture(),
     app = createApp({ ...services, [field]: undefined } as unknown as Parameters<

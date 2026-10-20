@@ -7,6 +7,7 @@ import type { StorageServices } from './modules/storage/factory.js'
 import type { NotificationModule } from './modules/notifications/factory.js'
 import type { ClickUpServices } from './modules/clickup/service.js'
 import type { SupportServices } from './domains/support/service.js'
+import type { DocsService } from './domains/docs/service.js'
 
 /** Application-owned services; freezing the snapshot never freezes these instances. */
 export interface BusinessServices {
@@ -19,4 +20,5 @@ export interface BusinessServices {
   readonly notifications: NotificationModule
   readonly clickupServices: ClickUpServices
   readonly supportServices: SupportServices
+  readonly docsServices: DocsService
 }

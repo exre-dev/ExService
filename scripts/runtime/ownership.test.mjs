@@ -23,6 +23,54 @@ const identity = (pid) => ({
   executable: 'node',
   commandDigest: 'command',
 })
+
+/**
+ * `processIdentity` 的契约：存活进程返回完整身份，进程不存在返回 `null`（CIM 故障才抛错）。
+ *
+ * 因此"取不到身份"就是"进程已经消失"，必须如实判定为已清理，而不是交给
+ * `identityAlive` 抛 `MODE_OWNER_AMBIGUOUS`——那是个与被测语义无关的错误码，会把
+ * 上层断言引到错误的失败形态上（例如等 `PROCESS_IDENTITY_UNAVAILABLE` 却拿到它）。
+ * 判定力不减：进程若真的还在，`processIdentity` 会返回真身份，这里就会如实报"活着"。
+ */
+function identityGone(identity) {
+  return identity === null || identity === undefined ? true : !identityAlive(identity)
+}
+
+/**
+ * 等到某个身份真的消失。
+ *
+ * Job 关闭后代进程、以及后代打印自己的 PID，都由操作系统异步完成。一次性快照在负载下
+ * 会把"还没死"误判成"没被清理"，因此这里在固定上界内等待，超时仍然失败——
+ * 判定力不变（Job 真的漏掉后代时用例照旧红），只是不再要求清理是瞬时的。
+ */
+async function waitUntilDead(identity, timeoutMs = 10_000) {
+  if (identity === null || identity === undefined) return true
+  // 上界按墙钟计算：每次 identityAlive 都要起一次 powershell（1–2.3 秒），
+  // 按次数计会让失败路径跑满上百次查询、几分钟才收敛。
+  const until = Date.now() + timeoutMs
+  for (;;) {
+    if (!identityAlive(identity)) return true
+    if (Date.now() >= until) return false
+    await delay(100)
+  }
+}
+
+/** 按墙钟上界等待 fixture 子进程打印某行；负载下启动与 stdout 刷新都可能变慢。 */
+async function waitForMessage(messages, prefix, timeoutMs = 15_000) {
+  const until = Date.now() + timeoutMs
+  for (;;) {
+    const line = messages.find((value) => value.startsWith(prefix))
+    if (line !== undefined) return line
+    if (Date.now() >= until) return undefined
+    await delay(50)
+  }
+}
+
+/** 等到 fixture 后代把自己的 PID 打出来。 */
+async function waitForDescendant(messages) {
+  const line = await waitForMessage(messages, 'DESCENDANT:')
+  return line === undefined ? undefined : Number(line.split(':')[1])
+}
 test('empty preflight recovery preserves normalized evidence before a failed external proof and never changes the old owner', () => {
   const directory = mkdtempSync(join(tmpdir(), 'zero-recovery-')),
     path = join(directory, 'mode-lock.json')
@@ -375,20 +423,13 @@ test('real fixture child and descendants are cleaned while an independent child 
   let owned
   try {
     owned = await spawnOwned(spec('descendant'), { onLog: (_, line) => messages.push(line) })
-    for (
-      let count = 0;
-      count < 100 && !messages.some((line) => line.startsWith('DESCENDANT:'));
-      count++
-    )
-      await delay(50)
-    const descendant = Number(
-      messages.find((line) => line.startsWith('DESCENDANT:'))?.split(':')[1],
-    )
+    const descendant = await waitForDescendant(messages)
     assert.ok(descendant)
     const descendantIdentity = processIdentity(descendant)
     await stopOwned([owned])
-    assert.equal(identityAlive(owned.identity), false)
-    assert.equal(identityAlive(descendantIdentity), false)
+    assert.equal(await waitUntilDead(owned.identity), true)
+    assert.equal(await waitUntilDead(descendantIdentity), true)
+    // 独立子进程必须仍然存活：清理只作用于被停止的那个 Job。
     assert.equal(identityAlive(foreign.identity), true)
   } finally {
     await stopOwned([...(owned ? [owned] : []), foreign])
@@ -396,33 +437,71 @@ test('real fixture child and descendants are cleaned while an independent child 
 })
 
 test('control stop during real owned SDK preparation cleans its helper and descendants before releasing the lock', async () => {
-  const directory = mkdtempSync(join(tmpdir(), 'owned-sdk-prepare-')), messages = []
-  const lock = acquireLock({ mode: 'local', fingerprint: 'fixture', directory }), release = lock.release
-  let preparer, descendant, launched = false
+  const directory = mkdtempSync(join(tmpdir(), 'owned-sdk-prepare-')),
+    messages = []
+  const lock = acquireLock({ mode: 'local', fingerprint: 'fixture', directory }),
+    release = lock.release
+  let preparer,
+    descendant,
+    launched = false
   lock.release = () => {
-    assert.equal(identityAlive(preparer), false); assert.equal(identityAlive(descendant), false); release()
+    assert.equal(identityAlive(preparer), false)
+    assert.equal(identityAlive(descendant), false)
+    release()
   }
-  const running = supervise({ directory, lock, mode: 'local', fingerprint: 'fixture', pollInterval: 25,
-    specifications: [{ name: 'server' }], readiness: async () => { launched = true }, onLog: (_name, line) => messages.push(line),
-    prepareGeneration: ({ execute }) => execute({ name: 'SDK build', command: process.execPath, cwd: resolve('.'),
-      args: [resolve('tests/dev/fixture-process.mjs'), 'descendant'], environment: process.env }) })
+  const running = supervise({
+    directory,
+    lock,
+    mode: 'local',
+    fingerprint: 'fixture',
+    pollInterval: 25,
+    specifications: [{ name: 'server' }],
+    readiness: async () => {
+      launched = true
+    },
+    onLog: (_name, line) => messages.push(line),
+    prepareGeneration: ({ execute }) =>
+      execute({
+        name: 'SDK build',
+        command: process.execPath,
+        cwd: resolve('.'),
+        args: [resolve('tests/dev/fixture-process.mjs'), 'descendant'],
+        environment: process.env,
+      }),
+  })
   try {
     for (let count = 0; count < 200; count++) {
-      if (messages.some(line => line.startsWith('DESCENDANT:')) && readJson(join(directory, 'run.json')).children.length) break
+      if (
+        messages.some((line) => line.startsWith('DESCENDANT:')) &&
+        readJson(join(directory, 'run.json')).children.length
+      )
+        break
       await delay(50)
     }
     const run = readJson(join(directory, 'run.json'))
-    assert.equal(run.state, 'preparing'); assert.equal(run.children.length, 1)
-    assert.equal(run.children[0].name, 'SDK build'); preparer = run.children[0].identity
-    const pid = Number(messages.find(line => line.startsWith('DESCENDANT:'))?.split(':')[1])
-    assert.ok(pid); descendant = processIdentity(pid)
-    atomicJson(join(directory, 'control-request.json'), { runId: lock.record.runId, action: 'stop' })
+    assert.equal(run.state, 'preparing')
+    assert.equal(run.children.length, 1)
+    assert.equal(run.children[0].name, 'SDK build')
+    preparer = run.children[0].identity
+    const pid = Number(messages.find((line) => line.startsWith('DESCENDANT:'))?.split(':')[1])
+    assert.ok(pid)
+    descendant = processIdentity(pid)
+    atomicJson(join(directory, 'control-request.json'), {
+      runId: lock.record.runId,
+      action: 'stop',
+    })
     await running
-    assert.equal(launched, false); assert.equal(existsSync(lock.path), false)
+    assert.equal(launched, false)
+    assert.equal(existsSync(lock.path), false)
     assert.equal(readJson(join(directory, 'run.json')).state, 'stopped')
   } finally {
-    atomicJson(join(directory, 'control-request.json'), { runId: lock.record.runId, action: 'stop' })
-    await running.catch(() => {}); release(); rmSync(directory, { recursive: true, force: true })
+    atomicJson(join(directory, 'control-request.json'), {
+      runId: lock.record.runId,
+      action: 'stop',
+    })
+    await running.catch(() => {})
+    release()
+    rmSync(directory, { recursive: true, force: true })
   }
 })
 test('child logs redact original database credentials, identity URLs/tokens/challenges and SQL', () => {
@@ -447,25 +526,21 @@ test(
         name: 'unexpected',
         command: process.execPath,
         args: [resolve('tests/dev/fixture-process.mjs'), 'descendant-exit'],
-        environment: process.env,
+        // 后代身份必须在 root 自退之前取到：`spawnOwned` 自身先花掉数秒做一次进程身份查询，
+        // 之后再查一次后代身份，两者相加会吃掉默认的 5 秒定时器。放大定时器而不是放宽断言。
+        environment: { ...process.env, EXWEBSITE_FIXTURE_EXIT_MS: '20000' },
         cwd: resolve('.'),
       },
       { onLog: (_, line) => messages.push(line) },
     )
     try {
-      for (
-        let count = 0;
-        count < 100 && !messages.some((line) => line.startsWith('DESCENDANT:'));
-        count++
-      )
-        await delay(50)
-      const pid = Number(messages.find((line) => line.startsWith('DESCENDANT:'))?.split(':')[1])
+      const pid = await waitForDescendant(messages)
       assert.ok(Number.isSafeInteger(pid) && pid > 0)
+      const descendant = processIdentity(pid)
       const result = await owned.exited
       assert.equal(result.code, 7)
-      // The Job may drain before the first CIM observation; after helper exit,
-      // the reported descendant PID must be absent in either timing.
-      assert.equal(processIdentity(pid), null)
+      // 后代身份是在它还活着时取到的，因此这里断言的是"清理掉了它"，而不只是"pid 不见了"。
+      assert.equal(await waitUntilDead(descendant), true)
     } finally {
       await stopOwned([owned])
     }
@@ -528,23 +603,17 @@ test(
         spawnOwned(spec, {
           onLog: (_name, line) => messages.push(line),
           inspect: async (pid) => {
-            for (
-              let count = 0;
-              count < 100 && !messages.some((value) => value.startsWith('DESCENDANT:'));
-              count++
-            )
-              await delay(50)
+            const descendantPid = await waitForDescendant(messages)
             helper = processIdentity(pid)
-            descendant = processIdentity(
-              Number(messages.find((value) => value.startsWith('DESCENDANT:'))?.split(':')[1]),
-            )
+            descendant = processIdentity(descendantPid)
             throw new LocalError('PROCESS_IDENTITY_UNAVAILABLE')
           },
         }),
         /PROCESS_IDENTITY_UNAVAILABLE/,
       )
-      assert.equal(identityAlive(helper), false)
-      assert.equal(identityAlive(descendant), false)
+      // 失败的 helper 被 drain：它自己、它已经带出来的后代都消失，独立子进程保留。
+      assert.equal(await waitUntilDead(helper), true)
+      assert.equal(await waitUntilDead(descendant), true)
       assert.equal(identityAlive(foreign.identity), true)
     } finally {
       await stopOwned([foreign])
@@ -567,11 +636,13 @@ test(
     let starts = 0,
       descendant
     lock.release = () => {
+      // 身份可能取不到（进程已被 drain），这时必须判为已清理，而不是让 identityAlive(null)
+      // 抛出与本用例无关的错误码。
       assert.equal(
-        identities.every((identity) => !identityAlive(identity)),
+        identities.every((identity) => identityGone(identity)),
         true,
       )
-      assert.equal(identityAlive(descendant), false)
+      assert.equal(identityGone(descendant), true)
       release()
     }
     try {
@@ -607,22 +678,20 @@ test(
               return await spawnOwned(spec, {
                 onLog: (_name, line) => messages.push(line),
                 inspect: async (pid) => {
-                  for (let count = 0; count < 100 && !messages.includes('PORT_READY'); count++)
-                    await delay(50)
-                  assert.equal(messages.includes('PORT_READY'), true)
+                  assert.notEqual(await waitForMessage(messages, 'PORT_READY'), undefined)
+                  const descendantPid = await waitForDescendant(messages)
+                  assert.ok(Number.isSafeInteger(descendantPid) && descendantPid > 0)
+                  // descendant 存的是身份而不是 pid：identityGone 要按身份判定，传 pid 会走到
+                  // identityAlive 的"身份不完整"分支，抛出与本用例无关的错误码。
+                  descendant = processIdentity(descendantPid)
                   identities.push(processIdentity(pid))
-                  descendant = processIdentity(
-                    Number(
-                      messages.find((value) => value.startsWith('DESCENDANT:'))?.split(':')[1],
-                    ),
-                  )
                   throw new LocalError('PROCESS_IDENTITY_UNAVAILABLE')
                 },
               })
             } catch (error) {
               assert.equal(existsSync(lock.path), true)
-              assert.equal(identityAlive(identities.at(-1)), false)
-              assert.equal(identityAlive(descendant), false)
+              assert.equal(identityGone(identities.at(-1)), true)
+              assert.equal(identityGone(descendant), true)
               await assertPortFree(port)
               throw error
             }
