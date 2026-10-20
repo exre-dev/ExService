@@ -1,0 +1,4 @@
+[submodule "apps/php-server"]
+	path = apps/php-server
+	url = https://github.com/exre-dev/ExServiceServer.git
+	branch = feat/openapi-contract

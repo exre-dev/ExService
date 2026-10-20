@@ -8,6 +8,7 @@ export default defineConfig({
     ...fullConfig.test,
     include: [
       'apps/web/src/**/*.test.{ts,tsx}',
+      'apps/admin-web/src/**/*.test.{ts,tsx}',
       'apps/server/src/**/*.test.{ts,tsx}',
       'packages/components/src/**/*.test.{ts,tsx}',
       'packages/sdk/src/**/*.test.{ts,tsx}',

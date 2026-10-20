@@ -1,0 +1,8 @@
+.loading {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+}
+.spinnerContent {
+  padding: 50px;
+}
