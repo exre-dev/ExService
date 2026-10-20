@@ -16,15 +16,15 @@
 
 ## 2. 当前证据与实施约束
 
-| 已核对事实 | 当前来源 | 对设计的约束 |
-| --- | --- | --- |
-| Client 的请求路径和成功类型来自生成的 paths，运行时必须注入 transport | `packages/api-client/src/client.ts` | 合并后保留 Contract 类型推导，不以任意响应泛型替代。 |
-| SDK 已经包含 Axios 错误处理、Token 快照、浏览器适配与上传流程 | `packages/sdk/src/http/core.ts`、`packages/sdk/src/shared.ts` | 重组这些职责，保留失败路径；不另建请求引擎。 |
-| Web 自己组装两个工厂，并通过认证适配更新 HTTP token | `apps/web/src/api/client.ts`、`apps/web/src/auth/storage.ts` | 移除工厂接线，保留同标签和跨标签认证通知、SSO 路由保护。 |
-| Server 通过类型子入口引用 components/operations | `apps/server/src/http/handler-types.ts`、`apps/server/src/domains/support/validation.ts` | SDK 类型入口保持无运行时依赖与无 DOM 的 NodeNext 编译边界。 |
-| 开发监督器持有 application lock 和精确子进程归属，但尚无 SDK 重建循环 | `scripts/runtime/applications.mjs`、`scripts/runtime/local-dev.mjs` | 重建在现有监督生命周期中扩展，不引入无归属后台 watcher。 |
-| dev、test 先生成 Contract，build/typecheck 已依赖 SDK 构建 | `scripts/runtime/entry.mjs`、`scripts/runtime/tests.mjs`、`scripts/runtime/build.mjs`、`package.json` | 统一产物前置条件，更新对应断言和文档。 |
-| Browser SDK 静态引用 ExUI，peer 元数据为 optional | `packages/sdk/src/http/browser.ts`、`packages/sdk/package.json` | Browser 仍必须提供 ExUI；Node 独立消费不安装或加载 ExUI/React。 |
+| 已核对事实                                                            | 当前来源                                                                                              | 对设计的约束                                                    |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Client 的请求路径和成功类型来自生成的 paths，运行时必须注入 transport | `packages/api-client/src/client.ts`                                                                   | 合并后保留 Contract 类型推导，不以任意响应泛型替代。            |
+| SDK 已经包含 Axios 错误处理、Token 快照、浏览器适配与上传流程         | `packages/sdk/src/http/core.ts`、`packages/sdk/src/shared.ts`                                         | 重组这些职责，保留失败路径；不另建请求引擎。                    |
+| Web 自己组装两个工厂，并通过认证适配更新 HTTP token                   | `apps/web/src/api/client.ts`、`apps/web/src/auth/storage.ts`                                          | 移除工厂接线，保留同标签和跨标签认证通知、SSO 路由保护。        |
+| Server 通过类型子入口引用 components/operations                       | `apps/server/src/http/handler-types.ts`、`apps/server/src/domains/support/validation.ts`              | SDK 类型入口保持无运行时依赖与无 DOM 的 NodeNext 编译边界。     |
+| 开发监督器持有 application lock 和精确子进程归属，但尚无 SDK 重建循环 | `scripts/runtime/applications.mjs`、`scripts/runtime/local-dev.mjs`                                   | 重建在现有监督生命周期中扩展，不引入无归属后台 watcher。        |
+| dev、test 先生成 Contract，build/typecheck 已依赖 SDK 构建            | `scripts/runtime/entry.mjs`、`scripts/runtime/tests.mjs`、`scripts/runtime/build.mjs`、`package.json` | 统一产物前置条件，更新对应断言和文档。                          |
+| Browser SDK 静态引用 ExUI，peer 元数据为 optional                     | `packages/sdk/src/http/browser.ts`、`packages/sdk/package.json`                                       | Browser 仍必须提供 ExUI；Node 独立消费不安装或加载 ExUI/React。 |
 
 现有依赖版本保持 lockfile 中的版本，不借此升级 Axios、COS、Vite、TypeScript 或 ExUI。实现前按 `TESTING.md`（若届时存在）或当前 `.ai/architectures/contract-tests/test-layers.md` 执行测试规则。
 
@@ -32,16 +32,16 @@
 
 目标职责和文件位置为绑定选择；文件内部可以按清晰度继续拆分，但不新增公开包：
 
-| 目标位置 | 责任 | 可依赖 |
-| --- | --- | --- |
-| `packages/sdk/src/generated/schema.d.ts` | 原始 Contract 生成类型 | 由生成命令写入。 |
-| `packages/sdk/src/request-types.ts` | 对象请求与响应类型映射 | 生成类型及标准 Web 类型。 |
-| `packages/sdk/src/config.ts` | 地址、凭据来源、版本、失效锁 | 注入的环境读写函数；不导入 Web 应用。 |
-| `packages/sdk/src/http/core.ts` | 配置验证、序列化、HTTP 和错误策略 | config、Axios、请求类型；不导入 COS/ExUI。 |
-| `packages/sdk/src/runtime.ts` | 包内依赖组装，产生一份单例公开面 | config、HTTP、storage、注入的环境适配。 |
-| `packages/sdk/src/browser.ts`、`packages/sdk/src/node.ts` | 根入口的两种环境产物 | 各自创建一次内部 runtime，导出同名对象与方法。 |
-| `packages/sdk/src/storage/` | 上传协调及环境 COS 传输 | 同一请求管线；COS 适配延迟加载。 |
-| `packages/sdk/src/index.ts` | 共同公开类型与声明入口 | 请求类型、错误与 storage 公开类型，不暴露环境实现类型。 |
+| 目标位置                                                  | 责任                              | 可依赖                                                  |
+| --------------------------------------------------------- | --------------------------------- | ------------------------------------------------------- |
+| `packages/sdk/src/generated/schema.d.ts`                  | 原始 Contract 生成类型            | 由生成命令写入。                                        |
+| `packages/sdk/src/request-types.ts`                       | 对象请求与响应类型映射            | 生成类型及标准 Web 类型。                               |
+| `packages/sdk/src/config.ts`                              | 地址、凭据来源、版本、失效锁      | 注入的环境读写函数；不导入 Web 应用。                   |
+| `packages/sdk/src/http/core.ts`                           | 配置验证、序列化、HTTP 和错误策略 | config、Axios、请求类型；不导入 COS/ExUI。              |
+| `packages/sdk/src/runtime.ts`                             | 包内依赖组装，产生一份单例公开面  | config、HTTP、storage、注入的环境适配。                 |
+| `packages/sdk/src/browser.ts`、`packages/sdk/src/node.ts` | 根入口的两种环境产物              | 各自创建一次内部 runtime，导出同名对象与方法。          |
+| `packages/sdk/src/storage/`                               | 上传协调及环境 COS 传输           | 同一请求管线；COS 适配延迟加载。                        |
+| `packages/sdk/src/index.ts`                               | 共同公开类型与声明入口            | 请求类型、错误与 storage 公开类型，不暴露环境实现类型。 |
 
 `runtime.ts` 内部的创建方法只用于根入口组装和单元测试，不进入 exports。Browser 与 Node 分别解析一个环境入口，同一入口内的所有命名导出引用同一 runtime；不把复制状态的构造过程放入 re-export 文件。
 
@@ -171,14 +171,14 @@ JSON 只在有 data 且 data 不是 FormData 时设置相应 Content-Type；Form
 
 config 持有以下私有状态；任何字段都不作为公开可写 defaults：
 
-| 状态 | 含义 |
-| --- | --- |
-| baseUrl、scopeRevision | 规范化 API 根及其变更版本；Node 初始地址未设置。 |
-| effectiveToken、tokenRevision | 当前有效凭据及其版本；初始为空。 |
-| lastReadable | 最近一次可确认的持久 raw 值，区分未观察到与已观察到 null。 |
-| override | 可选显式内存值，以及设置时观察到的持久基线；值可以是 null。 |
-| expiredRevision | 已完成失效处理的当前上下文锁，防止清空后重复提示与回调。 |
-| sessionExpiredHandler | 当前应用接线；与凭据版本独立。 |
+| 状态                          | 含义                                                        |
+| ----------------------------- | ----------------------------------------------------------- |
+| baseUrl、scopeRevision        | 规范化 API 根及其变更版本；Node 初始地址未设置。            |
+| effectiveToken、tokenRevision | 当前有效凭据及其版本；初始为空。                            |
+| lastReadable                  | 最近一次可确认的持久 raw 值，区分未观察到与已观察到 null。  |
+| override                      | 可选显式内存值，以及设置时观察到的持久基线；值可以是 null。 |
+| expiredRevision               | 已完成失效处理的当前上下文锁，防止清空后重复提示与回调。    |
+| sessionExpiredHandler         | 当前应用接线；与凭据版本独立。                              |
 
 环境输入为 Browser origin、读取和条件删除 token、通知与导航函数，或无浏览器能力的 Node 适配。不将这些输入作为公开 factory 参数。持久读取结果必须区分 known(string/null) 与 unavailable；非法 token 不发送，不记录其内容。
 
@@ -186,15 +186,15 @@ config 持有以下私有状态；任何字段都不作为公开可写 defaults�
 
 ### 5.2 有效凭据解析
 
-| 环境/目标 | 来源规则 |
-| --- | --- |
-| Node | 只使用 setAccessToken 的内存值。 |
-| Browser 非当前 origin 默认 `/api` | 只使用显式内存值，不读取或借用当前页面 token。 |
-| Browser 默认 API、无 override、读取成功 | 使用 `exwebsite.auth.token` 的合法值，null 表示匿名。 |
-| Browser 默认 API、有 override、持久值与基线相同 | 使用 override，包括显式 null，不恢复旧持久 token。 |
-| Browser 默认 API、有 override、确认持久值已变化 | 清除 override，使用新持久值。 |
-| Browser 默认 API、有 override、基线尚不可确认 | 保留 override；首次成功读取只建立基线，不把未知当作已发生会话变化。 |
-| 持久读取不可用 | 有 override 时保留其显式值；没有时本次不自动附带 token，不把 unavailable 当作已确认 null。 |
+| 环境/目标                                       | 来源规则                                                                                   |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Node                                            | 只使用 setAccessToken 的内存值。                                                           |
+| Browser 非当前 origin 默认 `/api`               | 只使用显式内存值，不读取或借用当前页面 token。                                             |
+| Browser 默认 API、无 override、读取成功         | 使用 `exwebsite.auth.token` 的合法值，null 表示匿名。                                      |
+| Browser 默认 API、有 override、持久值与基线相同 | 使用 override，包括显式 null，不恢复旧持久 token。                                         |
+| Browser 默认 API、有 override、确认持久值已变化 | 清除 override，使用新持久值。                                                              |
+| Browser 默认 API、有 override、基线尚不可确认   | 保留 override；首次成功读取只建立基线，不把未知当作已发生会话变化。                        |
+| 持久读取不可用                                  | 有 override 时保留其显式值；没有时本次不自动附带 token，不把 unavailable 当作已确认 null。 |
 
 除地址切换主动使凭据绑定失效外，有效 token 真正变化才推进 tokenRevision，并解除旧失效锁。只改变来源、但 token 字节未变化时不使正在上传的凭据上下文失效；失效处理使用刷新后可确认的当前来源。应用显示与资料仍由认证流程和 `/auth/me` 决定，SDK 不以 token 存在推断身份。
 
@@ -303,14 +303,14 @@ Browser 独立消费必须提供现有 ExUI peer 和其 peer 依赖；缺少时�
 
 新增 `scripts/runtime/typecheck.mjs` 作为根 typecheck 的薄 CLI：调用 prepareSdk 后串行执行现有 workspace typecheck、迁移后的 SDK 类型夹具和 Server 类型夹具，使用相同白名单与受管执行函数，不再次调用根 typecheck。原 `tests/api-client/` 类型夹具归入 `tests/sdk/types/`，公开导入只使用实际 SDK exports。
 
-| 入口 | 固定顺序 |
-| --- | --- |
-| 根 dev | 取得 application lock 并登记 preparing → 准备 Contract/SDK → 只读启动检查 → 启动所选应用 → readiness。 |
-| 根 typecheck | 准备 Contract/SDK → 各 workspace 源码类型检查 → SDK 类型正负例及 Server NodeNext 夹具。 |
-| 根 test、test:watch 每轮 | 准备 Contract/SDK → Website Vitest → runtime Node 测试；不构建 Web/Server 应用。 |
-| 根 build | Contract → SDK → Web → Server，保留受限构建环境。 |
-| 单独 Server dev | 启动前同样准备 Contract/SDK；根监督器直接采用共享 serverSpecification 构造的 Node 开发进程，不再嵌套运行会重复准备的 Server CLI main。 |
-| 生产 start、维护运行 | 只读取既有产物，不生成、不构建、不迁移数据库。 |
+| 入口                     | 固定顺序                                                                                                                               |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 根 dev                   | 取得 application lock 并登记 preparing → 准备 Contract/SDK → 只读启动检查 → 启动所选应用 → readiness。                                 |
+| 根 typecheck             | 准备 Contract/SDK → 各 workspace 源码类型检查 → SDK 类型正负例及 Server NodeNext 夹具。                                                |
+| 根 test、test:watch 每轮 | 准备 Contract/SDK → Website Vitest → runtime Node 测试；不构建 Web/Server 应用。                                                       |
+| 根 build                 | Contract → SDK → Web → Server，保留受限构建环境。                                                                                      |
+| 单独 Server dev          | 启动前同样准备 Contract/SDK；根监督器直接采用共享 serverSpecification 构造的 Node 开发进程，不再嵌套运行会重复准备的 Server CLI main。 |
+| 生产 start、维护运行     | 只读取既有产物，不生成、不构建、不迁移数据库。                                                                                         |
 
 直接运行 apps/web 的开发命令仍属于低层入口，README 明确要求先完成 SDK 准备；日常使用根 dev。测试输出说明改为“不执行应用 Build”，不再错误声称完全不执行库构建。
 
@@ -368,21 +368,21 @@ SDK README 说明 Browser 默认配置、Node setter 顺序、对象参数、上
 
 ## 12. 验收矩阵与命令
 
-| ID | 责任位置 | 必须验证 |
-| --- | --- | --- |
-| V01 | `tests/sdk/` TypeScript 夹具、根 typecheck | 对象调用推导 GET/POST/path/query/data/responseType；未知路径、错方法、缺参、额外 query、JSON/FormData、响应泛型逃生与旧工厂负例真实 tsc 编译。 |
-| V02 | `tests/sdk/` config 测试 | Node 未设置地址的请求失败、非法 setter 原子拒绝、相同值无版本变化、换地址清旧 token、默认/显式/不可读持久来源转换。 |
-| V03 | `tests/sdk/http-core.test.ts` | 真实 HTTP 的路径与查询编码、JSON/FormData、二进制、超时/取消、error/requestId/Retry-After、未知配置、Host/目标范围和重定向拒绝。 |
-| V04 | SDK Browser 适配测试 | 登录后的新 token、同/跨标签存储变化、没有 storage 事件的直接写入、读取失败不自动发 token、显式 null 不被旧持久值恢复。 |
-| V05 | SDK 并发失效测试 | A token/A scope 的迟到 401 不处理 B；显式内存与持久值不同只失效前者；不同显式 Authorization 不清当前状态；并发/空凭据失败仅一次 handler，handler 失败不遮盖请求错误。 |
-| V06 | `tests/sdk/storage-sdk.test.ts` | file/COS 成功失败、输入切片、大小/contentType、每调用凭据、120 秒期限和原映射；COS 不收本站 Bearer，不自动重试。 |
-| V07 | 上传阶段 gate 测试 | prepare/COS import/COS 写入/file 请求/complete 期间更换地址或 token，下一副作用或成功返回前 CONFIG_CHANGED；含没有 storage 事件的持久 token 变化；真实 UNAUTHORIZED 等错误优先。 |
-| V08 | Web 相邻交互测试 | 登录、账号切换、退出失败、SSO/identity/支持中心保护、邀请字段错误、资料/通知/反馈、二进制和 FormData 行为；保留异步代次与 loading 原覆盖。 |
-| V09 | 实际 dist 临时消费工程 | Node 无 React/ExUI 导入和请求成功；Browser 提供 ExUI 后可消费且仅一个通知宿主；根调用无 COS 加载，错误类同一来源，类型无私有依赖。 |
-| V10 | 公开解析与 Server 类型夹具 | 条件导出选择正确、只有 root/types 可用；旧子入口与 `/types` value import 失败；Server NodeNext 无 DOM 可消费生成类型。 |
-| V11 | runtime 准备/监督测试 | 生成/库构建失败不启动或测试；SDK 源修改停止旧应用再构建、pending 串行、失败不使用旧产物、准备期间可停止、readiness 不串代、清理失败保留归属。 |
-| V12 | 生成器与 watch 测试 | 新类型位置与 api:check、内容不变不重写、源变化触发、生成/dist 不再触发、test 每轮先准备，环境不带开发秘密。 |
-| V13 | 全量和干净检出 | 安装后无预存 dist 可完成 typecheck/test/build/dev 准备；活动源码/依赖无旧包，AGENTS.md 与实际导出一致。 |
+| ID  | 责任位置                                   | 必须验证                                                                                                                                                                         |
+| --- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| V01 | `tests/sdk/` TypeScript 夹具、根 typecheck | 对象调用推导 GET/POST/path/query/data/responseType；未知路径、错方法、缺参、额外 query、JSON/FormData、响应泛型逃生与旧工厂负例真实 tsc 编译。                                   |
+| V02 | `tests/sdk/` config 测试                   | Node 未设置地址的请求失败、非法 setter 原子拒绝、相同值无版本变化、换地址清旧 token、默认/显式/不可读持久来源转换。                                                              |
+| V03 | `tests/sdk/http-core.test.ts`              | 真实 HTTP 的路径与查询编码、JSON/FormData、二进制、超时/取消、error/requestId/Retry-After、未知配置、Host/目标范围和重定向拒绝。                                                 |
+| V04 | SDK Browser 适配测试                       | 登录后的新 token、同/跨标签存储变化、没有 storage 事件的直接写入、读取失败不自动发 token、显式 null 不被旧持久值恢复。                                                           |
+| V05 | SDK 并发失效测试                           | A token/A scope 的迟到 401 不处理 B；显式内存与持久值不同只失效前者；不同显式 Authorization 不清当前状态；并发/空凭据失败仅一次 handler，handler 失败不遮盖请求错误。            |
+| V06 | `tests/sdk/storage-sdk.test.ts`            | file/COS 成功失败、输入切片、大小/contentType、每调用凭据、120 秒期限和原映射；COS 不收本站 Bearer，不自动重试。                                                                 |
+| V07 | 上传阶段 gate 测试                         | prepare/COS import/COS 写入/file 请求/complete 期间更换地址或 token，下一副作用或成功返回前 CONFIG_CHANGED；含没有 storage 事件的持久 token 变化；真实 UNAUTHORIZED 等错误优先。 |
+| V08 | Web 相邻交互测试                           | 登录、账号切换、退出失败、SSO/identity/支持中心保护、邀请字段错误、资料/通知/反馈、二进制和 FormData 行为；保留异步代次与 loading 原覆盖。                                       |
+| V09 | 实际 dist 临时消费工程                     | Node 无 React/ExUI 导入和请求成功；Browser 提供 ExUI 后可消费且仅一个通知宿主；根调用无 COS 加载，错误类同一来源，类型无私有依赖。                                               |
+| V10 | 公开解析与 Server 类型夹具                 | 条件导出选择正确、只有 root/types 可用；旧子入口与 `/types` value import 失败；Server NodeNext 无 DOM 可消费生成类型。                                                           |
+| V11 | runtime 准备/监督测试                      | 生成/库构建失败不启动或测试；SDK 源修改停止旧应用再构建、pending 串行、失败不使用旧产物、准备期间可停止、readiness 不串代、清理失败保留归属。                                    |
+| V12 | 生成器与 watch 测试                        | 新类型位置与 api:check、内容不变不重写、源变化触发、生成/dist 不再触发、test 每轮先准备，环境不带开发秘密。                                                                      |
+| V13 | 全量和干净检出                             | 安装后无预存 dist 可完成 typecheck/test/build/dev 准备；活动源码/依赖无旧包，AGENTS.md 与实际导出一致。                                                                          |
 
 运行顺序：`pnpm api:lint` → `pnpm api:generate` → `pnpm api:check` → `pnpm typecheck` → `pnpm test` → `pnpm build`。这些命令在同一 checkout 串行执行；数据库测试只使用 Testcontainers，Docker 不可用明确失败。
 
@@ -396,15 +396,15 @@ SDK README 说明 Browser 默认配置、Node setter 顺序、对象参数、上
 
 回滚以一个一致的应用/SDK/生成器/lockfile/文档变更集恢复，重新生成与构建后启动；不能只恢复 Web import 而保留新 exports。HTTP Contract 与持久数据没有变更，不需要数据库回填、头像清理、token 轮换或 COS 对象删除。
 
-| 风险 | 对策与检测 |
-| --- | --- |
-| 对象泛型扩大推导导致错误路径或请求体被接受 | 映射 operation 联合、受控精确字段检查、V01 真实编译负例。 |
-| 显式 token 失效后回落旧存储值 | 来源基线与 null 覆盖，V04/V05；不把不可读当作已清空。 |
-| 上传在异步边界混用地址、token 或票据 | 每阶段刷新与发送快照绑定、V07；不重试补偿副作用。 |
-| Node 引入 Browser/ExUI 或 root 导入 COS | 条件入口、显式声明、动态环境 COS；V09/V10 实际产物消费。 |
-| 新库构建造成 SDK 自身循环依赖或旧产物被消费 | SDK 内部相对 import、准备顺序、单写者约束与 V11/V13。 |
-| dev 重建遗漏子进程停止或 readiness 串代 | 同一 supervisor/lock、generation 与取消、原有失败回收测试扩展。 |
-| 会话接线迁移丢失业务状态 | 保留原页面代次和字段错误，V08；旧凭据显式撤销不影响当前会话。 |
+| 风险                                        | 对策与检测                                                      |
+| ------------------------------------------- | --------------------------------------------------------------- |
+| 对象泛型扩大推导导致错误路径或请求体被接受  | 映射 operation 联合、受控精确字段检查、V01 真实编译负例。       |
+| 显式 token 失效后回落旧存储值               | 来源基线与 null 覆盖，V04/V05；不把不可读当作已清空。           |
+| 上传在异步边界混用地址、token 或票据        | 每阶段刷新与发送快照绑定、V07；不重试补偿副作用。               |
+| Node 引入 Browser/ExUI 或 root 导入 COS     | 条件入口、显式声明、动态环境 COS；V09/V10 实际产物消费。        |
+| 新库构建造成 SDK 自身循环依赖或旧产物被消费 | SDK 内部相对 import、准备顺序、单写者约束与 V11/V13。           |
+| dev 重建遗漏子进程停止或 readiness 串代     | 同一 supervisor/lock、generation 与取消、原有失败回收测试扩展。 |
+| 会话接线迁移丢失业务状态                    | 保留原页面代次和字段错误，V08；旧凭据显式撤销不影响当前会话。   |
 
 出现 token 串用、类型逃生、Node 引入 UI、旧票据继续、陈旧产物启动或归属清理失败即停止验收，不通过放宽类型、删除测试或回退开发库继续。
 

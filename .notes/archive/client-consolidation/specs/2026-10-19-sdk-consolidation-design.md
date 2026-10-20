@@ -23,14 +23,14 @@
 
 ## 2. 现有实现与调整理由
 
-| 当前事实 | 来源 |
-| --- | --- |
-| Client 提供生成类型及 GET、POST 等类型化调用，必须注入 transport | `packages/api-client/src/client.ts`、`packages/api-client/src/transport.ts` |
-| SDK 提供 Axios 请求策略，转导出 Client，并单独维护上传流程 | `packages/sdk/src/http/`、`packages/sdk/src/shared.ts` |
-| Web 创建 HTTP 实例，再组合 Client，认证适配同步内存 token | `apps/web/src/api/client.ts`、`apps/web/src/auth/storage.ts` |
-| Server 只通过 Client 的类型入口消费 DTO 和 operations | `apps/server/src/http/handler-types.ts`、`apps/server/src/modules/storage/api/transport.ts` |
+| 当前事实                                                           | 来源                                                                                                             |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| Client 提供生成类型及 GET、POST 等类型化调用，必须注入 transport   | `packages/api-client/src/client.ts`、`packages/api-client/src/transport.ts`                                      |
+| SDK 提供 Axios 请求策略，转导出 Client，并单独维护上传流程         | `packages/sdk/src/http/`、`packages/sdk/src/shared.ts`                                                           |
+| Web 创建 HTTP 实例，再组合 Client，认证适配同步内存 token          | `apps/web/src/api/client.ts`、`apps/web/src/auth/storage.ts`                                                     |
+| Server 只通过 Client 的类型入口消费 DTO 和 operations              | `apps/server/src/http/handler-types.ts`、`apps/server/src/modules/storage/api/transport.ts`                      |
 | SDK 使用独立 Browser、Node 产物和声明合并，根 typecheck 先构建 SDK | `packages/sdk/package.json`、`packages/sdk/vite.config.ts`、`packages/sdk/rollup.config.dts.mjs`、`package.json` |
-| 上传的凭据来源目前与 HTTP 实例分开配置 | `packages/sdk/src/shared.ts` |
+| 上传的凭据来源目前与 HTTP 实例分开配置                             | `packages/sdk/src/shared.ts`                                                                                     |
 
 现有功能并非两份相同实现，主要问题是调用者需要理解多个工厂、两个包和两种凭据配置方式。此次将分层保留在一个包内部，外部只暴露一个本站请求入口。
 
@@ -40,13 +40,13 @@
 
 目标内部职责如下，实际文件划分由 RFC 固化：
 
-| 模块 | 职责 |
-| --- | --- |
-| `packages/sdk/src/generated/` | 唯一一份从 HTTP Contract 生成的客户端类型。 |
-| SDK 请求类型适配 | 从生成类型推导对象配置、必填字段与成功返回类型，序列化 path、query 和 data。 |
-| SDK HTTP 核心 | 唯一 Axios 引擎、期限、取消、错误、安全请求策略和会话版本检查。 |
-| SDK 配置与环境适配 | 单例地址、凭据来源、Browser 会话及通知、Node 环境适配。 |
-| SDK storage | 归一化上传输入、申请上传、file 或 COS 上传、确认并返回 URL。 |
+| 模块                          | 职责                                                                         |
+| ----------------------------- | ---------------------------------------------------------------------------- |
+| `packages/sdk/src/generated/` | 唯一一份从 HTTP Contract 生成的客户端类型。                                  |
+| SDK 请求类型适配              | 从生成类型推导对象配置、必填字段与成功返回类型，序列化 path、query 和 data。 |
+| SDK HTTP 核心                 | 唯一 Axios 引擎、期限、取消、错误、安全请求策略和会话版本检查。              |
+| SDK 配置与环境适配            | 单例地址、凭据来源、Browser 会话及通知、Node 环境适配。                      |
+| SDK storage                   | 归一化上传输入、申请上传、file 或 COS 上传、确认并返回 URL。                 |
 
 公开入口只保留：
 
@@ -125,17 +125,17 @@ const uploadResult = await instance({
 
 ## 5. instance 的对象契约
 
-| 字段 | 约定 |
-| --- | --- |
-| `url` | Contract 中的路径模板，不包含 `/api` 前缀；类型层拒绝未声明路径。 |
-| `method` | 默认 GET；可用方法与 url 从 Contract 联合推导。接受对应方法的全大写、全小写写法，发送前统一大写。 |
-| `pathParams` | 从 operation 的 path 参数推导；存在必填路径参数时必填，逐个编码后替换模板。 |
-| `params` | 从 operation 的 query 参数推导；保持 Axios 风格，不再嵌套 path/query 两层。必填 query 使该字段必填。 |
-| `data` | 从 operation 的请求正文推导。JSON 使用 Contract 类型，multipart 使用 FormData，必填请求正文使该字段必填。 |
-| `headers` | 保留受控请求头。显式 Authorization 用于现有旧会话撤销等流程；失败不能清理另一份当前凭据。 |
-| `timeout`、`signal` | 沿用请求期限和取消语义。 |
-| `responseType` | 保留 json、text、blob、arraybuffer；返回类型随显式模式变化。 |
-| `alert` | 默认 true。false 只关闭本次临时通知，不吞错误，也不关闭会话失效处理。 |
+| 字段                | 约定                                                                                                      |
+| ------------------- | --------------------------------------------------------------------------------------------------------- |
+| `url`               | Contract 中的路径模板，不包含 `/api` 前缀；类型层拒绝未声明路径。                                         |
+| `method`            | 默认 GET；可用方法与 url 从 Contract 联合推导。接受对应方法的全大写、全小写写法，发送前统一大写。         |
+| `pathParams`        | 从 operation 的 path 参数推导；存在必填路径参数时必填，逐个编码后替换模板。                               |
+| `params`            | 从 operation 的 query 参数推导；保持 Axios 风格，不再嵌套 path/query 两层。必填 query 使该字段必填。      |
+| `data`              | 从 operation 的请求正文推导。JSON 使用 Contract 类型，multipart 使用 FormData，必填请求正文使该字段必填。 |
+| `headers`           | 保留受控请求头。显式 Authorization 用于现有旧会话撤销等流程；失败不能清理另一份当前凭据。                 |
+| `timeout`、`signal` | 沿用请求期限和取消语义。                                                                                  |
+| `responseType`      | 保留 json、text、blob、arraybuffer；返回类型随显式模式变化。                                              |
+| `alert`             | 默认 true。false 只关闭本次临时通知，不吞错误，也不关闭会话失效处理。                                     |
 
 成功结果直接是正文，不返回 Axios response 或 data/error/response 三元对象。成功正文从对应 operation 的 2xx 响应推导；不提供由调用方任意指定成功 DTO 的泛型逃生入口。Contract 类型约束是编译时保证，不新增客户端运行时业务 schema validator。
 
@@ -250,17 +250,17 @@ Node 初始化和浏览器默认行为写入 SDK README；不把独立 HTTP 测�
 
 ## 11. 验收条件
 
-| 层次 | 必须证明的结果 |
-| --- | --- |
-| 类型 | 正确的路径、method、必填 path/query/data 和返回值可推导；错误 method、未知路径、缺参、JSON/FormData 混用及手写返回 DTO 逃生被拒绝。 |
-| 单例 | instance、storage、setter 只有一份状态；相同配置不打断上传，非法 setter 原子拒绝。旧工厂、旧方法、旧包和重复子入口不可通过公开 exports 消费。 |
-| HTTP | 真实回环服务验证 URL/path/query、JSON、FormData、二进制、期限、取消、请求 ID 和错误分类；第三方 URL、范围逃逸与认证重定向被拒绝。 |
-| 会话 | 浏览器无需业务初始化即可使用 token；登录后新 token、跨标签页变化、退出和存储异常正确处理；旧 token/旧地址迟到 401 不影响新会话；显式与持久 token 不同时只失效对应来源，不回落旧 token。alert:false 不关闭失效处理。 |
-| 上传 | file/COS 原有成功失败路径保留；COS 不收到本站 token；阶段之间更换地址或 token 停止后续操作并返回 CONFIG_CHANGED；COS 写入、file 请求或 complete 请求期间直接修改持久 token，即使没有 storage 事件，也在下一阶段或最终返回前被发现；不自动重试或清理云对象。 |
-| Web | 原页面调用迁移后，登录、SSO、邀请、资料、通知与反馈交互保持；会话 handler 不丢挑战/支持中心上下文，通知不重复。 |
-| 产物 | 实际 dist 在临时 Node 工程中无需 React/ExUI 可以运行；Browser 使用明确安装的 ExUI peer 和宿主；浏览器产物不加载 Node COS，instance 不触发 COS 加载；Server NodeNext 仅消费类型。 |
-| 干净检出 | 不依赖现存 dist 即可完成入口准备；源码变更后使用新 SDK 产物，生成/watch 不形成反馈环。 |
-| 仓库与文档 | api:check 使用新生成路径，活动引用与依赖无旧包，AGENTS.md 与 README 符合新请求约定。 |
+| 层次       | 必须证明的结果                                                                                                                                                                                                                                              |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 类型       | 正确的路径、method、必填 path/query/data 和返回值可推导；错误 method、未知路径、缺参、JSON/FormData 混用及手写返回 DTO 逃生被拒绝。                                                                                                                         |
+| 单例       | instance、storage、setter 只有一份状态；相同配置不打断上传，非法 setter 原子拒绝。旧工厂、旧方法、旧包和重复子入口不可通过公开 exports 消费。                                                                                                               |
+| HTTP       | 真实回环服务验证 URL/path/query、JSON、FormData、二进制、期限、取消、请求 ID 和错误分类；第三方 URL、范围逃逸与认证重定向被拒绝。                                                                                                                           |
+| 会话       | 浏览器无需业务初始化即可使用 token；登录后新 token、跨标签页变化、退出和存储异常正确处理；旧 token/旧地址迟到 401 不影响新会话；显式与持久 token 不同时只失效对应来源，不回落旧 token。alert:false 不关闭失效处理。                                         |
+| 上传       | file/COS 原有成功失败路径保留；COS 不收到本站 token；阶段之间更换地址或 token 停止后续操作并返回 CONFIG_CHANGED；COS 写入、file 请求或 complete 请求期间直接修改持久 token，即使没有 storage 事件，也在下一阶段或最终返回前被发现；不自动重试或清理云对象。 |
+| Web        | 原页面调用迁移后，登录、SSO、邀请、资料、通知与反馈交互保持；会话 handler 不丢挑战/支持中心上下文，通知不重复。                                                                                                                                             |
+| 产物       | 实际 dist 在临时 Node 工程中无需 React/ExUI 可以运行；Browser 使用明确安装的 ExUI peer 和宿主；浏览器产物不加载 Node COS，instance 不触发 COS 加载；Server NodeNext 仅消费类型。                                                                            |
+| 干净检出   | 不依赖现存 dist 即可完成入口准备；源码变更后使用新 SDK 产物，生成/watch 不形成反馈环。                                                                                                                                                                      |
+| 仓库与文档 | api:check 使用新生成路径，活动引用与依赖无旧包，AGENTS.md 与 README 符合新请求约定。                                                                                                                                                                        |
 
 实施验证按既有工作流运行 api:lint、api:generate、api:check、typecheck、test、build；具体命令与独立 Browser/Node 产物夹具由 RFC 细化。真实浏览器、独立 Node 消费、自动测试、构建分别报告，任何一项不能替代另一项；Docker 不可用时不回退开发数据库。
 
