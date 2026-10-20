@@ -6,7 +6,7 @@ _最后更新：2026-10-20_
 
 ## 请求与类型
 
-管理端消费 PHP 内部 Contract `apps/php-server/api/internal/openapi.yaml` 及其引用模块。Website 的 `api/openapi.yaml`、Fastify、Hydra 与 `@workspace/sdk` 不承担这些请求。浏览器保持同源 `/api`，管理端 Vite 单独代理到 PHP origin；具体公开配置、过滤与进程归属见 `.ai/architectures/runtime/runtime-boundaries.md`。
+管理端消费 PHP 内部 Contract `apps/php-server/api/internal/openapi.yaml` 及其引用模块，使用独立的请求适配和类型生成，不接入 Website 的 `@workspace/sdk`。浏览器保持同源 `/api`，管理端 Vite 单独代理到 PHP origin；具体公开配置、过滤与进程归属见 `.ai/architectures/runtime/runtime-boundaries.md`。
 
 `apps/admin-web/src/api/` 隔离 Axios 传输、应用通知/跳转接线与无需会话的初始化 fetch。业务请求的成功结果是 PHP 信封的 `data`，不能将它声明为 `AxiosResponse`。初始化接口在会话与缓存尚未就绪时也须独立可用，提交保留 `X-Setup-Request` 和原有强制初始化确认语义。
 

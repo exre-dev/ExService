@@ -9,8 +9,12 @@ import type { SupportRegistry } from '../../content/support/types'
 import { SupportRoutes } from './SupportRoutes'
 import { FeedbackProvider } from './feedback/FeedbackProvider'
 import { reloadPage } from '../../content/reloadPage'
+import { writeToken } from '../../auth/storage'
 
 vi.mock('../../content/reloadPage', () => ({ reloadPage: vi.fn() }))
+vi.mock('../../auth/AuthContext', () => ({
+  useAuth: () => ({ userId: 1, state: { status: 'authenticated' } }),
+}))
 
 const fixture = vi.hoisted(() => ({
   registry: {
@@ -123,7 +127,7 @@ function addErrors() {
 }
 beforeEach(() => {
   sessionStorage.clear()
-  localStorage.setItem('exwebsite.auth.token', 'b'.repeat(43))
+  writeToken(localStorage, 'fixture-token')
   fixture.registry.errors.length = 0
   fixture.registry.featured.length = 0
   fixture.registry.contacts.length = 0
@@ -160,7 +164,7 @@ it('opens both feedback entry modals, preserving focus and empty content states'
     await user.click(trigger)
     const modal = await screen.findByRole('dialog', { name: title })
     expect(within(modal).queryByLabelText('标题')).toBeNull()
-    expect(await within(modal).findByText('反馈提交暂未配置，请稍后再试。')).toBeTruthy()
+    expect(await within(modal).findByText('反馈提交暂不可用，请稍后再试。')).toBeTruthy()
     await user.click(within(modal).getByRole('button', { name: '关闭反馈表单' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(document.activeElement).toBe(trigger)

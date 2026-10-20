@@ -41,17 +41,17 @@ instance({ url: '/api/auth/login', method: 'GET' })
 instance({ url: '/api/auth/login', data: {} })
 // @ts-expect-error Login requires JSON data.
 instance({ url: '/api/auth/login', method: 'POST' })
-// @ts-expect-error Login JSON rejects excess fields.
 instance({
   url: '/api/auth/login',
   method: 'POST',
+  // @ts-expect-error Login JSON rejects excess fields.
   data: { email: 'fixture@example.test', password: 'fixture-password', invented: true },
 })
 // @ts-expect-error Detail requires pathParams.
 instance({ url: '/api/notifications/{notificationId}' })
-// @ts-expect-error Unknown path parameter.
 instance({
   url: '/api/notifications/{notificationId}',
+  // @ts-expect-error Unknown path parameter.
   pathParams: { notificationId: 'x', unknown: 'x' },
 })
 // @ts-expect-error Query key required.
