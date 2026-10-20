@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { instance } from '@workspace/sdk'
+import type { CheckedConfig, RequestConfig } from '../../../../packages/sdk/src/request-types'
 import { installSdkIntegration } from './client'
 import {
   AUTH_TOKEN_KEY,
@@ -47,8 +48,9 @@ vi.mock('@workspace/sdk', async () => {
   }
   return {
     ExAxiosError,
-    instance: ((config: Parameters<typeof runtime.instance>[0]) =>
-      runtime.instance(config)) as unknown as typeof runtime.instance,
+    // Preserve the request generic instead of instantiating the full Contract union.
+    instance: <const C extends RequestConfig>(config: C & CheckedConfig<C>) =>
+      runtime.instance<C>(config),
     setBaseUrl: (url: string) => runtime.setBaseUrl(url),
     setAccessToken: (token: string | null) => runtime.setAccessToken(token),
     setSessionExpiredHandler: (handler: Parameters<typeof runtime.setSessionExpiredHandler>[0]) =>
