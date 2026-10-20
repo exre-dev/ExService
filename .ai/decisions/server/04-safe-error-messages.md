@@ -1,6 +1,8 @@
 # 只对外回显安全的错误消息
 
-- 状态：已接受
+> 已被 PHP 接管取代：以下正文保存当时决定与理由，旧路径、命令、schema 和测试不再指导现行实现。当前边界见 `.ai/architectures/overview.md`、`.ai/architectures/api/contract-layout.md` 和 `.ai/databases/data-model.md`。
+
+- 状态：已被 PHP 错误响应边界取代
 - 模块：`server`
 - 日期：2026-09-16
 - 来源：`.notes/archive/backend-sandbox/rfcs/2026-09-16-contract-first-backend-sandbox-scaffold-rfc.md`「安全与运行边界」

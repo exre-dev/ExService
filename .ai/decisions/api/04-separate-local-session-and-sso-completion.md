@@ -1,6 +1,8 @@
 # 本站会话与 SSO 完成使用不同的 Contract 结果
 
-- 状态：已接受
+> 部分取代：会话与 SSO 完成分离的原则仍适用；本页的 Node token、CLI 与旧路径细节仅记录历史。现行接线见 `.ai/architectures/identity/integration-boundaries.md`。
+
+- 状态：会话与 SSO 结果分离原则保留；Node 细节已取代
 - 模块：`api`
 - 日期：2026-09-23
 - 来源：`.notes/archive/auth/specs/2026-09-23-auth-design.md`、`.notes/archive/auth/rfcs/authentication-rfc.md`

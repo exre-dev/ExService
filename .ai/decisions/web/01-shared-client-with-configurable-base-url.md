@@ -9,7 +9,7 @@ _最后更新：2026-10-19_
 
 ## 当前适用范围
 
-以下正文记录早期 Client 选择。当前本站业务请求统一使用 `@workspace/sdk` 的 `instance({...})`，`apps/web/src/api/client.ts` 在请求前安装 root 与会话失效处理，不再创建 Client。Browser 缺省 root、非默认 root 的显式凭据规则见 `.ai/architectures/sdk/client-boundaries.md`；实际开发代理与端口以 `.ai/architectures/runtime/runtime-boundaries.md` 为准。旧固定代理目标与 factory 描述不能作为当前启动指南。
+以下正文记录早期 Client 选择。当前本站业务请求统一使用 `@workspace/sdk` 的 `instance({...})`，`apps/web/src/api/client.ts` 在请求前安装服务根与会话失效处理，不再创建 Client。Browser 缺省服务根为当前 origin，operation 路径包含 `/api`；非默认 root 的显式凭据规则见 `.ai/architectures/sdk/client-boundaries.md`。实际代理与端口以 `.ai/architectures/runtime/runtime-boundaries.md` 为准，旧固定代理目标与 factory 描述不能作为启动指南。
 
 ## 背景
 

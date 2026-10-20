@@ -1,6 +1,8 @@
 # 以单份 OpenAPI Contract 作为唯一的 API 事实来源
 
-- 状态：已接受
+> 已被 PHP 接管取代：以下正文保存当时决定与理由，旧路径、命令、schema 和测试不再指导现行实现。当前边界见 `.ai/architectures/overview.md`、`.ai/architectures/api/contract-layout.md` 和 `.ai/databases/data-model.md`。
+
+- 状态：已被 PHP public/internal 契约与主仓库消费链取代；单一事实来源原则保留
 - 模块：`api`
 - 日期：2026-09-16
 - 来源：`.notes/archive/backend-sandbox/rfcs/2026-09-16-contract-first-backend-sandbox-scaffold-rfc.md`、`.notes/archive/backend-sandbox/specs/2026-09-16-backend-sandbox-scaffold-design.md`
@@ -9,7 +11,7 @@ _最后更新：2026-09-29_
 
 ## 背景
 
-本决策提出时，团队计划用本地 Node 后端替代固定 JSON Mock，并为未来 PHP 接管保留前端调用边界。现已由 `apps/server/` 成为唯一长期 Server；单份 Contract 的原则继续有效。
+本决策提出时，团队计划用本地 Node 后端替代固定 JSON Mock，并为未来 PHP 接管保留前端调用边界。随后 `apps/server/` 曾成为 Server；现在 PHP 子模块接管 HTTP，单一事实来源的原则以 PHP 定义和两版生成契约实现。
 
 这带来一个约束：定义 API 的东西必须独立于任何一侧的实现，否则 Server 实现会成为事实上的 API 定义，Web 与生成式 Client 就得反向按它对齐。
 

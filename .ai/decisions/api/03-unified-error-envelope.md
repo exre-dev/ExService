@@ -1,6 +1,8 @@
 # 所有错误共用同一个 envelope
 
-- 状态：已接受
+> 已被 PHP 接管取代：以下正文保存当时决定与理由，旧路径、命令、schema 和测试不再指导现行实现。当前边界见 `.ai/architectures/overview.md`、`.ai/architectures/api/contract-layout.md` 和 `.ai/databases/data-model.md`。
+
+- 状态：已被 PHP 响应与 HTTP 错误边界取代
 - 模块：`api`
 - 日期：2026-09-16
 - 来源：`.notes/archive/backend-sandbox/specs/2026-09-16-backend-sandbox-scaffold-design.md` §6.2、`redocly.yaml`

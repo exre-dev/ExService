@@ -112,7 +112,7 @@ ExUI 弹窗的滚动锁定会给 `body[data-scroll-locked]` 添加滚动条宽�
 
 ExUI `NativeSelect` 只包装原生 `<select>`；触发器有库样式，展开后的菜单仍随浏览器和操作系统。需要与网站主题一致的菜单时，使用公开的 `SelectField`、`SelectTrigger`、`SelectContent` 和 `SelectItem`，将标签、RHF ref、onBlur 和错误描述关联放在触发器上。
 
-Radix 的 `SelectItem` 不接受空字符串值；可选字段通过独立的「不选择」菜单项把值还原成表单的空字符串，不能把清空项标识提交为 ClickUp option ID。支持反馈的绑定见 `packages/components/src/forms/ClickUpFieldInput.tsx` 和 `apps/web/src/pages/Support/feedback/FeedbackModal.tsx`。
+Radix 的 `SelectItem` 不接受空字符串值；可选字段通过独立的「不选择」菜单项把值还原成表单的空字符串。当前 PHP 支持反馈已移除旧 ClickUp UUID 分类/部门控件；新增选择项仍应避免把 UI 清空标识提交为业务值。
 
 ### 14. `Textarea` 的 `rows` 不能单独保证初始高度
 
@@ -142,7 +142,7 @@ InputOTP 的假光标在 blur 时移除；Radix FocusScope 的 MutationObserver 
 
 ExUI 1.0 的 Dialog 会通过 `useIsMobile` 调用 `window.matchMedia`，即使业务用例不验证响应式布局。jsdom 未实现该 API；缺失时会抛出 `TypeError: window.matchMedia is not a function`，卸载组件树，并让后续表单查询表现为找不到标签或按钮。
 
-使用真实 Dialog 的集成夹具应在 `beforeEach` 中提供 `matchMedia` 及其 `change` 订阅和取消方法，并在组件 `cleanup()` 后通过 `vi.unstubAllGlobals()` 恢复。示例见 `apps/web/src/api/client.scope.test.tsx`、`apps/web/src/api/client.expiry.test.tsx` 和 `apps/web/src/pages/IdentityPage/OidcPage.test.tsx`。保留真实组件与原业务断言；此夹具只提供浏览器 API，不证明真实布局行为。
+使用真实 Dialog 的集成夹具应在 `beforeEach` 中提供 `matchMedia` 及其 `change` 订阅和取消方法，并在组件 `cleanup()` 后通过 `vi.unstubAllGlobals()` 恢复。示例见 `apps/web/src/api/client.scope.test.tsx`、`apps/web/src/api/client.expiry.test.tsx`。保留真实组件与原业务断言；此夹具只提供浏览器 API，不证明真实布局行为。
 
 ## 证据
 

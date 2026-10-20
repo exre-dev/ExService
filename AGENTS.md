@@ -1,13 +1,19 @@
 # AGENTS.md
 
+<!-- CODEGRAPH_START -->
+
+## CodeGraph
+
+在仓库根目录存在 `.codegraph/` 时，定位或理解代码先使用 `codegraph_explore`（若可用）或 `codegraph explore "<问题或符号>"`；不存在该目录时跳过索引。
+<!-- CODEGRAPH_END -->
+
 ## 沟通与文档
 
 - 默认用中文沟通；代码、标识符、Commit message 和既有文档沿用各自语言约定。
 - 文档、注释和交付说明中的仓库路径以仓库根目录为基准，使用行内代码；不写 `./`、`../`、Markdown 相对链接或本机绝对路径。代码中的 import 和运行时路径遵循工具约定。
-- 开工前从 `.ai/README.md` 查找相关知识；启动检查单与命令见 `README.md`，配置、运行和资源边界见 `.ai/architectures/runtime/runtime-boundaries.md`。
-- 修改或消费 `packages/common/` 前，阅读 `.agents/rules/package-common.md`。
-- Monica 任务使用当前项目提示词和本工程规则提供项目上下文；Exre 通用 Agents 只定义角色职责，不携带其他项目规则。ExWebsite 项目协作约定见 `.ai/architectures/monica-team/workflow.md`。
-- `/docs` 和 `/docs/` 是主站公开建设中页面；保留旧深路径的 404，不恢复已退役文档服务。身份客户端与 Hydra 边界见 `.ai/architectures/identity/integration-boundaries.md`。
+- 开工前从 `.ai/README.md` 查找相关知识；启动命令见 `README.md`，运行与资源边界见 `.ai/architectures/runtime/runtime-boundaries.md`。修改或消费 `packages/common/` 前读 `.agents/rules/package-common.md`。
+- Monica 任务使用当前项目提示词和本工程规则提供项目上下文；项目协作约定见 `.ai/architectures/monica-team/workflow.md`。
+- `/docs` 和 `/docs/` 是主站公开建设中页面；旧深路径保持 404。PHP 另有自身文档 API，不属于主站该页面。身份与 SSO 边界见 `.ai/architectures/identity/integration-boundaries.md`。
 
 <!-- codebase-worker:start -->
 
@@ -18,75 +24,55 @@
 ### Durable knowledge extraction
 
 - After completing a module or making a major decision, use `codebase-documenter` to update evidence-backed durable `.ai/` knowledge.
-- `.ai/CONTEXT.md` holds the domain language; `.ai/architectures/`, `.ai/decisions/`, and `.ai/knowledge/` hold system structure, accepted decisions, and non-obvious behavior, each grouped by module. Database model, database-specific decisions, and database-specific operational knowledge live in `.ai/databases/`. Keep each fact in exactly one place and link instead of duplicating.
-- Design documents, RFCs, and implementation plans stay where they are, normally `notes/<module>/`. After a design is complete, ask the user before distilling its stable conclusions into `.ai/`.
-- Do not archive transient task narration, raw test output, unadopted speculation, source-code duplication, or version-control and workspace state. Update `.ai/README.md` and `.ai/decisions/README.md` after structural changes.
+- `.ai/CONTEXT.md` holds domain language; `.ai/architectures/`, `.ai/decisions/` and `.ai/knowledge/` hold structure, decisions and non-obvious behavior by module. Database knowledge lives in `.ai/databases/`. Keep each fact in one place and link to it.
+- Design documents, RFCs and plans stay in `.notes/`. Ask before distilling a design that has not been implemented or otherwise approved; explicitly authorized completed implementation conclusions may be recorded.
+- Do not archive transient task narration, raw test output, speculation, source-code duplication or workspace state. Update `.ai/README.md` and `.ai/decisions/README.md` after structural changes.
 
 ### Testing and contribution rules
 
-- Testing rules: if this repository has a `TESTING.md`, read it before testing; when it exists, it is the single source of truth for test workflow, test-case authoring, and execution rules. When it does not exist, follow the repository's own testing conventions instead.
-- Contribution rules: `@CONTRIBUTING.md`. Read this file before creating a commit or Pull Request; it is the single source of truth for contribution, commit, and PR rules.
+- Read `TESTING.md` before testing; it is the root testing workflow source. PHP tests follow `apps/php-server/TESTING.md`.
+- Read `CONTRIBUTING.md` before a commit or PR; it is the contribution source.
 
 ### How to Commit
 
-- If a code-commiter skill is available, commits must be made using this SKILL.
+- If a code-commiter skill is available, use it for commits.
 
 <!-- codebase-worker:end -->
 
-## 架构与目录边界
+## 现行责任边界
 
-本仓库的 Website 链路采用 Contract-first 架构：`api/openapi.yaml` 是 Website 唯一 HTTP Contract，`apps/server/` 是唯一 Website Fastify Server，业务数据使用独立 PostgreSQL `exre`。管理端与 PHP 使用各自边界。完整架构见 `.ai/architectures/overview.md`。
+`apps/php-server/` 是独立 Composer/Webman 子模块，拥有 Website HTTP 实现、PostgreSQL/Redis、PHP 配置、运行文件、PHP 自有 HTML 与后台。PHP 接口定义位于 Controller 的 OpenAPI Attributes 和 `apps/php-server/app/common/openapi/`；PHP CLI 生成 `apps/php-server/api/public/`、`apps/php-server/api/internal/` 模块契约和 `apps/php-server/api/generated/` 完整文档。PHP 路由在 `apps/php-server/app/route.php` 显式注册。主仓库不编排 PHP 服务或数据库，PHP 开发规则见 `apps/php-server/AGENTS.md`。
 
-| 路径                   | 责任与边界                                                                                                                                         |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `api/`                 | HTTP 路径、operation、请求/响应/错误 schema；不放实现。                                                                                            |
-| `packages/sdk/`        | 从 Contract 生成类型，公开 Browser/Node 单例 `instance({...})`、配置 setter 与 `storage`；不定义第二份 endpoint。                                  |
-| `packages/components/` | 基于 ExUI 的共享 UI；不访问 API、不定义路由表、不导入 ExUI 全局样式。                                                                              |
-| `packages/common/`     | 按模块子入口公开跨应用共享的纯逻辑；消费规则见 `.agents/rules/package-common.md`。                                                                 |
-| `apps/web/`            | 前端路由、主题、构建配置与 SDK 适配；本站业务 HTTP 调用只经 `@workspace/sdk`，不复制 DTO。                                                         |
-| `apps/admin-web/`      | 独立管理端 SPA；参考 Website 工程、严格类型、目录和测试约定，保留 Ant Design 界面；消费 PHP 内部 Contract，使用自己的请求适配。                    |
-| `apps/php-server/`     | 独立 Git 子模块，拥有 PHP API、后端测试和运行数据；变更遵循其自身规则，主仓库前端迁移不修改该子模块或 gitlink。                                    |
-| `apps/server/`         | 加载 Contract、映射 handler、执行受控数据库访问；不绕过 Contract 注册 HTTP 路由或静态 JSON mock，不反向生成 OpenAPI，不连接 `hydra` 等其他数据库。 |
-| `tests/contract/`      | 从 Contract 读取 schema，验证真实 Fastify 路由、原始 handler 输出和双向 operation 覆盖。                                                           |
+| 路径                         | 责任                                                                                              |
+| ---------------------------- | ------------------------------------------------------------------------------------------------- |
+| `scripts/api/`               | 验证 PHP 两版契约，从完整内部 YAML 生成和核对 SDK 类型、operation policy；不定义第二份 endpoint。 |
+| `packages/sdk/`              | Browser/Node 单例 `instance({...})`、配置 setter、`storage`；本站 HTTP 消费入口。                 |
+| `packages/components/`       | 基于 ExUI 的共享 UI；不访问本站 API 或定义路由。                                                  |
+| `packages/common/`           | 跨应用纯逻辑，按子入口导出；仅保留实际消费者需要的入口。                                          |
+| `apps/admin-web/`            | 独立管理端 SPA，保留 Ant Design、自己的 Axios/初始化 fetch 与 PHP 类型；不接入 Website SDK。      |
+| `apps/web/`                  | React 路由、主题、SDK 适配与 Vite 开发代理。                                                      |
+| `tests/`、`scripts/runtime/` | 主仓库 Web/SDK/工具测试与仅前端的开发监督器。                                                     |
 
-Browser 和 Node 的 Website 业务 HTTP 调用统一使用 `@workspace/sdk` 的 `instance({...})`；上传使用同包 `storage`，其本站阶段经过同一请求管线。方法、路径、请求和响应类型从 Website OpenAPI Contract 推导。管理端按 `apps/php-server/api/internal/openapi.yaml` 及引用模块消费 PHP API，保留既有 Axios 和初始化 fetch；不将 PHP 请求接到 Website SDK 或 Fastify。第三方业务请求可自行选择 `fetch` 或其他工具，本站 token 不用于第三方请求。
+Website 的 Browser/Node 业务 HTTP 调用统一使用 `@workspace/sdk` 的 `instance({...})`，上传使用同包 `storage`；完整 `/api` 路径、方法、字段与鉴权从 PHP 内部 Contract 推导。第三方请求和 PHP 自有页面按所属项目的边界执行。原始协议夹具保留独立验证用途，不成为页面绕过 SDK 的入口。
 
-测试夹具、原始 handler/HTTP 协议断言和需要原始状态、header、Host 的基础设施 readiness 探针保留独立协议验证工具；它们不能成为页面或业务绕过 SDK 的入口。Server 对第三方服务的既有出站客户端继续按其模块规则执行。SDK 的配置、会话与打包边界见 `.ai/architectures/sdk/client-boundaries.md`。
+## Contract 与 SDK 工作流
 
-## Contract-first 工作流
+1. 改 PHP HTTP 行为前，读取 `apps/php-server/api/internal/openapi.yaml` 或 `apps/php-server/api/public/openapi.yaml` 及其引用；修改 PHP 定义和业务时遵守 `apps/php-server/AGENTS.md`，运行 PHP 自身 `composer api:generate`、`composer api:lint`、`composer api:check`。
+2. 主仓库消费 PHP 生成的完整内部文档 `apps/php-server/api/generated/openapi.internal.yaml`。运行 `pnpm api:lint`、`pnpm api:generate`、`pnpm api:check`；`packages/sdk/src/generated/schema.d.ts` 与 `packages/sdk/src/generated/operation-policy.ts` 由生成器维护，禁止手改。PHP 的 public operation 不进入本站 SDK。
+3. 新增或改变 Website 使用的 operation 时，按 `TESTING.md` 更新相应 Web/SDK 与 PHP HTTP 行为断言；PHP 自身测试来源为 `apps/php-server/TESTING.md`。分别报告 Contract 静态检查、进程内/网络 HTTP、浏览器、远端 CI 与部署的实际证据。
+4. 破坏性契约变更单独评审；不凭旧 Fastify/Draft-07 规则推断 PHP validator 或 serializer 的行为。详见 `.ai/architectures/api/contract-layout.md`。
 
-以下工作流适用于 Website Contract、SDK 和 Fastify。PHP 契约由子模块的 PHP 定义及生成工具维护，禁止手改其 YAML 产物；管理端迁移不要求抽取 PHP SDK。
+管理端请求和会话边界见 `.ai/architectures/admin-web/application-boundaries.md`。
 
-1. 实现 API 调用前读取 `api/openapi.yaml`；不得臆造 endpoint、方法、参数或字段。
-2. API 变更先改 Contract，再运行 `pnpm api:lint` 和 `pnpm api:generate`。`packages/sdk/src/generated/schema.d.ts` 禁止手改，Contract 变更须同时提交重新生成的结果。
-3. 在所属模块的 `apps/server/src/modules/{name}/api/operations.ts` 或 `apps/server/src/domains/{name}/api/operations.ts` 中显式登记 `operationId`（系统 operation 在 `apps/server/src/http/system/operations.ts`），由 `apps/server/src/http/service-handlers.ts` 汇总，实现 handler，并通过 SDK 的对象请求 API 接入消费方。Contract 与登记表必须双向一致；文件名不参与映射。Glue 的 `/api` 前缀须显式配置，`servers[].url` 不能替代它。
-4. 新增或修改 operation 时同步更新 `tests/contract/`：校验真实 HTTP 响应及注册 handler 的原始返回值，防止序列化掩盖回归。原因见 `.ai/knowledge/server/serialization-masks-handler-regressions.md` 与 `.ai/knowledge/server/operation-registration-gaps.md`。
-5. API 变更的验证时机与范围统一遵守 `TESTING.md`；自动检查、真实浏览器验收和部署验收分别报告。
+## Web 规则
 
-OpenAPI 3.1 schema 仅使用 JSON Schema Draft-07 兼容子集；引入 Draft 2020-12 专有语义前，须单独设计并确认 validator/serializer compiler。破坏性 Contract 变更须显式评审与版本化；不要自行发明版本策略或兼容层。
+- 修改 Form 前读 `.ai/rules/frontend-forms.md`；临时通知统一使用 ExUI `toast`，遵守 `.ai/rules/frontend-notifications.md`。
+- 共享组件使用 CSS Modules、ExUI 颜色/边框/圆角 token 和 `lucide-react`，不新建本地 token 层。`react`、`react-dom`、`react-router` 同时声明 peer/dev dependencies。
+- 修改 ExUI 接入或主题前读 `.ai/knowledge/web/exui-integration-traps.md`；全局样式仅在 `apps/web/src/main.tsx` 导入一次，`useTheme` 位于 `ThemeProvider` 内。
+- `VITE_API_BASE_URL` 是服务根，默认 `/`；SDK operation 路径已含 `/api`。PHP `USER_WEB_URL` 与前端公开 origin 同步核对。会话和状态码处理见 `.ai/architectures/web/authentication-flow.md`。
 
-## 前端规则
+## 运行与交付
 
-- 下列 ExUI、Form 和通知规则适用于 `apps/web/` 与 `packages/components/`。`apps/admin-web/` 本阶段保留 Ant Design 的组件、表单和通知，沿用管理端业务交互；工程、类型、模块职责、CSS Modules 和行为测试参考 Website，不为迁移统一框架主版本。
+根 `pnpm dev`、`pnpm dev:web` 准备 SDK 后启动 Website 与管理端两个前端；`pnpm dev:admin` 只启动管理端；`PHP_SERVER_ORIGIN` 仅指定开发代理目标，缺省 `http://127.0.0.1:8787`。根构建、类型检查和测试不初始化 PHP，也不管理 PostgreSQL/Redis。PHP 的 `apps/php-server/.env`、`apps/php-server/install.lock`、数据库、头像和上传文件由子模块独立管理。停止时只清理可证明归属的本轮前端子进程。运行边界见 `.ai/architectures/runtime/runtime-boundaries.md`。
 
-- 修改 Form 前，阅读并遵守 `.ai/rules/frontend-forms.md`；全站临时通知统一使用 `toast`，遵守 `.ai/rules/frontend-notifications.md`。
-- 共享组件使用 CSS Modules、ExUI 颜色/边框/圆角 token 和 `lucide-react` 图标，不新建本地 token 层。`react`、`react-dom`、`react-router` 同时声明为 peer/dev dependencies，保证消费方单一实例。
-- 修改 ExUI 接入或主题前，阅读 `.ai/knowledge/web/exui-integration-traps.md`。全局样式仅在 `apps/web/src/main.tsx` 导入一次；`useTheme` 必须位于 `ThemeProvider` 内，应用按 light/dark 类补充 `color-scheme`。不要另装 ExUI 已打包的 Sonner、Radix、Base UI 等实现库。
-
-## Server 与数据库规则
-
-Server 按已确认方案组织：公共能力放在 `apps/server/src/modules/{name}/`，具体业务流程放在 `apps/server/src/domains/{name}/`，各模块内部的 `api/` 承载 HTTP 接入。业务与 API 入口均用 `fastify-plugin` 显式注册，业务入口通过 `decorate` 暴露服务；业务核心保持普通 service/factory，通过构造参数依赖公开能力，不依赖 HTTP 层，公共模块不得反向依赖具体业务。各模块只在自己的 `fastify.d.ts` 声明所拥有的扩展，类型提示不能替代运行时依赖检查。`apps/server/src/http/plugin.ts` 汇总 API 插件与 operation 映射，在统一 HTTP 作用域内先安装按 operation 筛选的 hook，检查 Contract 与 handler 双向覆盖，再注册一次 Glue；OpenAPI 源文件独立维护于 `api/`，统一生成 `api/generated/openapi.json`，禁止反向生成或手改产物。具体边界见 `.ai/architectures/server/request-lifecycle.md`。
-
-- 错误统一经 `apps/server/src/errors.ts` 返回 envelope；对外消息仅允许 Contract 校验错误或固定文案，其他异常（含应用抛出的 4xx）的 `error.message` 不得回显。
-- 修改表的职责、关系或数据规则前，先阅读并更新 `.ai/databases/data-model.md`，评审模型影响，再改 schema/migration。纯索引、迁移实现和测试数据调整不要求更新模型；物理结构以 `apps/server/src/db/schema.ts`、`apps/server/drizzle/` 为准。
-- `DATABASE_URL` 与连接后的 `current_database()` 必须核验为独立 `exre`。Server 监听前检查数据库身份、migration 和必需结构；缺失时拒绝启动，提示显式迁移，不创建数据库、不隐式迁移或 reset。
-- 自动数据库测试使用 PostgreSQL Testcontainers 与逐用例 schema；Docker 不可用时明确失败，不回退本机开发库。
-- `apps/server/src/db/migrate.ts`、`apps/server/src/db/reset.ts` 是 CLI 入口，禁止 import；复用逻辑位于 `apps/server/src/db/migration-runner.ts`、`apps/server/src/db/reset-plan.ts`、`apps/server/src/db/client.ts`。
-- 头像位于 `apps/server/data/avatars/`，不得提交；启动和 reset 不删除头像，清理须显式核对数据库引用。数据库生命周期细节见 `.ai/architectures/server/request-lifecycle.md`。
-
-## 运行与交付边界
-
-- 普通 runtime 只读取根 `.env.local`，受支持的进程变量优先；已有环境须显式导入，保留原数据库、账号、秘密、存储与头像，不用示例默认值覆写。
-- 日常运行只核对准备状态；数据库创建、迁移和客户端登记须显式执行；`IDENTITY_CLIENTS_JSON` 默认空集合，不创建默认应用。
-- ExUI 使用 registry 发布包，由 pnpm lockfile 锁定；不恢复本地 link/portal。日常启动不改写 lockfile 或依赖树；停止只清理可证明归属的运行资源，不删除持久数据。
-- 身份客户端规则见 `.ai/architectures/identity/integration-boundaries.md`；代理与资源归属见 `.ai/architectures/runtime/runtime-boundaries.md`。当前仍是单实例开发阶段，部署材料不代表公网生产验收；本阶段不部署上线。
+根测试的轻量/完整范围与浏览器验收遵守 `TESTING.md`；PHP 的测试运行及隔离遵守 `apps/php-server/TESTING.md`。配置了 CI 不等于已运行 CI；本地源码或测试通过不等于外部服务和部署验收。本阶段不部署上线。

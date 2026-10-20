@@ -1,6 +1,8 @@
 # 测试直接以 Contract 为 schema 来源，并做双向覆盖检查
 
-- 状态：已接受
+> 已被 PHP 接管取代：以下正文保存当时决定与理由，旧路径、命令、schema 和测试不再指导现行实现。当前边界见 `.ai/architectures/overview.md`、`.ai/architectures/api/contract-layout.md` 和 `.ai/databases/data-model.md`。
+
+- 状态：旧 Fastify/Ajv 测试链已退役
 - 模块：`contract-tests`
 - 日期：2026-09-16
 - 来源：`.notes/archive/backend-sandbox/rfcs/2026-09-16-contract-first-backend-sandbox-scaffold-rfc.md`「验证」

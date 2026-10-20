@@ -1,6 +1,8 @@
 # 数据库结构变更只由显式命令执行
 
-- 状态：已接受；PostgreSQL 执行细节于 2026-09-29 更新
+> 已被 PHP 接管取代：以下正文保存当时决定与理由，旧路径、命令、schema 和测试不再指导现行实现。当前边界见 `.ai/architectures/overview.md`、`.ai/architectures/api/contract-layout.md` 和 `.ai/databases/data-model.md`。
+
+- 状态：旧 Node PostgreSQL 执行方式已退役；PHP 安装与数据操作另行管理
 - 模块：`server`
 - 原日期：2026-09-16
 - 当前依据：`.notes/archive/server-promotion/rfcs/server-postgresql-migration-rfc.md`

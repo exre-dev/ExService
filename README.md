@@ -1,93 +1,51 @@
 # ExWebsite
 
-Website 使用独立 PostgreSQL `exre`；Hydra 提供 OIDC 协议并使用独立 `hydra` 数据库。Docker 运行 PostgreSQL、Hydra，Website 在宿主机开发监听。`apps/admin-web/` 是独立管理端 SPA，连接 PHP 后端；PHP 的配置、启停和数据由其工程独立管理。主站文档入口为建设中页面。当前为本地开发阶段，不部署上线。
+ExWebsite 的 React 前端位于 `apps/web/`，本站 HTTP 服务由独立 PHP/Webman 子模块 `apps/php-server/` 提供。主仓库使用 PHP 内部 OpenAPI 生成 TypeScript SDK；PHP 自行管理 Composer、PostgreSQL、Redis、配置与运行数据。当前文档说明本地开发接线，不代表部署验收。
 
-## 日常启动检查单
+## 开发入口
 
-已有环境按以下顺序执行：
+1. 安装 Node 22.12+、pnpm 11.9.0，并执行 `pnpm install --frozen-lockfile`。
+2. 在 `apps/php-server/` 按该仓库 `apps/php-server/README.md` 和 `apps/php-server/TESTING.md` 准备兼容 Composer lock 的 PHP、依赖、配置与服务；PHP 现有 `apps/php-server/.env`、`apps/php-server/install.lock` 和数据应由 PHP 自身管理。PHP API 默认 origin 为 `http://127.0.0.1:8787`。
+3. PHP API 定义变化时，在子模块执行 `composer api:generate`、`composer api:lint`、`composer api:check`。主仓库随后执行 `pnpm api:generate`，生成 SDK 类型和 operation policy。
+4. 执行 `pnpm dev` 或 `pnpm dev:web`。两个命令都是前端入口，默认监听 `http://127.0.0.1:8080/`；启动前串行准备 SDK，Vite HTML readiness 通过后报告就绪。端口冲突会失败，可用 `pnpm dev --port 8081` 显式改端口。
 
-- [ ] Docker Desktop/daemon 已启动：`docker info` 能连接引擎。
-- [ ] 根 `.env.local` 已填写现有配置，`RUNTIME_PROFILE=local`。保留原账号、密码、密钥、库和存储路径。
-- [ ] 执行 `pnpm service:start`，直到显示“后台依赖已就绪”。
-- [ ] 执行 `pnpm service:status`，确认 PostgreSQL、Hydra 都在运行。
-- [ ] 执行 `pnpm dev`。页面与 Website 检查通过后显示网站入口 `http://127.0.0.1:8080/` 和管理端入口 `http://127.0.0.1:5173/`。
+主仓库的开发命令不启动、初始化或停止 PHP、PostgreSQL、Redis，也不接管 PHP 数据。更换前端端口时同步核对 PHP 的 `USER_WEB_URL`；子模块公开示例默认 `http://127.0.0.1:8080`。
 
-启动失败会直接输出检查项、错误点、相关配置键和下一步。修正该项后重试；不要重复执行初始化或重置来绕过错误。Ctrl+C 结束应用，后台依赖继续运行；`pnpm service:stop` 停止本项目依赖并保留持久数据。
+前端配置可写入根 `.env.local`，模板见 `.env.example`；已有配置保留原值，不用模板覆盖。受支持的进程变量优先。PHP 的 `apps/php-server/.env` 和安装状态属于子模块，不由根配置替代。
 
-终端提示自动使用颜色；设置 `NO_COLOR=1` 可关闭。重定向输出和保存的日志保持纯文本；`pnpm dev --verbose` 显示完整日志时间。
+## 管理端
 
-## 只启动前端预览
+管理端保留 Ant Design，使用自己的 Axios/初始化 fetch 和 PHP 内部 Contract 类型，不接入 Website SDK。边界见 `.ai/architectures/admin-web/application-boundaries.md`。`pnpm dev:admin` 只启动管理端，无需准备 Website SDK。根入口读取 `LOCAL_ADMIN_WEB_PORT`（默认 `5173`）和 `ADMIN_API_PROXY_TARGET`（默认 `http://127.0.0.1:8787`）；进程变量优先，`--admin-port` 覆盖后台端口。管理端代理目标只接受纯 HTTP(S) origin，与 Website 的公开服务根和 PHP 代理配置互相独立。
 
-安装依赖并依次执行 `pnpm api:generate`、`pnpm --filter @workspace/sdk build` 准备 Website SDK 后，运行 `pnpm dev:web`，同时预览 Website `http://127.0.0.1:8090/` 和管理端 `http://127.0.0.1:5173/`。只运行管理端使用 `pnpm dev:admin`，无需准备 Website SDK。这些前端入口不要求 Docker、数据库、Hydra 或 PHP 就绪。
+根 `pnpm dev`、`pnpm dev:web` 同时启动两个前端，分别检查 HTML 就绪状态；端口重复或被占用时失败，任一前端意外退出会回收整组。`pnpm dev --port 8081 --admin-port 5174` 分别覆盖两个前端端口。
 
-所有前端监听 `127.0.0.1`，端口被占用或重复时直接退出。`pnpm dev:web --port 8091 --admin-port 5174` 分别覆盖两个前端端口；`pnpm dev:admin --port 5174` 覆盖独立管理端端口。Ctrl+C 等待本命令的全部前端回收，任一前端意外退出也会结束整组。
+PHP Contract 更新后运行 `pnpm --filter @workspace/admin-web api:generate` 和 `pnpm --filter @workspace/admin-web api:check`；独立 build/typecheck 不生成 Website SDK 或连接数据库。
 
-在根 `.env.local` 中设置 `VITE_API_BASE_URL=https://your-service.example/api`，浏览器即可直接请求该服务。进程变量优先；未设置或为空时使用 `/api`，通过 Vite 代理到 `LOCAL_API_PORT` 指定的本地服务，缺省为 `8082`。服务不可用时沿用页面现有错误状态。
+## 请求与代理
 
-远端 Website 服务须通过 `SERVER_CORS_ALLOWED_ORIGINS` 放行预览 origin（默认 `http://127.0.0.1:8090`）。地址包含 API 路径；此配置只放公开地址。Web 在首个请求前通过 SDK 的 `setBaseUrl` 配置 API root，并按该 root 恢复会话；SDK 不自行读取 Vite 环境变量。完整 `pnpm dev` 和 `pnpm build` 继续使用同源 `/api`。
+`VITE_API_BASE_URL` 是**服务根**，默认 `/`；完整 PHP operation 路径包含 `/api`。例如服务根 `https://example.test/backend` 与 `/api/auth/me` 合成 `https://example.test/backend/api/auth/me`。可设置绝对 HTTP(S) 服务根和部署前缀；旧值 `/api` 不是有效服务根。`PHP_SERVER_ORIGIN` 只用于开发代理，默认 `http://127.0.0.1:8787`，必须是纯 origin。
 
-管理端浏览器始终请求同源 `/api`，其 Vite 单独代理到 `ADMIN_API_PROXY_TARGET`，默认 `http://127.0.0.1:8787`。该值只接受 HTTP(S) origin，可带末尾斜杠，不能包含凭据、业务路径、query 或 hash。Website 的 `VITE_API_BASE_URL` 和 `LOCAL_API_PORT` 不影响管理端。PHP 未运行时管理端页面仍可就绪，页面会显示 API 错误；前端就绪不表示登录或初始化成功。
-
-根开发入口从根 `.env.local` 读取 `LOCAL_ADMIN_WEB_PORT`（默认 `5173`）和 `ADMIN_API_PROXY_TARGET`，进程变量优先，显式 CLI 端口优先于两者；端口范围为 1024–65535，空值报错。管理端不自动读取包目录环境文件；低层 `pnpm --filter @workspace/admin-web dev` 仅消费进程提供的公开配置，不读取根文件。不同 origin 的登录态保持浏览器原有隔离，不从旧 `localhost` 地址迁移会话。
-
-## 首次准备检查单
-
-仅全新环境执行；已有环境跳过已经完成的项。
-
-- [ ] 安装 Node 22.12+、pnpm 11.9.0、Corepack 和 Docker Compose。
-- [ ] 安装根依赖：`pnpm install --frozen-lockfile`。
-- [ ] 按根 `.env.example` 填写 `.env.local`：Website 与 Hydra 数据库组件字段及原始秘密。库名分别为 `exre`、`hydra`，各自使用独立 owner；应用只读取根配置，进程变量优先。
-- [ ] 显式创建独立 Website `exre` 及其 owner，然后执行 `pnpm db:migrate`。
-- [ ] 执行 `pnpm infra init`，显式准备 Hydra 数据库及 migration；该命令不会创建 Website `exre`。
-- [ ] 执行 `pnpm service:start`。如需接入应用，在 `IDENTITY_CLIENTS_JSON` 配置明确的客户端，再执行 `pnpm infra clients`。默认 `[]` 无需登记，不创建默认应用。
-- [ ] 执行 `pnpm dev`。
-
-普通启动只检查就绪状态，不创建库、迁移、重置或登记 client。已有环境切换旧 URL 配置时，先核对原连接目标和凭据，再显式执行 `pnpm infra convert`；它备份配置并保留原值，不迁移数据。更换持久卷、PostgreSQL 版本、issuer 或已有凭据需要独立维护，不属于启动检查单。
-
-旧 Outline 环境的资源清理是独立维护：`node scripts/runtime/retire-outline.mjs --plan` 缺省只读，需要原配置及归属证明。清理前保留原配置和资源记录，不能删除证明或重置 PostgreSQL/Hydra 来绕过核验。维护边界见 `.ai/architectures/runtime/runtime-boundaries.md`。
+Vite 将 `/api` 路径边界以及 `/oauth/authorize`、`/oauth/device` 两个 PHP HTML 路径转发到 PHP，保留路径和查询参数。登录、注册、SSO 成功页与其他 SPA 路径由 Web 处理。PHP `/oauth/device` 对未登录访问仍返回 401；页面代理不表示该上游行为已改变。跨 origin 直连仍需 PHP 允许实际浏览器 origin。请求、token 与上传边界见 `.ai/architectures/sdk/client-boundaries.md` 和 `.ai/architectures/web/authentication-flow.md`。
 
 ## 常用命令
 
-| 目的                | 命令                                                                                        |
-| ------------------- | ------------------------------------------------------------------------------------------- |
-| 启动/停止后台依赖   | `pnpm service:start` / `pnpm service:stop`                                                  |
-| 查看状态/日志       | `pnpm service:status` / `pnpm service:logs [postgres\|hydra]`                               |
-| 开发监听            | `pnpm dev`                                                                                  |
-| 双前端热更新预览    | `pnpm dev:web`                                                                              |
-| 仅管理端热更新      | `pnpm dev:admin`                                                                            |
-| 管理端构建/类型检查 | `pnpm --filter @workspace/admin-web build` / `pnpm --filter @workspace/admin-web typecheck` |
-| Website 显式迁移    | `pnpm db:migrate`                                                                           |
-| Hydra 显式迁移      | `pnpm infra migrate`                                                                        |
-| 显式登记身份客户端  | `pnpm infra clients`                                                                        |
-| 轻量测试/监听测试   | `pnpm test` / `pnpm test:watch`                                                             |
-| 完整测试（CI）      | `pnpm test:full`                                                                            |
-| 构建                | `pnpm build`                                                                                |
-| Contract 与类型检查 | `pnpm api:lint` / `pnpm api:generate` / `pnpm api:check` / `pnpm typecheck`                 |
+| 目的               | 主仓库命令                                                        |
+| ------------------ | ----------------------------------------------------------------- |
+| 前端开发           | `pnpm dev` 或 `pnpm dev:web`                                      |
+| PHP 契约消费检查   | `pnpm api:lint`、`pnpm api:check`                                 |
+| 更新 SDK 生成物    | `pnpm api:generate`                                               |
+| 定向/轻量/完整测试 | 按 `TESTING.md` 选用；`pnpm test` 为轻量，`pnpm test:full` 为完整 |
+| 类型与 Web 构建    | `pnpm typecheck`、`pnpm build`                                    |
+| 前端端口           | `pnpm dev --port <port>`                                          |
 
-开发阶段可按需做定向 test，本地提交不自动运行整仓测试或整套检查；代码变更提 PR 前集中使用轻量测试，CI 保持完整测试。轻量测试不要求 Docker 或安装 Chromium。完整测试保留数据库、真实 Browser SDK、编译打包和进程清理夹具；首次本地运行 `pnpm test:full` 前准备 Docker 并执行 `pnpm exec playwright install chromium`。Linux 需要系统依赖时使用 `pnpm exec playwright install --with-deps chromium`。测试规则、用例归类和页面浏览器验收策略统一见 `TESTING.md`。
+`pnpm api:lint` 验证 PHP 两版模块化入口；`pnpm api:generate` 从完整内部 YAML 的单一快照生成 `packages/sdk/src/generated/schema.d.ts` 和 `packages/sdk/src/generated/operation-policy.ts`；`pnpm api:check` 只读比较这两项产物。它们不替代 PHP 自身的路由覆盖、业务测试或 Composer 命令。公开和内部 Contract 的归属见 `.ai/architectures/api/contract-layout.md`。
 
-测试使用临时数据库，不连接开发库；Build 不连接数据库或启动 Docker。自动测试、本机生命周期、浏览器和部署验收分别报告。
+根 `pnpm dev`、`pnpm test`、`pnpm typecheck` 和 `pnpm build` 按顺序准备 SDK；SDK 公开入口消费构建产物。直接运行底层 Web 命令前，先串行执行 `pnpm api:generate`、`pnpm --filter @workspace/sdk build`。同一 checkout 的生成、构建和监听命令应串行，避免共享产物竞争。根 `pnpm build` 依次构建 Website 和管理端；`pnpm typecheck` 检查两个前端、组件、SDK 和类型夹具，不编译 PHP。
 
-## 提交前格式化
+本地开发按影响执行定向测试；不自动运行整套根测试或检查。`TESTING.md` 定义快速、完整和页面浏览器验收的边界；PHP 测试由 `apps/php-server/TESTING.md` 独立管理。主 CI 工作流配置了 PHP 子模块递归检出与主仓库检查，工作流存在不表示远端 CI 已运行。
 
-`pnpm install --frozen-lockfile` 会通过 `prepare` 安装当前工作树的 Git Hook；已有依赖时可运行 `pnpm prepare`。Codex 的 `$commit`、CodeBuddy、Claude 和手动 `git commit` 都使用同一提交流程。
+## 工程边界
 
-提交前由 Husky 调用 lint-staged，只对暂存文件执行 Prettier，格式化结果自动进入本次提交。部分暂存文件的未暂存改动会保留。格式化失败时提交中止，修复错误后重新暂存并提交。
+`apps/php-server/api/public/` 与 `apps/php-server/api/internal/` 是 PHP 生成的模块化 OpenAPI，`apps/php-server/api/generated/` 提供完整单文件。主仓库 `@workspace/sdk` 只消费内部契约；Website 业务 HTTP 调用经 SDK 的 `instance({...})`，上传经同包 `storage`。PHP 自有 HTML 页面、后台与第三方接线遵守 PHP 仓库边界。`packages/common/` 提供跨应用纯逻辑；`packages/components/` 提供共享 UI。ExUI 使用 lockfile 固定的 registry 包。
 
-格式规则位于 `.prettierrc.json`，生成文件和输出目录由 `.prettierignore` 排除。手动处理单个文件可执行 `pnpm exec prettier --write <文件路径>`；`pnpm format` 和 `pnpm format:check` 分别格式化、检查全仓库，范围与提交前检查不同。Hook 的隔离验证命令为 `pnpm test:formatting`，安装边界见 `.ai/knowledge/tooling/pre-commit-formatting.md`。
-
-## 工程入口
-
-`api/openapi.yaml` 与 `api/paths/`、`api/schemas/` 是 Website 唯一 HTTP Contract 源，统一生成 `api/generated/openapi.json` 和 `packages/sdk/src/generated/schema.d.ts`；`apps/server/` 是唯一 Website Fastify Server；Browser 与 Node 的 Website 业务 HTTP 调用统一使用 `@workspace/sdk` 的 `instance({...})`，上传使用同包 `storage`。管理端保留 Ant Design，按 PHP 内部 Contract `apps/php-server/api/internal/openapi.yaml` 及引用模块使用自己的 Axios/初始化 fetch，不将管理请求接入 Website SDK。生产启动只读取已有产物。`packages/common/` 通过 `@workspace/common/node/identity-config` 为 Server 与 runtime 提供共享的纯身份配置解析。ExUI 使用 pnpm lockfile 锁定的 registry 包。
-
-根 `pnpm dev`、`pnpm typecheck`、`pnpm test`（含 watch 每轮）和 `pnpm build` 按顺序准备 Contract → SDK 构建，再启动各自消费者；单独 Server 开发入口也先准备。SDK 的公开入口读取 `dist/`，仅运行 `tsc --noEmit` 不会生成可消费产物。
-
-根 build 按 Contract → SDK → Website Web → Website Server → 管理端的顺序执行；根递归类型检查包含管理端。管理端的独立 build/typecheck 只消费本包源码与已安装依赖，不生成 Website SDK、不连接 PHP 或数据库。生产 `start` 和后台 `service:*` 仍仅承担既有 Website/Hydra 职责。
-
-管理端继承仓库严格 TypeScript 设置，由 `apps/admin-web/src/api/`、`apps/admin-web/src/auth/`、`apps/admin-web/src/routes/` 组织请求、会话和路由门禁，业务界面保留 Ant Design。PHP Contract 更新后，显式执行 `pnpm --filter @workspace/admin-web api:generate` 刷新本包类型，`pnpm --filter @workspace/admin-web api:check` 校验一致性；普通构建不执行此生成。应用边界见 `.ai/architectures/admin-web/application-boundaries.md`。
-
-直接运行低层 Web 开发命令前，先依次执行 `pnpm api:generate`、`pnpm --filter @workspace/sdk build`，再执行 `pnpm --filter @workspace/web dev`。该低层入口不自动重建 SDK；修改 Contract 或 SDK 后优先使用根 `pnpm dev`，其监督器会停止应用、串行准备并重新启动，重建失败则保持应用停止，等待下一次源码修改。
-
-同一 checkout 同时只允许一个写入 Contract/SDK 产物的命令。不要并行运行 dev、test/watch、typecheck、build、`api:generate` 或 SDK build；需要独立验证时先停止当前命令，或使用不同 checkout。应用锁不等于跨命令构建锁。
-
-开发规则见 `AGENTS.md`，模块知识从 `.ai/README.md` 查阅，运行与资源边界见 `.ai/architectures/runtime/runtime-boundaries.md`，身份客户端边界见 `.ai/architectures/identity/integration-boundaries.md`。
+提交前 Hook 仅格式化暂存文件。`pnpm format` 与 `pnpm format:check` 使用根 Prettier 范围，排除 PHP 子模块；PHP 文档遵守子模块自己的格式规则。开发规则见 `AGENTS.md`，持久知识索引见 `.ai/README.md`，运行和资源边界见 `.ai/architectures/runtime/runtime-boundaries.md`。

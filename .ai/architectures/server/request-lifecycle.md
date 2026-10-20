@@ -1,5 +1,7 @@
 # Server 请求生命周期与数据边界
 
+> 已退役：历史 Node/Fastify 实现记录。文中路径、命令和行为仅用于理解当时选择；现行 PHP/Webman 边界见 `.ai/architectures/overview.md`、`.ai/architectures/api/contract-layout.md` 与 `apps/php-server/TESTING.md`。
+
 本文件描述 `apps/server/` 从创建应用到返回响应，以及 PostgreSQL 的显式迁移边界。业务数据规则见 `.ai/databases/data-model.md`。
 
 _最后更新：2026-10-11_

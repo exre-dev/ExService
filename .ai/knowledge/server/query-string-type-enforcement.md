@@ -1,5 +1,7 @@
 # 查询串是文本，Contract 声明的标量类型必须先强制
 
+> 已退役：历史 Node/Fastify 实现记录。文中路径、命令和行为仅用于理解当时选择；现行 PHP/Webman 边界见 `.ai/architectures/overview.md`、`.ai/architectures/api/contract-layout.md` 与 `apps/php-server/TESTING.md`。
+
 **结论：Contract 允许把查询参数声明成 `integer` / `number` / `boolean`，但 HTTP 查询串到达 Fastify 时一律是字符串。全局 `coerceTypes: false` 下，这类参数任何合法取值都会 400，而且与「正确拒绝越界取值」长得一模一样。**
 
 _最后更新：2026-10-11_
