@@ -33,6 +33,7 @@ CI 显式执行 `pnpm test:full`，保留完整 Website Vitest 和 runtime 测�
 ## 用例归类与定向运行
 
 - 前端和共享包的纯逻辑、jsdom 与 mock 交互测试进入轻量范围。`tests/` 下的轻量组在 `vitest.quick.config.ts` 明确登记；新增集成夹具或已有用例开始访问真实服务、浏览器、数据库、子进程清理或打包工具时，留在完整范围，并核对轻量选择。
+- 管理端的 API、鉴权和路由行为测试位于 `apps/admin-web/src/`，与 Website 一样进入根 Vitest 的轻量和完整范围。定向运行使用 `node node_modules/vitest/vitest.mjs run --config vitest.quick.config.ts apps/admin-web/src`，无需 PHP、数据库或 Website SDK 准备；管理端独立类型检查和构建使用 `pnpm --filter @workspace/admin-web typecheck`、`pnpm --filter @workspace/admin-web build`。
 - Node 脚本测试在 `scripts/runtime/tests.mjs` 登记。需要真实服务、打包或进程清理的文件标记为 `fullOnly`；混合文件作为整体留在完整范围。
 - 用行为断言验证回归；Contract 变更继续补充真实 HTTP 和原始 handler 输出覆盖。用例编写遵循所属模块的既有测试约定，不为已删除的入口恢复实现。
 - 定向运行轻量用例可使用 `pnpm exec vitest run --config vitest.quick.config.ts <测试文件>`；完整范围内的指定用例使用 `pnpm exec vitest run --config vitest.config.ts <测试文件> --maxWorkers 2`。直接运行 Vitest 不准备 SDK，须先依次运行 `pnpm api:generate` 和 `pnpm --filter @workspace/sdk build`，或使用最近一次已成功准备且 Contract/SDK 未变化的产物。
@@ -43,5 +44,7 @@ CI 显式执行 `pnpm test:full`，保留完整 Website Vitest 和 runtime 测�
 本地页面浏览器验收按需运行：仅在用户明确要求验收，或操作者显式选择相关脚本时执行；普通 UI 修改、日常测试和提交前不自动追加浏览器流程。`tests/browser/` 的页面布局、弹窗、焦点、主题和导航脚本继续保持独立入口。
 
 `tests/browser/browser-suite.test.mjs` 测试浏览器运行器自身，使用注入的假浏览器，不启动 Chromium；它可纳入轻量 Node 测试。CI 的 SDK Chromium 夹具位于 `tests/sdk/public-package.test.ts`，随完整测试执行。
+
+管理端初始化向导保留显式 mock 浏览器入口 `node tests/browser/admin-web-installation.mjs`，使用 `apps/admin-web/` 的 Vite 和根 Playwright，截图写入已忽略的 `output/admin-web/`。可通过 `CHROME_BINARY` 指定现有浏览器，缺省使用 Playwright Chromium。所有 API 由脚本拦截，覆盖深链接、未就绪阻止继续、字段校验、初始化失败重试、强制初始化确认/取消及桌面/移动端；不会初始化真实 PHP 或数据库。该脚本不进入轻量自动执行范围。真实 PHP 登录、平台/空间操作和跨应用 SSO 另行验收；PHP 原 `tests/sso_browser.mjs` 的旧前端路径需要后端负责人协调。
 
 交付时分别说明轻量测试、完整集成测试、页面浏览器验收和外部服务验收的实际执行情况。jsdom 通过不能作为真实布局或焦点验收通过的证据。

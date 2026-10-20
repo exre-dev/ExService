@@ -1,0 +1,28 @@
+.shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f2f5;
+  padding: 16px;
+}
+.card {
+  width: 380px;
+  max-width: 100%;
+}
+.title {
+  text-align: center;
+  margin-bottom: 24px !important;
+}
+.captcha {
+  height: 32px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.captchaLoading {
+  cursor: default;
+  opacity: 0.6;
+}
+.refresh {
+  font-size: 12px;
+}

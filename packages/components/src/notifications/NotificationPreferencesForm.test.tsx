@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ExMessage } from '@exre/exui'
+import { toast } from '@exre/exui'
 import {
   NotificationPreferencesForm,
   type NotificationPreferencesDraft,
@@ -262,14 +262,14 @@ describe('NotificationPreferencesForm immediate saving', () => {
   })
   it('stays silent after a successful save: no saved text and no temporary notification', async () => {
     const onSaveField = vi.fn(async () => ({ announcement: false, personal_update: true }))
-    const info = vi.spyOn(ExMessage, 'info')
-    const success = vi.spyOn(ExMessage, 'success')
-    const loading = vi.spyOn(ExMessage, 'loading')
-    const warn = vi.spyOn(ExMessage, 'warn')
+    const info = vi.spyOn(toast, 'info')
+    const success = vi.spyOn(toast, 'success')
+    const loading = vi.spyOn(toast, 'loading')
+    const warn = vi.spyOn(toast, 'warning')
     render(<NotificationPreferencesForm {...props({ onSaveField })} />)
     await userEvent.click(screen.getByRole('switch', { name: '社区动态' }))
     await waitFor(() => expect(onSaveField).toHaveBeenCalledTimes(1))
-    // 主证据：没有“已保存”文本，也没有任何成功状态；ExMessage spy 只作补充。
+    // 主证据：没有“已保存”文本，也没有任何成功状态；toast spy 只作补充。
     expect(screen.queryByText(/已保存/)).toBeNull()
     expect(screen.queryByRole('status')).toBeNull()
     expect(screen.queryByRole('alert')).toBeNull()

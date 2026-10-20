@@ -1,4 +1,4 @@
-import { Button, ExMessage } from '@exre/exui'
+import { Button, toast } from '@exre/exui'
 import { Copy } from 'lucide-react'
 import type { ComponentProps } from 'react'
 import styles from './Content.module.scss'
@@ -12,9 +12,9 @@ export function CodeBlock({ rawCode, children, title, className, ...props }: Cod
     try {
       if (rawCode === undefined || !navigator.clipboard) throw new Error('Clipboard unavailable')
       await navigator.clipboard.writeText(rawCode)
-      ExMessage.info('代码已复制')
+      toast.info('代码已复制')
     } catch {
-      ExMessage.error('无法复制，请手动选择代码')
+      toast.error('无法复制，请手动选择代码')
     }
   }
   return (

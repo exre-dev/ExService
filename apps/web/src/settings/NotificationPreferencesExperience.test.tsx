@@ -5,7 +5,7 @@ import { StrictMode, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ExMessage } from '@exre/exui'
+import { toast } from '@exre/exui'
 import { writeToken } from '@web/src/auth/storage'
 import {
   bindNotificationsToken,
@@ -519,11 +519,11 @@ describe('notification preferences real seam', () => {
   it('stays silent on a successful save: no saved text and no temporary notification', async () => {
     respond()
     const { a } = await twoHosts()
-    const info = vi.spyOn(ExMessage, 'info')
-    const success = vi.spyOn(ExMessage, 'success')
-    const loading = vi.spyOn(ExMessage, 'loading')
-    const warn = vi.spyOn(ExMessage, 'warn')
-    const error = vi.spyOn(ExMessage, 'error')
+    const info = vi.spyOn(toast, 'info')
+    const success = vi.spyOn(toast, 'success')
+    const loading = vi.spyOn(toast, 'loading')
+    const warn = vi.spyOn(toast, 'warning')
+    const error = vi.spyOn(toast, 'error')
     put.mockResolvedValue({
       ...stored,
       revision: 4,
@@ -531,7 +531,7 @@ describe('notification preferences real seam', () => {
     })
     await userEvent.click(a.getByRole('switch', { name: '社区动态' }))
     await waitFor(() => expect(checkedIn(a, '社区动态')).toBe('false'))
-    // 主证据：无“已保存”文本、无成功状态；ExMessage spy 只作补充。
+    // 主证据：无“已保存”文本、无成功状态；toast spy 只作补充。
     expect(a.queryByText(/已保存/)).toBeNull()
     expect(a.queryByRole('status')).toBeNull()
     expect(a.queryByRole('alert')).toBeNull()

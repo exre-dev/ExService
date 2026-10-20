@@ -14,9 +14,9 @@ import {
   DialogTitle,
   Field,
   FieldContent,
+  FieldDescription,
   FieldError,
   FieldLabel,
-  ExItem,
   Input,
   SelectContent,
   SelectField,
@@ -530,17 +530,25 @@ function SettingItem({
   children: ReactNode
 }) {
   return (
-    <ExItem
-      className={styles.item}
-      title={label}
-      desc={description}
-      controlId={controlId}
-      layout="horizontal"
-      contentAlign="right"
-      contentMaxWidth="24rem"
-    >
-      {children}
-    </ExItem>
+    <div className={styles.item}>
+      <Field className={styles.itemField}>
+        <div className={styles.itemHeading}>
+          {controlId ? (
+            <FieldLabel htmlFor={controlId}>{label}</FieldLabel>
+          ) : (
+            <FieldLabel asChild>
+              <span>{label}</span>
+            </FieldLabel>
+          )}
+          {description && (
+            <FieldDescription id={controlId ? `${controlId}-description` : undefined}>
+              {description}
+            </FieldDescription>
+          )}
+        </div>
+        <FieldContent className={styles.itemContent}>{children}</FieldContent>
+      </Field>
+    </div>
   )
 }
 

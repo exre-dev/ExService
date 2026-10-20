@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { AuthProvider } from '@web/src/auth/AuthContext'
 import { RootLayout } from '@web/src/routes/RootLayout'
-import { ExMessage } from '@exre/exui'
+import { toast } from '@exre/exui'
 const { post, get } = vi.hoisted(() => ({ post: vi.fn(), get: vi.fn() }))
 vi.mock('@workspace/sdk', async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -33,7 +33,7 @@ beforeEach(() => {
     removeEventListener() {},
   }))
   Element.prototype.scrollIntoView = vi.fn()
-  vi.spyOn(ExMessage, 'info').mockReturnValue('info')
+  vi.spyOn(toast, 'info').mockReturnValue('info')
 })
 afterEach(() => {
   cleanup()

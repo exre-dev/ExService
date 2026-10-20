@@ -15,6 +15,7 @@ import { withNodePath } from './settings.mjs'
 import { reporter, RuntimeError, diagnostic } from './output.mjs'
 import { prepareSdk } from './sdk-preparation.mjs'
 import { watchSdkSources } from './sdk-watch.mjs'
+import { readAdminFrontendConfiguration } from './admin-frontend.mjs'
 
 export const hydraOptions = (state, client) => ({
   mode: state.profile,
@@ -127,27 +128,47 @@ export async function verifyApplications(
 /** Watch processes own only their child generation. Dependency services are never stopped here. */
 export async function runDevelopment(
   state,
-  { service, verbose = false, prepare = prepareSdk } = {},
+  {
+    service,
+    verbose = false,
+    prepare = prepareSdk,
+    inherited = process.env,
+    tools: selectedTools,
+    acquireLock = acquireApplicationLock,
+    superviseApplications = supervise,
+    verify = verifyApplications,
+    assertFree = assertPortFree,
+    ready = httpReady,
+    watchSources = watchSdkSources,
+    output: selectedOutput,
+  } = {},
 ) {
   if (state.profile !== 'local') throw new RuntimeError('LOCAL_PROFILE_REQUIRED')
-  const tools = toolchain({ workspace: state.workspace, inherited: state.values })
-  const lock = acquireApplicationLock(state)
+  const tools = selectedTools ?? toolchain({ workspace: state.workspace, inherited: state.values })
+  const lock = acquireLock(state)
   const logFile = join(state.directory, `applications-${lock.record.runId}.log`)
-  const output = reporter({
-    environment: state.values,
-    verbose,
-    persist: (line) => appendFileSync(logFile, `${line}\n`),
-  })
+  const output =
+    selectedOutput ??
+    reporter({
+      environment: state.values,
+      verbose,
+      persist: (line) => appendFileSync(logFile, `${line}\n`),
+    })
   const onLog = output.log
   let handedOff = false
   try {
     output.heading('ExWebsite · 开发监听')
     output.note('正在准备 Contract / SDK 并检查 Website 的启动条件…')
-    const selected = specifications(state, tools).filter(
+    const admin =
+      !service || service === 'admin-web'
+        ? readAdminFrontendConfiguration({ workspace: state.workspace, inherited })
+        : undefined
+    const adminUrl = admin && `http://127.0.0.1:${admin.port}/`
+    const selected = specifications(state, tools, admin).filter(
       (spec) => !service || spec.name === service,
     )
     handedOff = true
-    await supervise({
+    await superviseApplications({
       mode: 'local',
       fingerprint: state.fingerprint,
       directory: state.directory,
@@ -165,28 +186,49 @@ export async function runDevelopment(
           onLog,
         }),
       preflight: async ({ signal, execute }) => {
-        await verifyApplications(state, { tools, onLog, signal, execute })
+        if (admin && Object.values(state.config.ports).includes(admin.port))
+          throw new RuntimeError('PORT_CONFLICT', {
+            service: 'admin-web',
+            keys: ['LOCAL_ADMIN_WEB_PORT'],
+            target: `127.0.0.1:${admin.port}`,
+          })
+        await verify(state, { tools, onLog, signal, execute })
         for (const port of [
           state.config.ports.public,
           state.config.ports.web,
           state.config.ports.api,
         ])
-          await assertPortFree(port)
+          await assertFree(port)
+        if (admin) {
+          try {
+            await assertFree(admin.port)
+          } catch {
+            throw new RuntimeError('APPLICATION_PORT_OCCUPIED', {
+              service: 'admin-web',
+              keys: ['LOCAL_ADMIN_WEB_PORT'],
+              target: `127.0.0.1:${admin.port}`,
+              reason: '管理端监听端口被占用',
+              next: '在端口所属终端停止原进程，或调整 LOCAL_ADMIN_WEB_PORT',
+            })
+          }
+        }
       },
-      watchSources: (onChange, onError) => watchSdkSources(state.workspace, onChange, { onError }),
+      watchSources: (onChange, onError) => watchSources(state.workspace, onChange, { onError }),
       onReady: () => {
         output.success('开发服务已就绪')
         output.status('Website', '可访问', `${state.config.publicOrigin}/`, { level: 'success' })
+        if (admin) output.status('管理端', '可访问', adminUrl, { level: 'success' })
         output.note('LOCAL_READY · Ctrl+C 结束应用')
       },
       readiness: async (children, { signal }) => {
         if (!service || service === 'server')
-          await httpReady(new URL('/api/health', state.internal.website), { children, signal })
+          await ready(new URL('/api/health', state.internal.website), { children, signal })
         if (!service || service === 'web')
-          await httpReady(`${state.config.publicOrigin}/`, { children, signal })
+          await ready(`${state.config.publicOrigin}/`, { children, signal })
         if (!service) {
-          await httpReady(`${state.config.publicOrigin}/api/health`, { children, signal })
+          await ready(`${state.config.publicOrigin}/api/health`, { children, signal })
         }
+        if (admin) await ready(adminUrl, { children, signal })
       },
     })
   } finally {

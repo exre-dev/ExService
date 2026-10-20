@@ -1,14 +1,8 @@
 // Isolated browser acceptance only: synthetic labels and local callbacks, no account or API.
-import { StrictMode, useRef, useState } from 'react'
+import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
-import {
-  ExMessage,
-  ExMessageContext,
-  GlassSeed,
-  ThemeProvider,
-  type ExMessageLoadingHandle,
-} from '@exre/exui'
+import { toast, Toaster, GlassSeed, ThemeProvider } from '@exre/exui'
 import { AuthModal } from '@components/src/auth/AuthModal'
 import { AuthForm } from '@components/src/auth/AuthForm'
 import {
@@ -161,13 +155,40 @@ function JoinFixture() {
 }
 
 function MessageFixture() {
-  const handle = useRef<ExMessageLoadingHandle | null>(null)
+  const task = useRef<{
+    id: ReturnType<typeof toast.loading>
+    timer: ReturnType<typeof setTimeout>
+  } | null>(null)
+  const ownedIds = useRef(new Set<ReturnType<typeof toast.loading>>())
   const [transition, setTransition] = useState('idle')
+  useEffect(
+    () => () => {
+      if (task.current) clearTimeout(task.current.timer)
+      task.current = null
+      for (const id of ownedIds.current) toast.dismiss(id)
+      ownedIds.current.clear()
+    },
+    [],
+  )
+
+  function finishTask(result: 'success' | 'error' | 'dismissed') {
+    const current = task.current
+    if (!current) return
+    task.current = null
+    clearTimeout(current.timer)
+    if (result === 'dismissed') toast.dismiss(current.id)
+    else
+      toast[result](result === 'success' ? '隔离任务完成' : '隔离任务失败', {
+        id: current.id,
+        duration: 10000,
+      })
+    setTransition(result)
+  }
   return (
     <main style={{ padding: '10rem 2rem 2rem' }}>
       <button
         onClick={() => {
-          ExMessage.success('普通成功消息', { duration: 10000 })
+          ownedIds.current.add(toast.success('普通成功消息', { duration: 10000 }))
           setTransition('ordinary-success')
         }}
       >
@@ -175,7 +196,18 @@ function MessageFixture() {
       </button>
       <button
         onClick={() => {
-          handle.current = ExMessage.loading('隔离任务进行中', { duration: 10000 })
+          finishTask('dismissed')
+          const id = toast.loading('隔离任务进行中')
+          ownedIds.current.add(id)
+          task.current = {
+            id,
+            timer: setTimeout(() => {
+              if (task.current?.id !== id) return
+              task.current = null
+              toast.dismiss(id)
+              setTransition('timed-out')
+            }, 10000),
+          }
           setTransition('loading')
         }}
       >
@@ -183,27 +215,21 @@ function MessageFixture() {
       </button>
       <button
         onClick={() => {
-          handle.current?.onSuccess('隔离任务完成', { duration: 10000 })
-          handle.current = null
-          setTransition('success')
+          finishTask('success')
         }}
       >
         完成任务
       </button>
       <button
         onClick={() => {
-          handle.current?.onError('隔离任务失败', { duration: 10000 })
-          handle.current = null
-          setTransition('error')
+          finishTask('error')
         }}
       >
         任务失败
       </button>
       <button
         onClick={() => {
-          handle.current?.dismiss()
-          handle.current = null
-          setTransition('dismissed')
+          finishTask('dismissed')
         }}
       >
         取消任务
@@ -219,7 +245,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
       <GlassSeed />
-      <ExMessageContext />
+      <Toaster position="top-right" duration={3000} visibleToasts={3} />
       <BrowserRouter>
         {mode === 'oidc' ? (
           <OidcFixture />

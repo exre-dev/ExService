@@ -11,6 +11,7 @@ export default defineConfig({
     dedupe: ['react', 'react-dom', '@exre/exui'],
     alias: [
       { find: '@web', replacement: resolve(repositoryRoot, 'apps/web') },
+      { find: '@admin', replacement: resolve(repositoryRoot, 'apps/admin-web') },
       { find: '@server', replacement: resolve(repositoryRoot, 'apps/server') },
       { find: '@sdk', replacement: resolve(repositoryRoot, 'packages/sdk') },
       // COS 运行库只装在 packages/sdk 与 apps/server 下（同一版本、同一 store 条目）。
@@ -46,6 +47,7 @@ export default defineConfig({
     include: [
       'tests/**/*.test.{ts,tsx}',
       'apps/web/src/**/*.test.{ts,tsx}',
+      'apps/admin-web/src/**/*.test.{ts,tsx}',
       'apps/server/src/**/*.test.{ts,tsx}',
       'packages/components/src/**/*.test.{ts,tsx}',
       'packages/sdk/src/**/*.test.{ts,tsx}',

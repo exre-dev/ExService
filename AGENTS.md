@@ -35,7 +35,7 @@
 
 ## 架构与目录边界
 
-本仓库采用 Contract-first 架构：`api/openapi.yaml` 是唯一 HTTP Contract，`apps/server/` 是唯一 Website Fastify Server，业务数据使用独立 PostgreSQL `exre`。完整架构见 `.ai/architectures/overview.md`。
+本仓库的 Website 链路采用 Contract-first 架构：`api/openapi.yaml` 是 Website 唯一 HTTP Contract，`apps/server/` 是唯一 Website Fastify Server，业务数据使用独立 PostgreSQL `exre`。管理端与 PHP 使用各自边界。完整架构见 `.ai/architectures/overview.md`。
 
 | 路径                   | 责任与边界                                                                                                                                         |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -44,14 +44,18 @@
 | `packages/components/` | 基于 ExUI 的共享 UI；不访问 API、不定义路由表、不导入 ExUI 全局样式。                                                                              |
 | `packages/common/`     | 按模块子入口公开跨应用共享的纯逻辑；消费规则见 `.agents/rules/package-common.md`。                                                                 |
 | `apps/web/`            | 前端路由、主题、构建配置与 SDK 适配；本站业务 HTTP 调用只经 `@workspace/sdk`，不复制 DTO。                                                         |
+| `apps/admin-web/`      | 独立管理端 SPA；参考 Website 工程、严格类型、目录和测试约定，保留 Ant Design 界面；消费 PHP 内部 Contract，使用自己的请求适配。                    |
+| `apps/php-server/`     | 独立 Git 子模块，拥有 PHP API、后端测试和运行数据；变更遵循其自身规则，主仓库前端迁移不修改该子模块或 gitlink。                                    |
 | `apps/server/`         | 加载 Contract、映射 handler、执行受控数据库访问；不绕过 Contract 注册 HTTP 路由或静态 JSON mock，不反向生成 OpenAPI，不连接 `hydra` 等其他数据库。 |
 | `tests/contract/`      | 从 Contract 读取 schema，验证真实 Fastify 路由、原始 handler 输出和双向 operation 覆盖。                                                           |
 
-Browser 和 Node 的本站业务 HTTP 调用统一使用 `@workspace/sdk` 的 `instance({...})`；上传使用同包 `storage`，其本站阶段经过同一请求管线。方法、路径、请求和响应类型从唯一 OpenAPI Contract 推导。第三方业务请求可自行选择 `fetch` 或其他工具，本站 token 不用于第三方请求。
+Browser 和 Node 的 Website 业务 HTTP 调用统一使用 `@workspace/sdk` 的 `instance({...})`；上传使用同包 `storage`，其本站阶段经过同一请求管线。方法、路径、请求和响应类型从 Website OpenAPI Contract 推导。管理端按 `apps/php-server/api/internal/openapi.yaml` 及引用模块消费 PHP API，保留既有 Axios 和初始化 fetch；不将 PHP 请求接到 Website SDK 或 Fastify。第三方业务请求可自行选择 `fetch` 或其他工具，本站 token 不用于第三方请求。
 
 测试夹具、原始 handler/HTTP 协议断言和需要原始状态、header、Host 的基础设施 readiness 探针保留独立协议验证工具；它们不能成为页面或业务绕过 SDK 的入口。Server 对第三方服务的既有出站客户端继续按其模块规则执行。SDK 的配置、会话与打包边界见 `.ai/architectures/sdk/client-boundaries.md`。
 
 ## Contract-first 工作流
+
+以下工作流适用于 Website Contract、SDK 和 Fastify。PHP 契约由子模块的 PHP 定义及生成工具维护，禁止手改其 YAML 产物；管理端迁移不要求抽取 PHP SDK。
 
 1. 实现 API 调用前读取 `api/openapi.yaml`；不得臆造 endpoint、方法、参数或字段。
 2. API 变更先改 Contract，再运行 `pnpm api:lint` 和 `pnpm api:generate`。`packages/sdk/src/generated/schema.d.ts` 禁止手改，Contract 变更须同时提交重新生成的结果。
@@ -63,7 +67,9 @@ OpenAPI 3.1 schema 仅使用 JSON Schema Draft-07 兼容子集；引入 Draft 20
 
 ## 前端规则
 
-- 修改 Form 前，阅读并遵守 `.ai/rules/frontend-forms.md`；全站临时通知统一使用 `ExMessage`，遵守 `.ai/rules/frontend-notifications.md`。
+- 下列 ExUI、Form 和通知规则适用于 `apps/web/` 与 `packages/components/`。`apps/admin-web/` 本阶段保留 Ant Design 的组件、表单和通知，沿用管理端业务交互；工程、类型、模块职责、CSS Modules 和行为测试参考 Website，不为迁移统一框架主版本。
+
+- 修改 Form 前，阅读并遵守 `.ai/rules/frontend-forms.md`；全站临时通知统一使用 `toast`，遵守 `.ai/rules/frontend-notifications.md`。
 - 共享组件使用 CSS Modules、ExUI 颜色/边框/圆角 token 和 `lucide-react` 图标，不新建本地 token 层。`react`、`react-dom`、`react-router` 同时声明为 peer/dev dependencies，保证消费方单一实例。
 - 修改 ExUI 接入或主题前，阅读 `.ai/knowledge/web/exui-integration-traps.md`。全局样式仅在 `apps/web/src/main.tsx` 导入一次；`useTheme` 必须位于 `ThemeProvider` 内，应用按 light/dark 类补充 `color-scheme`。不要另装 ExUI 已打包的 Sonner、Radix、Base UI 等实现库。
 

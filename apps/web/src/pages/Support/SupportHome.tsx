@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router'
-import { Button, ExMessage, Tabs, TabsList, TabsTrigger, TabsContent } from '@exre/exui'
+import { Button, toast, Tabs, TabsList, TabsTrigger, TabsContent } from '@exre/exui'
 import { ArrowRight, ArrowUpRight, Copy, ChevronDown } from 'lucide-react'
 import { supportImage, supportRegistry } from '../../content/support/registry'
 import type { ClickUpConfig, ContactEntry, ErrorEntry } from '../../content/support/types'
@@ -132,9 +132,9 @@ function ContactAvatar({ contact }: { contact: ContactEntry }) {
 async function copyQQ(contact: ContactEntry) {
   try {
     await navigator.clipboard.writeText(contact.qq!)
-    ExMessage.info('QQ 已复制')
+    toast.info('QQ 已复制')
   } catch {
-    ExMessage.error('复制失败，请手动选择并复制 QQ 号码')
+    toast.error('复制失败，请手动选择并复制 QQ 号码')
   }
 }
 export function ContactCards({ contacts }: { contacts: ContactEntry[] }) {

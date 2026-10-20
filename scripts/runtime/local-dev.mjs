@@ -9,6 +9,7 @@ import { diagnostic, RuntimeError } from './output.mjs'
 import { atomicJson, LocalError, readJson, toolchain } from './local-config.mjs'
 import { spawnOwned, stopOwned } from './ownership.mjs'
 import { serverSpecification } from './server.mjs'
+import { adminFrontendSpecification } from './admin-frontend.mjs'
 
 export async function assertPortFree(port) {
   const server = createServer()
@@ -124,7 +125,7 @@ export async function httpReady(
     target: `${target.origin}${target.pathname}`,
   })
 }
-export function specifications(state, tools = toolchain()) {
+export function specifications(state, tools = toolchain(), admin) {
   const env = applicationEnvironments(state, tools)
   return [
     {
@@ -139,6 +140,16 @@ export function specifications(state, tools = toolchain()) {
       args: [tools.corepack, 'pnpm', '--filter', '@workspace/web', 'dev'],
       environment: env.web,
     },
+    ...(admin
+      ? [
+          adminFrontendSpecification({
+            workspace: state.workspace,
+            inherited: state.environments.web,
+            configuration: admin,
+            node: tools.node,
+          }),
+        ]
+      : []),
   ]
 }
 function applicationEnvironments(state, tools) {

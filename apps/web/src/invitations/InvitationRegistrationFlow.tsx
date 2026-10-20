@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useNavigate } from 'react-router'
-import { Button, ExMessage } from '@exre/exui'
+import { Button, toast } from '@exre/exui'
 import {
   InvitationEmailForm,
   InvitationCodeForm,
@@ -351,7 +351,7 @@ function InvitationScopeFlow({
       if (!valid(current)) return false
       cooldown(result)
       setRetry(false)
-      ExMessage.info('如邮箱符合邀请条件，将发送验证码')
+      toast.info('如邮箱符合邀请条件，将发送验证码')
       return true
     } catch {
       if (valid(current))
@@ -390,7 +390,7 @@ function InvitationScopeFlow({
       grant.current = null
       setNickname('')
       setStep('registered')
-      ExMessage.info('注册成功，请前往登录')
+      toast.info('注册成功，请前往登录')
     } catch (error) {
       if (valid(current)) {
         const expired = error instanceof ExAxiosError && error.code === 'COMPLETION_GRANT_INVALID'

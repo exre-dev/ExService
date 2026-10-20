@@ -40,7 +40,7 @@ const snapshot = (page) =>
   }))
 async function run(name, action) {
   if (process.argv.includes('--auth-only') && !name.startsWith('auth modal')) return
-  if (process.argv.includes('--message-only') && !name.startsWith('single ExMessage')) return
+  if (process.argv.includes('--message-only') && !name.startsWith('single toast')) return
   if (process.argv.includes('--dialogs-only') && !name.startsWith('OIDC')) return
   try {
     results.push({ name, status: 'PASS', ...(await action()) })
@@ -522,7 +522,7 @@ const outcome = await runBrowserSuite({
         await context.close()
       }
     })
-    await run('single ExMessage host loading completion, failure, cancellation', async () => {
+    await run('single toast host loading completion, failure, cancellation', async () => {
       const context = await browser.newContext({
         viewport: { width: 390, height: 844 },
         colorScheme: 'light',
@@ -581,6 +581,8 @@ const outcome = await runBrowserSuite({
           hostCount: await page.locator('[data-sonner-toaster]').count(),
           transition: await page.locator('[data-message-transition]').textContent(),
         })
+        assert.equal(await page.getByText('隔离任务进行中').count(), 0)
+        assert.equal(await page.getByText('隔离任务完成').count(), 1)
         await page.getByRole('button', { name: '开始任务' }).click()
         await page.getByText('隔离任务进行中').waitFor()
         await page.getByRole('button', { name: '任务失败' }).click()
@@ -604,7 +606,25 @@ const outcome = await runBrowserSuite({
           action: 'cancel',
           loadingCount: await page.getByText('隔离任务进行中').count(),
         })
+        const completions = await page.getByText('隔离任务完成').count()
+        const failures = await page.getByText('隔离任务失败').count()
+        await page.getByRole('button', { name: '完成任务' }).click()
+        await page.getByRole('button', { name: '任务失败' }).click()
+        assert.equal(await page.locator('[data-message-transition]').textContent(), 'dismissed')
+        assert.equal(await page.getByText('隔离任务完成').count(), completions)
+        assert.equal(await page.getByText('隔离任务失败').count(), failures)
         await page.screenshot({ path: resolve(evidence, 'message-dark-reduced.png') })
+        await page.clock.install()
+        await page.getByRole('button', { name: '开始任务' }).click()
+        await page.getByText('隔离任务进行中').waitFor()
+        await page.clock.fastForward(10001)
+        await page.getByText('隔离任务进行中').waitFor({ state: 'hidden' })
+        await page.getByRole('button', { name: '完成任务' }).click()
+        assert.equal(await page.locator('[data-message-transition]').textContent(), 'timed-out')
+        states.push({
+          action: 'timeout',
+          loadingCount: await page.getByText('隔离任务进行中').count(),
+        })
         assert.deepEqual(errors, [])
         assert.equal(
           navigations.length,

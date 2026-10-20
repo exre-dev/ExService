@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { frontendArguments, frontendSpecification } from './frontend.mjs'
+import { frontendArguments, frontendSpecification, main } from './frontend.mjs'
 
 function workspace(t, contents) {
   const directory = mkdtempSync(join(tmpdir(), 'website-frontend-'))
@@ -96,4 +96,32 @@ test('preview rejects invalid API addresses without including their values in di
       (error) => error.code === 'FRONTEND_API_BASE_URL_INVALID' && !error.message.includes(value),
     )
   }
+})
+
+test('dual frontend entry keeps --port on Website and gives admin its own override and environment', async (t) => {
+  const lines = []
+  t.mock.method(console, 'log', (line) => lines.push(line))
+  const directory = workspace(
+    t,
+    'LOCAL_ADMIN_WEB_PORT=5273\nADMIN_API_PROXY_TARGET=http://127.0.0.1:8787\nVITE_API_BASE_URL=https://website.example/api',
+  )
+  const options = frontendArguments(['--port', '8190', '--admin-port', '5373'])
+  assert.deepEqual(options, { port: 8190, adminPort: 5373 })
+  await main({ ...options, workspace: directory, inherited: {} }, async (specs, controls) => {
+    assert.equal(specs.length, 2)
+    assert.equal(specs[0].readinessUrl, 'http://127.0.0.1:8190/')
+    assert.equal(specs[1].readinessUrl, 'http://127.0.0.1:5373/')
+    assert.equal(specs[0].environment.VITE_API_BASE_URL, 'https://website.example/api')
+    assert.equal(specs[1].environment.ADMIN_API_PROXY_TARGET, 'http://127.0.0.1:8787')
+    assert.equal('VITE_API_BASE_URL' in specs[1].environment, false)
+    assert.equal('ADMIN_API_PROXY_TARGET' in specs[0].environment, false)
+    assert.equal(controls.signal.aborted, false)
+    assert.equal(typeof controls.onReady, 'function')
+    assert.equal(
+      lines.some((line) => line.includes('可访问')),
+      false,
+    )
+    controls.onReady()
+    assert.equal(lines.filter((line) => line.includes('可访问')).length, 2)
+  })
 })

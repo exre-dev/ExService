@@ -20,7 +20,7 @@ const authState = vi.hoisted(() => ({ status: 'authenticated' as 'authenticated'
 const info = vi.hoisted(() => vi.fn())
 vi.mock('@exre/exui', async () => ({
   ...(await vi.importActual('@exre/exui')),
-  ExMessage: { info },
+  toast: { info },
 }))
 vi.mock('@workspace/sdk', async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -582,15 +582,13 @@ describe('notifications controller', () => {
         return Promise.resolve({ ...detail, receiptId: init?.pathParams?.notificationId })
       },
     )
-    patch
-      .mockReturnValueOnce(firstWrite.promise)
-      .mockResolvedValue({
-        receiptId: 'receipt-B',
-        read: true,
-        stateRevision: 5,
-        unreadCount: 0,
-        serverTime: 0,
-      })
+    patch.mockReturnValueOnce(firstWrite.promise).mockResolvedValue({
+      receiptId: 'receipt-B',
+      read: true,
+      stateRevision: 5,
+      unreadCount: 0,
+      serverTime: 0,
+    })
     const hook = renderHook(() => useNotificationsController())
     await act(async () => {
       hook.result.current.onOpenModal()

@@ -48,7 +48,7 @@ Hero 图片继续来自 `apps/web/public/images/heros/join/rifling-911/`。构�
 
 邀请流程按 `sessionScopeRevision()` 绑定 API 范围，每次发送和接收结果时均核验。实际切换 root 会重建流程及其 RHF 表单，清理旧验证码、完善凭证、密码、错误交接与导航计时器，回到邮箱步骤要求重新验证；旧自动链不能继续向新 root 发请求。规范化后等价的 root 不重建流程。
 
-注册成功清空敏感材料并使用 `ExMessage.info` 提示，随后一次性前往普通登录。页面 replace 到 `/login`，只用内存路由 state 传邮箱；弹窗切换原容器。手动前往登录或卸载清理自动切换计时器，不创建会话，不带入 SSO 上下文。资格检查与持续错误的通知规则统一见 `.ai/rules/frontend-notifications.md`。
+注册成功清空敏感材料并使用 `toast.info` 提示，随后一次性前往普通登录。页面 replace 到 `/login`，只用内存路由 state 传邮箱；弹窗切换原容器。手动前往登录或卸载清理自动切换计时器，不创建会话，不带入 SSO 上下文。资格检查与持续错误的通知规则统一见 `.ai/rules/frontend-notifications.md`。
 
 入口 `apps/web/index.html` 在所有脚本和资源声明之前设置 `no-referrer`，避免邀请 URL 的邮箱和数字码进入资源请求的 Referer。Vite 会在该 meta 前注入开发脚本，因此 `apps/web/vite.config.ts` 还为本地开发服务设置 `Referrer-Policy: no-referrer` 响应头。URL 清理发生在 React 挂载后，不能替代加载前的入口策略；这些策略不会隐藏原始入口请求 URL。
 
@@ -62,9 +62,9 @@ Web 的 `apps/web/src/auth/storage.ts` 按当前选中的 API root 管理 `local
 
 通过 SDK 校验后，应用以 `new URL(baseUrl, window.location.origin).href.replace(/\/+$/, '')` 取得规范化 root，并选择以下键：
 
-| 规范化 root | `localStorage` 键 |
-| --- | --- |
-| 当前 origin `/api` | 保留既有 `exwebsite.auth.token` |
+| 规范化 root        | `localStorage` 键                                               |
+| ------------------ | --------------------------------------------------------------- |
+| 当前 origin `/api` | 保留既有 `exwebsite.auth.token`                                 |
 | 其他 origin 或路径 | `exwebsite.auth.token:` 加 `encodeURIComponent(normalizedRoot)` |
 
 相对地址与等价绝对地址、尾部斜杠的不同写法共用同一键；不同 origin 或路径各自保存。自定义 root 不读取、复制或迁移旧默认键，也不删除其他 root 的凭据。升级前若自定义 root 的用户只有旧默认键，须在所选自定义 root 重新登录一次；之后可从该 root 的专属键恢复。

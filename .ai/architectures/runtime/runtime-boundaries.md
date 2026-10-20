@@ -38,6 +38,8 @@ PG 管理角色由 `POSTGRES_USER` 配置，缺省为新安装的 `postgres`；�
 
 Build 只读取工具和固定公开编译设置，生成 Contract 并构建 SDK、Website Web/Server，不要求运行秘密、数据库或服务。生产 Website 维护 CLI 使用编译入口。根自动测试默认选择轻量 Website Vitest 与 Node 脚本；完整模式保留临时 PG18 和独立 schema/库等集成夹具，不连接开发库。执行规则以 `TESTING.md` 为准，夹具结构见 `.ai/architectures/contract-tests/test-layers.md`。
 
+管理端作为独立 workspace 应用追加在 Website Server 之后构建，只接收工具白名单和 `NODE_ENV=production`，不接收 Website 的 `VITE_API_BASE_URL`。管理端独立 build/typecheck 不准备 Website Contract/SDK 或连接后端；其请求、类型和模块边界见 `.ai/architectures/admin-web/application-boundaries.md`。
+
 日志在写入前脱敏，原生应用 JSONL 按大小和数量轮转。Nginx 使用由根设置渲染的同源模板，覆盖 HTTPS、WebSocket、内部拒绝与 Hydra public 白名单；系统安装和重载仍由操作者显式执行。Nginx 用实际连接地址覆盖客户端传入的转发 IP；Website 监听入口只信任回环代理，保留客户端 IP 限流隔离。`createApp()` 默认不信任转发头，直接非回环请求不能用该头改变限流键。
 
 运行输出由 `scripts/runtime/output.mjs` 统一呈现服务状态、地址、错误检查项和下一步。颜色仅用于交互终端，非空 `NO_COLOR`、`TERM=dumb` 或 `FORCE_COLOR=0` 禁用颜色；状态同时保留符号与中文文字。终端持续日志默认使用本地短时间，`--verbose` 使用完整 ISO 时间；开发日志在同一次脱敏后分流保存为含 ISO 时间的纯文本，ANSI 配色不进入日志文件。开发就绪摘要在真实 readiness 通过并保存 ready 状态后输出；`service:status` 只呈现 Docker 容器与其健康检查状态，不把缺少容器健康检查等同于应用健康通过。
@@ -53,6 +55,14 @@ Nginx 的 `/api/` 请求体限额按 Contract 中反馈附件的 wire 预算与�
 旧运行入口、额外根 Compose、服务器 Docker 打包和 ExUI 本地链路已退役；身份兼容与 cleanup-only 投递规则继续由业务实现维护。数据库恢复、issuer 切换与资源归属迁移必须独立验收，持久历史库、卷及维护备份保留，不能按新项目名称自动接管原卷。源码、隔离测试和模板校验不等于已有环境切换成功，也不证明 Linux 服务器或公网部署已验收。
 
 ## 开发请求边界
+
+根 `dev` 将 `admin-web` 加入现有应用监督器、持久归属和 SDK 重建代际；管理端配置只解析一次，页面就绪检查不探测 PHP。管理端端口还须与既有 runtime 端口互异。单独 Server 开发不解析管理端配置；生产 `start` 和后台 `service:*` 的应用集合不增加管理端。
+
+根 `dev:web` 使用 `scripts/runtime/frontend-group.mjs` 共同监督 Website 和管理端；`dev:admin` 复用同一协调器，仅选择管理端。协调器先检查全部端口，再登记每个 `spawnOwned` 返回的 handle；部分启动失败、任一子进程自行退出（含 code 0）或取消都会取消 readiness，并等待本轮全部 handles 的 `stopOwned` 完成。取消发生在 spawn 返回前时，仍先收齐 handle 再回收。纯前端入口不接管后台服务、不写完整 runtime 的应用锁或 `run.json`，也不按端口终止原有进程。
+
+`scripts/runtime/admin-frontend.mjs` 仅解析根 `.env.local` 与受支持进程变量中的 `LOCAL_ADMIN_WEB_PORT`、`ADMIN_API_PROXY_TARGET` 和 Node 工具路径。显式 CLI 端口优先于进程和文件；端口默认 5173，范围 1024–65535，显式空值报错。代理缺省 `http://127.0.0.1:8787`，只接受无凭据、业务路径、query 或 hash 的 HTTP(S) origin。管理端进程环境由 OS/工具白名单、选定 Node、开发模式和已校验代理目标组成；不展开完整进程环境或读取 PHP `.env`。`dev:web --port` 仅覆盖 Website，`--admin-port` 覆盖管理端；`dev:admin --port` 覆盖唯一前端。全部页面成功后才输出访问地址，API 后端可用性独立判断。
+
+管理端 Vite 禁用环境文件自动加载和自定义环境变量前缀，低层包 dev/build 同样不向浏览器公开继承的 `VITE_*`。`ADMIN_API_PROXY_TARGET` 只在开发服务器端读取，低层入口同样拒绝含空用户信息的 `http://@host`；纯构建不消费该代理配置。
 
 `apps/web/vite.config.ts` 使用显式 `SERVER_PUBLIC_WEB_BASE_URL` 配置 canonical origin、HMR 地址和可信转发；不从身份启用或历史文档模式推导拓扑。Vite 和公共开发入口均监听回环地址，代理只有 `/api`，保留前缀；其余路径交给 Website SPA。`Referrer-Policy: no-referrer` 在入口响应保护邀请 URL。
 

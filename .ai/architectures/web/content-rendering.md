@@ -38,7 +38,7 @@ flowchart LR
 
 页面模块通过 `apps/web/src/routes/PageAsyncBoundary.tsx` 导入；正文通过受控 AsyncBoundary 复用已有 useContent 状态。共享反馈、详情展开与复制规则见 `.ai/knowledge/components/async-boundary.md`。成员简介弹窗只替换等待展示，继续保留原有局部重试、刷新和返回概览流程。
 
-`apps/web/src/content/mdx.tsx` 提供可扩展组件映射。`packages/components/src/content/` 提供无路由/API 依赖的 CodeBlock、ContentImage、Callout、ContentProse。路由链接、业务按钮和资源 URL 由 Web 集合适配器注入。全局主题、ExUI CSS 和 ExMessage 宿主继续由既有应用入口持有。
+`apps/web/src/content/mdx.tsx` 提供可扩展组件映射。`packages/components/src/content/` 提供无路由/API 依赖的 CodeBlock、ContentImage、Callout、ContentProse。路由链接、业务按钮和资源 URL 由 Web 集合适配器注入。全局主题、ExUI CSS 和 toast 宿主继续由既有应用入口持有。
 
 高亮在构建期完成；浏览器不加载 MDX 编译器、Node 文件系统或高亮引擎。普通代码块从编译 transformer 接收原始文本，复制只作用于当前块。源码与维护记录见 `packages/components/src/content/SOURCES.md`。
 

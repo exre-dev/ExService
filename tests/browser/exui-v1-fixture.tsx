@@ -2,7 +2,7 @@
 import { StrictMode, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
-import { ExMessageContext, GlassSeed, ThemeProvider, useTheme } from '@exre/exui'
+import { Toaster, GlassSeed, ThemeProvider, useTheme } from '@exre/exui'
 import {
   SettingsPanel,
   type SettingsCategory,
@@ -194,7 +194,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
       <GlassSeed />
-      <ExMessageContext />
+      <Toaster position="top-right" duration={3000} visibleToasts={3} />
       {mode === 'settings-modal' ? (
         <AuthProvider>
           <SettingsModalFixture />

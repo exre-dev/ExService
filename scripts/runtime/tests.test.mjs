@@ -114,3 +114,31 @@ test('watch keeps the selected profile and prepares SDK before either verificati
     assert.deepEqual(calls, ['prepare', 'Website', 'runtime'])
   }
 })
+
+test('admin source changes queue the next verification pass and release every watcher on cancellation', async () => {
+  const controller = new AbortController()
+  const callbacks = new Map()
+  const closed = []
+  let runs = 0
+  await watchTests(
+    { signal: controller.signal },
+    async () => {
+      runs++
+      if (runs === 1) {
+        const changed = callbacks.get('apps/admin-web/src')
+        if (changed) changed('change', 'api/client.ts')
+        else controller.abort()
+      } else controller.abort()
+    },
+    {
+      watchDirectory(directory, _options, changed) {
+        const name = relative(root, directory).replaceAll('\\', '/')
+        callbacks.set(name, changed)
+        return { close: () => closed.push(name) }
+      },
+    },
+  )
+  assert.equal(runs, 2)
+  assert.equal(closed.length, callbacks.size)
+  assert.ok(closed.includes('apps/admin-web/src'))
+})

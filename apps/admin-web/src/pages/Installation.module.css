@@ -1,0 +1,41 @@
+.shell {
+  min-height: 100vh;
+  background: #f0f2f5;
+  padding: 48px 16px;
+}
+.card {
+  max-width: 820px;
+  margin: 0 auto;
+}
+.steps {
+  margin: 24px 0;
+}
+.notice {
+  margin-bottom: 24px;
+}
+.warning {
+  margin-bottom: 20px;
+}
+.check {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.retry {
+  margin-top: 16px;
+}
+.fullWidth {
+  width: 100%;
+}
+.force {
+  margin-bottom: 12px;
+}
+.forceNotice {
+  margin-top: 12px;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+}

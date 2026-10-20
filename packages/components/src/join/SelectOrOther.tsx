@@ -27,7 +27,7 @@ interface Props {
   inputRef: (element: HTMLElement | null) => void
 }
 
-/** Only the disclosure mode is local; the answer itself belongs to ExForm. */
+/** Only the disclosure mode is local; the answer itself belongs to Form. */
 export function SelectOrOther({
   value,
   options,

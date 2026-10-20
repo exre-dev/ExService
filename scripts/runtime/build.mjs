@@ -24,6 +24,13 @@ export function buildSpecifications({ workspace = root, inherited = process.env,
       args: [corepack, 'pnpm', '--filter', name, 'build'],
       environment: publicEnv,
     })),
+    {
+      name: '@workspace/admin-web',
+      command: node,
+      cwd: workspace,
+      args: [corepack, 'pnpm', '--filter', '@workspace/admin-web', 'build'],
+      environment: { ...os, NODE_ENV: 'production' },
+    },
   ]
 }
 export async function main(options = {}, execute = runOwned) {

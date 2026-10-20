@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
-import { ExMessageContext, ThemeProvider } from '@exre/exui'
+import { Toaster, ThemeProvider } from '@exre/exui'
 import userEvent from '@testing-library/user-event'
 import type { ContentLoader, ContentModule } from '../../content/store'
 import type { SupportRegistry } from '../../content/support/types'
@@ -68,7 +68,7 @@ function Location() {
 function show(path = '/support') {
   return render(
     <ThemeProvider>
-      <ExMessageContext />
+      <Toaster />
       <MemoryRouter initialEntries={[path]}>
         <FeedbackProvider>
           <Routes>
