@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 function proxyTarget() {
   const value = process.env.ADMIN_API_PROXY_TARGET ?? 'http://127.0.0.1:8787'
   try {
-    if (!/^https?:\/\/[^/?#\\\s]+\/?$/i.test(value)) throw new Error()
+    if (!/^https?:\/\/[^/?#@\\\s]+\/?$/i.test(value)) throw new Error()
     const url = new URL(value)
     if (
       !['http:', 'https:'].includes(url.protocol) ||
@@ -26,6 +26,7 @@ function proxyTarget() {
 }
 export default defineConfig(({ command }) => ({
   envDir: false,
+  envPrefix: [],
   plugins: [react()],
   resolve: { alias: { '@admin': fileURLToPath(new URL('.', import.meta.url)) } },
   server: {

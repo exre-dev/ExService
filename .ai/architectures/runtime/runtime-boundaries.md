@@ -62,6 +62,8 @@ Nginx 的 `/api/` 请求体限额按 Contract 中反馈附件的 wire 预算与�
 
 `scripts/runtime/admin-frontend.mjs` 仅解析根 `.env.local` 与受支持进程变量中的 `LOCAL_ADMIN_WEB_PORT`、`ADMIN_API_PROXY_TARGET` 和 Node 工具路径。显式 CLI 端口优先于进程和文件；端口默认 5173，范围 1024–65535，显式空值报错。代理缺省 `http://127.0.0.1:8787`，只接受无凭据、业务路径、query 或 hash 的 HTTP(S) origin。管理端进程环境由 OS/工具白名单、选定 Node、开发模式和已校验代理目标组成；不展开完整进程环境或读取 PHP `.env`。`dev:web --port` 仅覆盖 Website，`--admin-port` 覆盖管理端；`dev:admin --port` 覆盖唯一前端。全部页面成功后才输出访问地址，API 后端可用性独立判断。
 
+管理端 Vite 禁用环境文件自动加载和自定义环境变量前缀，低层包 dev/build 同样不向浏览器公开继承的 `VITE_*`。`ADMIN_API_PROXY_TARGET` 只在开发服务器端读取，低层入口同样拒绝含空用户信息的 `http://@host`；纯构建不消费该代理配置。
+
 `apps/web/vite.config.ts` 使用显式 `SERVER_PUBLIC_WEB_BASE_URL` 配置 canonical origin、HMR 地址和可信转发；不从身份启用或历史文档模式推导拓扑。Vite 和公共开发入口均监听回环地址，代理只有 `/api`，保留前缀；其余路径交给 Website SPA。`Referrer-Policy: no-referrer` 在入口响应保护邀请 URL。
 
 `apps/web/dev-entry.ts` 在 HTTP 与 upgrade 转发前拒绝规范化 `/api/internal` 和历史 `/docs/internal` 根及后代，覆盖重复编码、斜杠/反斜杠、点段和畸形 escape。不同 Host 的 GET/HEAD 以不缓存的 307 跳到配置 origin 并保留路径/query，其他方法返回 421；内部拒绝优先。API 代理从可信 public origin 设置 forwarding host/proto/port，覆盖客户端 X-Forwarded-For 为回环并移除 Forwarded，浏览器 Origin 保持不变。公共入口将合法 upgrade 交回 Vite，保留 HMR。
