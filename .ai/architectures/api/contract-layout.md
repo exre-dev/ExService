@@ -1,43 +1,18 @@
-# API Contract 的结构与消费路径
+# PHP API Contract 的定义与消费
 
-`api/openapi.yaml` 是唯一 HTTP API Contract 入口，按路径和 schema 拆分源文件；Server、SDK 类型生成、测试和运行工具消费统一生成的 `api/generated/openapi.json`。选择理由见 `.ai/decisions/api/01-openapi-as-single-contract.md`。
+PHP 服务在 Controller 的 OpenAPI Attributes 与 `apps/php-server/app/common/openapi/` schema 中维护接口定义；`apps/php-server/app/route.php` 显式注册实际路由。PHP 的 `composer api:generate` 生成 public/internal 两版 YAML，`composer api:lint` 和 `composer api:check` 分别检查路由/归属和生成集合。PHP 开发规则见 `apps/php-server/AGENTS.md`。
 
-_最后更新：2026-10-19_
+_最后更新：2026-10-20_
 
-## 源文件与生成物
+| PHP 生成物                                                                                                                  | 用途                                                |
+| --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `apps/php-server/api/public/openapi.yaml`、`apps/php-server/api/public/paths/`、`apps/php-server/api/public/schemas/`       | 外部插件、第三方应用和 OAuth 接入的模块化公开契约。 |
+| `apps/php-server/api/internal/openapi.yaml`、`apps/php-server/api/internal/paths/`、`apps/php-server/api/internal/schemas/` | Website、管理端等内部业务的模块化契约。             |
+| `apps/php-server/api/generated/openapi.public.yaml`                                                                         | 可独立分发的完整公开 YAML。                         |
+| `apps/php-server/api/generated/openapi.internal.yaml`                                                                       | 主仓库 SDK 类型与 operation policy 的输入。         |
 
-`api/openapi.yaml` 声明顶层结构并引用 `api/paths/` 和 `api/schemas/`；`scripts/api/generate.mjs` 将它们打包成单份 JSON：
+两版 operation 按 PHP 的 `x-audience` 归属，不互相复制。公开范围和匿名权限是不同维度；契约与实际路由同时核对。模块化入口必须携带其引用文件一起分发。PHP 生成物不可在主仓库手改。
 
-| 段落                         | 作用                                                                           |
-| ---------------------------- | ------------------------------------------------------------------------------ |
-| `openapi` / `info`           | 规范版本与 Contract 适用范围。                                                 |
-| `servers[].url: /api`        | 描述客户端 API base URL；服务端路由前缀另由 Glue 注册。                        |
-| `tags`                       | operation 的归类。                                                             |
-| `paths`                      | 引用 `api/paths/` 中的 HTTP 方法、`operationId`、请求、响应与逐操作 security。 |
-| `components.securitySchemes` | 声明 HTTP Bearer `bearerAuth`；受保护操作显式引用它。                          |
-| `components.headers`         | 复用 `Cache-Control` 与 `Retry-After` header 规则。                            |
-| `components.responses`       | 复用普通安全错误与带重试延迟的错误响应。                                       |
-| `components.schemas`         | 引用 `api/schemas/` 中的共享 schema。                                          |
+主仓库 `pnpm api:lint` 用 Redocly 检查两版模块化入口；`pnpm api:generate` 从完整内部 YAML 的单一快照生成 `packages/sdk/src/generated/schema.d.ts` 和 `packages/sdk/src/generated/operation-policy.ts`，相同内容不重写，发布失败可回滚；`pnpm api:check` 只读比较这两项 SDK 产物。PHP 的 Composer 检查覆盖定义、路由与全部 PHP 产物，主仓库的命令只证明消费一致性，不能代替 PHP 行为测试。
 
-每个 operation 都以 `operationId` 绑定 Server handler；缺失或重复会破坏映射。部分公开操作显式写 `security: []`，受保护操作声明 `bearerAuth`。当前没有 API 版本策略或兼容层；破坏性 Contract 变更须单独评审。
-
-`api/generated/openapi.json` 和 `packages/sdk/src/generated/schema.d.ts` 都是生成物，禁止手改或从 Server 实现反向生成。生成流程先校验引用与 operation，内容未变化时不重写。OpenAPI 3.1 schema 保持 Draft-07 兼容子集，原因见 `.ai/decisions/api/02-draft07-compatible-schema-subset.md`。
-
-类型入口 `@workspace/sdk/types` 只公开 Contract 生成声明（包括 `paths`、`operations` 与 `components`），没有运行时 JavaScript；应用与 Server 用 `import type` 消费。运行时对象 API 的方法、路径与类型均从这些声明推导，公开入口及消费前的 SDK 构建要求见 `.ai/architectures/sdk/client-boundaries.md`。
-
-## 错误响应
-
-`components.responses.ErrorResponse` 和 `RetryableErrorResponse` 都引用同一份 `components.schemas.ErrorEnvelope`。后者额外要求 `Retry-After`，供需要告知等待时间的失败响应使用。operation 可显式声明 4xx/5xx，并以 `default` 覆盖其他失败；不能把早期“只有一份 response、没有显式 4xx”的描述当作当前 Contract。`ErrorEnvelope.error.code` 在 Contract 中仅约束为字符串，具体码值由 Server 实现维护。
-
-## 消费路径
-
-| 消费者                                         | 使用方式                                                                        |
-| ---------------------------------------------- | ------------------------------------------------------------------------------- |
-| `pnpm api:lint`                                | 用 Redocly 检查源入口、引用和项目规则。                                         |
-| `pnpm api:bundle` / `pnpm api:generate`        | 生成统一 JSON；后者还用 `openapi-typescript` 生成 SDK 类型。                    |
-| `pnpm api:check`                               | 无写入核对 JSON 与 SDK 类型是否与源一致。                                       |
-| `apps/server/src/contract/document.ts`         | 无副作用读取 JSON，解析内部 JSON Pointer 与 path item 引用，枚举 operation。    |
-| `apps/server/src/http/plugin.ts`               | 检查 handler 覆盖后注册一次带 `/api` 前缀的 Glue。                              |
-| `tests/helpers/contract.ts`、`tests/contract/` | 复用 reader，从 JSON 提取 schema，检查路由、原始输出和双向 `operationId` 覆盖。 |
-
-`apps/server/src/domains/join/applications/form-validation.ts`、`apps/server/src/http/cors.ts` 与 `scripts/runtime/nginx.mjs` 也读取统一 JSON。`redocly.yaml` 的规则开关属于仓库 lint 配置，不改变 Contract 中已存在的 Bearer scheme、显式错误响应或 schema。
+内部 operation 的完整路径已含 `/api`；SDK 的 base URL 是服务根，`servers[].url` 不替代实际路由登记。成功 JSON 为 PHP `{msg,data}`，错误从真实 HTTP 状态与适用的 `{msg}` 读取；各 operation 可有 HTML、二进制、204 或其他专有响应。SDK 仅在内部契约中声明的会话鉴权 operation 处理本站 401。破坏性契约调整须评审受影响消费者，不沿用旧 Node/Glue 的 Draft-07 限制作为 PHP 的默认规则。

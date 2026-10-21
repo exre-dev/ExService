@@ -1,4 +1,8 @@
 // @vitest-environment jsdom
+vi.mock('../../../auth/AuthContext', () => ({
+  useAuth: () => ({ userId: 1, state: { status: 'authenticated' } }),
+}))
+import { FEEDBACK_LIMITS } from './schema'
 import { afterEach, beforeAll, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Button, Toaster, ThemeProvider } from '@exre/exui'
@@ -6,7 +10,7 @@ import { StrictMode } from 'react'
 import { Link, MemoryRouter, Route, Routes } from 'react-router'
 import { FeedbackProvider, useFeedback } from './FeedbackProvider'
 import type { FeedbackSnapshot } from './flow'
-import { writeToken } from '../../../auth/storage'
+import { AUTH_TOKEN_KEY, feedbackStorageKey, writeToken } from '../../../auth/storage'
 
 function pasteMarkdown(node: HTMLElement, text: string) {
   fireEvent.paste(node, {
@@ -27,7 +31,7 @@ vi.mock('./api', () => ({
     reason: null,
     fields: [],
     actions: [],
-    limits: {},
+    limits: FEEDBACK_LIMITS,
     kinds: ['suggestion', 'complaint'].map((kind) => ({ kind, available: true, reason: null })),
   }),
   feedbackPort: port,
@@ -78,7 +82,7 @@ function Entries() {
 }
 
 function mount() {
-  localStorage.setItem('exwebsite.auth.token', 'preview-token')
+  localStorage.setItem(AUTH_TOKEN_KEY, 'preview-token')
   render(
     <StrictMode>
       <ThemeProvider defaultTheme="light">
@@ -123,7 +127,7 @@ function snapshot(
     submissionKey: '22222222-2222-4222-8222-222222222222',
     revision: 1,
     createdAt: 1,
-    receiveExpiresAt: 86400001,
+    receiveExpiresAt: 86401,
     status,
     nextAction,
     taskId: null,
@@ -208,8 +212,8 @@ it('continues after closing and blocks both entrances until the submission finis
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(await screen.findByText('正在上传中，请稍候')).toBeTruthy()
   }
-  await resolve(snapshot('ready', 'continue'))
-  expect(await screen.findByText('反馈已提交')).toBeTruthy()
+  await resolve(snapshot('receiving', 'continue'))
+  expect(await screen.findByText('反馈已接收')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: '投诉和建议' }))
   expect(await screen.findByText('反馈和建议')).toBeTruthy()
 })
@@ -221,8 +225,8 @@ it('continues the frozen submission after Escape hides its dialog', async () => 
   await start()
   fireEvent.keyDown(document, { key: 'Escape' })
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-  await resolve(snapshot('ready', 'continue'))
-  expect(await screen.findByText('反馈已提交')).toBeTruthy()
+  await resolve(snapshot('receiving', 'continue'))
+  expect(await screen.findByText('反馈已接收')).toBeTruthy()
   expect(screen.queryByRole('dialog')).toBeNull()
 })
 
@@ -234,18 +238,19 @@ it('keeps advancing and reports completion after navigating to another page', as
   fireEvent.click(screen.getByRole('button', { name: '关闭反馈表单' }))
   fireEvent.click(screen.getByRole('link', { name: '离开支持中心' }))
   expect(screen.getByRole('heading', { name: '其他页面' })).toBeTruthy()
-  await resolve(snapshot('ready', 'continue'))
-  expect(await screen.findByText('反馈已提交')).toBeTruthy()
+  await resolve(snapshot('receiving', 'continue'))
+  expect(await screen.findByText('反馈已接收')).toBeTruthy()
   expect(screen.queryByRole('dialog')).toBeNull()
 })
 
 it('offers retry on a known failure without showing the progress block', async () => {
-  port.prepare.mockResolvedValueOnce(snapshot('failed', 'retry'))
+  port.prepare.mockRejectedValueOnce({ status: 429 })
+  port.lookup.mockRejectedValueOnce({ status: 404 })
   mount()
   await start(false)
   expect(await screen.findByRole('button', { name: '重试' })).toBeTruthy()
   expect(screen.queryByText(/提交编号/)).toBeNull()
-  expect(screen.queryByText('反馈已提交')).toBeNull()
+  expect(screen.queryByText('反馈已接收')).toBeNull()
 })
 
 it('leaves an uncertain submission available only for checking', async () => {
@@ -255,11 +260,11 @@ it('leaves an uncertain submission available only for checking', async () => {
   await start(false)
   expect(await screen.findByRole('button', { name: '核对进度' })).toBeTruthy()
   expect(screen.queryByRole('button', { name: '重试' })).toBeNull()
-  expect(screen.queryByText('反馈已提交')).toBeNull()
+  expect(screen.queryByText('反馈已接收')).toBeNull()
 })
 
 it('does not offer another write when advancing and reading both lose their responses', async () => {
-  port.prepare.mockResolvedValueOnce(snapshot('ready', 'continue'))
+  port.prepare.mockResolvedValueOnce(snapshot('receiving', 'continue'))
   port.advance.mockRejectedValueOnce(new Error('timeout'))
   port.get.mockRejectedValueOnce(new Error('offline'))
   mount()
@@ -269,20 +274,20 @@ it('does not offer another write when advancing and reading both lose their resp
   expect(screen.queryByRole('button', { name: '重试' })).toBeNull()
 })
 
-it('allows retry after reopening confirms that an uncertain submission has failed', async () => {
+it('allows continuing after reopening confirms a receiving submission', async () => {
   port.prepare.mockRejectedValueOnce(new Error('connection lost'))
   port.lookup.mockRejectedValueOnce({ code: 'NOT_FOUND' })
   mount()
   await start(false)
   expect(await screen.findByRole('button', { name: '核对进度' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: '关闭反馈表单' }))
-  const pointer = JSON.parse(sessionStorage.getItem('exwebsite.feedback.community.v1')!)
+  const pointer = JSON.parse(sessionStorage.getItem(feedbackStorageKey(1, 'community'))!)
   port.lookup.mockResolvedValueOnce({
-    ...snapshot('failed', 'retry'),
+    ...snapshot('receiving', 'continue'),
     submissionKey: pointer.submissionKey,
   })
   fireEvent.click(screen.getByRole('button', { name: '投诉和建议' }))
-  expect(await screen.findByRole('button', { name: '重试' })).toBeTruthy()
+  expect(await screen.findByRole('button', { name: '继续提交' })).toBeTruthy()
 })
 
 it('preserves a known prepare rejection when lookup still finds no record after reopening', async () => {
@@ -307,7 +312,7 @@ it('closes the open modal only after successful completion', async () => {
   await start()
   expect(screen.getByRole('dialog')).toBeTruthy()
   await resolve(snapshot('completed', 'done'))
-  expect(await screen.findByText('反馈已提交')).toBeTruthy()
+  expect(await screen.findByText('反馈已接收')).toBeTruthy()
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 })
 
@@ -316,12 +321,14 @@ it('reports a failure without reopening a modal the user has closed', async () =
   mount()
   await start()
   fireEvent.click(screen.getByRole('button', { name: '关闭反馈表单' }))
-  await resolve(snapshot('failed', 'retry'))
-  expect(await screen.findByText('本次提交未完成，请重试。')).toBeTruthy()
+  port.advance.mockRejectedValueOnce({ status: 409 })
+  port.get.mockResolvedValueOnce(snapshot('receiving', 'continue'))
+  await resolve(snapshot('receiving', 'continue'))
+  expect(await screen.findAllByText('提交进度已变化，请核对当前记录。')).toHaveLength(1)
   expect(screen.queryByRole('dialog')).toBeNull()
-  port.get.mockResolvedValue(snapshot('failed', 'retry'))
+  port.get.mockResolvedValue(snapshot('receiving', 'continue'))
   fireEvent.click(screen.getByRole('button', { name: '投诉和建议' }))
-  expect(await screen.findByRole('button', { name: '重试' })).toBeTruthy()
+  expect(await screen.findByRole('button', { name: '继续提交' })).toBeTruthy()
   expect((screen.getByLabelText('标题') as HTMLInputElement).value).toBe('体验建议')
 })
 
@@ -336,5 +343,5 @@ it('releases the previous account gate without accepting its late completion', a
   fireEvent.click(screen.getByRole('button', { name: '投诉和建议' }))
   expect(await screen.findByRole('dialog')).toBeTruthy()
   await resolve(snapshot('completed', 'done'))
-  expect(screen.queryByText('反馈已提交')).toBeNull()
+  expect(screen.queryByText('反馈已接收')).toBeNull()
 })

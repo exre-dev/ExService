@@ -9,7 +9,7 @@ _最后更新：2026-10-19_
 
 ## 当前适用范围
 
-以下正文保留当时的决策与证据。旧 `packages/api-client/`、openapi-fetch factory、源码运行时导出和 Node 限制均属历史，已由 `packages/sdk/` 的 Browser/Node 构建入口与单例对象请求 API 取代；当前边界见 `.ai/architectures/sdk/client-boundaries.md`。生成目标现为 `api/generated/openapi.json` 与 `packages/sdk/src/generated/schema.d.ts`，只由生成器维护并随 Contract 提交的原则不变。
+以下正文保留当时的决策与证据。旧 `packages/api-client/`、openapi-fetch factory、源码运行时导出和 Node 限制均属历史，已由 `packages/sdk/` 的 Browser/Node 构建入口与单例对象请求 API 取代；当前边界见 `.ai/architectures/sdk/client-boundaries.md`。当前从 PHP 完整内部 YAML 生成 `packages/sdk/src/generated/schema.d.ts` 与 `packages/sdk/src/generated/operation-policy.ts`，生成物只由生成器维护并随 Contract 提交；唯一契约布局与生成流程说明见 `.ai/architectures/api/contract-layout.md`。
 
 ## 背景
 

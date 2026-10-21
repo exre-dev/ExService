@@ -6,31 +6,39 @@ import { afterEach, expect, it, vi } from 'vitest'
 vi.mock('@workspace/sdk', async () => {
   const { createRuntime } = await import('../../../../packages/sdk/src/runtime')
   const create = (origin: string) =>
-    createRuntime(
-      {
-        environment: 'browser',
-        origin,
-        readToken: () => {
-          try {
-            return { kind: 'known', value: window.localStorage.getItem('exwebsite.auth.token') }
-          } catch {
-            return { kind: 'unavailable' }
+    createRuntime({
+      environment: 'browser',
+      origin,
+      readToken: () => {
+        try {
+          return {
+            kind: 'known',
+            value: window.localStorage.getItem(
+              `exwebsite.php.auth.v1:${encodeURIComponent(import.meta.env.VITE_API_BASE_URL || window.location.origin)}`,
+            ),
           }
-        },
-        clearToken: (expected) => {
-          if (window.localStorage.getItem('exwebsite.auth.token') !== expected) return false
-          window.localStorage.removeItem('exwebsite.auth.token')
-          return true
-        },
+        } catch {
+          return { kind: 'unavailable' }
+        }
       },
-      async () => {
-        throw new Error('COS is not part of this fixture')
+      clearToken: (expected) => {
+        if (
+          window.localStorage.getItem(
+            `exwebsite.php.auth.v1:${encodeURIComponent(import.meta.env.VITE_API_BASE_URL || window.location.origin)}`,
+          ) !== expected
+        )
+          return false
+        window.localStorage.removeItem(
+          `exwebsite.php.auth.v1:${encodeURIComponent(import.meta.env.VITE_API_BASE_URL || window.location.origin)}`,
+        )
+        return true
       },
-    )
+    })
   let runtime = create(window.location.origin)
   return {
-    instance: ((config: Parameters<typeof runtime.instance>[0]) =>
-      runtime.instance(config)) as unknown as typeof runtime.instance,
+    instance: new Proxy(runtime.instance, {
+      apply: (_target, receiver, args) => Reflect.apply(runtime.instance, receiver, args),
+    }),
     setBaseUrl: (url: string) => {
       runtime = create(new URL(url).origin)
       runtime.setBaseUrl(url)
@@ -63,16 +71,19 @@ it.each(['/support', '/support/errors/guide?via=direct#step', '/support/unknown'
       response.writeHead(401, { 'content-type': 'application/json' })
       response.end(
         JSON.stringify({
-          error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'support-expired' },
+          msg: 'expired',
         }),
       )
     })
     await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve))
     const address = server.address()
     if (!address || typeof address === 'string') throw new Error('expected fixture TCP address')
-    vi.stubEnv('VITE_API_BASE_URL', `http://127.0.0.1:${address.port}/api`)
+    vi.stubEnv('VITE_API_BASE_URL', `http://127.0.0.1:${address.port}`)
     window.history.replaceState({}, '', path)
-    window.localStorage.setItem('exwebsite.auth.token', 'current-token')
+    window.localStorage.setItem(
+      `exwebsite.php.auth.v1:${encodeURIComponent(import.meta.env.VITE_API_BASE_URL || window.location.origin)}`,
+      'current-token',
+    )
     const location = window.location
     const replace = vi.fn()
     // jsdom cannot navigate; expose navigation as an observable browser boundary.
@@ -97,9 +108,13 @@ it.each(['/support', '/support/errors/guide?via=direct#step', '/support/unknown'
     const unsubscribe = subscribeSessionChanges(() => observed.push(readToken(window.localStorage)))
     try {
       await expect(
-        instance({ url: '/auth/me', method: 'GET', alert: false }),
-      ).rejects.toMatchObject({ code: 'SESSION_INVALID' })
-      expect(window.localStorage.getItem('exwebsite.auth.token')).toBeNull()
+        instance({ url: '/api/auth/me', method: 'GET', alert: false }),
+      ).rejects.toMatchObject({ code: 'HTTP_ERROR' })
+      expect(
+        window.localStorage.getItem(
+          `exwebsite.php.auth.v1:${encodeURIComponent(import.meta.env.VITE_API_BASE_URL || window.location.origin)}`,
+        ),
+      ).toBeNull()
       expect(observed).toEqual([null])
       expect(replace).not.toHaveBeenCalled()
       expect(location.pathname + location.search + location.hash).toBe(path)
@@ -114,16 +129,19 @@ it('keeps the existing expiry redirect for similarly prefixed non-Support routes
     response.writeHead(401, { 'content-type': 'application/json' })
     response.end(
       JSON.stringify({
-        error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'ordinary-expired' },
+        msg: 'expired',
       }),
     )
   })
   await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve))
   const address = server.address()
   if (!address || typeof address === 'string') throw new Error('expected fixture TCP address')
-  vi.stubEnv('VITE_API_BASE_URL', `http://127.0.0.1:${address.port}/api`)
+  vi.stubEnv('VITE_API_BASE_URL', `http://127.0.0.1:${address.port}`)
   window.history.replaceState({}, '', '/support-other')
-  window.localStorage.setItem('exwebsite.auth.token', 'current-token')
+  window.localStorage.setItem(
+    `exwebsite.php.auth.v1:${encodeURIComponent(import.meta.env.VITE_API_BASE_URL || window.location.origin)}`,
+    'current-token',
+  )
   const replace = vi.fn()
   vi.stubGlobal('window', {
     localStorage: window.localStorage,
@@ -140,8 +158,10 @@ it('keeps the existing expiry redirect for similarly prefixed non-Support routes
   const { installSdkIntegration } = await import('@web/src/api/client')
   const { instance } = await import('@workspace/sdk')
   disposeIntegration = installSdkIntegration()
-  await expect(instance({ url: '/auth/me', method: 'GET', alert: false })).rejects.toMatchObject({
-    code: 'SESSION_INVALID',
+  await expect(
+    instance({ url: '/api/auth/me', method: 'GET', alert: false }),
+  ).rejects.toMatchObject({
+    code: 'HTTP_ERROR',
   })
   expect(replace).toHaveBeenCalledWith('/login')
 })
@@ -164,17 +184,20 @@ it('keeps a newer cross-tab session when an old Web API request expires before i
       response.statusCode = 401
       response.end(
         JSON.stringify({
-          error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'old-request' },
+          msg: 'expired',
         }),
       )
-    } else response.end(JSON.stringify({ status: 'ok' }))
+    } else response.end(JSON.stringify({ msg: 'ok', data: { status: 'ok' } }))
   })
   await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve))
   const address = server.address()
   if (!address || typeof address === 'string') throw new Error('expected fixture TCP address')
-  vi.stubEnv('VITE_API_BASE_URL', `http://127.0.0.1:${address.port}/api`)
+  vi.stubEnv('VITE_API_BASE_URL', `http://127.0.0.1:${address.port}`)
   window.history.replaceState({}, '', '/login')
-  window.localStorage.setItem('exwebsite.auth.token', 'old-token')
+  window.localStorage.setItem(
+    `exwebsite.php.auth.v1:${encodeURIComponent(import.meta.env.VITE_API_BASE_URL || window.location.origin)}`,
+    'old-token',
+  )
   vi.stubGlobal('window', {
     localStorage: window.localStorage,
     addEventListener: window.addEventListener.bind(window),
@@ -190,14 +213,22 @@ it('keeps a newer cross-tab session when an old Web API request expires before i
   const { installSdkIntegration } = await import('@web/src/api/client')
   const { instance } = await import('@workspace/sdk')
   disposeIntegration = installSdkIntegration()
-  const pending = instance({ url: '/health', method: 'GET', alert: false })
+  const pending = instance({ url: '/api/auth/me', method: 'GET', alert: false })
   await reached
-  window.localStorage.setItem('exwebsite.auth.token', 'new-token')
+  window.localStorage.setItem(
+    `exwebsite.php.auth.v1:${encodeURIComponent(import.meta.env.VITE_API_BASE_URL || window.location.origin)}`,
+    'new-token',
+  )
   release()
-  await expect(pending).rejects.toMatchObject({ code: 'SESSION_INVALID' })
-  expect(window.localStorage.getItem('exwebsite.auth.token')).toBe('new-token')
-  await expect(instance({ url: '/health', method: 'GET', alert: false })).resolves.toEqual({
-    status: 'ok',
+  await expect(pending).rejects.toMatchObject({ code: 'HTTP_ERROR' })
+  expect(
+    window.localStorage.getItem(
+      `exwebsite.php.auth.v1:${encodeURIComponent(import.meta.env.VITE_API_BASE_URL || window.location.origin)}`,
+    ),
+  ).toBe('new-token')
+  await expect(instance({ url: '/api/auth/me', method: 'GET', alert: false })).resolves.toEqual({
+    msg: 'ok',
+    data: { status: 'ok' },
   })
   expect(authorization).toEqual(['Bearer old-token', 'Bearer new-token'])
 })
@@ -209,16 +240,19 @@ it('clears a matching persisted session and notifies the bound Web session', asy
     response.writeHead(401, { 'content-type': 'application/json' })
     response.end(
       JSON.stringify({
-        error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'current-request' },
+        msg: 'expired',
       }),
     )
   })
   await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve))
   const address = server.address()
   if (!address || typeof address === 'string') throw new Error('expected fixture TCP address')
-  vi.stubEnv('VITE_API_BASE_URL', `http://127.0.0.1:${address.port}/api`)
+  vi.stubEnv('VITE_API_BASE_URL', `http://127.0.0.1:${address.port}`)
   window.history.replaceState({}, '', '/login?ssoRequestId=keep-this-container')
-  window.localStorage.setItem('exwebsite.auth.token', 'current-token')
+  window.localStorage.setItem(
+    `exwebsite.php.auth.v1:${encodeURIComponent(import.meta.env.VITE_API_BASE_URL || window.location.origin)}`,
+    'current-token',
+  )
   vi.stubGlobal('window', {
     localStorage: window.localStorage,
     addEventListener: window.addEventListener.bind(window),
@@ -238,11 +272,17 @@ it('clears a matching persisted session and notifies the bound Web session', asy
   const observed: Array<string | null> = []
   const unsubscribe = subscribeSessionChanges(() => observed.push(readToken(window.localStorage)))
   try {
-    await expect(instance({ url: '/health', method: 'GET', alert: false })).rejects.toMatchObject({
-      code: 'SESSION_INVALID',
+    await expect(
+      instance({ url: '/api/auth/me', method: 'GET', alert: false }),
+    ).rejects.toMatchObject({
+      code: 'HTTP_ERROR',
     })
     expect(authorization).toEqual(['Bearer current-token'])
-    expect(window.localStorage.getItem('exwebsite.auth.token')).toBeNull()
+    expect(
+      window.localStorage.getItem(
+        `exwebsite.php.auth.v1:${encodeURIComponent(import.meta.env.VITE_API_BASE_URL || window.location.origin)}`,
+      ),
+    ).toBeNull()
     expect(observed).toEqual([null])
     expect(window.location.pathname).toBe('/login')
     expect(window.location.search).toBe('?ssoRequestId=keep-this-container')

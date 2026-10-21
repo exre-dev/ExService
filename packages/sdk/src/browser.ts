@@ -3,7 +3,7 @@ import { createRuntime } from './runtime.js'
 import type { RuntimeEnvironment } from './config.js'
 import type { SdkInstance, SessionExpiredHandler } from './request-types.js'
 import type { Storage } from './storage/types.js'
-const tokenKey = 'exwebsite.auth.token'
+const tokenKey = `exwebsite.php.auth.v1:${encodeURIComponent(typeof location === 'undefined' ? '' : location.origin)}`
 const environment: RuntimeEnvironment = {
   environment: 'browser',
   origin: typeof location === 'undefined' ? undefined : location.origin,
@@ -35,10 +35,7 @@ const environment: RuntimeEnvironment = {
       location.replace(target.href)
   },
 }
-const runtime = createRuntime(
-  environment,
-  async () => (await import('./storage/browser.js')).transport,
-)
+const runtime = createRuntime(environment)
 export const instance: SdkInstance = runtime.instance
 export const storage: Storage = runtime.storage
 export const setBaseUrl: (url: string) => void = runtime.setBaseUrl

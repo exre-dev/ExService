@@ -1,10 +1,8 @@
 # Generated artifacts have their own generators.
-api/generated/
 packages/sdk/src/generated/
 apps/admin-web/src/api/schema.d.ts
 packages/components/src/tiptap/fonts/maple-mono-cn/font.scss
 packages/components/src/tiptap/fonts/maple-mono-cn/manifest.json
-apps/server/drizzle/meta/
 pnpm-lock.yaml
 
 # Build, test, local tooling, and vendored output.
@@ -19,3 +17,6 @@ playwright-report/
 test-results/
 output/
 vendor/
+
+# PHP owns its formatting and generated contract.
+apps/php-server/

@@ -16,11 +16,13 @@ import {
   sessionScopeRevision,
   startSessionSync,
   subscribeSessionChanges,
+  serviceResourceUrl,
 } from '@web/src/auth/storage'
 import { bindSettingsToken } from '@web/src/settings/settingsConfig'
 
 interface AuthContextValue {
   state: AuthDisplayState
+  userId: number | null
   modalMode: AuthMode | null
   openModal: (mode: AuthMode) => void
   closeModal: () => void
@@ -34,6 +36,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthDisplayState>({ status: 'loading' })
+  const [userId, setUserId] = useState<number | null>(null)
   const [modalMode, setModalMode] = useState<AuthMode | null>(null)
   const generation = useRef(0)
   const scope = sessionScopeRevision()
@@ -45,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (readToken(window.localStorage) !== token) return
         removeMatchingToken(window.localStorage, token)
         generation.current += 1
+        setUserId(null)
         setState({ status: 'anonymous' })
       } catch {
         setState({ status: 'unavailable', message: '浏览器无法读取登录信息' })
@@ -61,32 +65,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       token = readToken(window.localStorage)
     } catch {
+      setUserId(null)
       setState({ status: 'unavailable', message: '浏览器无法读取登录信息' })
       return
     }
     if (token === null) {
+      setUserId(null)
       setState({ status: 'anonymous' })
       return
     }
     try {
-      const data = await instance({ url: '/auth/me', method: 'GET', alert: false })
+      const { data } = await instance({ url: '/api/auth/me', method: 'GET', alert: false })
       if (currentGeneration !== generation.current || requestScope !== sessionScopeRevision()) {
         return
       }
       if (readToken(window.localStorage) !== token) return
+      setUserId(data.id)
       setState({
         status: 'authenticated',
-        nickname: data.nickname,
-        initial: firstVisibleCharacter(data.nickname),
-        avatarUrl: data.avatarUrl ?? null,
+        nickname: data.username,
+        initial: firstVisibleCharacter(data.username),
+        avatarUrl: serviceResourceUrl(data.avatar),
       })
       return
     } catch (error) {
       if (currentGeneration === generation.current && requestScope === sessionScopeRevision()) {
         const latestToken = readToken(window.localStorage)
         if (latestToken !== null && latestToken !== token) return
-        if (error instanceof ExAxiosError && error.code === 'SESSION_INVALID')
-          setState({ status: 'anonymous' })
+        setUserId(null)
+        if (error instanceof ExAxiosError && error.status === 401) setState({ status: 'anonymous' })
         else setState({ status: 'unavailable', message: '暂时无法连接认证服务' })
       }
     }
@@ -114,13 +121,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearBrowserSession()
     bindSettingsToken(null)
     generation.current += 1
+    setUserId(null)
     setModalMode(null)
     setState({ status: 'anonymous' })
     if (token === null) return
     // Keep the captured credential for revocation after clearing the shared HTTP token.
     // Avoid reloading here: it can abort revocation before the server receives it.
     void instance({
-      url: '/auth/logout',
+      url: '/api/auth/logout',
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       alert: false,
@@ -133,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         state,
+        userId,
         modalMode,
         openModal: setModalMode,
         closeModal: () => setModalMode(null),

@@ -1,6 +1,8 @@
 # 新上传头像统一为 512×512 WebP
 
-- 状态：已实现
+> 已被 PHP 接管取代：以下正文保存当时决定与理由，旧路径、命令、schema 和测试不再指导现行实现。当前边界见 `.ai/architectures/overview.md`、`.ai/architectures/api/contract-layout.md` 和 `.ai/databases/data-model.md`。
+
+- 状态：旧 Node 头像实现已退役；PHP 头像行为以当前 Controller 为准
 - 模块：`server`
 - 日期：2026-09-24
 - 来源：用户设置面板设计 `.notes/archive/backend-sandbox/user-settings/specs/2026-09-24-user-settings-panel-design.md` 与技术 RFC `.notes/archive/backend-sandbox/user-settings/rfcs/user-settings-panel-rfc.md`

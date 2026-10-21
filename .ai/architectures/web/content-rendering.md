@@ -114,7 +114,7 @@ Hero 在正常文档流中占满顶栏下方的首屏，圆角图片背景与页
 
 `apps/web/src/routes/SupportAccess.tsx` 位于 PageAsyncBoundary 之外，读取既有 AuthProvider 的会话结果。只有 authenticated 才挂载 Support 子树；其他状态不启动页面 loader。App、RootLayout 与 SiteHeader 不静态导入 Support 注册表。登录按钮经 RootLayout Outlet context 打开既有弹窗，关闭时优先归还页面触发器焦点，失效后回退顶栏。
 
-共享 Web Client 收到当前会话的 SESSION_INVALID 时仍清理 token 并通知认证订阅者；在 `/support` 及其后代停留原地址，交给上述边界显示登录提示并保留 query/hash。仅名称前缀相似的其他路由不使用此例外。
+受保护 PHP operation 对当前会话返回 401 时，SDK 与 Web 处理器按凭据归属清理并通知认证订阅者；在 `/support` 及其后代停留原地址，交给上述边界显示登录提示并保留 query/hash。仅名称前缀相似的其他路由不使用此例外。
 
 ClickUp 配置包含 `game`、`community` 与 `requestBucket` 三个视图，每个视图的 title、embedUrl 与可选 publicUrl 都经过构建校验。固定 host 策略在 `apps/web/build/support/clickup-policy.ts` 中维护，当前只允许用户提供的官方 iframe 来源 `sharing.clickup.com`，YAML 不能扩展来源。Support 首页通过 ExUI Glass「游戏｜社区｜需求桶」Tabs 切换，默认游戏；方向键只移动焦点，Enter/Space 激活视图。仅挂载当前视图的 iframe，切换后重新加载该视图，外链与当前视图对应。需求桶 iframe 宽度为容器的 100%、高度为 700px，其余视图沿用 80vh。跨域内容仍归 ClickUp，组件测试或内容编译通过不证明外部任务实际显示。
 

@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import YAML from 'yaml'
 
-export const API_PREFIX = '/api'
 export const OPENAPI_PATH = fileURLToPath(
-  new URL('../../api/generated/openapi.json', import.meta.url),
+  new URL('../../apps/php-server/api/generated/openapi.internal.yaml', import.meta.url),
 )
 export const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']
 
@@ -75,8 +75,7 @@ export function listOperations(document) {
 // Kept equivalent to the neutral Server reader; shared fixtures check both adapters.
 export function validateContract(value) {
   const document = object(value, 'document')
-  if (typeof document.openapi !== 'string' || !document.openapi.startsWith('3.1.'))
-    throw new Error('Contract openapi must use version 3.1')
+  if (document.openapi !== '3.0.3') throw new Error('PHP Contract openapi must use version 3.0.3')
   object(document.info, 'info')
   object(document.paths, 'paths')
   const components = object(document.components, 'components')
@@ -97,7 +96,10 @@ export function validateContract(value) {
 }
 
 export function readContract(path = OPENAPI_PATH) {
-  return validateContract(JSON.parse(readFileSync(path, 'utf8')))
+  const source = YAML.parseDocument(readFileSync(path, 'utf8'), { uniqueKeys: true })
+  if (source.errors.length)
+    throw new Error(`Invalid PHP Contract YAML: ${source.errors[0].message}`)
+  return validateContract(source.toJS())
 }
 
 export function assertOperationCoverage(document, handlers) {

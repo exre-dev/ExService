@@ -19,7 +19,9 @@ vi.mock('@workspace/sdk', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   instance: (config: { method?: string }) => {
     const handlers = { GET: get, PUT: put }
-    return handlers[(config.method ?? 'GET') as keyof typeof handlers](config)
+    return Promise.resolve(
+      handlers[(config.method ?? 'GET') as keyof typeof handlers](config),
+    ).then((data) => ({ msg: 'ok', data }))
   },
 }))
 vi.mock('@web/src/auth/AuthContext', () => ({
@@ -60,7 +62,7 @@ afterEach(() => {
   authState.status = 'authenticated'
   bindNotificationsToken(null)
   window.localStorage.clear()
-  selectSessionScope('/api')
+  selectSessionScope('/')
 })
 
 /** 一个设置宿主；`active` 与 SettingsExperience 的分类投影同源。 */
@@ -108,7 +110,7 @@ describe('notification preferences controller', () => {
       old = target.result.current.load()
     })
     window.localStorage.setItem(
-      `exwebsite.auth.token:${encodeURIComponent(new URL('/scope-b', window.location.origin).href)}`,
+      `exwebsite.php.auth.v1:${encodeURIComponent(new URL('/scope-b', window.location.origin).href)}`,
       'session-token',
     )
     act(() => selectSessionScope('/scope-b'))
@@ -163,14 +165,12 @@ describe('notification preferences controller', () => {
     expect(notificationsConfig.preferences.snapshot?.revision).toBe(4)
   })
   it('re-reads a detached PUT conflict for the surviving owner without submitting again', async () => {
-    get
-      .mockResolvedValueOnce(stored)
-      .mockResolvedValueOnce(
-        updated({
-          revision: 8,
-          optionalCategories: { announcement: false, personal_update: false },
-        }),
-      )
+    get.mockResolvedValueOnce(stored).mockResolvedValueOnce(
+      updated({
+        revision: 8,
+        optionalCategories: { announcement: false, personal_update: false },
+      }),
+    )
     const writer = host(),
       surviving = host()
     await load(writer)
@@ -411,7 +411,7 @@ describe('notification preferences controller', () => {
           bindNotificationsToken('other-token')
         } else {
           window.localStorage.setItem(
-            `exwebsite.auth.token:${encodeURIComponent(new URL('/scope-b', window.location.origin).href)}`,
+            `exwebsite.php.auth.v1:${encodeURIComponent(new URL('/scope-b', window.location.origin).href)}`,
             'session-token',
           )
           selectSessionScope('/scope-b')
@@ -542,7 +542,7 @@ describe('notification preferences controller', () => {
     const hook = host()
     await load(hook)
     expect(get).toHaveBeenCalledWith({
-      url: '/notification-preferences',
+      url: '/api/notification-preferences',
       method: 'GET',
       alert: false,
     })
@@ -555,7 +555,7 @@ describe('notification preferences controller', () => {
     })
     // 必要类别只留在规范缓存，PUT 精确只有 expectedRevision 与两个可选字段。
     expect(put).toHaveBeenCalledWith({
-      url: '/notification-preferences',
+      url: '/api/notification-preferences',
       method: 'PUT',
       alert: false,
       data: {
@@ -571,14 +571,12 @@ describe('notification preferences controller', () => {
   })
 
   it('re-reads canonical server values on a 409 instead of retaining a draft or overwriting', async () => {
-    get
-      .mockResolvedValueOnce(stored)
-      .mockResolvedValueOnce(
-        updated({
-          revision: 8,
-          optionalCategories: { announcement: false, personal_update: false },
-        }),
-      )
+    get.mockResolvedValueOnce(stored).mockResolvedValueOnce(
+      updated({
+        revision: 8,
+        optionalCategories: { announcement: false, personal_update: false },
+      }),
+    )
     put.mockRejectedValue(
       new ExAxiosError('http', 'PREFERENCES_CONFLICT', '设置已被其他设备修改', { status: 409 }),
     )
@@ -631,7 +629,7 @@ describe('notification preferences controller', () => {
         task = failure!.onRetrySave({ ...canonical, [field]: failure!.retryValues[field] })
       })
       expect(put).toHaveBeenLastCalledWith({
-        url: '/notification-preferences',
+        url: '/api/notification-preferences',
         method: 'PUT',
         alert: false,
         data: {
@@ -669,7 +667,7 @@ describe('notification preferences controller', () => {
       task = failure.onRetrySave({ announcement: false, personal_update: false })
     })
     expect(put).toHaveBeenLastCalledWith({
-      url: '/notification-preferences',
+      url: '/api/notification-preferences',
       method: 'PUT',
       alert: false,
       data: {

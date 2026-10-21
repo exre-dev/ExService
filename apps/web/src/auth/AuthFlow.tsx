@@ -86,13 +86,17 @@ export function AuthFlow({
     setSsoRetryError(null)
     setFlowBusy(true)
     try {
-      await instance({
-        url: '/auth/sso/inspect',
+      const { data: inspection } = await instance({
+        url: '/api/auth/sso/inspect',
         method: 'POST',
         data: { ssoRequestId: requestId },
         alert: false,
       })
       if (!isCurrent()) return
+      if (inspection.status === 'completed') {
+        finishSso(requestId)
+        return
+      }
       let token: string | null
       try {
         token = readToken(window.localStorage)
@@ -106,7 +110,7 @@ export function AuthFlow({
         return
       }
       await instance({
-        url: '/auth/sso/confirm',
+        url: '/api/auth/sso/confirm',
         method: 'POST',
         data: { ssoRequestId: requestId },
         alert: false,
@@ -115,11 +119,15 @@ export function AuthFlow({
       finishSso(requestId)
     } catch (error) {
       if (isCurrent()) {
-        if (error instanceof ExAxiosError && error.code === 'SESSION_INVALID') {
+        if (error instanceof ExAxiosError && error.status === 401) {
           setFlowBusy(false)
           return
         }
-        if (error instanceof ExAxiosError && isFatalSsoCode(error.code))
+        if (
+          error instanceof ExAxiosError &&
+          ssoRequestId !== undefined &&
+          isFatalSsoStatus(error.status)
+        )
           setFatalSsoError(error.message)
         else setSsoRetryError('暂时无法连接认证服务，请重试')
         setFlowBusy(false)
@@ -135,7 +143,7 @@ export function AuthFlow({
     try {
       if (ssoRequestId !== undefined) {
         await instance({
-          url: '/auth/sso/login',
+          url: '/api/auth/sso/login',
           method: 'POST',
           data: { ssoRequestId, email: draft.email, password: draft.password },
           alert: false,
@@ -145,8 +153,8 @@ export function AuthFlow({
         return
       }
 
-      const result = await instance({
-        url: '/auth/login',
+      const { data: result } = await instance({
+        url: '/api/auth/login',
         method: 'POST',
         data: { email: draft.email, password: draft.password },
         alert: false,
@@ -162,7 +170,7 @@ export function AuthFlow({
       if (oldToken !== null && oldToken !== result.token) {
         try {
           await instance({
-            url: '/auth/logout',
+            url: '/api/auth/logout',
             method: 'POST',
             headers: { Authorization: `Bearer ${oldToken}` },
             alert: false,
@@ -170,7 +178,7 @@ export function AuthFlow({
           if (!isCurrent()) return
         } catch (error) {
           if (!isCurrent()) return
-          if (!(error instanceof ExAxiosError && error.code === 'SESSION_INVALID')) {
+          if (!(error instanceof ExAxiosError && error.status === 401)) {
             authForm.current?.setServerErrors({ form: '旧账号退出失败，请重试登录' })
             return
           }
@@ -201,8 +209,9 @@ export function AuthFlow({
     } catch (error) {
       if (!isCurrent()) return
       if (error instanceof ExAxiosError) {
-        if (isFatalSsoCode(error.code)) setFatalSsoError(error.message)
-        else authForm.current?.setServerErrors(mapError(error.code, error.message))
+        if (ssoRequestId !== undefined && isFatalSsoStatus(error.status))
+          setFatalSsoError(error.message)
+        else authForm.current?.setServerErrors({ form: error.message || '请求失败，请稍后重试' })
       } else authForm.current?.setServerErrors({ form: '暂时无法连接认证服务，请重试' })
     }
   }
@@ -274,17 +283,6 @@ export function AuthFlow({
   )
 }
 
-function mapError(code: string, message: string): AuthFormErrors {
-  if (code === 'EMAIL_IN_USE') return { email: message }
-  if (code === 'INVALID_CREDENTIALS') return { form: '邮箱或密码错误' }
-  if (code.startsWith('CODE_')) return { code: message }
-  return { form: message || '请求失败，请稍后重试' }
-}
-
-function isFatalSsoCode(code: string): boolean {
-  return (
-    code === 'SSO_REQUEST_NOT_FOUND' ||
-    code === 'SSO_REQUEST_EXPIRED' ||
-    code === 'SSO_ACCOUNT_CONFLICT'
-  )
+function isFatalSsoStatus(status: number | undefined): boolean {
+  return status === 404 || status === 409 || status === 410
 }

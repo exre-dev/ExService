@@ -3,29 +3,24 @@ import { belongsToArea, kindsForArea, ruleForKind, type FeedbackKind } from './k
 
 describe('feedback kind rules', () => {
   it.each([
-    ['bug', 'development', 'bug', 'required', false, false, false],
-    ['feature', 'development', 'text', 'optional', true, false, false],
-    ['asset', 'development', 'text', 'optional', false, true, false],
-    ['request', 'development', 'text', 'optional', false, false, false],
-    ['content', 'development', 'text', 'none', false, true, false],
-    ['campaign', 'development', 'text', 'none', false, false, false],
-    ['suggestion', 'community', 'text', 'none', false, false, false],
-    ['complaint', 'community', 'text', 'none', false, false, true],
-  ] as const)(
-    '%s exposes its accepted entry and fields',
-    (kind, area, body, typeField, department, action, anonymous) => {
-      expect(ruleForKind(kind)).toMatchObject({
-        area,
-        body,
-        typeField,
-        department,
-        action,
-        anonymous,
-      })
-      expect(belongsToArea(kind, area)).toBe(true)
-      expect(belongsToArea(kind, area === 'community' ? 'development' : 'community')).toBe(false)
-    },
-  )
+    ['bug', 'development', 'bug', false, false],
+    ['feature', 'development', 'text', false, false],
+    ['asset', 'development', 'text', true, false],
+    ['request', 'development', 'text', false, false],
+    ['content', 'development', 'text', true, false],
+    ['campaign', 'development', 'text', false, false],
+    ['suggestion', 'community', 'text', false, false],
+    ['complaint', 'community', 'text', false, true],
+  ] as const)('%s exposes its accepted entry and fields', (kind, area, body, action, anonymous) => {
+    expect(ruleForKind(kind)).toMatchObject({
+      area,
+      body,
+      action,
+      anonymous,
+    })
+    expect(belongsToArea(kind, area)).toBe(true)
+    expect(belongsToArea(kind, area === 'community' ? 'development' : 'community')).toBe(false)
+  })
   it('lists the six development and two community entries without an unknown fallback', () => {
     expect(kindsForArea('development').map((rule) => rule.kind)).toEqual([
       'bug',

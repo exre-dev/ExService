@@ -16,12 +16,8 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-env:
-  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
-
 jobs:
   verify:
-    # PostgreSQL and Nginx fixtures require Linux containers.
     runs-on: ubuntu-24.04
     timeout-minutes: 60
 
@@ -30,6 +26,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+          submodules: recursive
 
       - name: Install pnpm
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
@@ -42,15 +39,6 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-
-      - name: Install Corepack and locate runtime tools
-        run: |
-          npm install --global corepack@0.34.6
-          echo "INTEGRATION_NODE_BIN=$(command -v node)" >> "$GITHUB_ENV"
-          echo "INTEGRATION_COREPACK_JS=$(npm root --global)/corepack/dist/corepack.js" >> "$GITHUB_ENV"
-
-      - name: Verify Docker
-        run: docker info
 
       - name: Install Website dependencies
         run: pnpm install --frozen-lockfile

@@ -23,101 +23,6 @@ const identity = (pid) => ({
   executable: 'node',
   commandDigest: 'command',
 })
-test('empty preflight recovery preserves normalized evidence before a failed external proof and never changes the old owner', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'zero-recovery-')),
-    path = join(directory, 'mode-lock.json')
-  const prior = {
-    version: 1,
-    mode: 'local',
-    fingerprint: 'fixture',
-    runId: '11111111-1111-4111-8111-111111111111',
-    identity: identity(987654),
-    state: 'preflight',
-  }
-  const inspect = (pid) => (pid === process.pid ? identity(pid) : null)
-  try {
-    writeFileSync(path, JSON.stringify(prior))
-    for (const [mode, fingerprint] of [
-      ['dev', 'fixture'],
-      ['full', 'fixture'],
-      ['local', 'different'],
-    ])
-      assert.throws(
-        () => acquireLock({ mode, fingerprint, directory, inspect }),
-        /CLEANUP_REQUIRED/,
-      )
-    assert.equal(JSON.parse(readFileSync(path)).runId, prior.runId)
-    const resources = { started: [], preRunning: [], createdStopped: [], containerProofs: [] }
-    assert.throws(
-      () =>
-        acquireLock({
-          mode: 'local',
-          fingerprint: 'fixture',
-          directory,
-          inspect,
-          recoverCleanup: () => ({ recovery: { ...prior, resources }, resources }),
-          externalCheck: () => {
-            throw new LocalError('FIXTURE_UNKNOWN_TARGET')
-          },
-        }),
-      /UNKNOWN_TARGET/,
-    )
-    const retained = JSON.parse(readFileSync(path))
-    assert.deepEqual(retained.identity, prior.identity)
-    assert.equal(retained.runId, prior.runId)
-    assert.deepEqual(retained.resources, resources)
-    assert.equal(retained.cleanupRequired, true)
-    assert.throws(
-      () => acquireLock({ mode: 'local', fingerprint: 'fixture', directory, inspect }),
-      /CLEANUP_REQUIRED/,
-    )
-  } finally {
-    rmSync(directory, { recursive: true, force: true })
-  }
-})
-test('explicit persistent recovery still rejects a live owner and validates the dead owner inside the gate', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'persistent-recovery-')),
-    path = join(directory, 'mode-lock.json')
-  const prior = {
-    version: 1,
-    mode: 'full',
-    fingerprint: 'fixture',
-    runId: '11111111-1111-4111-8111-111111111111',
-    identity: identity(987654),
-    persistent: true,
-  }
-  try {
-    writeFileSync(path, JSON.stringify(prior))
-    assert.throws(
-      () =>
-        acquireLock({
-          mode: 'full',
-          fingerprint: 'fixture',
-          directory,
-          inspect: identity,
-          recoverCleanup: () => ({}),
-        }),
-      /MODE_ACTIVE/,
-    )
-    let verified = false
-    const lock = acquireLock({
-      mode: 'full',
-      fingerprint: 'fixture',
-      directory,
-      inspect: (pid) => (pid === process.pid ? identity(pid) : null),
-      recoverCleanup: () => ({ recovery: prior }),
-      externalCheck: (record) => {
-        assert.equal(existsSync(`${path}.gate`), true)
-        assert.deepEqual(record.identity, prior.identity)
-        verified = true
-      },
-    })
-    assert.equal(verified, true)
-    lock.release()
-  } finally {
-    rmSync(directory, { recursive: true, force: true })
-  }
-})
 test('a stale short gate refuses automatic unlink so a concurrent replacement can never lose its lock', () => {
   const directory = mkdtempSync(join(tmpdir(), 'stale-gate-')),
     path = join(directory, 'mode-lock.json.gate')
@@ -159,198 +64,38 @@ test('short gates refuse live and ambiguous owners without deleting either recor
     rmSync(directory, { recursive: true, force: true })
   }
 })
-test('mode mutex refuses same/cross live modes and reclaims only proven stale identity without killing', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'mode-lock-'))
-  const inspect = (pid) => identity(pid)
-  try {
-    const lock = acquireLock({ mode: 'local', fingerprint: 'target', directory: dir, inspect })
-    for (const mode of ['local', 'dev', 'full'])
-      assert.throws(
-        () => acquireLock({ mode, fingerprint: 'other', directory: dir, inspect }),
-        /MODE_ACTIVE/,
-      )
-    const original = JSON.parse(readFileSync(lock.path, 'utf8'))
-    writeFileSync(
-      lock.path,
-      JSON.stringify({ ...original, identity: { ...original.identity, creation: 'old' } }),
-    )
-    assert.throws(
-      () => acquireLock({ mode: 'dev', fingerprint: 'second', directory: dir, inspect }),
-      /CLEANUP_REQUIRED/,
-    )
-    let checked = false
-    const replacement = acquireLock({
-      mode: 'local',
-      fingerprint: 'target',
-      directory: dir,
-      inspect,
-      externalCheck: (prior) => {
-        assert.equal(prior.identity.creation, 'old')
-        checked = true
-      },
-    })
-    assert.equal(checked, true)
-    assert.equal(replacement.record.mode, 'local')
-    replacement.release()
-    writeFileSync(
-      join(dir, 'mode-lock.json'),
-      JSON.stringify({ mode: 'full', identity: { pid: 1 } }),
-    )
-    assert.throws(
-      () => acquireLock({ mode: 'local', fingerprint: 'target', directory: dir, inspect }),
-      /AMBIGUOUS/,
-    )
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
-})
-test('persisted full mode occupancy is independent of exited up-command PID', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'mode-full-'))
-  try {
-    writeFileSync(
-      join(dir, 'mode-lock.json'),
-      JSON.stringify({ mode: 'full', persistent: true, identity: identity(987654) }),
-    )
-    let checked = false
-    assert.throws(
-      () =>
-        acquireLock({
-          mode: 'local',
-          fingerprint: 'target',
-          directory: dir,
-          inspect: (pid) => (pid === process.pid ? identity(pid) : null),
-          externalCheck: () => {
-            checked = true
-          },
-        }),
-      /MODE_ACTIVE/,
-    )
-    assert.equal(checked, true)
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
-})
-test('cleanup intent rejects all ordinary callers after owner exit; exact recovery validates inside the gate before replacement', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'cleanup-lock-')),
-    path = join(directory, 'mode-lock.json')
-  const prior = {
-    version: 1,
-    mode: 'local',
-    fingerprint: 'target',
-    runId: 'original-run',
-    identity: identity(987654),
-    state: 'cleanup-failed',
-    cleanupRequired: true,
-    resources: {
-      started: [{ id: 'owned', service: 'hydra' }],
-      preRunning: [],
-      containerProofs: [{ id: 'owned', digest: 'original' }],
-    },
-  }
+test('frontend lock refuses live or unfinished owners and only reclaims a proven stopped run', (t) => {
+  const directory = mkdtempSync(join(tmpdir(), 'frontend-lock-'))
+  t.after(() => rmSync(directory, { recursive: true, force: true }))
   const inspect = (pid) => (pid === process.pid ? identity(pid) : null)
-  try {
-    writeFileSync(path, JSON.stringify(prior))
-    for (const mode of ['local', 'dev', 'full'])
-      assert.throws(
-        () => acquireLock({ mode, fingerprint: 'target', directory, inspect }),
-        /CLEANUP_REQUIRED/,
-      )
+  const lock = acquireLock({ mode: 'frontend', fingerprint: 'fixture', directory, inspect })
+  assert.throws(
+    () => acquireLock({ mode: 'frontend', fingerprint: 'fixture', directory, inspect }),
+    /MODE_ACTIVE/,
+  )
+  const prior = { ...lock.record, identity: identity(987654) }
+  for (const state of ['preflight', 'preparing', 'ready', 'cleanup-failed']) {
+    atomicJson(lock.path, { ...prior, state })
     assert.throws(
-      () =>
-        acquireLock({
-          mode: 'full',
-          fingerprint: 'target',
-          directory,
-          inspect,
-          recoverCleanup: () => ({}),
-        }),
-      /PROVENANCE_CONFLICT/,
-    )
-    assert.throws(
-      () =>
-        acquireLock({
-          mode: 'local',
-          fingerprint: 'target',
-          directory,
-          inspect,
-          recoverCleanup: (value) => ({ recovery: value, resources: value.resources }),
-          externalCheck: (value) => {
-            assert.equal(existsSync(`${path}.gate`), true)
-            assert.equal(readFileSync(path, 'utf8').includes('original-run'), true)
-            assert.deepEqual(value.resources, prior.resources)
-            throw new Error('proof conflict')
-          },
-        }),
-      /proof conflict/,
-    )
-    assert.equal(JSON.parse(readFileSync(path, 'utf8')).cleanupRequired, true)
-    const lock = acquireLock({
-      mode: 'local',
-      fingerprint: 'target',
-      directory,
-      inspect,
-      recoverCleanup: (value) => ({ recovery: value, resources: value.resources }),
-      externalCheck: () => {
-        assert.equal(existsSync(`${path}.gate`), true)
-        assert.equal(JSON.parse(readFileSync(path, 'utf8')).runId, prior.runId)
-      },
-    })
-    assert.equal(lock.record.cleanupRequired, true)
-    assert.deepEqual(lock.record.resources, prior.resources)
-    lock.release()
-    // Even failure of the initial intent write cannot make an outstanding
-    // local resource journal eligible for an ordinary stale-lock reclaim.
-    writeFileSync(path, JSON.stringify({ ...prior, state: 'ready', cleanupRequired: false }))
-    assert.throws(
-      () => acquireLock({ mode: 'dev', fingerprint: 'target', directory, inspect }),
+      () => acquireLock({ mode: 'frontend', fingerprint: 'fixture', directory, inspect }),
       /CLEANUP_REQUIRED/,
     )
-    for (const resources of [
-      { started: [], preRunning: [], containerProofs: [] },
-      prior.resources,
-    ]) {
-      writeFileSync(
-        path,
-        JSON.stringify({
-          ...prior,
-          state: 'stopped',
-          stoppedAt: new Date().toISOString(),
-          cleanupRequired: false,
-          resources,
-        }),
-      )
-      let checked = false
-      const next = acquireLock({
-        mode: 'dev',
-        fingerprint: 'next',
-        directory,
-        inspect,
-        externalCheck: (value) => {
-          assert.deepEqual(value.resources, resources)
-          assert.ok(value.stoppedAt)
-          checked = true
-        },
-      })
-      assert.equal(checked, true)
-      next.release()
-    }
-    for (const owner of [identity(process.pid), { pid: 1234 }]) {
-      writeFileSync(path, JSON.stringify({ ...prior, identity: owner }))
-      assert.throws(
-        () =>
-          acquireLock({
-            mode: 'local',
-            fingerprint: 'target',
-            directory,
-            inspect,
-            recoverCleanup: () => ({}),
-          }),
-        /MODE_ACTIVE|AMBIGUOUS/,
-      )
-    }
-  } finally {
-    rmSync(directory, { recursive: true, force: true })
+    assert.equal(readJson(lock.path).runId, prior.runId)
   }
+  atomicJson(lock.path, {
+    ...prior,
+    state: 'stopped',
+    cleanupRequired: false,
+    children: [{ identity: identity(process.pid) }],
+  })
+  assert.throws(
+    () => acquireLock({ mode: 'frontend', fingerprint: 'fixture', directory, inspect }),
+    /CHILDREN_STILL_ACTIVE/,
+  )
+  atomicJson(lock.path, { ...prior, state: 'stopped', cleanupRequired: false, children: [] })
+  const replacement = acquireLock({ mode: 'frontend', fingerprint: 'changed', directory, inspect })
+  assert.notEqual(replacement.record.runId, prior.runId)
+  replacement.release()
 })
 test('fresh process identity includes Windows creation/executable/command and refuses a reused PID', () => {
   const actual = processIdentity(process.pid)
@@ -396,33 +141,71 @@ test('real fixture child and descendants are cleaned while an independent child 
 })
 
 test('control stop during real owned SDK preparation cleans its helper and descendants before releasing the lock', async () => {
-  const directory = mkdtempSync(join(tmpdir(), 'owned-sdk-prepare-')), messages = []
-  const lock = acquireLock({ mode: 'local', fingerprint: 'fixture', directory }), release = lock.release
-  let preparer, descendant, launched = false
+  const directory = mkdtempSync(join(tmpdir(), 'owned-sdk-prepare-')),
+    messages = []
+  const lock = acquireLock({ mode: 'local', fingerprint: 'fixture', directory }),
+    release = lock.release
+  let preparer,
+    descendant,
+    launched = false
   lock.release = () => {
-    assert.equal(identityAlive(preparer), false); assert.equal(identityAlive(descendant), false); release()
+    assert.equal(identityAlive(preparer), false)
+    assert.equal(identityAlive(descendant), false)
+    release()
   }
-  const running = supervise({ directory, lock, mode: 'local', fingerprint: 'fixture', pollInterval: 25,
-    specifications: [{ name: 'server' }], readiness: async () => { launched = true }, onLog: (_name, line) => messages.push(line),
-    prepareGeneration: ({ execute }) => execute({ name: 'SDK build', command: process.execPath, cwd: resolve('.'),
-      args: [resolve('tests/dev/fixture-process.mjs'), 'descendant'], environment: process.env }) })
+  const running = supervise({
+    directory,
+    lock,
+    mode: 'local',
+    fingerprint: 'fixture',
+    pollInterval: 25,
+    specifications: [{ name: 'server' }],
+    readiness: async () => {
+      launched = true
+    },
+    onLog: (_name, line) => messages.push(line),
+    prepareGeneration: ({ execute }) =>
+      execute({
+        name: 'SDK build',
+        command: process.execPath,
+        cwd: resolve('.'),
+        args: [resolve('tests/dev/fixture-process.mjs'), 'descendant'],
+        environment: process.env,
+      }),
+  })
   try {
     for (let count = 0; count < 200; count++) {
-      if (messages.some(line => line.startsWith('DESCENDANT:')) && readJson(join(directory, 'run.json')).children.length) break
+      if (
+        messages.some((line) => line.startsWith('DESCENDANT:')) &&
+        readJson(join(directory, 'run.json')).children.length
+      )
+        break
       await delay(50)
     }
     const run = readJson(join(directory, 'run.json'))
-    assert.equal(run.state, 'preparing'); assert.equal(run.children.length, 1)
-    assert.equal(run.children[0].name, 'SDK build'); preparer = run.children[0].identity
-    const pid = Number(messages.find(line => line.startsWith('DESCENDANT:'))?.split(':')[1])
-    assert.ok(pid); descendant = processIdentity(pid)
-    atomicJson(join(directory, 'control-request.json'), { runId: lock.record.runId, action: 'stop' })
+    assert.equal(run.state, 'preparing')
+    assert.equal(run.children.length, 1)
+    assert.equal(run.children[0].name, 'SDK build')
+    preparer = run.children[0].identity
+    const pid = Number(messages.find((line) => line.startsWith('DESCENDANT:'))?.split(':')[1])
+    assert.ok(pid)
+    descendant = processIdentity(pid)
+    atomicJson(join(directory, 'control-request.json'), {
+      runId: lock.record.runId,
+      action: 'stop',
+    })
     await running
-    assert.equal(launched, false); assert.equal(existsSync(lock.path), false)
+    assert.equal(launched, false)
+    assert.equal(existsSync(lock.path), false)
     assert.equal(readJson(join(directory, 'run.json')).state, 'stopped')
   } finally {
-    atomicJson(join(directory, 'control-request.json'), { runId: lock.record.runId, action: 'stop' })
-    await running.catch(() => {}); release(); rmSync(directory, { recursive: true, force: true })
+    atomicJson(join(directory, 'control-request.json'), {
+      runId: lock.record.runId,
+      action: 'stop',
+    })
+    await running.catch(() => {})
+    release()
+    rmSync(directory, { recursive: true, force: true })
   }
 })
 test('child logs redact original database credentials, identity URLs/tokens/challenges and SQL', () => {

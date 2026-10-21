@@ -1,5 +1,7 @@
 # multipart 上传与响应生命周期陷阱
 
+> 已退役：历史 Node/Fastify 实现记录。文中路径、命令和行为仅用于理解当时选择；现行 PHP/Webman 边界见 `.ai/architectures/overview.md`、`.ai/architectures/api/contract-layout.md` 与 `apps/php-server/TESTING.md`。
+
 仅提高路由 bodyLimit 或让 preParsing 返回计数流，不能证明 multipart 的实际字节、并发和内存预算受到约束。资源值以 `api/openapi.yaml` 为准。
 
 _最后更新：2026-10-16_

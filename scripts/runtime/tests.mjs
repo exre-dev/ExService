@@ -14,27 +14,22 @@ export function testSpecifications({
   full = false,
 } = {}) {
   const {
-    tools: { node, corepack },
+    tools: { node },
     environment,
   } = preparationContext({ workspace, inherited, tools })
   const logic = [
     { file: 'scripts/api/generate.test.mjs', fullOnly: true },
+    { file: 'scripts/api/operation-policy.test.mjs' },
     { file: 'tests/browser/browser-suite.test.mjs' },
-    { file: 'packages/common/test/config.test.mjs' },
     { file: 'packages/common/test/entry.test.mjs', fullOnly: true },
-    { file: 'scripts/runtime/settings.test.mjs', fullOnly: true },
+    { file: 'scripts/runtime/settings.test.mjs' },
     { file: 'scripts/runtime/frontend.test.mjs' },
     { file: 'scripts/runtime/admin-frontend.test.mjs' },
     { file: 'scripts/runtime/frontend-group.test.mjs' },
     { file: 'scripts/runtime/admin-web-integration.test.mjs' },
-    { file: 'scripts/runtime/identity-runtime.test.mjs' },
     { file: 'scripts/runtime/output.test.mjs' },
-    { file: 'scripts/runtime/deployment.test.mjs', fullOnly: true },
-    { file: 'scripts/runtime/application-lock.test.mjs' },
-    { file: 'scripts/runtime/retire-outline.test.mjs', fullOnly: true },
     { file: 'scripts/runtime/ownership.test.mjs', fullOnly: true },
     { file: 'scripts/runtime/readiness.test.mjs', fullOnly: true },
-    { file: 'scripts/runtime/hydra-client.test.mjs', fullOnly: true },
     { file: 'scripts/runtime/sdk-preparation.test.mjs' },
     { file: 'scripts/runtime/dev-rebuild.test.mjs' },
     { file: 'scripts/runtime/tests.test.mjs' },
@@ -42,17 +37,13 @@ export function testSpecifications({
     .filter(({ fullOnly }) => full || !fullOnly)
     .map(({ file }) => file)
   return [
-    // Bound disposable database and CPU concurrency to reduce contention
-    // between transport timing scenarios and the database suite.
+    // Bound CPU concurrency for transport timing and browser compilation fixtures.
     {
       name: 'Website',
       command: node,
       cwd: workspace,
       args: [
-        corepack,
-        'pnpm',
-        'exec',
-        'vitest',
+        join(workspace, 'node_modules/vitest/vitest.mjs'),
         'run',
         '--maxWorkers',
         '2',
@@ -69,7 +60,7 @@ export async function runTests(options = {}, execute = runOwned, prepare = prepa
   const output = reporter({ verbose: options.verbose })
   output.title(
     options.full
-      ? '完整测试：Contract / SDK → Website → runtime；包含容器、SDK 浏览器与进程清理夹具'
+      ? '完整测试：Contract / SDK → Website → runtime；包含 HTTP、SDK 浏览器与进程清理夹具'
       : '轻量测试：Contract / SDK → Website → runtime；完整验证使用 pnpm test:full',
   )
   const scope = signalScope()
@@ -94,6 +85,8 @@ export function isTestSourceChange(directory, path) {
   if (!path) return false
   const file = `${directory}/${path}`.replaceAll('\\', '/')
   return (
+    (!file.startsWith('apps/php-server/') ||
+      file === 'apps/php-server/api/generated/openapi.internal.yaml') &&
     !isGeneratedOutput(file) &&
     (!/(?:^|\/)build(?:\/|$)/.test(file) || file.startsWith('apps/web/build/')) &&
     !file.endsWith('.log')
@@ -113,12 +106,11 @@ export async function watchTests(
   let pending = true,
     wake
   const directories = [
-    'api',
+    'apps/php-server/api/generated',
     'tests',
     'scripts',
     'apps/web/src',
     'apps/admin-web/src',
-    'apps/server/src',
     'packages/components/src',
     'packages/sdk',
     'packages/common/src',

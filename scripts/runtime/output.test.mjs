@@ -19,15 +19,15 @@ function capture({ isTTY = false, colorEnvironment = {}, ...options } = {}) {
 
 test('service summaries separate readiness, addresses and copyable commands without timestamps', () => {
   const { output, lines } = capture()
-  output.heading('ExWebsite · 后台服务')
-  output.status('PostgreSQL', '已就绪', '127.0.0.1:5432', { level: 'success' })
+  output.heading('ExWebsite · 前端')
+  output.status('Web', '已就绪', '127.0.0.1:8080', { level: 'success' })
   output.next('pnpm dev', [
-    ['状态', 'pnpm service:status'],
-    ['日志', 'pnpm service:logs'],
+    ['构建', 'pnpm build'],
+    ['验证', 'pnpm test'],
   ])
   const text = lines.join('\n')
-  assert.match(text, /✓ PostgreSQL\s+已就绪\s+127\.0\.0\.1:5432/)
-  assert.match(text, /下一步\n  pnpm dev\n\n其他操作\n  状态  pnpm service:status/)
+  assert.match(text, /✓ Web\s+已就绪\s+127\.0\.0\.1:8080/)
+  assert.match(text, /下一步\n  pnpm dev\n\n其他操作\n  构建  pnpm build/)
   assert.doesNotMatch(text, /\x1b|\d{4}-\d{2}-\d{2}|\[信息\]/)
 })
 
@@ -70,7 +70,8 @@ test('errors show a readable reason, context and next step but hide untrusted ex
     environment: { DATABASE_PASSWORD: 'private-password' },
   })
   output.failure(
-    new RuntimeError('DOCKER_UNAVAILABLE', {
+    new RuntimeError('UPSTREAM_UNAVAILABLE', {
+      reason: '无法连接上游服务',
       service: 'Docker',
       phase: '引擎连接失败',
       target: 'private-password',
@@ -79,8 +80,8 @@ test('errors show a readable reason, context and next step but hide untrusted ex
     }),
   )
   const text = redact(lines.join('\n'))
-  assert.match(text, /✗ Docker 无法连接 Docker 引擎/)
-  assert.match(text, /错误码  DOCKER_UNAVAILABLE/)
+  assert.match(text, /✗ Docker 无法连接上游服务/)
+  assert.match(text, /错误码  UPSTREAM_UNAVAILABLE/)
   assert.match(text, /检查项  引擎连接失败/)
   assert.match(text, /配置键  DOCKER_HOST/)
   assert.match(text, /下一步\n  检查 Docker Desktop\/daemon 状态\n  执行 docker info/)
@@ -97,10 +98,10 @@ test('errors show a readable reason, context and next step but hide untrusted ex
   }
 })
 
-test('the real entry point writes grouped errors to redirected stderr and retains failure exit status', () => {
+test('the real entry point writes grouped argument errors to redirected stderr and retains failure exit status', () => {
   const result = spawnSync(
     process.execPath,
-    [fileURLToPath(new URL('./entry.mjs', import.meta.url)), 'private-command'],
+    [fileURLToPath(new URL('./frontend.mjs', import.meta.url)), 'private-command'],
     {
       encoding: 'utf8',
       windowsHide: true,
@@ -110,7 +111,7 @@ test('the real entry point writes grouped errors to redirected stderr and retain
   assert.equal(result.status, 1)
   assert.equal(result.stdout, '')
   assert.match(result.stderr, /✗.*\n\n.*检查项/)
-  assert.match(result.stderr, /错误码  COMMAND_INVALID/)
+  assert.match(result.stderr, /错误码  ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL/)
   assert.match(result.stderr, /下一步/)
   assert.doesNotMatch(result.stderr, /\x1b|private-command|Error:|at main/)
 })
@@ -128,18 +129,4 @@ test('log colors follow severity, not error words in file names or informational
     output.log('outline', line, 'stderr')
     assert.ok(lines[0].includes(`\x1b[${color}m[outline]`), line)
   }
-})
-
-test('missing Hydra clients point to the supported explicit registration action', async () => {
-  const { runtimeFailure } = await import('./output.mjs'),
-    { parseRuntimeArguments } = await import('./entry.mjs')
-  const message = runtimeFailure({ code: 'HYDRA_CLIENT_MISSING' })
-  assert.match(message, /IDENTITY_CLIENTS_JSON/)
-  assert.match(message, /pnpm infra clients/)
-  assert.doesNotMatch(message, /bootstrap|UUID|admin-user-id/)
-  assert.deepEqual(parseRuntimeArguments(['infra', 'clients']), {
-    command: 'infra',
-    action: 'clients',
-    verbose: false,
-  })
 })

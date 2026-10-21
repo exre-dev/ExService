@@ -20,7 +20,7 @@ interface Props {
   onLogin?: (email: string) => void
   onJoin?: () => void
 }
-type Verified = components['schemas']['InvitationVerified']
+type Verified = components['schemas']['AccountInvitationVerifyData']
 type FormStep = 'email' | 'code' | 'profile'
 type Step = FormStep | 'registered'
 interface PendingFeedback {
@@ -28,8 +28,6 @@ interface PendingFeedback {
   generation: number
   errors: InvitationFormErrors
 }
-const noApplication = '未找到该邮箱的申请。'
-const notEligible = '该邮箱暂不符合注册条件，请确认申请已通过且邀请仍有效'
 
 function readEntry(presentation: Props['presentation'], initialEmail: string) {
   if (presentation === 'modal' || typeof window === 'undefined')
@@ -117,40 +115,27 @@ function InvitationScopeFlow({
   }
   function cooldown(data: { serverTime: number; resendAvailableAt: number }) {
     const now = Date.now(),
-      delay = Math.max(0, data.resendAvailableAt - data.serverTime)
+      delay = Math.max(0, data.resendAvailableAt - data.serverTime) * 1000
     setClock(now)
     setResendUntil(delay === 0 ? 0 : now + delay)
   }
   function checkFailure(current: number, error: unknown) {
     const status = error instanceof ExAxiosError ? error.status : undefined
-    if (status === 400) {
-      deliverError('email', current, { email: '请输入有效的邮箱地址' })
-      return
-    }
     const wait = retrySeconds(error)
     const form =
-      status === 404
-        ? noApplication
-        : status === 409
-          ? notEligible
-          : status === 429
-            ? wait > 0
-              ? `检查失败，请在 ${wait} 秒后重试`
-              : '检查失败，请稍后重试'
-            : '检查失败，请重试'
-    const formKind =
-      status === 404
-        ? 'application-not-found'
-        : status === 409
-          ? 'not-eligible'
-          : status === 429
-            ? 'rate-limited'
-            : 'check-failed'
+      status === 429
+        ? wait > 0
+          ? `检查失败，请在 ${wait} 秒后重试`
+          : '检查失败，请稍后重试'
+        : error instanceof ExAxiosError
+          ? error.message
+          : '检查失败，请重试'
+    const formKind = status === 429 ? 'rate-limited' : 'check-failed'
     deliverError('email', current, { form, formKind })
   }
   function verifyFailure(current: number, error: unknown) {
     const message =
-      error instanceof ExAxiosError && error.code === 'INVITATION_CODE_LOCKED'
+      error instanceof ExAxiosError && error.status === 429
         ? '验证暂时锁定，请稍后重试'
         : '验证码无效或已过期，请重新获取'
     const retryAfter = retrySeconds(error)
@@ -160,7 +145,10 @@ function InvitationScopeFlow({
       setClock(now)
       setLockedUntil(now + retryAfter * 1000)
     }
-    deliverError('code', current, { code: message })
+    deliverError('code', current, {
+      form: error instanceof ExAxiosError ? error.message : message,
+      formKind: 'check-failed',
+    })
   }
   function accepted(data: Verified) {
     clearFeedback()
@@ -174,19 +162,20 @@ function InvitationScopeFlow({
     if (!valid(current)) return null
     let inspected
     try {
-      inspected = await instance({
-        url: '/auth/invitations/check',
+      const { data } = await instance({
+        url: '/api/auth/invitations/check',
         method: 'POST',
         data: { email: targetEmail },
         alert: false,
       })
+      inspected = data
     } catch (error) {
       return { stage: 'checkFailure' as const, error }
     }
     if (!valid(current)) return null
     try {
-      const result = await instance({
-        url: '/auth/invitations/verify',
+      const { data: result } = await instance({
+        url: '/api/auth/invitations/verify',
         method: 'POST',
         data: { email: inspected.email, code },
         alert: false,
@@ -290,8 +279,8 @@ function InvitationScopeFlow({
     setEmail(targetEmail)
     clearFeedback()
     try {
-      const result = await instance({
-        url: '/auth/invitations/check',
+      const { data: result } = await instance({
+        url: '/api/auth/invitations/check',
         method: 'POST',
         data: { email: targetEmail },
         alert: false,
@@ -317,8 +306,8 @@ function InvitationScopeFlow({
     setRetry(false)
     clearFeedback()
     try {
-      const result = await instance({
-        url: '/auth/invitations/verify',
+      const { data: result } = await instance({
+        url: '/api/auth/invitations/verify',
         method: 'POST',
         data: { email, code },
         alert: false,
@@ -342,8 +331,8 @@ function InvitationScopeFlow({
     setBusy(true)
     clearFeedback()
     try {
-      const result = await instance({
-        url: '/auth/invitations/code',
+      const { data: result } = await instance({
+        url: '/api/auth/invitations/code',
         method: 'POST',
         data: { email },
         alert: false,
@@ -380,7 +369,7 @@ function InvitationScopeFlow({
     clearFeedback()
     try {
       await instance({
-        url: '/auth/invitations/complete',
+        url: '/api/auth/invitations/complete',
         method: 'POST',
         data: { completionToken, ...values },
         alert: false,
@@ -393,10 +382,9 @@ function InvitationScopeFlow({
       toast.info('注册成功，请前往登录')
     } catch (error) {
       if (valid(current)) {
-        const expired = error instanceof ExAxiosError && error.code === 'COMPLETION_GRANT_INVALID'
         deliverError('profile', current, {
-          form: expired ? '验证已过期，请返回邮箱重新验证' : '注册失败，请重试',
-          formKind: expired ? 'completion-expired' : 'complete-failed',
+          form: error instanceof ExAxiosError ? error.message : '注册失败，请重试',
+          formKind: 'complete-failed',
         })
       }
     } finally {

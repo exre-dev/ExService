@@ -1,11 +1,20 @@
 // @vitest-environment jsdom
+vi.mock('../../../auth/AuthContext', () => ({
+  useAuth: () => ({ userId: 1, state: { status: 'authenticated' } }),
+}))
+import { FEEDBACK_LIMITS } from './schema'
 import { afterAll, afterEach, beforeAll, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Button, Toaster, ThemeProvider } from '@exre/exui'
 import { MemoryRouter } from 'react-router'
 import { FeedbackProvider, useFeedback } from './FeedbackProvider'
 import type { FeedbackSnapshot } from './flow'
-import { writeToken } from '../../../auth/storage'
+import {
+  AUTH_TOKEN_KEY,
+  clearLegacySessionStorage,
+  feedbackStorageKey,
+  writeToken,
+} from '../../../auth/storage'
 
 function pasteMarkdown(node: HTMLElement, text: string) {
   fireEvent.paste(node, {
@@ -38,13 +47,31 @@ vi.stubGlobal('matchMedia', (media: string) => ({
   dispatchEvent: vi.fn(),
 }))
 const originalScroll = Element.prototype.scrollIntoView
+const rangeGeometry = ['getClientRects', 'getBoundingClientRect'] as const
+const originalRangeGeometry = rangeGeometry.map((name) =>
+  Object.getOwnPropertyDescriptor(Range.prototype, name),
+)
 beforeAll(async () => {
   Element.prototype.scrollIntoView = vi.fn()
+  // RHF focuses the visible invalid editor; jsdom does not implement Range layout.
+  Object.defineProperty(Range.prototype, 'getClientRects', {
+    configurable: true,
+    value: () => [],
+  })
+  Object.defineProperty(Range.prototype, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => new DOMRect(),
+  })
   await import('./FeedbackModal')
 })
 afterAll(() => {
   if (originalScroll) Element.prototype.scrollIntoView = originalScroll
   else Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+  rangeGeometry.forEach((name, index) => {
+    const original = originalRangeGeometry[index]
+    if (original) Object.defineProperty(Range.prototype, name, original)
+    else Reflect.deleteProperty(Range.prototype, name)
+  })
 })
 vi.mock('./api', () => ({
   getFeedbackOptions: options,
@@ -58,38 +85,8 @@ const actions = (['add', 'modify', 'delete', 'other'] as const).map((action) => 
   available: true,
   reason: null,
 }))
-const fields = [
-  {
-    id: '4c3befc0-5146-43a2-8610-86efe4e8124a',
-    name: 'Type',
-    type: 'drop_down',
-    required: false,
-    type_config: {
-      options: [
-        { id: '11111111-1111-4111-8111-111111111111', name: '功能', color: null, orderindex: 0 },
-      ],
-    },
-  },
-  {
-    id: '9b3d2027-2162-42e2-81b9-d907592cdb5b',
-    name: 'Domain',
-    type: 'drop_down',
-    required: false,
-    type_config: {
-      options: [
-        { id: '22222222-2222-4222-8222-222222222222', name: '社区', color: null, orderindex: 0 },
-      ],
-    },
-  },
-  {
-    id: '4f7eb8a3-5de7-4f3b-87bb-8be5dc2d573f',
-    name: '额外文件链接',
-    type: 'text',
-    required: false,
-    type_config: { options: [] },
-  },
-]
-const good = { available: true, reason: null, fields, kinds, actions, limits: {} }
+const fields: string[] = []
+const good = { available: true, reason: null, fields, kinds, actions, limits: FEEDBACK_LIMITS }
 function Entries() {
   const { openFeedback } = useFeedback()
   return (
@@ -104,7 +101,8 @@ function Entries() {
   )
 }
 function mount(area: 'development' | 'community' = 'development') {
-  localStorage.setItem('exwebsite.auth.token', 'test-token')
+  clearLegacySessionStorage()
+  localStorage.setItem(AUTH_TOKEN_KEY, 'test-token')
   render(
     <ThemeProvider defaultTheme="light">
       <Toaster />
@@ -249,11 +247,11 @@ it('restores a frozen anonymous complaint only from the community pointer', asyn
   const key = '22222222-2222-4222-8222-222222222222'
   const submissionId = '11111111-1111-4111-8111-111111111111'
   sessionStorage.setItem(
-    'exwebsite.feedback.community.v1',
+    feedbackStorageKey(1, 'community'),
     JSON.stringify({ submissionKey: key, submissionId }),
   )
   sessionStorage.setItem(
-    'exwebsite.feedback.v2',
+    feedbackStorageKey(1, 'development'),
     JSON.stringify({ submissionKey: '33333333-3333-4333-8333-333333333333' }),
   )
   options.mockRejectedValueOnce(new Error('offline'))
@@ -262,9 +260,9 @@ it('restores a frozen anonymous complaint only from the community pointer', asyn
     submissionKey: key,
     revision: 1,
     createdAt: 1,
-    receiveExpiresAt: 86400001,
-    status: 'verification_required',
-    nextAction: 'verify',
+    receiveExpiresAt: 86401,
+    status: 'receiving',
+    nextAction: 'continue',
     taskId: null,
     taskUrl: null,
     failure: null,
@@ -283,7 +281,7 @@ it('restores a frozen anonymous complaint only from the community pointer', asyn
   expect((screen.getByRole('switch', { name: '匿名提交' }) as HTMLButtonElement).disabled).toBe(
     true,
   )
-  expect(sessionStorage.getItem('exwebsite.feedback.v2')).toContain(
+  expect(sessionStorage.getItem(feedbackStorageKey(1, 'development'))).toContain(
     '33333333-3333-4333-8333-333333333333',
   )
 })
@@ -315,8 +313,8 @@ it('freezes complaint anonymity when submit begins and preserves it in prepare p
   expect((screen.getByRole('switch', { name: '匿名提交' }) as HTMLButtonElement).disabled).toBe(
     true,
   )
-  expect(sessionStorage.getItem('exwebsite.feedback.community.v1')).toContain('submissionKey')
-  expect(sessionStorage.getItem('exwebsite.feedback.v2')).toBeNull()
+  expect(sessionStorage.getItem(feedbackStorageKey(1, 'community'))).toContain('submissionKey')
+  expect(sessionStorage.getItem(feedbackStorageKey(1, 'development'))).toBeNull()
 })
 it('sends a suggestion without an anonymous property', async () => {
   options.mockResolvedValue({
@@ -402,7 +400,7 @@ it('can reselect a missing attachment after recovering a submission even when op
   const key = '22222222-2222-4222-8222-222222222222'
   const submissionId = '11111111-1111-4111-8111-111111111111'
   sessionStorage.setItem(
-    'exwebsite.feedback.v2',
+    feedbackStorageKey(1, 'development'),
     JSON.stringify({ submissionKey: key, submissionId }),
   )
   options.mockRejectedValueOnce(new Error('offline'))
@@ -411,7 +409,7 @@ it('can reselect a missing attachment after recovering a submission even when op
     submissionKey: key,
     revision: 0,
     createdAt: 1,
-    receiveExpiresAt: 86400001,
+    receiveExpiresAt: 86401,
     status: 'receiving',
     nextAction: 'upload',
     taskId: null,
@@ -481,35 +479,50 @@ it('shows six types, isolates drafts and confirms closing', async () => {
   fireEvent.click((await screen.findByText('需求')).closest('button')!)
   expect(screen.getByLabelText('内容').textContent).toBe('')
 })
-it('requires the Bug problem category and keeps other classification fields optional', async () => {
+it('renders a Bug form with empty PHP fields and no ClickUp classification controls', async () => {
   options.mockResolvedValue(good)
   mount()
   fireEvent.click((await screen.findByText('Bug 反馈')).closest('button')!)
-  const category = screen.getByRole('combobox', { name: '问题分类' })
-  expect(category.getAttribute('aria-required')).toBe('true')
-  fireEvent.change(screen.getByLabelText('标题'), { target: { value: '车库异常' } })
-  pasteMarkdown(screen.getByLabelText('问题描述'), '取车后车辆没有出现')
+  expect(screen.queryByRole('combobox', { name: '问题分类' })).toBeNull()
+  expect(screen.queryByLabelText('部门')).toBeNull()
+  fireEvent.change(screen.getByLabelText('标题'), { target: { value: '问题' } })
+  pasteMarkdown(screen.getByRole('textbox', { name: '问题描述' }), '复现描述')
+  prepare.mockReturnValue(new Promise(() => {}))
   fireEvent.click(screen.getByRole('button', { name: '提交' }))
-  expect(
-    await screen.findByText('请选择问题分类', { selector: '[data-slot="field-error"]' }),
-  ).toBeTruthy()
-  fireEvent.keyDown(category, { key: 'ArrowDown' })
-  expect(await screen.findByRole('option', { name: '功能' })).toBeTruthy()
-  expect(screen.queryByRole('option', { name: '不选择' })).toBeNull()
-  fireEvent.click(screen.getByRole('option', { name: '功能' }))
-  expect(category.textContent).toContain('功能')
-  fireEvent.click(screen.getByRole('button', { name: '返回选择类型' }))
-  for (const [kind, label] of [
-    ['功能', '功能分类'],
-    ['资源', '资源类型'],
-    ['需求', '需求分类'],
-  ] as const) {
-    fireEvent.click(screen.getByText(kind, { selector: 'strong' }).closest('button')!)
-    expect(
-      screen.getByRole('combobox', { name: new RegExp(label) }).getAttribute('aria-required'),
-    ).toBe('false')
-    fireEvent.click(screen.getByRole('button', { name: '返回选择类型' }))
-  }
+  await waitFor(() => expect(prepare).toHaveBeenCalledOnce())
+  expect(prepare.mock.calls[0]![0].form).toMatchObject({ kind: 'bug', title: '问题' })
+  expect(prepare.mock.calls[0]![0].form).not.toHaveProperty('typeOptionId')
+})
+it('shows a Bug total JSON limit error and submits after the user shortens valid supplemental content', async () => {
+  options.mockResolvedValue(good)
+  prepare.mockReturnValue(new Promise(() => {}))
+  mount()
+  fireEvent.click((await screen.findByText('Bug 反馈')).closest('button')!)
+  fireEvent.change(screen.getByLabelText('标题'), { target: { value: 'Bug' } })
+  const description = screen.getByRole('textbox', { name: '问题描述' })
+  pasteMarkdown(description, 'Valid description')
+  fireEvent.click(screen.getByRole('switch', { name: '补充大文件信息' }))
+  const supplemental = screen.getByRole('textbox', { name: '大文件补充信息' })
+  const withinIndividualLimit = '中'.repeat(21845)
+  expect(new TextEncoder().encode(withinIndividualLimit).byteLength).toBe(65535)
+  fireEvent.change(supplemental, { target: { value: withinIndividualLimit } })
+  fireEvent.click(screen.getByRole('button', { name: '提交' }))
+  const error = await screen.findByText('表单内容过大，请缩短内容')
+  expect(description.getAttribute('aria-describedby')?.split(' ')).toContain(error.id)
+  expect(description.getAttribute('aria-invalid')).toBe('true')
+  expect(supplemental.getAttribute('aria-invalid')).toBe('false')
+  expect(prepare).not.toHaveBeenCalled()
+
+  fireEvent.change(supplemental, { target: { value: 'Short supplemental note' } })
+  fireEvent.click(screen.getByRole('button', { name: '提交' }))
+  await waitFor(() => expect(prepare).toHaveBeenCalledOnce())
+  expect(screen.queryByText('表单内容过大，请缩短内容')).toBeNull()
+  expect(prepare.mock.calls[0]![0].form).toMatchObject({
+    kind: 'bug',
+    title: 'Bug',
+    details: { description: 'Valid description' },
+    largeFileInfo: 'Short supplemental note',
+  })
 })
 it('disables only unavailable kinds and actions', async () => {
   options.mockResolvedValue({
@@ -557,13 +570,16 @@ it('ignores old recovery pointers and accepts a new key-only lookup', async () =
   const key = '22222222-2222-4222-8222-222222222222'
   options.mockResolvedValue(good)
   sessionStorage.setItem('exwebsite.feedback.v1.request', JSON.stringify({ submissionKey: key }))
-  sessionStorage.setItem('exwebsite.feedback.v2', JSON.stringify({ submissionKey: key }))
+  sessionStorage.setItem(
+    feedbackStorageKey(1, 'development'),
+    JSON.stringify({ submissionKey: key }),
+  )
   lookup.mockRejectedValueOnce({ code: 'NOT_FOUND' }).mockResolvedValueOnce({
     id: '11111111-1111-4111-8111-111111111111',
     submissionKey: key,
     revision: 0,
     createdAt: 1,
-    receiveExpiresAt: 86400001,
+    receiveExpiresAt: 86401,
     status: 'receiving',
     nextAction: 'upload',
     taskId: null,

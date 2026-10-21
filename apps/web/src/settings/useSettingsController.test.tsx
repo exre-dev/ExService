@@ -16,7 +16,9 @@ vi.mock('@workspace/sdk', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   instance: (config: { method?: string }) => {
     const handlers = { GET: get, PATCH: patch, POST: post }
-    return handlers[(config.method ?? 'GET') as keyof typeof handlers](config)
+    return Promise.resolve(
+      handlers[(config.method ?? 'GET') as keyof typeof handlers](config),
+    ).then((data) => ({ msg: 'ok', data }))
   },
 }))
 vi.mock('@web/src/auth/AuthContext', () => ({
@@ -36,12 +38,14 @@ vi.mock('@exre/exui', async (importOriginal) => ({
 import { useSettingsController } from '@web/src/settings/useSettingsController'
 
 const user = {
-  id: 'one',
+  id: 1,
+  platform_role: 'user',
+  last_login_time: null,
   email: 'a@example.com',
-  nickname: 'Alice',
+  username: 'Alice',
   qq: '123',
-  fivemId: null,
-  avatarUrl: null,
+
+  avatar: null,
 }
 
 afterEach(() => {
@@ -55,7 +59,7 @@ afterEach(() => {
   authState.current = { status: 'authenticated', message: '' }
   bindSettingsToken(null)
   window.localStorage.clear()
-  selectSessionScope('/api')
+  selectSessionScope('/')
 })
 
 describe('settings controller', () => {
@@ -72,7 +76,7 @@ describe('settings controller', () => {
       await hook.result.current.save('qq', '')
     })
     expect(patch).toHaveBeenCalledWith({
-      url: '/auth/me',
+      url: '/api/auth/me',
       method: 'PATCH',
       alert: false,
       data: { qq: null },
@@ -124,7 +128,7 @@ describe('settings controller', () => {
       pending = hook.result.current.load()
     })
     window.localStorage.setItem(
-      `exwebsite.auth.token:${encodeURIComponent(new URL('/scope-b', window.location.origin).href)}`,
+      `exwebsite.php.auth.v1:${encodeURIComponent(new URL('/scope-b', window.location.origin).href)}`,
       'same-token',
     )
     act(() => selectSessionScope('/scope-b'))
@@ -165,11 +169,11 @@ describe('settings controller', () => {
         old = hook.result.current.save('nickname', 'Old root').catch((error) => error)
       })
       window.localStorage.setItem(
-        `exwebsite.auth.token:${encodeURIComponent(new URL('/scope-b', window.location.origin).href)}`,
+        `exwebsite.php.auth.v1:${encodeURIComponent(new URL('/scope-b', window.location.origin).href)}`,
         'same-token',
       )
       act(() => selectSessionScope('/scope-b'))
-      const newUser = { ...user, nickname: 'New root' }
+      const newUser = { ...user, username: 'New root' }
       get.mockResolvedValue(newUser)
       await act(async () => {
         await hook.result.current.load()
@@ -186,10 +190,10 @@ describe('settings controller', () => {
       expect(settingsConfig.profile.snapshot).toEqual(newUser)
       expect(hook.result.current.actionPending).toBe(true)
       await act(async () => {
-        finishNew({ ...newUser, nickname: 'Saved in new root' })
+        finishNew({ ...newUser, username: 'Saved in new root' })
         await next
       })
-      expect(settingsConfig.profile.snapshot?.nickname).toBe('Saved in new root')
+      expect(settingsConfig.profile.snapshot?.username).toBe('Saved in new root')
       expect(hook.result.current.actionPending).toBe(false)
     },
   )

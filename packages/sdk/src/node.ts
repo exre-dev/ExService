@@ -1,10 +1,7 @@
 import { createRuntime } from './runtime.js'
 import type { SdkInstance, SessionExpiredHandler } from './request-types.js'
 import type { Storage } from './storage/types.js'
-const runtime = createRuntime(
-  { environment: 'node' },
-  async () => (await import('./storage/node.js')).transport,
-)
+const runtime = createRuntime({ environment: 'node' })
 export const instance: SdkInstance = runtime.instance
 export const storage: Storage = runtime.storage
 export const setBaseUrl: (url: string) => void = runtime.setBaseUrl

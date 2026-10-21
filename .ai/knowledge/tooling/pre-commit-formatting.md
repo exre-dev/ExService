@@ -14,6 +14,6 @@
 
 lint-staged 使用默认的备份、失败回退和部分暂存文件保护，只把格式化后的暂存内容加入提交。不要改成直接按工作区文件执行格式化后再全部暂存，否则可能把未暂存改动带入提交。Prettier 配置和排除规则分别只维护在 `.prettierrc.json`、`.prettierignore`。
 
-`api/generated/`、`packages/sdk/src/generated/`、字体子集构建产物、Drizzle 的元数据和 `pnpm-lock.yaml` 保持各自生成器的输出格式，Hook 不改写它们。SDK 生成声明的来源与消费路径见 `.ai/architectures/api/contract-layout.md`。
+`packages/sdk/src/generated/`、字体子集构建产物和 `pnpm-lock.yaml` 保持各自生成器的输出格式，Hook 不改写它们。PHP 子模块由根 `.prettierignore` 排除；其 API 生成物和文档遵守 PHP 仓库自身规则。SDK 生成声明的来源与消费路径见 `.ai/architectures/api/contract-layout.md`。
 
 不支持的文件类型由 `--ignore-unknown` 跳过；支持类型的语法错误仍导致非零退出并中止提交。Hook 不运行数据库测试或启动服务。`tests/tooling/pre-commit.test.mjs` 通过临时 Git 仓库验证真实提交、部分暂存、错误回退和工作树隔离，不在项目工作树创建提交。

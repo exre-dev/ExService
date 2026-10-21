@@ -54,83 +54,13 @@ export function redact(value, environment = {}) {
 }
 
 const advice = {
-  DOCKER_NOT_FOUND: ['找不到 docker 命令', '安装 Docker 并确认 docker 位于 PATH'],
-  DOCKER_UNAVAILABLE: [
-    '无法连接 Docker 引擎',
-    '检查 docker info、Docker Desktop/daemon 和当前 context',
-  ],
-  DOCKER_COMMAND_TIMEOUT: ['Docker 调用超时', '检查 Docker Desktop/daemon 是否响应'],
   ENV_INVALID: ['根环境文件无法读取或解析', '修正根 .env.local 的权限和 dotenv 格式'],
-  CONFIG_REQUIRED: ['必需配置缺失或格式无效', '在根 .env.local 填写上方配置键；已有环境保留原值'],
-  PROFILE_INVALID: [
-    '运行配置类型无效',
-    '本地开发设置 RUNTIME_PROFILE=local；原生运行使用 deployment',
-  ],
-  PORT_INVALID: ['端口不是有效整数', '将上方端口设置为 1024–65535 的整数'],
-  PORT_CONFLICT: ['本地服务端口重复', '给上方服务配置互不重复的端口'],
-  PRIVATE_LISTENER_REQUIRED: ['应用监听地址不是回环地址', '将上方监听地址设置为 127.0.0.1'],
-  URL_INVALID: [
-    '服务地址格式无效',
-    '核对上方地址的协议、主机和端口；本地使用 http://127.0.0.1:<端口>',
-  ],
-  CRYPTO_KEY_INVALID: ['密钥格式无效', '上方密钥必须为 64 位 hex；保留已有环境的原密钥'],
-  DATABASE_HOST_INVALID: ['数据库主机格式无效', '填写数据库主机名或 IP，不要填写连接 URL'],
-  DATABASE_TLS_INVALID: [
-    '数据库 TLS 模式无效',
-    '使用 disable、allow、prefer、require、verify-ca 或 verify-full',
-  ],
-  DATABASE_IDENTITY_CONFLICT: [
-    '数据库名称或连接身份与预期不一致',
-    '核对该服务的数据库名和独立 owner；Website=exre，Hydra=hydra',
-  ],
-  DATABASE_OWNER_CONFLICT: [
-    '数据库 owner 或角色权限冲突',
-    '核对现有库的独立 owner、登录权限和原凭据；文档 owner 不得使用管理员或 Website owner',
-  ],
-  DATABASE_MIGRATIONS_MISSING: [
-    '数据库 migration 未完成',
-    '对现有 Hydra 显式执行 pnpm infra migrate',
-  ],
-  DATABASE_STRUCTURE_INCOMPLETE: [
-    '数据库必需表或列缺失',
-    '对现有 Hydra 显式执行 pnpm infra migrate；被手工修改的结构先核对迁移记录',
-  ],
-  BUILD_ARTIFACT_MISSING: ['应用构建产物缺失', '执行 pnpm build 后重试'],
-  HYDRA_BINARY_REQUIRED: [
-    '原生 Hydra 可执行文件缺失',
-    '安装 Hydra v2.3.0，并将 HYDRA_BINARY 指向可执行文件',
-  ],
-  HYDRA_CLIENT_MISSING: [
-    'Hydra OIDC client 尚未登记',
-    '核对 IDENTITY_CLIENTS_JSON 后显式执行 pnpm infra clients',
-  ],
-  HYDRA_CLIENT_CONFLICT: [
-    'Hydra OIDC client 配置不一致',
-    '核对 issuer、回调地址和 IDENTITY_CLIENTS_JSON 与现有 client；不要自动覆盖身份配置',
-  ],
-  HYDRA_CONFIG_INVALID: [
-    'Hydra OIDC 连接配置无效',
-    '核对 HYDRA_ADMIN_URL、HYDRA_PUBLIC_URL、PUBLIC_ORIGIN 和 IDENTITY_CLIENTS_JSON',
-  ],
-  HYDRA_CLIENT_CHECK_FAILED: [
-    'Hydra OIDC client 检查失败',
-    '检查 pnpm service:status、pnpm service:logs hydra 和 Hydra admin/public 地址',
-  ],
-  WEBSITE_NOT_READY: ['Website 启动检查未通过', '按上方 Website 检查项修正对应配置或迁移后重试'],
-  APPLICATION_NOT_READY: ['应用 HTTP 健康检查未通过', '核对上方服务地址、监听端口和进程日志'],
-  APP_EXITED_DURING_START: ['应用在启动期间退出', '检查上方退出进程的错误日志，修正后重试'],
+  PORT_INVALID: ['端口不是有效整数', '将端口设置为 1024–65535 的整数'],
+  APPLICATION_NOT_READY: ['前端 HTTP 就绪检查未通过', '核对监听端口和进程日志'],
+  APP_EXITED_DURING_START: ['前端在启动期间退出', '检查退出进程日志，修正后重试'],
   APPLICATION_PORT_OCCUPIED: [
-    '应用端口已被占用',
-    '检查对应端口的监听进程；停止已知应用或显式调整本项目端口',
-  ],
-  LOCAL_PROFILE_REQUIRED: ['命令要求本地运行配置', '设置 RUNTIME_PROFILE=local 后重试'],
-  DEPLOYMENT_PROFILE_REQUIRED: [
-    '命令要求原生运行配置',
-    '本地开发使用 pnpm dev；原生运行设置 RUNTIME_PROFILE=deployment',
-  ],
-  BOOTSTRAP_UUID_REQUIRED: [
-    '缺少有效管理员账号 UUID',
-    '选择已有 active Website 账号，传入 --admin-user-id <UUID>',
+    '前端端口已被占用',
+    '停止已知端口占用进程，或使用 pnpm dev --port 指定其他端口',
   ],
 }
 
@@ -163,26 +93,6 @@ export function runtimeFailure(error) {
   if (error instanceof RuntimeError) return error.message
   if (/^[A-Z][A-Z0-9_]+$/.test(error?.code ?? '')) return new RuntimeError(error.code).message
   return '运行失败：未分类异常；请检查上方服务日志中的失败项；原始异常已隐藏'
-}
-
-/** Keeps failure classification separate from database readiness checks. */
-export function diagnostic(error, context) {
-  if (error instanceof RuntimeError) return error
-  const nested = error?.cause?.code ?? error?.errors?.[0]?.code
-  const code = error?.code ?? nested
-  const reasons = {
-    ECONNREFUSED: '连接被拒绝',
-    ENOTFOUND: 'DNS 解析失败',
-    EAI_AGAIN: 'DNS 暂时不可用',
-    ETIMEDOUT: '连接超时',
-    ECONNRESET: '连接中断',
-    '28P01': '密码错误',
-    28000: '认证失败',
-    '3D000': '数据库不存在',
-    '42P01': 'migration 或必需表缺失',
-    42703: 'migration 或必需列缺失',
-  }
-  return new RuntimeError(`${code ?? 'CHECK_FAILED'} (${reasons[code] ?? '检查失败'})`, context)
 }
 
 /** Color is terminal-only; persisted output is always redacted plain text. */

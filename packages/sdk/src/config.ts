@@ -24,25 +24,44 @@ export function validToken(value: unknown): value is string {
 // Check the raw spelling before URL normalisation can erase traversal segments.
 export function safePath(value: string): boolean {
   if (/[\\?#]/.test(value) || /%(?:2f|5c)/i.test(value)) return false
-  return !value.split('/').some(part => {
-    try { const decoded = decodeURIComponent(part); return decoded === '.' || decoded === '..' }
-    catch { return true }
+  return !value.split('/').some((part) => {
+    try {
+      const decoded = decodeURIComponent(part)
+      return decoded === '.' || decoded === '..'
+    } catch {
+      return true
+    }
   })
 }
 export function normalizeBase(value: string, environment: RuntimeEnvironment): string {
-  if (typeof value !== 'string' || !value || value.trim() !== value || !safePath(value)) throw configError()
+  if (typeof value !== 'string' || !value || value.trim() !== value || !safePath(value))
+    throw configError()
   let url: URL
-  try { url = new URL(value, environment.environment === 'browser' ? environment.origin : undefined) }
-  catch { throw configError() }
-  if (!/^https?:$/.test(url.protocol) || url.username || url.password || url.search || url.hash ||
-      (environment.environment === 'node' && !/^https?:\/\//i.test(value))) throw configError()
+  try {
+    url = new URL(value, environment.environment === 'browser' ? environment.origin : undefined)
+  } catch {
+    throw configError()
+  }
+  if (
+    !/^https?:$/.test(url.protocol) ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash ||
+    (environment.environment === 'node' && !/^https?:\/\//i.test(value))
+  )
+    throw configError()
   return url.href.replace(/\/+$/, '')
 }
 
 export function createConfig(environment: RuntimeEnvironment) {
-  const defaultBase = environment.environment === 'browser' && environment.origin ? `${new URL(environment.origin).origin}/api` : undefined
+  const defaultBase =
+    environment.environment === 'browser' && environment.origin
+      ? new URL(environment.origin).origin
+      : undefined
   let baseUrl = defaultBase
-  let scopeRevision = 0, tokenRevision = 0
+  let scopeRevision = 0,
+    tokenRevision = 0
   let effectiveToken: string | null = null
   let lastReadable: TokenRead = { kind: 'unavailable' }
   let override: { value: string | null; baseline: TokenRead } | undefined
@@ -55,11 +74,19 @@ export function createConfig(environment: RuntimeEnvironment) {
   function read(): TokenRead {
     try {
       const result = environment.readToken?.()
-      return result?.kind === 'known' && (result.value === null || typeof result.value === 'string') ? result : { kind: 'unavailable' }
-    } catch { return { kind: 'unavailable' } }
+      return result?.kind === 'known' && (result.value === null || typeof result.value === 'string')
+        ? result
+        : { kind: 'unavailable' }
+    } catch {
+      return { kind: 'unavailable' }
+    }
   }
   function update(value: string | null) {
-    if (effectiveToken !== value) { effectiveToken = value; tokenRevision++; expiredRevision = undefined }
+    if (effectiveToken !== value) {
+      effectiveToken = value
+      tokenRevision++
+      expiredRevision = undefined
+    }
   }
   function resolve(): ConfigSnapshot {
     let source: ConfigSnapshot['source'] = 'explicit'
@@ -74,20 +101,35 @@ export function createConfig(environment: RuntimeEnvironment) {
         }
       }
       if (override) token = override.value
-      else if (observed.kind === 'known') { token = validToken(observed.value) ? observed.value : null; source = 'automatic' }
-      else { token = null; source = 'unavailable' }
+      else if (observed.kind === 'known') {
+        token = validToken(observed.value) ? observed.value : null
+        source = 'automatic'
+      } else {
+        token = null
+        source = 'unavailable'
+      }
     }
     update(token)
     return { baseUrl, scopeRevision, tokenRevision, token, source }
   }
   function matches(expected: ConfigSnapshot, actual = resolve()): boolean {
-    return actual.scopeRevision === expected.scopeRevision && actual.tokenRevision === expected.tokenRevision && actual.baseUrl === expected.baseUrl
+    return (
+      actual.scopeRevision === expected.scopeRevision &&
+      actual.tokenRevision === expected.tokenRevision &&
+      actual.baseUrl === expected.baseUrl
+    )
   }
   function setBaseUrl(value: string) {
     const next = normalizeBase(value, environment)
     if (next === baseUrl) return
-    baseUrl = next; scopeRevision++; tokenRevision++; expiredRevision = undefined
-    explicitToken = null; override = undefined; effectiveToken = null; lastReadable = { kind: 'unavailable' }
+    baseUrl = next
+    scopeRevision++
+    tokenRevision++
+    expiredRevision = undefined
+    explicitToken = null
+    override = undefined
+    effectiveToken = null
+    lastReadable = { kind: 'unavailable' }
     resolve()
   }
   function setAccessToken(value: string | null) {
@@ -103,23 +145,63 @@ export function createConfig(environment: RuntimeEnvironment) {
   }
   function expire(expected: ConfigSnapshot, error: ExAxiosError, alert: boolean): void {
     const actual = resolve()
-    if (!matches(expected, actual) || expiredRevision === currentRevision() || actual.source === 'unavailable') return
+    if (
+      !matches(expected, actual) ||
+      expiredRevision === currentRevision() ||
+      actual.source === 'unavailable'
+    )
+      return
     if (actual.source === 'automatic') {
       let cleared = false
-      try { cleared = environment.clearToken?.(actual.token) === true } catch { /* unreadable storage is not a successful clear */ }
+      try {
+        cleared = environment.clearToken?.(actual.token) === true
+      } catch {
+        /* unreadable storage is not a successful clear */
+      }
       const after = read()
-      if (!cleared || after.kind !== 'known' || after.value !== null) { resolve(); return }
+      if (!cleared || after.kind !== 'known' || after.value !== null) {
+        resolve()
+        return
+      }
       lastReadable = after
       override = { value: null, baseline: after }
     } else if (automaticTarget()) override = { value: null, baseline: lastReadable }
     else explicitToken = null
     update(null)
     expiredRevision = currentRevision()
-    if (alert) { try { environment.notify?.(error.message) } catch { /* preserve request error */ } }
+    const revision = expiredRevision
+    const notify = () => {
+      if (!alert) return
+      resolve()
+      if (expiredRevision !== revision || currentRevision() !== revision) return
+      try {
+        environment.notify?.(error.message)
+      } catch {
+        /* preserve request error */
+      }
+    }
     const loginUrl = actual.baseUrl ? `${new URL(actual.baseUrl).origin}/login` : '/login'
     if (handler) {
-      try { void Promise.resolve(handler({ error, loginUrl })).catch(() => {}) } catch { /* preserve request error */ }
-    } else { try { environment.navigate?.(loginUrl) } catch { /* preserve request error */ } }
+      try {
+        const result = handler({ error, loginUrl })
+        if (result && typeof result === 'object' && typeof result.then === 'function') {
+          void Promise.resolve(result)
+            .then((value) => {
+              if (value !== false) notify()
+            })
+            .catch(() => {})
+        } else if (result !== false) notify()
+      } catch {
+        /* cleanup proof is unknown; preserve request error without notifying */
+      }
+    } else {
+      notify()
+      try {
+        environment.navigate?.(loginUrl)
+      } catch {
+        /* preserve request error */
+      }
+    }
   }
   return { resolve, matches, setBaseUrl, setAccessToken, setSessionExpiredHandler, expire }
 }

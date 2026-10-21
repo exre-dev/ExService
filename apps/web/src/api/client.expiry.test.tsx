@@ -7,7 +7,6 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { instance } from '@workspace/sdk'
 import { installSdkIntegration } from './client'
 import {
-  AUTH_TOKEN_KEY,
   clearBrowserSession,
   readRawToken,
   readToken,
@@ -16,39 +15,46 @@ import {
   writeToken,
 } from '../auth/storage'
 import { AuthProvider, useAuth } from '../auth/AuthContext'
-import { OidcPage } from '../pages/IdentityPage/OidcPage'
+import { bindSettingsToken, settingsConfig } from '../settings/settingsConfig'
+import { bindNotificationsToken, notificationsConfig } from '../notifications/notificationsConfig'
 
-const fixture = vi.hoisted(() => ({ reset: () => {} }))
+const fixture = vi.hoisted(() => ({ reset: () => {}, notify: vi.fn() }))
 vi.mock('@workspace/sdk', async () => {
   const { createRuntime } = await import('../../../../packages/sdk/src/runtime')
   const { ExAxiosError } = await import('../../../../packages/sdk/src/http/errors')
   const create = () =>
-    createRuntime(
-      {
-        environment: 'browser',
-        origin: window.location.origin,
-        readToken: () => ({
-          kind: 'known',
-          value: window.localStorage.getItem('exwebsite.auth.token'),
-        }),
-        clearToken: (expected) => {
-          if (window.localStorage.getItem('exwebsite.auth.token') !== expected) return false
-          window.localStorage.removeItem('exwebsite.auth.token')
-          return true
-        },
+    createRuntime({
+      notify: fixture.notify,
+      environment: 'browser',
+      origin: window.location.origin,
+      readToken: () => ({
+        kind: 'known',
+        value: window.localStorage.getItem(
+          `exwebsite.php.auth.v1:${encodeURIComponent(window.location.origin)}`,
+        ),
+      }),
+      clearToken: (expected) => {
+        if (
+          window.localStorage.getItem(
+            `exwebsite.php.auth.v1:${encodeURIComponent(window.location.origin)}`,
+          ) !== expected
+        )
+          return false
+        window.localStorage.removeItem(
+          `exwebsite.php.auth.v1:${encodeURIComponent(window.location.origin)}`,
+        )
+        return true
       },
-      async () => {
-        throw new Error('COS is outside this fixture')
-      },
-    )
+    })
   let runtime = create()
   fixture.reset = () => {
     runtime = create()
   }
   return {
     ExAxiosError,
-    instance: ((config: Parameters<typeof runtime.instance>[0]) =>
-      runtime.instance(config)) as unknown as typeof runtime.instance,
+    instance: new Proxy(runtime.instance, {
+      apply: (_target, receiver, args) => Reflect.apply(runtime.instance, receiver, args),
+    }),
     setBaseUrl: (url: string) => runtime.setBaseUrl(url),
     setAccessToken: (token: string | null) => runtime.setAccessToken(token),
     setSessionExpiredHandler: (handler: Parameters<typeof runtime.setSessionExpiredHandler>[0]) =>
@@ -68,13 +74,14 @@ const json = (response: ServerResponse, status: number, body: unknown) => {
 }
 const expired = (response: ServerResponse) =>
   json(response, 401, {
-    error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'fixture-expiry' },
+    msg: 'expired',
   })
 
 beforeEach(async () => {
   storageUnavailable = false
   requests.length = 0
   replace.mockReset()
+  fixture.notify.mockReset()
   respond = (_request, response) => expired(response)
   server = createServer((request, response) => {
     requests.push({ url: request.url!, authorization: request.headers.authorization })
@@ -107,7 +114,7 @@ beforeEach(async () => {
       },
     }),
   )
-  vi.stubEnv('VITE_API_BASE_URL', '')
+  vi.stubEnv('VITE_API_BASE_URL', `${location.origin}/backend`)
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -153,14 +160,15 @@ it('reconciles a successful persistent write and real explicit-source expiry bef
   const observed: Array<string | null> = []
   const stop = subscribeSessionChanges(() => observed.push(readToken(window.localStorage)))
   try {
-    await expect(instance({ url: '/auth/me', alert: false })).rejects.toMatchObject({
-      code: 'SESSION_INVALID',
+    await expect(instance({ url: '/api/auth/me', alert: true })).rejects.toMatchObject({
+      code: 'HTTP_ERROR',
     })
     expect(requests[0]?.authorization).toBe('Bearer same-document-login')
     expect(readRawToken(window.localStorage)).toBeNull()
     expect(readToken(window.localStorage)).toBeNull()
     expect(observed).toEqual([null])
-    expect(replace).toHaveBeenCalledWith('/login')
+    expect(replace).toHaveBeenCalledExactlyOnceWith('/login')
+    expect(fixture.notify).toHaveBeenCalledExactlyOnceWith('expired')
   } finally {
     stop()
   }
@@ -171,18 +179,19 @@ it('suppresses a matching expired write when deletion fails and permits a succes
   const remove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
     throw new Error('denied')
   })
-  await expect(instance({ url: '/auth/me', alert: false })).rejects.toMatchObject({
-    code: 'SESSION_INVALID',
+  await expect(instance({ url: '/api/auth/me', alert: true })).rejects.toMatchObject({
+    code: 'HTTP_ERROR',
   })
   expect(readRawToken(window.localStorage)).toBe('same-token')
   expect(readToken(window.localStorage)).toBeNull()
   expect(syncSessionToken()).toBeNull()
-  expect(replace).toHaveBeenCalledWith('/login')
+  expect(replace).not.toHaveBeenCalled()
+  expect(fixture.notify).not.toHaveBeenCalled()
   remove.mockRestore()
   respond = (_request, response) => json(response, 200, { status: 'ok' })
   writeToken(window.localStorage, 'same-token')
   expect(readToken(window.localStorage)).toBe('same-token')
-  await instance({ url: '/health', alert: false })
+  await instance({ url: '/api/health', alert: false })
   expect(requests.at(-1)?.authorization).toBe('Bearer same-token')
 })
 
@@ -199,19 +208,226 @@ it('preserves a new raw token arriving while the prior explicit-source request i
     void gate.then(() => expired(response))
   }
   writeToken(window.localStorage, 'old-login')
-  const pending = instance({ url: '/auth/me', alert: false })
+  const pending = instance({ url: '/api/auth/me', alert: true })
   await reached
-  window.localStorage.setItem(AUTH_TOKEN_KEY, 'new-cross-tab-token')
+  window.localStorage.setItem(
+    `exwebsite.php.auth.v1:${encodeURIComponent(window.location.origin + '/backend')}`,
+    'new-cross-tab-token',
+  )
   release()
-  await expect(pending).rejects.toMatchObject({ code: 'SESSION_INVALID' })
+  await expect(pending).rejects.toMatchObject({ code: 'HTTP_ERROR' })
   expect(readRawToken(window.localStorage)).toBe('new-cross-tab-token')
   expect(readToken(window.localStorage)).toBe('new-cross-tab-token')
   expect(replace).not.toHaveBeenCalled()
+  expect(fixture.notify).not.toHaveBeenCalled()
 })
+
+it.each(['no-op', 'replacement'] as const)(
+  'requires a second empty read after persistent delete: %s',
+  async (mode) => {
+    writeToken(window.localStorage, 'expired-token')
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      if (mode === 'replacement')
+        window.localStorage.setItem(
+          `exwebsite.php.auth.v1:${encodeURIComponent(window.location.origin + '/backend')}`,
+          'replacement-token',
+        )
+    })
+    await expect(instance({ url: '/api/auth/me', alert: true })).rejects.toMatchObject({
+      status: 401,
+    })
+    expect(fixture.notify).not.toHaveBeenCalled()
+    expect(replace).not.toHaveBeenCalled()
+    expect(readRawToken(window.localStorage)).toBe(
+      mode === 'replacement' ? 'replacement-token' : 'expired-token',
+    )
+  },
+)
 
 function CurrentState() {
   return <p data-testid="auth-status">{useAuth().state.status}</p>
 }
+it.each(['throws', 'no-op'] as const)(
+  'invalidates established private UI and caches when unrelated protected expiry deletion %s',
+  async (mode) => {
+    const account = {
+      id: 42,
+      username: 'Private account',
+      avatar: null,
+      email: 'private@example.test',
+      qq: null,
+      platform_role: 'user',
+      last_login_time: null,
+    }
+    respond = (request, response) => {
+      if (request.url?.endsWith('/api/auth/me')) json(response, 200, { msg: 'ok', data: account })
+      else expired(response)
+    }
+    function PrivateContent() {
+      const auth = useAuth()
+      return (
+        <>
+          <p data-testid="auth-status">{auth.state.status}</p>
+          {auth.state.status === 'authenticated' && (
+            <p data-testid="private-content">Account {auth.userId}</p>
+          )}
+        </>
+      )
+    }
+    writeToken(window.localStorage, 'established-token')
+    render(
+      <AuthProvider>
+        <PrivateContent />
+      </AuthProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('auth-status').textContent).toBe('authenticated'))
+    expect(screen.getByTestId('private-content').textContent).toBe('Account 42')
+    bindSettingsToken('established-token')
+    settingsConfig.profile.snapshot = account
+    bindNotificationsToken('established-token')
+    notificationsConfig.summary.unreadCount = 7
+    notificationsConfig.summary.status = 'ready'
+    const observed: Array<string | null> = []
+    const stop = subscribeSessionChanges(() => observed.push(readToken(window.localStorage)))
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      if (mode === 'throws') throw new Error('denied')
+    })
+    try {
+      await act(async () => {
+        await expect(
+          instance({ url: '/api/notifications/summary', alert: true }),
+        ).rejects.toMatchObject({ status: 401 })
+      })
+      expect(readRawToken(window.localStorage)).toBe('established-token')
+      expect(readToken(window.localStorage)).toBeNull()
+      expect(observed).toEqual([null])
+      expect(screen.getByTestId('auth-status').textContent).toBe('anonymous')
+      expect(screen.queryByTestId('private-content')).toBeNull()
+      expect(settingsConfig.profile.snapshot).toBeNull()
+      expect(notificationsConfig.summary.unreadCount).toBe(0)
+      expect(notificationsConfig.summary.status).toBe('idle')
+      expect(fixture.notify).not.toHaveBeenCalled()
+      expect(replace).not.toHaveBeenCalled()
+      await expect(
+        instance({ url: '/api/notifications/summary', alert: false }),
+      ).rejects.toMatchObject({ status: 401 })
+      expect(requests.at(-1)?.authorization).toBeUndefined()
+      expect(requests.filter((request) => request.url.endsWith('/api/auth/me'))).toHaveLength(1)
+      expect(fixture.notify).not.toHaveBeenCalled()
+      expect(replace).not.toHaveBeenCalled()
+    } finally {
+      stop()
+    }
+  },
+)
+
+it('invalidates established private UI and caches when the selected token becomes unreadable during expiry', async () => {
+  const account = {
+    id: 42,
+    username: 'Private account',
+    avatar: null,
+    email: 'private@example.test',
+    qq: null,
+    platform_role: 'user',
+    last_login_time: null,
+  }
+  respond = (request, response) => {
+    if (request.url?.endsWith('/api/auth/me')) json(response, 200, { msg: 'ok', data: account })
+    else expired(response)
+  }
+  function PrivateContent() {
+    const auth = useAuth()
+    return (
+      <>
+        <p data-testid="auth-status">{auth.state.status}</p>
+        <p data-testid="auth-user-id">{auth.userId ?? 'none'}</p>
+        {auth.state.status === 'authenticated' && (
+          <p data-testid="private-content">Account {auth.userId}</p>
+        )}
+      </>
+    )
+  }
+  const persistent = window.localStorage
+  const selectedKey = `exwebsite.php.auth.v1:${encodeURIComponent(window.location.origin + '/backend')}`
+  writeToken(persistent, 'established-token')
+  // A mounted private consumer can subscribe before its parent AuthProvider.
+  const stopPrivateSubscriber = subscribeSessionChanges(() => {
+    readToken(window.localStorage)
+  })
+  render(
+    <AuthProvider>
+      <PrivateContent />
+    </AuthProvider>,
+  )
+  await waitFor(() => expect(screen.getByTestId('auth-status').textContent).toBe('authenticated'))
+  bindSettingsToken('established-token')
+  settingsConfig.profile.snapshot = account
+  bindNotificationsToken('established-token')
+  notificationsConfig.summary.unreadCount = 7
+  notificationsConfig.summary.status = 'ready'
+
+  const observed: Array<string | null | undefined> = []
+  const stop = subscribeSessionChanges(() => {
+    try {
+      observed.push(readToken(window.localStorage))
+    } catch {
+      observed.push(undefined)
+    }
+  })
+  const originalGet = Storage.prototype.getItem
+  const read = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (
+    this: Storage,
+    key,
+  ) {
+    if (this === persistent && key === selectedKey) throw new Error('unreadable token')
+    return originalGet.call(this, key)
+  })
+  try {
+    await act(async () => {
+      await expect(
+        instance({ url: '/api/notifications/summary', alert: true }),
+      ).rejects.toMatchObject({
+        status: 401,
+      })
+    })
+    expect(requests.at(-1)?.authorization).toBe('Bearer established-token')
+    expect(observed).toEqual([undefined])
+    expect(screen.getByTestId('auth-status').textContent).toBe('unavailable')
+    expect(screen.getByTestId('auth-user-id').textContent).toBe('none')
+    expect(screen.queryByTestId('private-content')).toBeNull()
+    expect(settingsConfig.profile.snapshot).toBeNull()
+    expect(notificationsConfig.summary.unreadCount).toBe(0)
+    expect(notificationsConfig.summary.status).toBe('idle')
+    expect(fixture.notify).not.toHaveBeenCalled()
+    expect(replace).not.toHaveBeenCalled()
+    await expect(
+      instance({ url: '/api/notifications/summary', alert: false }),
+    ).rejects.toMatchObject({
+      status: 401,
+    })
+    expect(requests.at(-1)?.authorization).toBeUndefined()
+  } finally {
+    read.mockRestore()
+    stop()
+    stopPrivateSubscriber()
+  }
+  expect(readRawToken(persistent)).toBe('established-token')
+  expect(readToken(persistent)).toBeNull()
+  expect(requests.filter((request) => request.url.endsWith('/api/auth/me'))).toHaveLength(1)
+  act(() => {
+    expect(syncSessionToken()).toBeNull()
+  })
+  expect(screen.getByTestId('auth-status').textContent).toBe('anonymous')
+  act(() => writeToken(persistent, 'new-login'))
+  await waitFor(() => expect(screen.getByTestId('auth-status').textContent).toBe('authenticated'))
+  expect(screen.getByTestId('private-content').textContent).toBe('Account 42')
+  expect(
+    requests.filter((request) => request.url.endsWith('/api/auth/me')).at(-1)?.authorization,
+  ).toBe('Bearer new-login')
+  expect(fixture.notify).not.toHaveBeenCalled()
+  expect(replace).not.toHaveBeenCalled()
+})
+
 it('keeps the actual AuthProvider anonymous after post-write expiry without restoring the retained token', async () => {
   render(
     <AuthProvider>
@@ -234,46 +450,6 @@ it('keeps the actual AuthProvider anonymous after post-write expiry without rest
   remove.mockRestore()
 })
 
-it('returns the actual OIDC same-document login to its form when accept expires and persistent deletion fails', async () => {
-  window.location.pathname = '/identity/login'
-  respond = (request, response) => {
-    if (request.url === '/api/auth/oidc/inspect')
-      json(response, 200, { clientName: 'Fixture', scopes: ['openid'] })
-    else if (request.url === '/api/auth/login')
-      json(response, 200, { token: 'oidc-same-document-login', expiresAt: Date.now() + 10000 })
-    else if (request.url === '/api/auth/me')
-      json(response, 200, { nickname: 'Fixture', avatarUrl: null })
-    else expired(response)
-  }
-  const user = userEvent.setup()
-  render(
-    <MemoryRouter initialEntries={['/identity/login?login_challenge=fixture']}>
-      <AuthProvider>
-        <CurrentState />
-        <OidcPage phase="login" />
-      </AuthProvider>
-    </MemoryRouter>,
-  )
-  await user.type(await screen.findByLabelText('\u90ae\u7bb1'), 'fixture@example.test')
-  await user.type(screen.getByLabelText('\u5bc6\u7801', { exact: true }), 'fixture-password')
-  await user.click(screen.getByRole('button', { name: '\u7ee7\u7eed' }))
-  const remove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
-    throw new Error('denied')
-  })
-  await user.click(screen.getByRole('button', { name: '\u767b\u5f55' }))
-  await waitFor(() =>
-    expect(requests.some((request) => request.url === '/api/auth/oidc/login/accept')).toBe(true),
-  )
-  await waitFor(() => expect(readToken(window.localStorage)).toBeNull())
-  await waitFor(() => expect(screen.getByTestId('auth-status').textContent).toBe('anonymous'))
-  expect(await screen.findByLabelText('\u90ae\u7bb1')).toBeTruthy()
-  expect(
-    requests.find((request) => request.url === '/api/auth/oidc/login/accept')?.authorization,
-  ).toBe('Bearer oidc-same-document-login')
-  expect(replace).not.toHaveBeenCalled()
-  remove.mockRestore()
-})
-
 it.each(['owned-login', 'replacement-login'])(
   'retains precise owned expiry suppression across a denied storage getter, then recovers %s',
   async (recoveredToken) => {
@@ -289,15 +465,19 @@ it.each(['owned-login', 'replacement-login'])(
     })
     try {
       storageUnavailable = true
-      await expect(instance({ url: '/auth/me', alert: false })).rejects.toMatchObject({
-        code: 'SESSION_INVALID',
+      await expect(instance({ url: '/api/auth/me', alert: true })).rejects.toMatchObject({
+        code: 'HTTP_ERROR',
       })
-      persistent.setItem(AUTH_TOKEN_KEY, recoveredToken)
+      persistent.setItem(
+        `exwebsite.php.auth.v1:${encodeURIComponent(window.location.origin + '/backend')}`,
+        recoveredToken,
+      )
       storageUnavailable = false
       expect(requests[0]?.authorization).toBe('Bearer owned-login')
       expect(readRawToken(persistent)).toBe(recoveredToken)
       expect(readToken(persistent)).toBe(recoveredToken === 'owned-login' ? null : recoveredToken)
       expect(observed).toEqual([undefined])
+      expect(fixture.notify).not.toHaveBeenCalled()
       expect(replace).not.toHaveBeenCalled()
     } finally {
       storageUnavailable = false

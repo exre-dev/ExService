@@ -52,21 +52,18 @@ createRoot(container).render(
 )
 
 /**
- * 开发期连通性检查：经共享 Client 调用 Contract 中的 `GET /health`
- * （base URL 为 `/api`，因此实际请求 `/api/health`）。
+ * 开发期连通性检查：经 SDK 调用 PHP Contract 中的 `GET /api/health`。
+ * 请求与其他业务调用共用已验证的服务根。
  *
  * 失败只输出明确的开发错误，不渲染健康检查面板或任何业务 UI。
  */
 async function checkServer(): Promise<void> {
   try {
-    await instance({ url: '/health', method: 'GET', alert: false })
+    const { data } = await instance({ url: '/api/health', method: 'GET', alert: false })
 
-    console.info('[dev] GET /api/health reached the Server.')
+    console.info('[dev] PHP health:', data.status)
   } catch (cause) {
-    console.error(
-      '[dev] GET /api/health could not reach the Server on 127.0.0.1:8080. Start it with `pnpm dev`.',
-      cause,
-    )
+    console.error('[dev] GET /api/health could not reach the configured PHP service.', cause)
   }
 }
 

@@ -11,7 +11,9 @@ vi.mock('@workspace/sdk', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   instance: (config: { method?: string }) => {
     const handlers = { GET: get }
-    return handlers[(config.method ?? 'GET') as keyof typeof handlers](config)
+    return Promise.resolve(
+      handlers[(config.method ?? 'GET') as keyof typeof handlers](config),
+    ).then((data) => ({ msg: 'ok', data }))
   },
 }))
 vi.mock('@web/src/auth/AuthContext', () => ({
@@ -31,12 +33,14 @@ vi.mock('@exre/exui', async (importOriginal) => ({
 import { SettingsExperience, SettingsModal } from '@web/src/settings/SettingsExperience'
 
 const profile = {
-  id: '8e5b2093-dcce-422c-af4d-e4b58ba66ab5',
+  id: 1,
+  platform_role: 'user',
+  last_login_time: null,
   email: 'person@example.com',
-  nickname: 'Person',
+  username: 'Person',
   qq: '123456789',
-  fivemId: null,
-  avatarUrl: null,
+
+  avatar: null,
 }
 const preferences = {
   revision: 3,
@@ -69,7 +73,7 @@ it.each([false, true])(
     get.mockResolvedValue(profile)
     const panel = <SettingsExperience initialCategory="profile" />
     render(strict ? <StrictMode>{panel}</StrictMode> : panel)
-    expect(get).toHaveBeenCalledWith({ url: '/auth/me', method: 'GET', alert: false })
+    expect(get).toHaveBeenCalledWith({ url: '/api/auth/me', method: 'GET', alert: false })
     await waitFor(
       () =>
         expect(screen.queryByRole('button', { name: '编辑用户名' })?.textContent ?? '').toContain(
@@ -77,6 +81,7 @@ it.each([false, true])(
         ),
       { onTimeout: (error) => error },
     )
+    expect(screen.queryByRole('button', { name: /FiveM/ })).toBeNull()
   },
 )
 
@@ -117,7 +122,7 @@ it('keeps the new read when the discarded StrictMode read completes later', asyn
   )
   expect(get).toHaveBeenCalledTimes(2)
   await act(async () => {
-    resolveOld({ ...profile, nickname: 'Outdated' })
+    resolveOld({ ...profile, username: 'Outdated' })
   })
   expect(screen.getByRole('button', { name: '编辑用户名' })).toHaveProperty('textContent', 'Person')
 })
@@ -127,7 +132,7 @@ it('keeps the new notification read when the discarded StrictMode read completes
   let resolveOld!: (value: typeof preferences) => void
   let notificationReads = 0
   get.mockImplementation(({ url: path }: { url: string }) => {
-    if (path !== '/notification-preferences') return Promise.resolve(profile)
+    if (path !== '/api/notification-preferences') return Promise.resolve(profile)
     notificationReads += 1
     // 第一次读取被 StrictMode 清理丢弃，只有第二次的结果可以落地。
     return notificationReads === 1

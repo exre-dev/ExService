@@ -1,6 +1,8 @@
 # 通知读取接受权与固定批量意图
 
-_最后更新：2026-10-19_
+_最后更新：2026-10-20_
+
+PHP 通知接口的 `deliveredAt`、`readAt`、`serverTime` 与清理预览 `expiresAt` 均以 Unix 毫秒返回；它们不沿用邀请冷却字段的秒单位。Web 对时间差、期限和显示分别按字段处理，不能统一乘 1000。
 
 ## 读取生命周期
 
@@ -14,13 +16,13 @@ _最后更新：2026-10-19_
 
 ## 确认与重试
 
-普通批量动作只由全局 summary 的 ready 计数决定，不从当前列表是否为空推断；未知或读取失败时禁用。准备使用同步阶段锁，确认固定操作类别、数量、token 和 requestId。重新准备是新的意图；同一确认提交失败后的重试沿用原 body，不用轮询后的新 summary 覆盖旧 token。服务器幂等与历史兼容见 `.ai/knowledge/notifications/command-idempotency.md`。
+普通批量动作只由全局 summary 的 ready 计数决定，不从当前列表是否为空推断；未知或读取失败时禁用。准备使用同步阶段锁，确认固定操作类别、数量、token 和 requestId。重新准备是新的意图；同一确认提交失败后的重试沿用原 body，不用轮询后的新 summary 覆盖旧 token。PHP Redis 幂等与命令范围见 `.ai/knowledge/notifications/command-idempotency.md`。
 
 清理预览按服务器时间偏移判断期限；过期时禁止提交。空预览不发送清理命令，刷新列表与 summary，并通过 toast 告知没有可清理项。提交中不可关闭；成功刷新当前列表、未读预览和 summary，临时反馈使用全站 toast，持续错误保留在页面重试入口。
 
 ## 偏好即时保存是独立资源
 
-Settings 通知分区只展示两项可选开关。用户切换时先由表单的 React Hook Form 与 Zod 校验整份值，再把「字段 + 目标值」交给偏好 module 调用现有 `PUT /notification-preferences`：请求体的 `expectedRevision` 与另一字段由 module 在取得单写锁的同一同步段内从最新规范快照读取，因此取得锁时的最新快照总是胜出；首读、快照同步和切分类不会自行提交。服务通知仍由 catalog 固定接收，设置面板不展示不可修改的开关。成功采用服务器返回的规范值且不显示“已保存”提示，保存中与持续错误仍可反馈。
+Settings 通知分区只展示两项可选开关。用户切换时先由表单的 React Hook Form 与 Zod 校验整份值，再把「字段 + 目标值」交给偏好 module 调用现有 `PUT /api/notification-preferences`：请求体的 `expectedRevision` 与另一字段由 module 在取得单写锁的同一同步段内从最新规范快照读取，因此取得锁时的最新快照总是胜出；首读、快照同步和切分类不会自行提交。服务通知仍由 catalog 固定接收，设置面板不展示不可修改的开关。成功采用服务器返回的规范值且不显示“已保存”提示，保存中与持续错误仍可反馈。
 
 归属：字段意图、每宿主的失败 slot、取得锁时的重基、409 之后的必要重读门控与 module 拥有的重读，以及跨宿主单写锁都属于 `apps/web` 的偏好 module；表单只保留 RHF/Zod 校验、字段与 root 错误呈现，以及按 `identityEpoch` 重建 RHF 所有者，避免旧 `handleSubmit` 的 finally 清掉新账号的提交状态。分类可见性是两处独立投影：设置面板直接把 `active` 传给表单决定渲染，设置体验把同一分类判断交给 module 作发送前资格，两者互不代替，也都不拥有保存状态。
 

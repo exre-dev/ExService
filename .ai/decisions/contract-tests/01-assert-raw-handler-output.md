@@ -1,6 +1,8 @@
 # Contract Test 必须断言 handler 的原始返回值
 
-- 状态：已接受
+> 已被 PHP 接管取代：以下正文保存当时决定与理由，旧路径、命令、schema 和测试不再指导现行实现。当前边界见 `.ai/architectures/overview.md`、`.ai/architectures/api/contract-layout.md` 和 `.ai/databases/data-model.md`。
+
+- 状态：旧 Fastify handler 检查已退役
 - 模块：`contract-tests`
 - 日期：2026-09-16
 - 来源：`apps/server/src/app.ts` 与 `tests/contract/health.test.ts` 中的实测结论

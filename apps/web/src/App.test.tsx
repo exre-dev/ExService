@@ -54,15 +54,18 @@ describe('App', () => {
       expect(markup).not.toContain('文档建设中')
     },
   )
-  it.each(['login', 'consent', 'logout'])('keeps the %s identity entrance registered', (phase) => {
-    const markup = renderToStaticMarkup(
-      <MemoryRouter initialEntries={['/identity/' + phase]}>
-        <App />
-      </MemoryRouter>,
-    )
-    expect(markup).toContain('身份入口无效')
-    expect(markup).not.toContain('Page not found')
-  })
+  it.each(['login', 'consent', 'logout', 'signed-out'])(
+    'returns 404 for the retired %s identity entrance',
+    (phase) => {
+      const markup = renderToStaticMarkup(
+        <MemoryRouter initialEntries={['/identity/' + phase]}>
+          <App />
+        </MemoryRouter>,
+      )
+      expect(markup).toContain('Page not found')
+      expect(markup).not.toContain('身份入口无效')
+    },
+  )
   it.each(['/support', '/support/errors', '/support/errors/example', '/support/unknown'])(
     'checks authentication before mounting any Support route: %s',
     (path) => {

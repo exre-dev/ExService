@@ -152,7 +152,7 @@ export function useNotificationPreferencesController({ active }: { active: boole
 
   const sessionInvalid = useCallback(
     (error: unknown) => {
-      if (!(error instanceof ExAxiosError) || error.code !== 'SESSION_INVALID') return false
+      if (!(error instanceof ExAxiosError) || error.status !== 401) return false
       const token = currentToken()
       if (token !== null) auth.invalidateSession(token)
       bindNotificationsToken(null)
@@ -179,8 +179,8 @@ export function useNotificationPreferencesController({ active }: { active: boole
     const handle: { current: Promise<void> | null } = { current: null }
     const task = (async () => {
       try {
-        const result = await instance({
-          url: '/notification-preferences',
+        const { data: result } = await instance({
+          url: '/api/notification-preferences',
           method: 'GET',
           alert: false,
         })
@@ -222,8 +222,8 @@ export function useNotificationPreferencesController({ active }: { active: boole
       notificationsConfig.preferences.status = 'loading'
       notificationsConfig.preferences.error = null
       try {
-        const result = await instance({
-          url: '/notification-preferences',
+        const { data: result } = await instance({
+          url: '/api/notification-preferences',
           method: 'GET',
           alert: false,
         })
@@ -287,8 +287,8 @@ export function useNotificationPreferencesController({ active }: { active: boole
       }
       const owned = () => notificationsConfig.epoch === run.epoch && runtime.save === run
       try {
-        const result = await instance({
-          url: '/notification-preferences',
+        const { data: result } = await instance({
+          url: '/api/notification-preferences',
           method: 'PUT',
           alert: false,
           data: body,

@@ -14,7 +14,9 @@ vi.mock('@workspace/sdk', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   instance: (config: { method?: string }) => {
     const handlers = { GET: get, PUT: put }
-    return handlers[(config.method ?? 'GET') as keyof typeof handlers](config)
+    return Promise.resolve(
+      handlers[(config.method ?? 'GET') as keyof typeof handlers](config),
+    ).then((data) => ({ msg: 'ok', data }))
   },
 }))
 vi.mock('@web/src/auth/AuthContext', () => ({
@@ -76,12 +78,14 @@ vi.mock('@workspace/components', () => ({
 import { SettingsExperience, SettingsModal } from '@web/src/settings/SettingsExperience'
 
 const user = {
-  id: 'user',
+  id: 1,
+  platform_role: 'user',
+  last_login_time: null,
   email: 'person@example.com',
-  nickname: 'Person',
+  username: 'Person',
   qq: null,
-  fivemId: null,
-  avatarUrl: null,
+
+  avatar: null,
 }
 const preferences = {
   revision: 1,
@@ -100,7 +104,7 @@ beforeEach(() =>
 
 function respond(overrides: { failPreferences?: boolean; failProfile?: boolean } = {}) {
   get.mockImplementation(({ url: path }: { url: string }) => {
-    if (path === '/notification-preferences') {
+    if (path === '/api/notification-preferences') {
       return overrides.failPreferences
         ? Promise.reject(new Error('通知设置暂时无法读取'))
         : Promise.resolve(preferences)
@@ -119,7 +123,7 @@ afterEach(() => {
   bindSettingsToken(null)
   bindNotificationsToken(null)
   window.localStorage.clear()
-  selectSessionScope('/api')
+  selectSessionScope('/')
   authState.status = 'authenticated'
   vi.unstubAllGlobals()
 })
@@ -133,9 +137,9 @@ describe('SettingsExperience', () => {
       respond()
       render(<SettingsExperience initialCategory={category} />)
       await waitFor(() => expect(get).toHaveBeenCalledTimes(1))
-      const path = category === 'profile' ? '/auth/me' : '/notification-preferences'
+      const path = category === 'profile' ? '/api/auth/me' : '/api/notification-preferences'
       window.localStorage.setItem(
-        `exwebsite.auth.token:${encodeURIComponent(new URL('/scope-b', window.location.origin).href)}`,
+        `exwebsite.php.auth.v1:${encodeURIComponent(new URL('/scope-b', window.location.origin).href)}`,
         'same-token',
       )
       act(() => selectSessionScope('/scope-b'))
@@ -161,7 +165,7 @@ describe('SettingsExperience', () => {
     await userEvent.click(screen.getByRole('button', { name: '个人资料分类' }))
     await waitFor(() => expect(screen.getByText('profile:ready')).toBeTruthy())
     expect(get).toHaveBeenCalledTimes(1)
-    expect(get).toHaveBeenCalledWith({ url: '/auth/me', method: 'GET', alert: false })
+    expect(get).toHaveBeenCalledWith({ url: '/api/auth/me', method: 'GET', alert: false })
 
     // 同一次设置实例内切回已读过的分区不再重复请求。
     await userEvent.click(screen.getByRole('button', { name: '通知分类' }))
@@ -170,7 +174,7 @@ describe('SettingsExperience', () => {
     )
     expect(get).toHaveBeenCalledTimes(2)
     expect(get).toHaveBeenLastCalledWith({
-      url: '/notification-preferences',
+      url: '/api/notification-preferences',
       method: 'GET',
       alert: false,
     })
@@ -209,7 +213,7 @@ describe('SettingsExperience', () => {
     respond()
     await userEvent.click(screen.getByRole('button', { name: '个人资料分类' }))
     await waitFor(() => expect(screen.getByText('profile:ready')).toBeTruthy())
-    expect(get).toHaveBeenLastCalledWith({ url: '/auth/me', method: 'GET', alert: false })
+    expect(get).toHaveBeenLastCalledWith({ url: '/api/auth/me', method: 'GET', alert: false })
   })
 
   it('keeps the notifications partition usable when the profile read fails', async () => {
@@ -246,7 +250,7 @@ describe('SettingsExperience', () => {
     await userEvent.click(screen.getByRole('button', { name: '保存偏好' }))
     await waitFor(() => expect(put).toHaveBeenCalledTimes(1))
     expect(put).toHaveBeenCalledWith({
-      url: '/notification-preferences',
+      url: '/api/notification-preferences',
       method: 'PUT',
       alert: false,
       data: {

@@ -3,12 +3,12 @@ import { normalizeMime } from '@workspace/common/feedback-content'
 import { belongsToArea } from './kind-rules'
 
 export type FeedbackForm = components['schemas']['FeedbackForm']
-export type FeedbackSnapshot = components['schemas']['FeedbackSnapshot']
-export type FeedbackArea = components['schemas']['FeedbackArea']
-type Prepare = components['schemas']['FeedbackPrepare']
-type Advance = components['schemas']['FeedbackAdvance']
+export type FeedbackSnapshot = components['schemas']['FeedbackSnapshotData']
+export type FeedbackArea = 'development' | 'community'
+type Prepare = components['schemas']['FeedbackPrepareRequest']
+type Advance = components['schemas']['FeedbackAdvanceRequest']
 export interface FeedbackPort {
-  prepare(input: Prepare): Promise<FeedbackSnapshot>
+  prepare(input: Prepare, area: FeedbackArea): Promise<FeedbackSnapshot>
   get(id: string): Promise<FeedbackSnapshot>
   lookup(key: string): Promise<FeedbackSnapshot>
   upload(id: string, attachmentId: string, file: File): Promise<FeedbackSnapshot>
@@ -36,16 +36,10 @@ export class FeedbackFlow {
     private readonly storage: StoragePort,
     private readonly changed: (snapshot: FeedbackSnapshot) => void,
     private readonly active: () => boolean,
-    private readonly delay: (ms: number) => Promise<void> = (ms) =>
-      new Promise((resolve) => setTimeout(resolve, ms)),
-    private readonly area: FeedbackArea = 'development',
+    private readonly area: FeedbackArea,
+    storageKey: string,
   ) {
-    this.storageKey =
-      area === 'community' ? 'exwebsite.feedback.community.v1' : 'exwebsite.feedback.v2'
-    if (area === 'development') {
-      this.storage.removeItem('exwebsite.feedback.v1.request')
-      this.storage.removeItem('exwebsite.feedback.v1.bug')
-    }
+    this.storageKey = storageKey
   }
   stop(forgetMemory = false): void {
     this.epoch++
@@ -137,8 +131,8 @@ export class FeedbackFlow {
         return this.accept(result, epoch)
       } catch (error) {
         this.ensure(epoch)
-        const code = error && typeof error === 'object' && 'code' in error ? error.code : null
-        if (pointer.submissionId && code === 'NOT_FOUND') {
+        const status = error && typeof error === 'object' && 'status' in error ? error.status : null
+        if (pointer.submissionId && status === 404) {
           this.reset()
           return null
         }
@@ -170,7 +164,11 @@ export class FeedbackFlow {
           })
         }
         this.ensure(epoch)
-        this.pending = { submissionKey: crypto.randomUUID(), form, attachments }
+        this.pending = {
+          submissionKey: crypto.randomUUID(),
+          form: structuredClone(form),
+          attachments,
+        }
         this.files = [...files]
         this.storage.setItem(
           this.storageKey,
@@ -184,7 +182,7 @@ export class FeedbackFlow {
           JSON.stringify({ submissionKey: this.pending!.submissionKey }),
         )
         try {
-          snapshot = await this.port.prepare(this.pending!)
+          snapshot = await this.port.prepare(this.pending!, this.area)
         } catch (error) {
           this.ensure(epoch)
           // A lost response can already have committed; lookup never changes the key.
@@ -225,30 +223,14 @@ export class FeedbackFlow {
     intent: 'continue' | 'retry',
   ): Promise<FeedbackSnapshot> {
     this.checkForm(initial.form)
-    let snapshot = initial,
-      waitMs = 1000
-    const deadline = Date.now() + 180000
+    let snapshot = initial
     for (;;) {
       this.ensure(epoch)
-      if (snapshot.nextAction === 'done') {
+      if (snapshot.status === 'completed' && snapshot.nextAction === 'done') {
         this.storage.removeItem(this.storageKey)
         this.pending = undefined
         this.files = []
         return snapshot
-      }
-      if (
-        snapshot.nextAction === 'verify' ||
-        snapshot.nextAction === 'restart' ||
-        (snapshot.nextAction === 'retry' && intent !== 'retry')
-      )
-        return snapshot
-      if (snapshot.nextAction === 'wait') {
-        if (Date.now() > deadline) return snapshot
-        await this.delay(waitMs)
-        this.ensure(epoch)
-        waitMs = Math.min(5000, waitMs + 1000)
-        snapshot = await this.readAfterFailure(snapshot, epoch)
-        continue
       }
       if (snapshot.nextAction === 'upload') {
         const missing = snapshot.attachments.filter((file) => file.status === 'expected')

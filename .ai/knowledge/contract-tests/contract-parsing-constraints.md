@@ -1,5 +1,7 @@
 # Contract 测试对 Contract 形状的隐含约束
 
+> 已退役：历史 Node/Fastify 实现记录。文中路径、命令和行为仅用于理解当时选择；现行 PHP/Webman 边界见 `.ai/architectures/overview.md`、`.ai/architectures/api/contract-layout.md` 与 `apps/php-server/TESTING.md`。
+
 **结论：Server 与 Contract Test 通过中立 reader 读取 `api/generated/openapi.json`；源文件拆分和 JSON Pointer 由生成流程收敛，测试仍须明确选择要编译和断言的 schema。**
 
 _最后更新：2026-10-11_

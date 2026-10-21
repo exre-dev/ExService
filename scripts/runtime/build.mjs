@@ -4,31 +4,40 @@ import { root } from './shared.mjs'
 import { runOwned } from './ownership.mjs'
 import { LocalError } from './local-config.mjs'
 import { preparationContext, sdkPreparationSpecifications } from './sdk-preparation.mjs'
+import { environmentFile, publicSettings } from './settings.mjs'
+import { join } from 'node:path'
 import { reporter } from './output.mjs'
 
 /** Build needs no runtime receipt, database, Docker or backend credentials. */
 export function buildSpecifications({ workspace = root, inherited = process.env, tools } = {}) {
   const context = preparationContext({ workspace, inherited, tools }),
-    { node, corepack } = context.tools
+    { node } = context.tools
   const os = context.environment
-  const publicEnv = { ...os, NODE_ENV: 'production', VITE_API_BASE_URL: '/api' }
+  const publicEnv = {
+    ...os,
+    NODE_ENV: 'production',
+    VITE_API_BASE_URL: publicSettings({
+      ...environmentFile(join(workspace, '.env.local')),
+      ...inherited,
+    }).VITE_API_BASE_URL,
+  }
   return [
     ...sdkPreparationSpecifications({ workspace, inherited, tools: context.tools }).map((spec) => ({
       ...spec,
       environment: publicEnv,
     })),
-    ...['@workspace/web', '@workspace/server'].map((name) => ({
+    ...['@workspace/web'].map((name) => ({
       name,
       command: node,
-      cwd: workspace,
-      args: [corepack, 'pnpm', '--filter', name, 'build'],
+      cwd: join(workspace, 'apps/web'),
+      args: [join(workspace, 'apps/web/node_modules/vite/bin/vite.js'), 'build'],
       environment: publicEnv,
     })),
     {
       name: '@workspace/admin-web',
       command: node,
-      cwd: workspace,
-      args: [corepack, 'pnpm', '--filter', '@workspace/admin-web', 'build'],
+      cwd: join(workspace, 'apps/admin-web'),
+      args: [join(workspace, 'apps/admin-web/node_modules/vite/bin/vite.js'), 'build'],
       environment: { ...os, NODE_ENV: 'production' },
     },
   ]

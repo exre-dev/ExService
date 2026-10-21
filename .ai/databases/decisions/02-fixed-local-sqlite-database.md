@@ -1,6 +1,8 @@
 # 历史决策：本地 Mock 数据库使用固定 SQLite 路径
 
-- 状态：已被 `.ai/databases/decisions/07-independent-postgresql-exre-database.md` 取代
+> 已被 PHP 接管取代：以下正文保存当时决定与理由，旧路径、命令、schema 和测试不再指导现行实现。当前边界见 `.ai/architectures/overview.md`、`.ai/architectures/api/contract-layout.md` 和 `.ai/databases/data-model.md`。
+
+- 状态：先被 Node PostgreSQL 决策取代；现由 PHP 数据模型与安装规则接管
 - 原模块：`mock-server`
 - 日期：2026-09-16
 - 取代日期：2026-09-29
@@ -11,6 +13,6 @@
 
 ## 被取代的原因
 
-本仓库现以 `apps/server/` 作为唯一 Server，并采用独立 PostgreSQL `exre`，不再规划 PHP/MySQL 外接实现。旧 SQLite 文件、迁移历史和数据没有导入新库。当前连接与重置安全边界见 `.ai/databases/decisions/07-independent-postgresql-exre-database.md`；显式迁移原则见 `.ai/databases/decisions/03-database-changes-only-by-explicit-command.md`。
+此条历史注释描述过 Node Server 与独立 PostgreSQL `exre` 阶段；该阶段已由 PHP/Webman 接管。旧 SQLite 与 Node 数据是否迁移或清理不能由源码变化推定。现行表职责见 `.ai/databases/data-model.md`，PHP 安装与数据操作见 `apps/php-server/README.md`。
 
 本文件保留原决策的原因，不作为当前开发或运行指令。

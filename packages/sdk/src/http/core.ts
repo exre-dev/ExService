@@ -8,6 +8,7 @@ import {
 } from '../config.js'
 import type { HttpRequest } from '../request-types.js'
 import { StorageSdkError } from '../errors.js'
+import { operationPolicy } from '../generated/operation-policy.js'
 import { ExAxiosError, type ExAxiosErrorKind } from './errors.js'
 export { ExAxiosError } from './errors.js'
 
@@ -95,29 +96,10 @@ function inScope(url: string, scope: string | undefined): boolean {
     (path === '' || target.pathname === path || target.pathname.startsWith(`${path}/`))
   )
 }
-function envelope(
-  input: unknown,
-): { code: string; message: string; requestId: string } | undefined {
-  if (
-    !input ||
-    typeof input !== 'object' ||
-    Array.isArray(input) ||
-    Object.keys(input).length !== 1
-  )
-    return undefined
-  const value = (input as { error?: unknown }).error
-  if (
-    !value ||
-    typeof value !== 'object' ||
-    Array.isArray(value) ||
-    Object.keys(value).sort().join(',') !== 'code,message,requestId'
-  )
-    return undefined
-  const error = value as Record<string, unknown>
-  return typeof error.code === 'string' &&
-    typeof error.message === 'string' &&
-    typeof error.requestId === 'string'
-    ? (error as { code: string; message: string; requestId: string })
+function businessError(input: unknown): { msg: string } | undefined {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return undefined
+  return typeof (input as { msg?: unknown }).msg === 'string'
+    ? (input as { msg: string })
     : undefined
 }
 function retryAfter(value: unknown): number | undefined {
@@ -171,10 +153,12 @@ export function createHttpCore(runtime: RuntimeEnvironment, state: SdkConfig) {
       (config.alert !== undefined && typeof config.alert !== 'boolean')
     )
       throw configError()
+    if (typeof config.url !== 'string') throw configError()
+    const policy = operationPolicy[`${method} ${config.url}` as keyof typeof operationPolicy]
+    if (!policy) throw configError()
     const snapshot = state.resolve()
     if (expected && !state.matches(expected, snapshot)) throw new StorageSdkError('CONFIG_CHANGED')
     const target = finalUrl(snapshot.baseUrl, config)
-    const scoped = true
     const token = snapshot.token
     const headers: Record<string, string> = {}
     const headerNames = new Set<string>()
@@ -193,7 +177,7 @@ export function createHttpCore(runtime: RuntimeEnvironment, state: SdkConfig) {
     const explicit = Object.entries(headers).find(
       ([key]) => key.toLowerCase() === 'authorization',
     )?.[1]
-    if (scoped && token && explicit === undefined) headers.Authorization = `Bearer ${token}`
+    if (token && explicit === undefined) headers.Authorization = `Bearer ${token}`
     const qualified = explicit === undefined || (token !== null && explicit === 'Bearer ' + token)
     const resolvedAlert = config.alert ?? true
     const responseType = config.responseType ?? 'json'
@@ -278,23 +262,17 @@ export function createHttpCore(runtime: RuntimeEnvironment, state: SdkConfig) {
       /^application\/(?:[\w.+-]*\+)?json\b/i.test(contentType) && size <= 65_536
         ? decodedJson(raw)
         : undefined
-    const safe = scoped ? envelope(parsed) : undefined
-    const error = new ExAxiosError(
-      'http',
-      safe?.code ?? 'HTTP_ERROR',
-      safe?.message ?? errorText.http,
-      {
-        status,
-        requestId:
-          safe?.requestId ??
-          (typeof response.headers['x-request-id'] === 'string'
-            ? response.headers['x-request-id']
-            : undefined),
-        retryAfterSeconds: retryAfter(response.headers['retry-after']),
-      },
-    )
-    if (status === 401 && safe?.code === 'SESSION_INVALID') {
-      if (qualified) state.expire(snapshot, error, resolvedAlert)
+    const safe = businessError(parsed)
+    const error = new ExAxiosError('http', 'HTTP_ERROR', safe?.msg ?? errorText.http, {
+      status,
+      requestId:
+        typeof response.headers['x-request-id'] === 'string'
+          ? response.headers['x-request-id']
+          : undefined,
+      retryAfterSeconds: retryAfter(response.headers['retry-after']),
+    })
+    if (status === 401 && policy.requiresSession && token && qualified) {
+      state.expire(snapshot, error, resolvedAlert)
     } else if (resolvedAlert) {
       try {
         runtime.notify?.(error.message)

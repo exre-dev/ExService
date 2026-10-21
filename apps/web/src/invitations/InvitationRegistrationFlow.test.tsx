@@ -13,7 +13,9 @@ vi.mock('@workspace/sdk', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   instance: (config: { method?: string }) => {
     const handlers = { POST: post }
-    return handlers[(config.method ?? 'GET') as keyof typeof handlers](config)
+    return Promise.resolve(
+      handlers[(config.method ?? 'GET') as keyof typeof handlers](config),
+    ).then((data) => ({ msg: 'ok', data }))
   },
 }))
 class TestResizeObserver {
@@ -92,7 +94,7 @@ it('checks eligibility before mounting an empty OTP and never sends a code impli
   await user.click(screen.getByRole('button', { name: '继续' }))
   expect(await screen.findByLabelText('6 位验证码')).toBeTruthy()
   expect(post).toHaveBeenCalledExactlyOnceWith({
-    url: '/auth/invitations/check',
+    url: '/api/auth/invitations/check',
     method: 'POST',
     data: { email: 'member@example.com' },
     alert: false,
@@ -123,11 +125,11 @@ it('sanitizes every code while preserving history state and subscribes once to t
   })
   expect(await screen.findByRole('heading', { name: '完善账号' })).toBeTruthy()
   expect(post.mock.calls.map(([config]) => config.url)).toEqual([
-    '/auth/invitations/check',
-    '/auth/invitations/verify',
+    '/api/auth/invitations/check',
+    '/api/auth/invitations/verify',
   ])
   expect(post).toHaveBeenLastCalledWith({
-    url: '/auth/invitations/verify',
+    url: '/api/auth/invitations/verify',
     method: 'POST',
     data: { email: 'member@example.com', code: '001234' },
     alert: false,
@@ -165,8 +167,8 @@ it('prefills a legal URL email and waits for an explicit eligibility check', () 
 })
 
 it.each([
-  [404, 'INVITATION_APPLICATION_NOT_FOUND', '未找到该邮箱的申请。'],
-  [409, 'INVITATION_NOT_ELIGIBLE', '该邮箱暂不符合注册条件，请确认申请已通过且邀请仍有效'],
+  [404, 'HTTP_ERROR', 'safe'],
+  [409, 'HTTP_ERROR', 'safe'],
 ])(
   'does not verify after automatic check %s and shows one persistent failure under StrictMode',
   async (status, code, message) => {
@@ -227,7 +229,8 @@ it('clears a captured URL code when automatic verification fails and exposes a f
   )
   const code = (await screen.findByLabelText('6 位验证码')) as HTMLInputElement
   expect(code.value).toBe('')
-  await waitFor(() => expect(code.getAttribute('aria-invalid')).toBe('true'))
+  expect(await screen.findByText('safe')).toBeTruthy()
+  expect(code.getAttribute('aria-invalid')).toBe('false')
 })
 
 it('keeps a code after resend network failure and clears it only after 202 with the response cooldown', async () => {
@@ -236,7 +239,7 @@ it('keeps a code after resend network failure and clears it only after 202 with 
   post
     .mockResolvedValueOnce(eligible)
     .mockRejectedValueOnce(new Error('offline'))
-    .mockResolvedValueOnce({ status: 'accepted', serverTime: 5000, resendAvailableAt: 65000 })
+    .mockResolvedValueOnce({ status: 'accepted', serverTime: 5, resendAvailableAt: 65 })
   render(
     <MemoryRouter>
       <InvitationRegistrationFlow presentation="modal" initialEmail="member@example.com" />
@@ -328,7 +331,7 @@ it('back cancels late verification and requires the new email to be checked agai
   await user.type(screen.getByLabelText('邮箱'), 'other@example.com')
   await user.click(screen.getByRole('button', { name: '继续' }))
   expect(post).toHaveBeenLastCalledWith({
-    url: '/auth/invitations/check',
+    url: '/api/auth/invitations/check',
     method: 'POST',
     data: { email: 'other@example.com' },
     alert: false,
@@ -378,7 +381,7 @@ it.each(['modal', 'page'] as const)(
     await user.type(password, ' password-one ')
     await user.click(screen.getByRole('button', { name: '完成注册' }))
     expect(post).toHaveBeenLastCalledWith({
-      url: '/auth/invitations/complete',
+      url: '/api/auth/invitations/complete',
       method: 'POST',
       data: {
         completionToken: verified.completionToken,
@@ -461,17 +464,17 @@ it('clears the success timer on close and never switches the closed modal to log
 })
 
 const checkCases = [
-  { status: 400, code: 'VALIDATION_ERROR', message: '请输入有效的邮箱地址', panel: false },
+  { status: 400, code: 'HTTP_ERROR', message: 'safe', panel: true },
   {
     status: 404,
     code: 'INVITATION_APPLICATION_NOT_FOUND',
-    message: '未找到该邮箱的申请。',
+    message: 'safe',
     panel: true,
   },
   {
     status: 409,
     code: 'INVITATION_NOT_ELIGIBLE',
-    message: '该邮箱暂不符合注册条件，请确认申请已通过且邀请仍有效',
+    message: 'safe',
     panel: true,
   },
   {
@@ -553,7 +556,7 @@ it.each(checkCases)(
   },
 )
 
-it('clears a failed check panel while retrying, then uses the existing panel join callback', async () => {
+it('clears failed check feedback on retry without inferring eligibility from a PHP 404', async () => {
   const user = userEvent.setup(),
     next = deferred<typeof eligible>(),
     onJoin = vi.fn()
@@ -574,10 +577,10 @@ it('clears a failed check panel while retrying, then uses the existing panel joi
   await act(async () => {
     next.reject(failure(404, 'INVITATION_APPLICATION_NOT_FOUND'))
   })
-  const panel = await screen.findByRole('region', { name: '暂时无法注册' })
-  await user.click(panel.querySelector('button')!)
-  expect(onJoin).toHaveBeenCalledTimes(1)
-  expect(screen.queryByRole('region')).toBeNull()
+  const panel = await screen.findByRole('region')
+  expect(panel.textContent).toContain('safe')
+  expect(panel.querySelector('button')).toBeNull()
+  expect(onJoin).not.toHaveBeenCalled()
 })
 
 it('delivers automatic locked verification to the mounted code field once under StrictMode', async () => {
@@ -593,10 +596,11 @@ it('delivers automatic locked verification to the mounted code field once under 
     </StrictMode>,
   )
   const code = (await screen.findByLabelText('6 位验证码')) as HTMLInputElement
-  await waitFor(() => expect(code.getAttribute('aria-invalid')).toBe('true'))
+  expect(await screen.findByText('safe')).toBeTruthy()
+  expect(code.getAttribute('aria-invalid')).toBe('false')
   expect(code.value).toBe('')
-  expect(screen.getAllByText('验证暂时锁定，请稍后重试')).toHaveLength(1)
-  expect(screen.queryByRole('region')).toBeNull()
+  expect(screen.getAllByText('safe')).toHaveLength(1)
+  expect(screen.getAllByRole('region')).toHaveLength(1)
   expect((screen.getByRole('button', { name: '重试验证' }) as HTMLButtonElement).disabled).toBe(
     true,
   )
@@ -617,8 +621,8 @@ it('keeps manual verification failure in the field alone and does not loop on co
     </MemoryRouter>,
   )
   await user.type(await enterCode(user), '001234')
-  expect(await screen.findAllByText('验证码无效或已过期，请重新获取')).toHaveLength(1)
-  expect(screen.queryByRole('region')).toBeNull()
+  expect(await screen.findAllByText('safe')).toHaveLength(1)
+  expect(screen.getAllByRole('region')).toHaveLength(1)
   expect(toast.error).not.toHaveBeenCalled()
 })
 
@@ -651,38 +655,38 @@ it('puts resend failure in one code-form panel without a field error and clears 
   expect(toast.error).not.toHaveBeenCalled()
 })
 
-it.each([
-  ['COMPLETION_GRANT_INVALID', '验证已过期，请返回邮箱重新验证'],
-  ['OTHER', '注册失败，请重试'],
-])('shows one profile failure for %s and clears it before retrying', async (code, message) => {
-  const user = userEvent.setup(),
-    next = deferred<{ status: string; email: string }>()
-  post
-    .mockResolvedValueOnce(eligible)
-    .mockResolvedValueOnce(verified)
-    .mockRejectedValueOnce(failure(400, code))
-    .mockReturnValueOnce(next.promise)
-  render(
-    <MemoryRouter>
-      <InvitationRegistrationFlow presentation="modal" initialEmail="member@example.com" />
-    </MemoryRouter>,
-  )
-  await user.type(await enterCode(user), '001234')
-  await user.type(await screen.findByLabelText('密码'), 'password-one')
-  await user.click(screen.getByRole('button', { name: '完成注册' }))
-  expect(await screen.findAllByText(message)).toHaveLength(1)
-  expect(screen.getAllByRole('region')).toHaveLength(1)
-  expect(screen.getByLabelText('密码').getAttribute('aria-invalid')).toBe('false')
-  await user.click(screen.getByRole('button', { name: '完成注册' }))
-  expect(screen.queryByRole('region')).toBeNull()
-  await user.click(screen.getByRole('button', { name: '返回修改邮箱' }))
-  await act(async () => {
-    next.reject(failure(400, code))
-  })
-  expect(screen.queryByText(message)).toBeNull()
-  expect(screen.queryByRole('region')).toBeNull()
-  expect(toast.error).not.toHaveBeenCalled()
-})
+it.each([['HTTP_ERROR', 'safe']])(
+  'shows one profile failure for %s and clears it before retrying',
+  async (code, message) => {
+    const user = userEvent.setup(),
+      next = deferred<{ status: string; email: string }>()
+    post
+      .mockResolvedValueOnce(eligible)
+      .mockResolvedValueOnce(verified)
+      .mockRejectedValueOnce(failure(400, code))
+      .mockReturnValueOnce(next.promise)
+    render(
+      <MemoryRouter>
+        <InvitationRegistrationFlow presentation="modal" initialEmail="member@example.com" />
+      </MemoryRouter>,
+    )
+    await user.type(await enterCode(user), '001234')
+    await user.type(await screen.findByLabelText('密码'), 'password-one')
+    await user.click(screen.getByRole('button', { name: '完成注册' }))
+    expect(await screen.findAllByText(message)).toHaveLength(1)
+    expect(screen.getAllByRole('region')).toHaveLength(1)
+    expect(screen.getByLabelText('密码').getAttribute('aria-invalid')).toBe('false')
+    await user.click(screen.getByRole('button', { name: '完成注册' }))
+    expect(screen.queryByRole('region')).toBeNull()
+    await user.click(screen.getByRole('button', { name: '返回修改邮箱' }))
+    await act(async () => {
+      next.reject(failure(400, code))
+    })
+    expect(screen.queryByText(message)).toBeNull()
+    expect(screen.queryByRole('region')).toBeNull()
+    expect(toast.error).not.toHaveBeenCalled()
+  },
+)
 
 it('rejects late automatic verification errors after changing the email', async () => {
   const user = userEvent.setup(),

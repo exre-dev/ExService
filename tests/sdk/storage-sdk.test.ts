@@ -1,655 +1,450 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { StorageSdkError, toStorageSdkError } from '@sdk/src/errors'
-import { createServer, type Server } from 'node:http'
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
+import { afterEach, expect, it } from 'vitest'
 import { createRuntime } from '@sdk/src/runtime'
-import { transport } from '@sdk/src/storage/node'
+import { StorageSdkError, toStorageSdkError } from '@sdk/src/errors'
+import { ExAxiosError } from '@sdk/src/http/errors'
 
-const putObject = vi.fn(async () => ({ statusCode: 200 }))
-const constructorArgs: unknown[] = []
-
-/**
- * 裸包名由 vitest.config.ts 的别名解析到 packages/sdk 下的同一份依赖；
- * 没有别名时从 tests/ 出发解析不到，mock 会静默失效并让 SDK 真的去连 COS。
- */
-vi.mock('cos-nodejs-sdk-v5', () => ({
-  default: class {
-    constructor(options: unknown) {
-      constructorArgs.push(options)
-    }
-    putObject = putObject
-  },
-}))
-
-let BASE = ''
-let server: Server
-const CREDENTIALS = {
-  tmpSecretId: 'tmp-id',
-  tmpSecretKey: 'tmp-key',
-  securityToken: 'tmp-token',
-  startTime: 1_800_000_000,
-  expiredTime: 1_800_001_800,
-}
-
-interface Recorded {
-  url: string
-  method: string
-  authorization?: string
-  json?: unknown
-  fields?: Record<string, string>
-  fileBytes?: Uint8Array
-  fileType?: string
-  filename?: string
-}
-
-const calls: Recorded[] = []
-let responder: (
-  url: string,
-) => { status: number; body: unknown } | Promise<{ status: number; body: unknown }> = () => ({
-  status: 200,
-  body: {},
+const servers: ReturnType<typeof createServer>[] = []
+afterEach(async () => {
+  await Promise.all(
+    servers.splice(0).map(
+      (server) =>
+        new Promise<void>((resolve) => {
+          server.closeAllConnections()
+          server.close(() => resolve())
+        }),
+    ),
+  )
 })
-
-beforeEach(async () => {
-  calls.length = 0
-  putObject.mockClear()
-  constructorArgs.length = 0
-  server = createServer(async (request, response) => {
-    const url = new URL(request.url ?? '/', 'http://127.0.0.1').pathname
-    const recorded: Recorded = {
-      url,
-      method: request.method ?? 'GET',
-      authorization: request.headers.authorization,
-    }
-    const bytes: Buffer[] = []
-    for await (const chunk of request) bytes.push(Buffer.from(chunk))
-    const body = Buffer.concat(bytes)
-    const type = request.headers['content-type'] ?? ''
-    if (type.startsWith('multipart/form-data')) {
-      const form = await new Response(new Uint8Array(body), {
-        headers: { 'content-type': type },
-      }).formData()
-      recorded.fields = {}
-      for (const [name, value] of form.entries()) {
-        if (typeof value === 'string') recorded.fields[name] = value
-        else {
-          recorded.fileBytes = new Uint8Array(await value.arrayBuffer())
-          recorded.fileType = value.type
-          recorded.filename = value.name
-        }
-      }
-    } else {
-      try {
-        recorded.json = JSON.parse(body.toString('utf8'))
-      } catch {
-        recorded.json = undefined
-      }
-    }
-    calls.push(recorded)
-    try {
-      const answer = await responder(url)
-      response.writeHead(answer.status, { 'content-type': 'application/json' })
-      response.end(JSON.stringify(answer.body))
-    } catch {
-      response.destroy()
-    }
-  })
+async function service(handler: (req: IncomingMessage, res: ServerResponse) => void) {
+  const server = createServer(handler)
+  servers.push(server)
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const address = server.address()
-  if (!address || typeof address === 'string') throw new Error('expected TCP fixture')
-  BASE = `http://127.0.0.1:${address.port}/api`
-})
-
-afterEach(async () => {
-  server.closeAllConnections()
-  await new Promise<void>((resolve) => server.close(() => resolve()))
-})
-
-function sdk(
-  token: (() => string | Promise<string>) | string = 'token-a',
-  requestPolicy?: { timeoutMs?: number; signal?: AbortSignal },
-) {
-  const client = createRuntime({ environment: 'node' }, async () => transport, requestPolicy)
-  client.setBaseUrl(BASE)
-  const value = typeof token === 'function' ? token() : token
-  if (typeof value !== 'string') throw new Error('Tests require synchronous credentials')
-  client.setAccessToken(value || null)
-  return client
+  if (!address || typeof address === 'string') throw Error('Missing address')
+  return `http://127.0.0.1:${address.port}`
 }
-describe('SDK file branch', () => {
-  it('maps binary normalisation failures to a stable input error without exposing the original exception', async () => {
-    const input = new Blob(['data'])
-    input.arrayBuffer = async () => {
-      throw new Error('private input detail')
-    }
-    const error = await sdk()
-      .storage.upload('a.bin', input)
-      .catch((error) => error)
-    expect(error).toBeInstanceOf(StorageSdkError)
-    expect(error).toMatchObject({ code: 'INVALID_INPUT' })
-    expect(error.message).not.toContain('private input detail')
-    expect(calls).toEqual([])
+function json(res: ServerResponse, status: number, body: unknown) {
+  res.writeHead(status, { 'content-type': 'application/json' })
+  res.end(JSON.stringify(body))
+}
+
+it('prepares through the PHP envelope, uploads only the sliced bytes as native FormData and returns data.url', async () => {
+  const seen: Array<{
+    path: string
+    auth: string | undefined
+    body: string
+    type: string | undefined
+  }> = []
+  const origin = await service((req, res) => {
+    const chunks: Buffer[] = []
+    req.on('data', (chunk) => chunks.push(chunk))
+    req.on('end', () => {
+      seen.push({
+        path: req.url ?? '',
+        auth: req.headers.authorization,
+        body: Buffer.concat(chunks).toString('latin1'),
+        type: req.headers['content-type'],
+      })
+      json(
+        res,
+        200,
+        req.url?.endsWith('/prepare')
+          ? { msg: 'ok', data: { medium: 'file', maxBytes: 20_971_520 } }
+          : { msg: 'ok', data: { url: 'https://files.example/item' } },
+      )
+    })
   })
-  it.each(
-    [
-      null,
-      [],
-      { medium: 'other' },
-      { contentType: 'text/plain\r\nsecret' },
-      { unexpected: true },
-    ].map((options) => ({ options })),
-  )(
-    'maps malformed upload options to INVALID_INPUT before sending: $options',
-    async ({ options }) => {
-      await expect(
-        sdk().storage.upload('a.bin', new Uint8Array([1]), options as never),
-      ).rejects.toMatchObject({ code: 'INVALID_INPUT' })
-      expect(calls).toEqual([])
-    },
+  const sdk = createRuntime({ environment: 'node' })
+  sdk.setBaseUrl(`${origin}/backend`)
+  sdk.setAccessToken('upload-token')
+  const backing = new Uint8Array([88, 1, 2, 3, 89])
+  expect(await sdk.storage.upload('uploads/item.bin', backing.subarray(1, 4))).toBe(
+    'https://files.example/item',
   )
-  it('prepares, uploads multipart and returns only the URL string', async () => {
-    responder = (url) =>
-      url.endsWith('/prepare')
-        ? { status: 200, body: { medium: 'file', maxBytes: 20 * 1024 * 1024 } }
-        : { status: 200, body: { url: `${BASE}/storage/files?key=demo%2Fa.bin` } }
-
-    const result = await sdk().storage.upload('demo/a.bin', new Uint8Array([1, 2, 3]), {
-      contentType: 'image/webp',
-    })
-    expect(result).toBe(`${BASE}/storage/files?key=demo%2Fa.bin`)
-    expect(calls.map((call) => call.url)).toEqual([
-      '/api/storage/uploads/prepare',
-      '/api/storage/uploads',
-    ])
-
-    const upload = calls[1]!
-    expect(upload.fields).toMatchObject({
-      key: 'demo/a.bin',
-      medium: 'file',
-      contentType: 'image/webp',
-    })
-    expect(Array.from(upload.fileBytes!)).toEqual([1, 2, 3])
-    // boundary 由 FormData 生成，不手写 Content-Type。
-    expect(upload.filename).toBe('a.bin')
+  expect(seen.map((item) => item.path)).toEqual([
+    '/backend/api/storage/uploads/prepare',
+    '/backend/api/storage/uploads',
+  ])
+  expect(seen.map((item) => item.auth)).toEqual(['Bearer upload-token', 'Bearer upload-token'])
+  expect(JSON.parse(seen[0]!.body)).toEqual({
+    key: 'uploads/item.bin',
+    size: 3,
+    contentType: 'application/octet-stream',
   })
+  expect(seen[1]!.type).toMatch(/^multipart\/form-data; boundary=/)
+  expect(seen[1]!.body).toContain('name="medium"\r\n\r\nfile')
+  expect(seen[1]!.body).toContain('name="data"; filename="item.bin"')
+  expect(seen[1]!.body).toContain(String.fromCharCode(1, 2, 3))
+  expect(seen[1]!.body).not.toContain(String.fromCharCode(88, 1, 2, 3, 89))
+})
 
-  it('pins one credential across concurrent uploads on the shared runtime', async () => {
-    responder = (url) =>
-      url.endsWith('/prepare')
-        ? { status: 200, body: { medium: 'file', maxBytes: 1024 } }
-        : { status: 200, body: { url: 'u' } }
-    const client = sdk()
-    await Promise.all([
-      client.storage.upload('a.bin', new Uint8Array([1])),
-      client.storage.upload('b.bin', new Uint8Array([2])),
-    ])
-    expect(calls.map((call) => call.authorization)).toEqual(Array(4).fill('Bearer token-a'))
-    expect(
-      calls
-        .filter((call) => call.url === '/api/storage/uploads')
-        .map((call) => call.fields?.key)
-        .sort(),
-    ).toEqual(['a.bin', 'b.bin'])
+it('keeps COS unavailable and never falls back to file after PHP returns 503', async () => {
+  const seen: string[] = []
+  const origin = await service((req, res) => {
+    seen.push(req.url ?? '')
+    json(res, 503, { msg: 'COS 尚不可用' })
   })
+  const sdk = createRuntime({ environment: 'node' })
+  sdk.setBaseUrl(origin)
+  sdk.setAccessToken('token')
+  await expect(
+    sdk.storage.upload('uploads/item.bin', new Uint8Array([1]), { medium: 'cos' }),
+  ).rejects.toMatchObject({ code: 'UNAVAILABLE', status: 503 })
+  expect(seen).toEqual(['/api/storage/uploads/prepare'])
+})
 
-  it('accepts Blob input and uses its media type', async () => {
-    responder = (url) =>
-      url.endsWith('/prepare')
-        ? { status: 200, body: { medium: 'file', maxBytes: 1024 } }
-        : { status: 200, body: { url: 'u' } }
-    await sdk().storage.upload('a.bin', new Blob([new Uint8Array([7])], { type: 'text/plain' }))
-    expect(calls[0]!.json).toMatchObject({ key: 'a.bin', size: 1, contentType: 'text/plain' })
-    expect(calls[1]!.fields!.contentType).toBe('text/plain')
+it('enforces client size and session gates between stages', async () => {
+  let uploaded = 0
+  const origin = await service((req, res) => {
+    if (req.url?.endsWith('/prepare'))
+      json(res, 200, { msg: 'ok', data: { medium: 'file', maxBytes: 1 } })
+    else {
+      uploaded++
+      json(res, 200, { msg: 'ok', data: { url: '/file' } })
+    }
   })
-
-  it('falls back to octet-stream when no media type is available', async () => {
-    responder = (url) =>
-      url.endsWith('/prepare')
-        ? { status: 200, body: { medium: 'file', maxBytes: 1024 } }
-        : { status: 200, body: { url: 'u' } }
-    await sdk().storage.upload('a.bin', new Uint8Array([7]))
-    expect(calls[0]!.json).toMatchObject({ contentType: 'application/octet-stream' })
-  })
-
-  it('pre-checks against the server maxBytes before uploading', async () => {
-    responder = () => ({ status: 200, body: { medium: 'file', maxBytes: 4 } })
-    await expect(sdk().storage.upload('a.bin', new Uint8Array(5))).rejects.toMatchObject({
-      code: 'TOO_LARGE',
-    })
-    expect(calls).toHaveLength(1)
+  const sdk = createRuntime({ environment: 'node' })
+  sdk.setBaseUrl(origin)
+  sdk.setAccessToken('token')
+  await expect(
+    sdk.storage.upload('uploads/item.bin', new Uint8Array([1, 2])),
+  ).rejects.toMatchObject({ code: 'TOO_LARGE' })
+  expect(uploaded).toBe(0)
+  sdk.setAccessToken(null)
+  await expect(sdk.storage.upload('uploads/item.bin', new Uint8Array([1]))).rejects.toMatchObject({
+    code: 'UNAUTHORIZED',
   })
 })
 
-describe('SDK cos branch', () => {
-  const plan = {
-    medium: 'cos',
-    maxBytes: 1024,
-    bucket: 'exre-1250000000',
-    region: 'ap-guangzhou',
-    key: 'demo/a.bin',
-    credentials: CREDENTIALS,
-    uploadTicket: 'ticket-value',
-  }
-
-  function cosResponder() {
-    responder = (url) => {
-      if (!url.endsWith('/prepare'))
-        return { status: 200, body: { url: 'https://signed.example/a.bin' } }
-      // 计划里的 key 取服务器回显值，用于验证 SDK 沿用服务器决定的 key。
-      const requested = calls.at(-1)!.json as { key: string }
-      return { status: 200, body: { ...plan, key: requested.key } }
-    }
-  }
-
-  it('maps the Node COS 120-second deadline to TIMEOUT and releases its timer', async () => {
-    vi.useFakeTimers()
-    putObject.mockImplementationOnce(() => new Promise(() => {}))
-    try {
-      const pending = transport
-        .putObject({
-          bucket: plan.bucket,
-          region: plan.region,
-          key: plan.key,
-          bytes: new Uint8Array([1]),
-          contentType: 'application/octet-stream',
-          credentials: CREDENTIALS,
-        })
-        .catch((cause) => toStorageSdkError({ cause }))
-      await vi.advanceTimersByTimeAsync(120_000)
-      expect(await pending).toMatchObject({ code: 'TIMEOUT' })
-      expect(vi.getTimerCount()).toBe(0)
-    } finally {
-      vi.useRealTimers()
-    }
-  })
-
-  it('puts the object with STS credentials and then confirms', async () => {
-    cosResponder()
-    const result = await sdk().storage.upload('demo/a.bin', new Uint8Array([1, 2, 3, 4]), {
-      contentType: 'image/webp',
+it('stops after prepare when the root or token changes and never uploads under a new context', async () => {
+  for (const change of ['token', 'root'] as const) {
+    let arrived!: () => void,
+      release!: () => void,
+      uploads = 0
+    const reached = new Promise<void>((resolve) => {
+      arrived = resolve
     })
-    expect(result).toBe('https://signed.example/a.bin')
-    expect(calls.map((call) => call.url)).toEqual([
-      '/api/storage/uploads/prepare',
-      '/api/storage/uploads/complete',
-    ])
-    expect(calls[1]!.json).toEqual({ key: 'demo/a.bin', uploadTicket: 'ticket-value' })
-  })
-
-  it('calls PutObject explicitly with attachment, no-store and an explicit length', async () => {
-    cosResponder()
-    await sdk().storage.upload('demo/a.bin', new Uint8Array([1, 2, 3, 4]), {
-      contentType: 'image/webp',
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
     })
-    expect(putObject).toHaveBeenCalledTimes(1)
-    expect(putObject.mock.calls[0]![0]).toMatchObject({
-      Bucket: 'exre-1250000000',
-      Region: 'ap-guangzhou',
-      Key: 'demo/a.bin',
-      ContentLength: 4,
-      ContentType: 'image/webp',
-      ContentDisposition: 'attachment',
-      CacheControl: 'no-store',
-    })
-    expect(Buffer.from(putObject.mock.calls[0]![0]!.Body as Buffer)).toEqual(
-      Buffer.from([1, 2, 3, 4]),
-    )
-  })
-
-  it('never sends the Bearer token to COS and builds one client per call', async () => {
-    cosResponder()
-    await sdk().storage.upload('one.bin', new Uint8Array([1]))
-    await sdk().storage.upload('two.bin', new Uint8Array([2]))
-    // 每次调用独立持有凭证，不使用全局可变缓存。
-    expect(constructorArgs).toHaveLength(2)
-    for (const args of constructorArgs) {
-      expect(JSON.stringify(args)).not.toContain('Bearer')
-    }
-    // 每次调用使用服务器为本次 key 返回的计划，凭证实例互不共享。
-    expect(putObject.mock.calls.map((call) => call[0]!.Key)).toEqual(['one.bin', 'two.bin'])
-    expect(constructorArgs[0]).not.toBe(constructorArgs[1])
-  })
-
-  it('pins the medium returned by prepare and does not switch to file mid-flight', async () => {
-    cosResponder()
-    await sdk().storage.upload('demo/a.bin', new Uint8Array([1]))
-    // 客户端不能改用其他本站路径：全部请求都在 baseUrl 之下。
-    expect(calls.every((call) => call.url.startsWith('/api/'))).toBe(true)
-    expect(calls.some((call) => call.url === '/api/storage/uploads')).toBe(false)
-  })
-
-  it('does not retry when the confirm step fails', async () => {
-    responder = (url) =>
-      url.endsWith('/prepare')
-        ? { status: 200, body: plan }
-        : {
-            status: 404,
-            body: {
-              error: { code: 'STORAGE_NOT_FOUND', message: '对象不存在。', requestId: 'req-9' },
-            },
-          }
-    await expect(sdk().storage.upload('demo/a.bin', new Uint8Array([1]))).rejects.toMatchObject({
-      code: 'NOT_FOUND',
-    })
-    expect(putObject).toHaveBeenCalledTimes(1)
-    expect(calls.filter((call) => call.url === '/api/storage/uploads/complete')).toHaveLength(1)
-  })
-
-  it('does not attempt another confirm when PutObject itself fails', async () => {
-    cosResponder()
-    putObject.mockRejectedValueOnce(new Error('cos network down'))
-    await expect(sdk().storage.upload('demo/a.bin', new Uint8Array([1]))).rejects.toBeInstanceOf(
-      StorageSdkError,
-    )
-    expect(calls.filter((call) => call.url === '/api/storage/uploads/complete')).toHaveLength(0)
-  })
-})
-
-describe('SDK error mapping', () => {
-  const stages = [
-    {
-      stage: 'prepare',
-      path: '/api/storage/uploads/prepare',
-      medium: 'file',
-      requests: ['/api/storage/uploads/prepare'],
-      puts: 0,
-    },
-    {
-      stage: 'upload',
-      path: '/api/storage/uploads',
-      medium: 'file',
-      requests: ['/api/storage/uploads/prepare', '/api/storage/uploads'],
-      puts: 0,
-    },
-    {
-      stage: 'complete',
-      path: '/api/storage/uploads/complete',
-      medium: 'cos',
-      requests: ['/api/storage/uploads/prepare', '/api/storage/uploads/complete'],
-      puts: 1,
-    },
-  ]
-  const failures = [
-    { failure: 'network', code: 'NETWORK' },
-    { failure: 'timeout', code: 'TIMEOUT' },
-    { failure: 'abort', code: 'TIMEOUT' },
-  ]
-
-  it('maps a browser fetch adapter deadline during prepare to StorageSdkError TIMEOUT', async () => {
-    responder = async () =>
-      new Promise((resolve) =>
-        setTimeout(() => resolve({ status: 200, body: { medium: 'file', maxBytes: 1024 } }), 100),
-      )
-    vi.stubGlobal('location', { origin: new URL(BASE).origin })
-    try {
-      const browserStorage = createRuntime(
-        { environment: 'browser', origin: new URL(BASE).origin },
-        async () => transport,
-        { timeoutMs: 20 },
-      )
-      browserStorage.setAccessToken('token-a')
-      await expect(
-        browserStorage.storage.upload('a.bin', new Uint8Array([1])),
-      ).rejects.toMatchObject({ code: 'TIMEOUT' })
-      expect(calls.map((call) => call.url)).toEqual(['/api/storage/uploads/prepare'])
-    } finally {
-      vi.unstubAllGlobals()
-    }
-  })
-
-  it.each(stages.flatMap((stage) => failures.map((failure) => ({ ...stage, ...failure }))))(
-    'maps $failure errors during $stage without retrying or continuing',
-    async ({ path, medium, requests, puts, failure, code }) => {
-      const controller = new AbortController()
-      responder = (url) => {
-        if (url === path) {
-          if (failure === 'network') throw new TypeError('socket failed')
-          if (failure === 'abort') setTimeout(() => controller.abort(), 5)
-          return new Promise((resolve) => setTimeout(() => resolve({ status: 200, body: {} }), 100))
-        }
-        return {
-          status: 200,
-          body:
-            medium === 'file'
-              ? { medium: 'file', maxBytes: 1024 }
-              : {
-                  medium: 'cos',
-                  maxBytes: 1024,
-                  bucket: 'exre-1250000000',
-                  region: 'ap-guangzhou',
-                  key: 'a.bin',
-                  credentials: CREDENTIALS,
-                  uploadTicket: 'ticket-value',
-                },
-        }
-      }
-
-      const error = await sdk(() => 'token-a', { timeoutMs: 25, signal: controller.signal })
-        .storage.upload('a.bin', new Uint8Array([1]))
-        .then(
-          () => {
-            throw new Error('expected failure')
-          },
-          (error: unknown) => error,
+    const origin = await service((req, res) => {
+      if (req.url?.endsWith('/prepare')) {
+        arrived()
+        void gate.then(() =>
+          json(res, 200, { msg: 'ok', data: { medium: 'file', maxBytes: 20_971_520 } }),
         )
-      expect(error).toBeInstanceOf(StorageSdkError)
-      expect(error).toMatchObject({ code })
-      expect(calls.map((call) => call.url)).toEqual(requests)
-      expect(putObject).toHaveBeenCalledTimes(puts)
-    },
-  )
-
-  it('maps server codes, status and requestId onto StorageSdkError', async () => {
-    responder = () => ({
-      status: 413,
-      body: {
-        error: { code: 'STORAGE_TOO_LARGE', message: '内容超过允许的大小。', requestId: 'req-1' },
-      },
+      } else {
+        uploads++
+        json(res, 200, { msg: 'ok', data: { url: '/uploaded' } })
+      }
     })
-    const error = await sdk()
-      .storage.upload('a.bin', new Uint8Array([1]))
-      .then(
-        () => {
-          throw new Error('expected failure')
-        },
-        (e: unknown) => e as StorageSdkError,
-      )
-    expect(error).toBeInstanceOf(StorageSdkError)
-    expect(error.code).toBe('TOO_LARGE')
-    expect(error.status).toBe(413)
-    expect(error.requestId).toBe('req-1')
-  })
-
-  it('keeps URLs, tickets and credentials out of the error text', async () => {
-    responder = () => ({
-      status: 400,
-      body: {
-        error: {
-          code: 'STORAGE_INVALID_INPUT',
-          message: 'bad key https://bucket.cos.ap-guangzhou.myqcloud.com/a?token=tmp-token',
-          requestId: 'req-2',
-        },
-      },
-    })
-    const error = await sdk()
-      .storage.upload('a.bin', new Uint8Array([1]))
-      .then(
-        () => {
-          throw new Error('expected failure')
-        },
-        (e: unknown) => e as StorageSdkError,
-      )
-    expect(error.message).not.toContain('tmp-token')
-    expect(error.message).not.toContain('https://')
-    expect(error.message).toContain('INVALID_INPUT')
-  })
-
-  it('does not copy a server or cloud exception containing plain credentials and upload tickets into upload messages', async () => {
-    responder = () => ({
-      status: 400,
-      body: {
-        error: {
-          code: 'STORAGE_INVALID_INPUT',
-          message: 'token-a tmp-token ticket-value',
-          requestId: 'safe',
-        },
-      },
-    })
-    const serverError = await sdk()
-      .storage.upload('a.bin', new Uint8Array([1]))
-      .catch((error) => error)
-    const cloudError = toStorageSdkError({ cause: new Error('token-a tmp-token ticket-value') })
-    for (const error of [serverError, cloudError]) {
-      for (const sensitive of ['token-a', 'tmp-token', 'ticket-value'])
-        expect(error.message).not.toContain(sensitive)
+    const sdk = createRuntime({ environment: 'node' })
+    sdk.setBaseUrl(origin)
+    sdk.setAccessToken('first')
+    const pending = sdk.storage.upload('uploads/item.bin', new Uint8Array([1]))
+    await reached
+    if (change === 'token') sdk.setAccessToken('second')
+    else {
+      sdk.setBaseUrl(`${origin}/other`)
+      sdk.setAccessToken('second')
     }
-    expect(serverError).toMatchObject({ code: 'INVALID_INPUT', requestId: 'safe', status: 400 })
-  })
+    release()
+    await expect(pending).rejects.toMatchObject({ code: 'CONFIG_CHANGED' })
+    expect(uploads).toBe(0)
+  }
+})
 
-  it('rejects a Node baseUrl that is not absolute', () => {
-    expect(() => sdk().setBaseUrl('/api')).toThrow()
-  })
-
-  it('rejects an empty access token before calling the server', async () => {
-    await expect(sdk(() => '').storage.upload('a.bin', new Uint8Array([1]))).rejects.toMatchObject({
-      code: 'UNAUTHORIZED',
+it.each(['token', 'root'] as const)(
+  'rejects a file success after %s changes while the multipart response is pending',
+  async (change) => {
+    let fileArrived!: () => void, release!: () => void
+    const reached = new Promise<void>((resolve) => {
+      fileArrived = resolve
     })
-    expect(calls).toHaveLength(0)
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const seen: Array<{ path: string; auth: string | undefined }> = []
+    const origin = await service((req, res) => {
+      req.resume()
+      req.on('end', () => {
+        seen.push({ path: req.url ?? '', auth: req.headers.authorization })
+        if (req.url?.endsWith('/prepare'))
+          json(res, 200, { msg: 'ok', data: { medium: 'file', maxBytes: 20_971_520 } })
+        else {
+          fileArrived()
+          void gate.then(() => json(res, 200, { msg: 'ok', data: { url: '/old-account-file' } }))
+        }
+      })
+    })
+    const sdk = createRuntime({ environment: 'node' })
+    sdk.setBaseUrl(`${origin}/backend`)
+    sdk.setAccessToken('old-token')
+    const pending = sdk.storage.upload('uploads/item.bin', new Uint8Array([1]))
+    await reached
+    if (change === 'token') sdk.setAccessToken('new-token')
+    else {
+      sdk.setBaseUrl(`${origin}/other`)
+      sdk.setAccessToken('new-token')
+    }
+    release()
+    await expect(pending).rejects.toMatchObject({ code: 'CONFIG_CHANGED' })
+    expect(seen).toEqual([
+      { path: '/backend/api/storage/uploads/prepare', auth: 'Bearer old-token' },
+      { path: '/backend/api/storage/uploads', auth: 'Bearer old-token' },
+    ])
+  },
+)
+
+it('rejects a file result when the default Browser storage token is directly replaced', async () => {
+  let fileArrived!: () => void, release!: () => void
+  const reached = new Promise<void>((resolve) => {
+    fileArrived = resolve
+  })
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const seen: string[] = []
+  const origin = await service((req, res) => {
+    req.resume()
+    req.on('end', () => {
+      seen.push(req.headers.authorization ?? '')
+      if (req.url?.endsWith('/prepare'))
+        json(res, 200, { msg: 'ok', data: { medium: 'file', maxBytes: 20_971_520 } })
+      else {
+        fileArrived()
+        void gate.then(() => json(res, 200, { msg: 'ok', data: { url: '/old-account-file' } }))
+      }
+    })
+  })
+  let stored: string | null = 'old-token'
+  const sdk = createRuntime({
+    environment: 'browser',
+    origin,
+    readToken: () => ({ kind: 'known', value: stored }),
+  })
+  const pending = sdk.storage.upload('uploads/item.bin', new Uint8Array([1]))
+  await reached
+  stored = 'new-token'
+  release()
+  await expect(pending).rejects.toMatchObject({ code: 'CONFIG_CHANGED' })
+  expect(stored).toBe('new-token')
+  expect(seen).toEqual(['Bearer old-token', 'Bearer old-token'])
+})
+
+it('snapshots a sliced byte view before asynchronous prepare and keeps equal token setters valid', async () => {
+  let arrived!: () => void,
+    release!: () => void,
+    uploaded = ''
+  const reached = new Promise<void>((resolve) => {
+    arrived = resolve
+  })
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const origin = await service((req, res) => {
+    if (req.url?.endsWith('/prepare')) {
+      arrived()
+      void gate.then(() =>
+        json(res, 200, { msg: 'ok', data: { medium: 'file', maxBytes: 20_971_520 } }),
+      )
+    } else {
+      const chunks: Buffer[] = []
+      req.on('data', (chunk) => chunks.push(chunk))
+      req.on('end', () => {
+        uploaded = Buffer.concat(chunks).toString('latin1')
+        json(res, 200, { msg: 'ok', data: { url: '/uploaded' } })
+      })
+    }
+  })
+  const sdk = createRuntime({ environment: 'node' })
+  sdk.setBaseUrl(origin)
+  sdk.setAccessToken('same')
+  const backing = new Uint8Array([88, 1, 2, 3, 89])
+  const pending = sdk.storage.upload('uploads/item.bin', backing.subarray(1, 4))
+  await reached
+  backing.fill(99)
+  sdk.setAccessToken('same')
+  sdk.setBaseUrl(`${origin}/`)
+  release()
+  expect(await pending).toBe('/uploaded')
+  expect(uploaded).toContain(String.fromCharCode(1, 2, 3))
+  expect(uploaded).not.toContain('ccc')
+})
+
+it('pins each concurrent upload to its own token revision', async () => {
+  let arrived = 0,
+    release!: () => void,
+    uploads = 0
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  let arrival = () => {}
+  const reached = new Promise<void>((resolve) => {
+    arrival = () => {
+      if (++arrived === 2) resolve()
+    }
+  })
+  const origin = await service((req, res) => {
+    if (req.url?.endsWith('/prepare')) {
+      arrival()
+      void gate.then(() =>
+        json(res, 200, { msg: 'ok', data: { medium: 'file', maxBytes: 20_971_520 } }),
+      )
+    } else {
+      uploads++
+      json(res, 200, { msg: 'ok', data: { url: '/uploaded' } })
+    }
+  })
+  const sdk = createRuntime({ environment: 'node' })
+  sdk.setBaseUrl(origin)
+  sdk.setAccessToken('first')
+  const first = sdk.storage.upload('uploads/a.bin', new Uint8Array([1]))
+  const second = sdk.storage.upload('uploads/b.bin', new Uint8Array([2]))
+  await reached
+  sdk.setAccessToken('second')
+  release()
+  await expect(first).rejects.toMatchObject({ code: 'CONFIG_CHANGED' })
+  await expect(second).rejects.toMatchObject({ code: 'CONFIG_CHANGED' })
+  expect(uploads).toBe(0)
+})
+
+it('maps a real prepare deadline to StorageSdkError TIMEOUT', async () => {
+  const origin = await service((_req, _res) => {})
+  const sdk = createRuntime({ environment: 'node' }, { timeoutMs: 20 })
+  sdk.setBaseUrl(origin)
+  sdk.setAccessToken('token')
+  await expect(sdk.storage.upload('uploads/item.bin', new Uint8Array([1]))).rejects.toMatchObject({
+    code: 'TIMEOUT',
   })
 })
 
-describe('SDK upload context gates', () => {
-  const plan = {
-    medium: 'cos',
-    maxBytes: 1024,
-    bucket: 'exre-1250000000',
-    region: 'ap-guangzhou',
-    key: 'a.bin',
-    credentials: CREDENTIALS,
-    uploadTicket: 'ticket',
-  }
-
-  it.each(['prepare', 'file', 'cos-import', 'cos-put', 'complete'] as const)(
-    'stops after %s if the token or address changes, including before returning success',
-    async (stage) => {
-      for (const change of ['token', 'base'] as const) {
-        calls.length = 0
-        putObject.mockClear()
-        let client: ReturnType<typeof createRuntime>
-        const changeContext = () =>
-          change === 'token'
-            ? client.setAccessToken('new-token')
-            : client.setBaseUrl(`${BASE}/other`)
-        client = createRuntime({ environment: 'node' }, async () => {
-          if (stage === 'cos-import') changeContext()
-          return {
-            putObject: async (input) => {
-              await transport.putObject(input)
-              if (stage === 'cos-put') changeContext()
-            },
-          }
-        })
-        client.setBaseUrl(BASE)
-        client.setAccessToken('old-token')
-        responder = (url) => {
-          if (url.endsWith('/prepare')) {
-            if (stage === 'prepare') changeContext()
-            return {
-              status: 200,
-              body:
-                stage === 'file' || stage === 'prepare' ? { medium: 'file', maxBytes: 1024 } : plan,
-            }
-          }
-          if (stage === 'file' || stage === 'complete') changeContext()
-          return { status: 200, body: { url: 'uploaded' } }
-        }
-        await expect(client.storage.upload('a.bin', new Uint8Array([1]))).rejects.toMatchObject({
-          code: 'CONFIG_CHANGED',
-        })
-        expect(calls.map((call) => call.url)).toEqual(
-          stage === 'file'
-            ? ['/api/storage/uploads/prepare', '/api/storage/uploads']
-            : stage === 'complete'
-              ? ['/api/storage/uploads/prepare', '/api/storage/uploads/complete']
-              : ['/api/storage/uploads/prepare'],
-        )
-        expect(putObject).toHaveBeenCalledTimes(stage === 'cos-put' || stage === 'complete' ? 1 : 0)
-      }
-    },
-  )
-
-  it('refreshes directly written persisted credentials between stages and never completes under a new account', async () => {
-    let stored = 'old'
-    const client = createRuntime(
-      {
-        environment: 'browser',
-        origin: new URL(BASE).origin,
-        readToken: () => ({ kind: 'known', value: stored }),
-      },
-      async () => transport,
-    )
-    responder = () => {
-      stored = 'new'
-      return { status: 200, body: plan }
-    }
-    await expect(client.storage.upload('a.bin', new Uint8Array([1]))).rejects.toMatchObject({
-      code: 'CONFIG_CHANGED',
+it.each([
+  ['prepare', 'network', 'node'],
+  ['file', 'network', 'node'],
+  ['prepare', 'timeout', 'node'],
+  ['file', 'timeout', 'node'],
+  ['prepare', 'abort', 'node'],
+  ['file', 'abort', 'node'],
+  ['prepare', 'timeout', 'browser'],
+  ['file', 'timeout', 'browser'],
+] as const)(
+  'maps real %s %s through the %s request adapter',
+  async (stage, failure, environment) => {
+    let arrived!: () => void
+    const reached = new Promise<void>((resolve) => {
+      arrived = resolve
     })
-    expect(calls.map((call) => call.authorization)).toEqual(['Bearer old'])
-    expect(putObject).not.toHaveBeenCalled()
-  })
-
-  it('allows equal setters and same-byte source changes during upload', async () => {
-    const client = createRuntime(
-      {
-        environment: 'browser',
-        origin: new URL(BASE).origin,
-        readToken: () => ({ kind: 'known', value: 'token-a' }),
-      },
-      async () => transport,
-    )
-    responder = (url) => {
-      client.setBaseUrl(`${BASE}/`)
-      client.setAccessToken('token-a')
-      return {
-        status: 200,
-        body: url.endsWith('/prepare') ? { medium: 'file', maxBytes: 1024 } : { url: 'u' },
-      }
+    const seen: string[] = []
+    const origin = await service((req, res) => {
+      req.resume()
+      req.on('end', () => {
+        const current = req.url?.endsWith('/prepare') ? 'prepare' : 'file'
+        seen.push(current)
+        if (current !== stage) {
+          json(res, 200, { msg: 'ok', data: { medium: 'file', maxBytes: 20_971_520 } })
+          return
+        }
+        arrived()
+        if (failure === 'network') req.socket.destroy()
+        // Timeout and abort leave the response pending until the adapter cancels it.
+      })
+    })
+    const controller = new AbortController()
+    const runtime =
+      environment === 'browser'
+        ? {
+            environment: 'browser' as const,
+            origin,
+            readToken: () => ({ kind: 'known' as const, value: 'private-token' }),
+          }
+        : { environment: 'node' as const }
+    const sdk = createRuntime(runtime, {
+      timeoutMs: failure === 'timeout' ? 40 : 2000,
+      signal: controller.signal,
+    })
+    if (environment === 'node') {
+      sdk.setBaseUrl(origin)
+      sdk.setAccessToken('private-token')
     }
-    expect(await client.storage.upload('a.bin', new Uint8Array([1]))).toBe('u')
-    expect(calls.map((call) => call.authorization)).toEqual(['Bearer token-a', 'Bearer token-a'])
-  })
+    const pending = sdk.storage.upload('uploads/item.bin', new Uint8Array([1]))
+    await reached
+    if (failure === 'abort') controller.abort()
+    const expectedCode = failure === 'network' ? 'NETWORK' : 'TIMEOUT'
+    await expect(pending).rejects.toMatchObject({ code: expectedCode })
+    await expect(pending).rejects.not.toThrow('private-token')
+    expect(seen).toEqual(stage === 'prepare' ? ['prepare'] : ['prepare', 'file'])
+  },
+)
 
-  it('preserves a real stage failure and shared session handling even after invalidation changes the revision', async () => {
-    const client = sdk()
-    let expired = 0
-    client.setSessionExpiredHandler(() => {
+it.each(['prepare', 'file'] as const)(
+  'preserves the real protected 401 from %s after shared session expiry',
+  async (stage) => {
+    const seen: string[] = []
+    const origin = await service((req, res) => {
+      req.resume()
+      req.on('end', () => {
+        const current = req.url?.endsWith('/prepare') ? 'prepare' : 'file'
+        seen.push(current)
+        json(
+          res,
+          current === stage ? 401 : 200,
+          current === stage
+            ? { msg: 'PHP 会话已失效' }
+            : { msg: 'ok', data: { medium: 'file', maxBytes: 20_971_520 } },
+        )
+      })
+    })
+    let stored: string | null = 'private-token',
+      cleared = 0,
+      expired = 0
+    const sdk = createRuntime({
+      environment: 'browser',
+      origin,
+      readToken: () => ({ kind: 'known', value: stored }),
+      clearToken: (expected) => {
+        if (stored !== expected) return false
+        stored = null
+        cleared++
+        return true
+      },
+    })
+    sdk.setSessionExpiredHandler(() => {
       expired++
     })
-    responder = () => ({
-      status: 401,
-      body: { error: { code: 'SESSION_INVALID', message: 'expired', requestId: 'stage-failure' } },
-    })
-    await expect(client.storage.upload('a.bin', new Uint8Array([1]))).rejects.toMatchObject({
-      code: 'UNAUTHORIZED',
-      status: 401,
-      requestId: 'stage-failure',
-    })
+    await expect(sdk.storage.upload('uploads/item.bin', new Uint8Array([1]))).rejects.toMatchObject(
+      { code: 'UNAUTHORIZED', status: 401 },
+    )
+    expect(stored).toBeNull()
+    expect(cleared).toBe(1)
     expect(expired).toBe(1)
-    expect(calls).toHaveLength(1)
-  })
+    expect(seen).toEqual(stage === 'prepare' ? ['prepare'] : ['prepare', 'file'])
+  },
+)
 
-  it('snapshots a sliced input view before asynchronous prepare can mutate its backing bytes', async () => {
-    const bytes = new Uint8Array([9, 1, 2, 9]),
-      view = bytes.subarray(1, 3)
-    responder = (url) => {
-      bytes.fill(7)
-      return {
-        status: 200,
-        body: url.endsWith('/prepare') ? { medium: 'file', maxBytes: 1024 } : { url: 'u' },
-      }
-    }
-    await sdk().storage.upload('a.bin', view)
-    expect(calls[0]!.json).toMatchObject({ size: 2 })
-    expect([...calls[1]!.fileBytes!]).toEqual([1, 2])
-  })
+it('maps real status and transport failures without copying PHP or cloud secrets into errors', () => {
+  for (const [status, code] of [
+    [400, 'INVALID_INPUT'],
+    [401, 'UNAUTHORIZED'],
+    [403, 'FORBIDDEN'],
+    [409, 'CONFLICT'],
+    [413, 'TOO_LARGE'],
+    [415, 'UNSUPPORTED_MEDIA_TYPE'],
+    [429, 'BUSY'],
+    [503, 'UNAVAILABLE'],
+  ] as const) {
+    const error = toStorageSdkError({
+      cause: new ExAxiosError('http', 'HTTP_ERROR', 'secret-value', { status }),
+    })
+    expect(error).toMatchObject({ code, status })
+    expect(error.message).not.toContain('secret-value')
+  }
+  expect(
+    toStorageSdkError({ cause: new ExAxiosError('network', 'NETWORK_ERROR', 'private-url') }),
+  ).toMatchObject({ code: 'NETWORK' })
+  expect(
+    toStorageSdkError({ cause: new ExAxiosError('timeout', 'TIMEOUT', 'private-url') }),
+  ).toMatchObject({ code: 'TIMEOUT' })
+  expect(new StorageSdkError('UNAVAILABLE').message).not.toContain('private-url')
 })

@@ -1,5 +1,7 @@
 # 序列化会掩盖 handler 回归
 
+> 已退役：历史 Node/Fastify 实现记录。文中路径、命令和行为仅用于理解当时选择；现行 PHP/Webman 边界见 `.ai/architectures/overview.md`、`.ai/architectures/api/contract-layout.md` 与 `apps/php-server/TESTING.md`。
+
 **结论：对 Server 的 Contract 断言，只校验 HTTP 响应体是不够的，必须同时校验 `serviceHandlers` 中注册的 handler 的原始返回值。**
 
 _最后更新：2026-10-11_
