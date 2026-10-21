@@ -110,7 +110,7 @@ test('typecheck and each test pass prepare SDK before consumers without building
   assert.deepEqual(
     typecheckSpecifications(options).map((spec) => spec.args),
     [
-      ...['apps/web', 'packages/components', 'packages/sdk'].map((directory) => [
+      ...['apps/web', 'apps/admin-web', 'packages/components', 'packages/sdk'].map((directory) => [
         join(root, 'node_modules/typescript/bin/tsc'),
         '--noEmit',
         '-p',

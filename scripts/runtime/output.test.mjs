@@ -98,7 +98,7 @@ test('errors show a readable reason, context and next step but hide untrusted ex
   }
 })
 
-test('the real entry point writes grouped errors to redirected stderr and retains failure exit status', () => {
+test('the real entry point writes grouped argument errors to redirected stderr and retains failure exit status', () => {
   const result = spawnSync(
     process.execPath,
     [fileURLToPath(new URL('./frontend.mjs', import.meta.url)), 'private-command'],
@@ -111,7 +111,7 @@ test('the real entry point writes grouped errors to redirected stderr and retain
   assert.equal(result.status, 1)
   assert.equal(result.stdout, '')
   assert.match(result.stderr, /✗.*\n\n.*检查项/)
-  assert.match(result.stderr, /错误码  FRONTEND_START_FAILED/)
+  assert.match(result.stderr, /错误码  ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL/)
   assert.match(result.stderr, /下一步/)
   assert.doesNotMatch(result.stderr, /\x1b|private-command|Error:|at main/)
 })
